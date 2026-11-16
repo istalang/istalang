@@ -7,20 +7,19 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { drawOf, seedBytes } from '../../runtime/random-draws.ts';
-import { seedBytesOf, seedTextOf } from '../../runtime/snapshot/random.ts';
 import { uniformBelow } from './natives.ts';
 
 /** Draws from the source seeded with `seed`, counting from the first. */
-function drawsFrom(seed: string): () => Uint8Array {
+function drawsFrom(seed: Uint8Array): () => Uint8Array {
   let index = 0;
   return () => {
-    const draw = drawOf(seedBytesOf(seed), index);
+    const draw = drawOf(seed, index);
     index += 1;
     return draw;
   };
 }
 
-const seedArbitrary = fc.uint8Array({ minLength: seedBytes, maxLength: seedBytes }).map(seedTextOf);
+const seedArbitrary = fc.uint8Array({ minLength: seedBytes, maxLength: seedBytes });
 
 describe('uniformBelow', () => {
   it('stays from 0 up to its bound, from one bit to several draws wide', () => {
@@ -33,7 +32,7 @@ describe('uniformBelow', () => {
   });
 
   it('reaches every value of a small bound', () => {
-    const draw = drawsFrom(seedTextOf(new Uint8Array(seedBytes)));
+    const draw = drawsFrom(new Uint8Array(seedBytes));
     const seen = new Set(Array.from({ length: 300 }, () => uniformBelow(6n, draw)));
     expect(seen).toEqual(new Set([0n, 1n, 2n, 3n, 4n, 5n]));
   });

@@ -121,9 +121,10 @@ const layers = {
   // server it shares only the protocol's request, so no server code reaches the bundle.
   'editor/vscode-client': ['editor/lsp/std-source-request'],
   definition: ['foundation/text'],
-  runtime: ['definition', 'foundation/text'],
-  // The runtime library of compiled JavaScript: it reaches the runtime's seams alone (below).
-  live: ['foundation/text', 'definition', 'runtime', 'stdlib'],
+  // The one run executes the code codegen emits from a Definition.
+  runtime: ['definition', 'foundation/text', 'codegen'],
+  // The runtime library of a built program: the run, over the code built with it.
+  live: ['foundation/text', 'definition', 'runtime', 'stdlib', 'codegen'],
   codegen: ['definition', 'live', 'stdlib'],
 };
 
@@ -354,20 +355,6 @@ export default {
       severity: 'error',
       from: { path: '^src/', pathNot: '^src/runtime/interpreter/registers\\.ts$' },
       to: { path: '^src/runtime/interpreter/raw-registers\\.ts$' },
-    },
-    {
-      // Compiled JavaScript runs on the runtime's seams (natives, clock, refusals, random draws,
-      // settle order, what an instance logs, the host boundary) and its lifetimes' core (counts and
-      // the collector, over either runtime's objects), never on the interpreter it is diffed
-      // against, so it bundles for a browser.
-      name: 'live-imports-interpreter',
-      severity: 'error',
-      from: { path: '^src/live/' },
-      to: {
-        path: '^src/runtime/',
-        pathNot:
-          '^src/runtime/((natives|clock|refusal|instance-state|random-draws|settle-order|lifetimes/(counts|collector))\\.ts|boundary/)',
-      },
     },
     {
       // Compiled JavaScript runs in a browser too, so nothing its runtime library reaches, however

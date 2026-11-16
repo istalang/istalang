@@ -1,15 +1,13 @@
 /**
  * The std's string code (strings.ista, the prelude's `join`, decimal.ista's text) takes time linear
  * in the text: each runs over n and over 10n items, and the larger may take at most 15 times as
- * long, where quadratic code would take 100. Each program runs as a host runs it, its heaps unchecked
- * by the test runtime's oracle, which costs more per step as values grow; it runs once to compile,
- * then is timed.
+ * long, where quadratic code would take 100. Each program runs as a host runs it; it runs once to
+ * compile, then is timed.
  */
 
 import { describe, expect, it } from 'vitest';
 import { compiledText } from '../../compiler/compile.test-kit.ts';
 import { startToEnd, testRuntime } from '../../runtime/runtime.test-kit.ts';
-import { noHeapCheck } from '../../runtime/scheduler/loaded-definition.ts';
 
 /** Each operation, as the expression giving an Int that runs it over `n` items. */
 const operations: Readonly<Record<string, (n: number) => string>> = {
@@ -44,7 +42,7 @@ ista async fn _main() -> Int: ${expression}
 async function runTime(expression: string): Promise<{ time: number; ended: string }> {
   const text = program(expression);
   const start = performance.now();
-  const { kind } = await startToEnd(testRuntime({ heapCheck: noHeapCheck }), text);
+  const { kind } = await startToEnd(testRuntime(), text);
   return { time: performance.now() - start, ended: kind };
 }
 

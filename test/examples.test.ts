@@ -1,12 +1,11 @@
 /**
  * The example projects (examples/) check with no error, as `ista check` run in each finds them,
- * and their suites pass under `ista test`, heaps checked by the oracle of static lifetimes: they
- * show the language as it stands, so a change to it that breaks one fails here rather than leaving
- * the example to rot. FormBuilder's forms also run through their live functions as their hosts
- * start them (`ista run --host`): a suite's tests are ista code, which calls nothing live. Its
- * generator, run as its users run it (Node's type stripping, the built formatter), gives the
- * generated modules checked in, so they never drift from it, and its schema's types pass the
- * type tests beside them.
+ * and their suites pass under `ista test`: they show the language as it stands, so a change to it
+ * that breaks one fails here rather than leaving the example to rot. FormBuilder's forms also run
+ * through their live functions as their hosts start them (`ista run --host`): a suite's tests are
+ * ista code, which calls nothing live. Its generator, run as its users run it (Node's type
+ * stripping, the built formatter), gives the generated modules checked in, so they never drift
+ * from it, and its schema's types pass the type tests beside them.
  *
  * Each project is loaded once for the file.
  */
@@ -26,8 +25,8 @@ import { findProjectSources, loadProject, type Project } from '../src/project/pr
 const examples = fileURLToPath(new URL('../examples/', import.meta.url));
 const formBuilder = `${examples}FormBuilder`;
 const tsc = fileURLToPath(new URL('../node_modules/typescript/bin/tsc', import.meta.url));
-// Compiling FormBuilder's forms, the supplier form above all, costs seconds a run, and the oracle
-// of static lifetimes checks every heap it runs: a run takes several times a test's 7 s.
+// Compiling FormBuilder's forms, the supplier form above all, costs seconds a run: a run takes
+// several times a test's 7 s.
 const formBuilderRun = 60_000;
 
 const projects = readdirSync(examples, { withFileTypes: true })

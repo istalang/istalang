@@ -1,7 +1,7 @@
 /**
  * Every runnable corpus program (test/corpus/programs.ts) runs through `ista run`, in-process, and
  * must have the outcome it states, so the whole pipeline (checker, lowering, runtime, boundary)
- * is what's tested, on real time, its heaps checked by the oracle of static lifetimes.
+ * is what's tested, on real time, each Definition passed by the ownership verifier.
  */
 
 import { describe, expect, it } from 'vitest';

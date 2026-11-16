@@ -9,7 +9,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import process from 'node:process';
 import { describe, expect, it } from 'vitest';
-import { subsetOutcome, subsetSource } from '../../../test/definitions/subset.ts';
+import { subsetOutcome, subsetSource } from '../../../test/subset.ts';
 import { tempProject as project } from '../../project/project.test-kit.ts';
 import { builtCli, ista } from '../cli.test-kit.ts';
 
