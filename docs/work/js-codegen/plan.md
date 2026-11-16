@@ -1,7 +1,7 @@
 ---
-description: phase plan and process for the JS backend (design.md) — read before forking, building or reviewing any js-codegen phase
+description: archived — the js-codegen phase plan (P1, P2 done, P3 dropped), superseded by docs/work/ir-first/plan.md
 owner: tech-lead
-status: active
+status: archived
 applies_to: istalang
 last_verified: 2026-11-15
 last_updated: 2026-11-16

@@ -1,0 +1,22 @@
+{
+  "program": "start-by-key.ista",
+  "steps": [
+    {
+      "start": "a",
+      "function": "start-by-key.total(prelude.Array<start-by-key.Order>, Float)",
+      "arguments": [[{ "id": "a", "amount": 2 }, { "id": "b", "amount": 3 }], 1.5]
+    },
+    {
+      "start": "b",
+      "function": "start-by-key.total(prelude.Array<start-by-key.Order>, Float)",
+      "arguments": [[{ "id": "a" }], 1]
+    },
+    {
+      "start": "c",
+      "function": "start-by-key.total(prelude.Array<start-by-key.Order>, Float)",
+      "arguments": [[]]
+    },
+    { "start": "d", "function": "start-by-key.nothing()" },
+    { "stored": true }
+  ]
+}

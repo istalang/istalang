@@ -1,0 +1,4 @@
+{
+  "program": "crash-every-await.ista",
+  "steps": [{ "start": "run", "crashEveryAwait": true }, { "start": "plain" }]
+}

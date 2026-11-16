@@ -8,6 +8,7 @@ Inputs that tests across phases share. Unit tests live beside their code (`src/*
 - `cyclic-programs.ts`: programs closing a cycle through a disposable at run time, each across one language construct, which static lifetimes must reject (`lifetimes-oracle.sweep.test.ts`).
 - `definitions/`: hand-written Definitions (the M2.4 subset program, spec §12.3), so runtime tests can run without the compiler. `fixture-kit.ts` keeps them short and finds spans in each fixture's own source.
 - Hand-written `.ista` cases, valid and invalid, go under `corpus/`. Never copy spec text there.
+- `golden/`: what every program, suite and host scenario showed on the interpreter before the IR-first rewrite, which every pipeline is held to (`golden/golden.md`).
 - `spec-suites/`: hand-written test modules for spec examples whose tests the spec elides, each run by an end-to-end test against the spec's own example code, written beside it at run time.
 
 Principles:

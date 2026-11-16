@@ -1,0 +1,13 @@
+{
+  "program": "retry.ista",
+  "host": "retry.host.mjs",
+  "steps": [
+    { "clock": 5 },
+    { "start": "run" },
+    { "stored": true },
+    { "inspect": "run/1" },
+    { "clock": 9 },
+    { "retry": "run/1" },
+    { "retry": "run/1" }
+  ]
+}

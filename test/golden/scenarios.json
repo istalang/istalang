@@ -1,0 +1,197 @@
+{
+  "crash-every-await": {
+    "steps": [
+      {
+        "finished": "6",
+        "reported": ["info step 1 {}", "info step 2 {}", "info step 3 {}"]
+      },
+      {
+        "finished": "6",
+        "reported": ["info step 1 {}", "info step 2 {}", "info step 3 {}"]
+      }
+    ]
+  },
+  "extern-constant": {
+    "steps": [
+      {
+        "finished": "0",
+        "hostCalls": ["extern-constant.seed []", "extern-constant.seed []"]
+      },
+      {
+        "stored": ["run", "run/1", "run/2"]
+      },
+      {},
+      {},
+      {
+        "finished": "\"1/1\""
+      },
+      {
+        "finished": "\"2/2\""
+      }
+    ]
+  },
+  "host-future": {
+    "steps": [
+      {
+        "finished": "7",
+        "hostCalls": [
+          "host-future.quote(String) [\"apple\"]",
+          "host-future.quote(String) [\"pear\"]",
+          "host-future.record(String, Int) [\"pair\",\"7n\"]"
+        ]
+      }
+    ]
+  },
+  "restart": {
+    "steps": [
+      {
+        "finished": "0",
+        "reported": ["info waiting {}"]
+      },
+      {},
+      {
+        "waiting": {
+          "until": 1000
+        },
+        "waitingAt": [
+          {
+            "waypoint": "approval",
+            "location": "timer.ista:10:3"
+          }
+        ]
+      },
+      {},
+      {
+        "finished": "1000",
+        "logs": ["info approved {}"]
+      }
+    ]
+  },
+  "retry": {
+    "steps": [
+      {},
+      {
+        "finished": "0",
+        "unheard": [
+          {
+            "instance": "run/1",
+            "panicked": "not ready",
+            "frame": "at retry.child (retry.ista:10:5)"
+          }
+        ],
+        "hostCalls": ["retry.ready() []"]
+      },
+      {
+        "stored": ["run", "run/1"]
+      },
+      {
+        "panicked": "not ready",
+        "frame": "at retry.child (retry.ista:10:5)"
+      },
+      {},
+      {
+        "finished": "5",
+        "hostCalls": ["retry.ready() []"]
+      },
+      {
+        "refused": "notPanicked"
+      }
+    ]
+  },
+  "start-by-key": {
+    "steps": [
+      {
+        "finished": "7.5"
+      },
+      {
+        "refused": "unfitJson"
+      },
+      {
+        "refused": "notStartable"
+      },
+      {
+        "refused": "notStartable"
+      },
+      {}
+    ]
+  },
+  "terminate": {
+    "steps": [
+      {
+        "finished": "0",
+        "unheard": [
+          {
+            "instance": "run/1",
+            "panicked": "gave up on child's",
+            "frame": "at terminate.child (terminate.ista:15:3)"
+          }
+        ]
+      },
+      {
+        "stored": ["run", "run/1"]
+      },
+      {
+        "panicked": "gave up on child's",
+        "frame": "at terminate.child (terminate.ista:15:3)",
+        "waitingAt": [
+          {
+            "location": "terminate.ista:14:3"
+          }
+        ]
+      },
+      {
+        "terminated": "gave up on child's",
+        "frame": "at terminate.child (terminate.ista:15:3)",
+        "logs": ["info disposed child's {}"]
+      },
+      {
+        "terminated": "gave up on child's",
+        "frame": "at terminate.child (terminate.ista:15:3)"
+      },
+      {
+        "refused": "notPanicked"
+      },
+      {
+        "refused": "notPanicked"
+      }
+    ]
+  },
+  "timer": {
+    "steps": [
+      {
+        "finished": "0",
+        "reported": ["info waiting {}"]
+      },
+      {
+        "waiting": {
+          "until": 1000
+        },
+        "waitingAt": [
+          {
+            "waypoint": "approval",
+            "location": "timer.ista:10:3"
+          }
+        ]
+      },
+      {
+        "waiting": {
+          "until": 1000
+        }
+      },
+      {},
+      {
+        "waiting": {
+          "until": 1000
+        }
+      },
+      {},
+      {
+        "finished": "1000",
+        "logs": ["info approved {}"]
+      },
+      {
+        "finished": "1000"
+      }
+    ]
+  }
+}

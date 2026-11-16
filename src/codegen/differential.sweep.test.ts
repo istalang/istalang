@@ -7,20 +7,19 @@
 
 import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { corpusDirectory, runProgramOf, runPrograms } from '../../test/corpus/programs.ts';
 import { specExamples } from '../../test/corpus/spec-examples.ts';
-import { loadHostModule } from '../cli/host-module.ts';
-import type { Definition } from '../definition/definition.ts';
-import type { LiveProgram } from '../live/program.ts';
 import {
-  asLive,
   compiledAt,
-  compiledToJavaScript,
+  freshHost,
+  type RecordingHost,
   recording,
   shownByInterpreter,
-  shownByJavaScript,
-} from './differential.test-kit.ts';
+} from '../../test/golden/pipeline.ts';
+import type { Definition } from '../definition/definition.ts';
+import type { LiveProgram } from '../live/program.ts';
+import { asLive, compiledToJavaScript, shownByJavaScript } from './differential.test-kit.ts';
 
 /** How a program that doesn't check names its first error (differential.test-kit.ts). */
 const checkError = /^error \d+/u;
@@ -43,9 +42,7 @@ const formBuilderRun = 60_000;
 /**
  * Programs compiled JavaScript runs differently, and why; each still does, or it leaves this list.
  */
-const differences: ReadonlyMap<string, string> = new Map([
-  ['run/recursion.ista', 'it recurses 100,000 calls deep, past the JavaScript stack'],
-]);
+const differences: ReadonlyMap<string, string> = new Map();
 
 describe('compiled JavaScript runs each corpus program as the interpreter does', () => {
   for (const { name, text } of runPrograms) {
@@ -98,17 +95,15 @@ describe('compiled JavaScript runs each spec example declaring main as the inter
 describe('compiled JavaScript runs what it once ran differently as the interpreter does', () => {
   for (const name of readdirSync(regressions)) {
     const program = runProgramOf({ name, text: readFileSync(`${regressions}${name}`, 'utf8') });
-    it(`${name}, as it states`, async () => {
+    it(name, async () => {
       const compiled =
         program === undefined ? undefined : compiledAt(regressions, name, program.text);
       if (program === undefined || compiled === undefined || 'problem' in compiled) {
         throw new Error(`${name} states no outcome, or doesn't compile.`);
       }
-      const shown = await shownByInterpreter(compiled.definition);
-      expect(shown.ended).toBe(
-        program.expects === 'outcome' ? program.expected : `panic: ${program.expected}`,
+      expect(await shownByJavaScript(await javaScriptOf(compiled.definition))).toEqual(
+        await shownByInterpreter(compiled.definition),
       );
-      expect(await shownByJavaScript(await javaScriptOf(compiled.definition))).toEqual(shown);
     });
   }
 });
@@ -123,22 +118,17 @@ describe("compiled JavaScript serves FormBuilder's forms as the interpreter does
         throw new Error(compiled.problem);
       }
       const program = await javaScriptOf(compiled.definition);
-      expect(await shownByJavaScript(program, await freshHost(form))).toEqual(
-        await shownByInterpreter(compiled.definition, await freshHost(form)),
+      expect(await shownByJavaScript(program, await hostOf(form))).toEqual(
+        await shownByInterpreter(compiled.definition, await hostOf(form)),
       );
     },
     formBuilderRun,
   );
 });
 
-/** The demo host of `form`, loaded afresh, since it keeps the events it serves as it serves them. */
-async function freshHost(form: string): Promise<ReturnType<typeof recording>> {
-  vi.resetModules();
-  const loaded = await loadHostModule(`${formBuilder}${form}-demo.host.mjs`);
-  if (loaded.kind === 'unfit') {
-    throw new Error(loaded.problem);
-  }
-  return recording(loaded.externs);
+/** The demo host of `form`, loaded afresh, recording its calls. */
+async function hostOf(form: string): Promise<RecordingHost> {
+  return recording(await freshHost(`${formBuilder}${form}-demo.host.mjs`));
 }
 
 /** `definition` compiled to JavaScript and loaded. */

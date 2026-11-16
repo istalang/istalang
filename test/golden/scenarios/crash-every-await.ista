@@ -1,0 +1,15 @@
+# A run whose every segment runs twice, the first run discarded, commits and shows what a normal
+# run does (§10): its outcome, and each log record once.
+import * as log from 'log'
+import * as time from 'time'
+import * as runtime from 'runtime'
+
+ista async fn _main() -> Int:
+  let total = 0
+  for step in [1, 2, 3]:
+    log.info("step " + String(step))
+    await time.delay(1s)
+    total += step
+  total
+
+live async fn main() -> Int: await runtime.run(runtime.id()) _main()

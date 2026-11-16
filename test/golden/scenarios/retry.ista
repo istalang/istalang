@@ -1,0 +1,17 @@
+# A child instance whose first run panics until its host is ready, then is retried by its host:
+# the retry runs the failed segment again at the time it first started (§3.12).
+import * as time from 'time'
+import * as runtime from 'runtime'
+
+extern fn ready() -> Bool
+
+fn child() -> Int:
+  if not ready():
+    panic("not ready")
+  time.now().value
+
+live async fn main() -> Int: await runtime.run(runtime.id()) _main()
+
+ista async fn _main() -> Int:
+  spawn child()
+  0

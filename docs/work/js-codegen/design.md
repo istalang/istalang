@@ -1,7 +1,7 @@
 ---
-description: the design of the JavaScript backend for live and simple code — one ES module per program; what lowering adds (counted registers); how code, values, lifetimes and disposal, waits and natives are emitted and run; the runtime library; where it lives; read before implementing or reviewing any part of it
+description: archived — the JavaScript backend as built before the IR-first rewrite (generators, counted registers, the live runtime library), superseded by docs/work/ir-first/design.md; read only for the rules the code being replaced encodes
 owner: tech-lead
-status: active
+status: archived
 applies_to: istalang
 last_verified: 2026-11-16
 last_updated: 2026-11-16

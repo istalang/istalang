@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-11-13
-last_updated: 2026-11-15
+last_updated: 2026-11-16
 tags: [reuse, testing, test-kit, arbitraries, fast-check, corpus]
 ---
 
@@ -58,6 +58,9 @@ tags: [reuse, testing, test-kit, arbitraries, fast-check, corpus]
 - generate random token/fragment soup or randomly mutated valid programs → `soupOf` (`test/soup.ts`), `brokenText` (`test/broken.ts`)
 - generate random `Value`s or deeply nested values → `valueArbitrary`, `nested` (`src/definition/values/values.test-kit.ts`)
 - run one program on the interpreter and as compiled JavaScript and compare what each showed (outcome or panic, logs, host calls), a corpus program's work started as live code → `compiledAt`, `asLive`, `compiledToJavaScript`, `shownByInterpreter`, `shownByJavaScript`, `recording` (`src/codegen/differential.test-kit.ts`)
+- check what a program, suite or host scenario shows when run against what was recorded before the IR-first rewrite, or add a subject or scenario → the goldens (`test/golden/golden.md`; `subjects.ts`, `scenarios/`, `pipeline.ts` the one seam a pipeline replaces)
+- read what a run shows as a pipeline-independent observation (ending, log lines, host-call lines) → `Observation`, `logLine`, `hostCallLine`, `panicEnding` (`test/golden/observation.ts`)
+- time a Definition as `ista build` builds it → `builtProgram` (`src/codegen/built-program.test-kit.ts`)
 - generate canonical JSON values or non-canonical JSON texts → `exactJson`, `reverseKeys`, `looseText` (`src/definition/formats/codec.test-kit.ts`)
 - generate random load-valid `Instruction`s → `instruction` (`src/definition/instructions/instruction.test-kit.ts`)
 - generate random load-valid `Definition`s or edit the subset fixture → `definitionArbitrary`, `editedSubset` (`src/definition/definition.test-kit.ts`)

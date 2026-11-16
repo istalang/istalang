@@ -5,7 +5,8 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { compiledAt, compiledToJavaScript } from '../codegen/differential.test-kit.ts';
+import { compiledAt } from '../../test/golden/pipeline.ts';
+import { compiledToJavaScript } from '../codegen/differential.test-kit.ts';
 import { tempProject as project } from '../project/project.test-kit.ts';
 import { Refusal } from '../runtime/refusal.ts';
 import type { LiveProgram, LiveStart } from './program.ts';

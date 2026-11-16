@@ -1,0 +1,40 @@
+# outcome: "main went on | disposed lease | job 3"
+# A `select` lets go of its losers' holdings when the winner resumes (§8): main decides the worker's
+# wait and goes on before the worker resumes, and only then does the losing call let go of its lease.
+
+import * as time from 'time'
+
+fn note(log: Shared<Array<String>>, entry: String):
+  log->value = [...log->value, entry]
+
+shared struct Lease:
+  log: Shared<Array<String>>
+
+fn dispose(self: Lease): note(self->log, "disposed lease")
+
+struct Gate:
+  waiting: Shared<Array<Resolver<Int, "live">>>
+
+live fn onAwait(self: Gate, done: Resolver<Int, "live">): self.waiting->value.push(done)
+
+live async fn sleeper(lease: Lease) -> Int:
+  await time.delay(1h)
+  0
+
+live async fn worker(gate: Gate, log: Shared<Array<String>>) -> Unit:
+  await select:
+    case gate as job:
+      note(log, "job " + String(job))
+    case sleeper(new Lease{log}) as slept:
+      note(log, "slept " + String(slept))
+
+live async fn main() -> String:
+  const empty: Array<String> = []
+  const log = new Shared{value: empty}
+  const pending: Array<Resolver<Int, "live">> = []
+  const gate = Gate{waiting: new Shared{value: pending}}
+  const running = worker(gate, log)
+  gate.waiting->value[0].resolve(3)
+  note(log, "main went on")
+  await running
+  log->value.join(" | ")

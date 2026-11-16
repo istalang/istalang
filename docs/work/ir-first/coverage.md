@@ -1,0 +1,108 @@
+---
+description: the coverage map of the IR-first rewrite — every test importing code R1 deletes, and what covers its behavior after R1 (a golden, a scenario, an .ista test, a rewrite in R1, or dropped); read before deleting or rewriting a test in R1
+owner: tech-lead
+status: active
+applies_to: istalang
+last_verified: 2026-11-16
+last_updated: 2026-11-16
+tags: [coverage, tests, goldens, ir-first]
+---
+
+# IR first — coverage map
+
+R1 deletes `src/runtime`, `src/live`, `src/codegen`, `src/definition` and `src/compiler/lowering`.
+Each test below imports them, and what covers its behavior after R1:
+- **golden, scenario:** `test/golden/` (`golden.md`), already green on the old pipeline;
+- **R1:** rewritten in R1 on the new unit. Its expectations are stated in the test itself, so it
+  needs no interpreter to replay, and it stays readable at `ir-first-base`;
+- **dropped:** tests machinery that no longer exists.
+
+## Covered by goldens and scenarios
+
+| Test | Covered by |
+|---|---|
+| `codegen/differential.sweep.test.ts`, `differential.test-kit.ts` | every golden group. Two backends no longer exist, so the cross-check passes to a property R1 adds: every golden program shows the same under `crashEveryAwait` |
+| `runtime/scheduler/wake.sweep.test.ts` | `corpus` goldens |
+| `runtime/scheduler/resident.sweep.test.ts` | the same `crashEveryAwait` property, and the snapshot round trip (design, "Verification") |
+| `runtime/scheduler/segment/limits.test.ts` | `amended/recursion-limit.ista` |
+| `runtime/boundary/host-api.test.ts` | scenarios `start-by-key`, `extern-constant`, `retry`, `terminate`, `timer`; R1 for the int/bigint crossing and reserved externs |
+| `runtime/scheduler/wake.test.ts` | scenarios `timer`, `restart`, `crash-every-await`; R1 for segment boundaries of eager callees |
+| `runtime/scheduler/segment/end-instance.test.ts` | scenario `terminate`; R1 for disposal of held calls and abandoned waits |
+| `runtime/scheduler/live-run.test.ts`, `logs.test.ts` | scenarios `host-future`, `timer`, `crash-every-await` (reported logs); R1 for rejected promises and live timers |
+| `runtime/host/host.test.ts` | scenarios (panic frame, outcome JSON); R1 for refusals of bad Definitions, seeds and failing stores |
+
+## Rewritten in R1, on the new unit
+
+| Tests | New unit |
+|---|---|
+| `definition/**` (format, codec, values, JSON values, equality, replacing, declared values, references; the random-Definition kits) | the new Definition's schema, validation and format |
+| `compiler/lowering/**` (closures, counted, code writer, frame variables, plain registers, lower and its totality, trait objects, extern keys, recursive names, table keys, struct layout, optionals) | the new lowering; `counted` becomes the typed IR's reach facts |
+| `codegen/literal.test.ts`, `live/traces.test.ts`, `runtime/interpreter/trace.test.ts` | codegen: exact literals, frames read off the JS stack, traces from a prologue |
+| `codegen/form-builder.bench.ts`, `int-loop.bench.ts`, `built-program.test-kit.ts` | the perf gates' benches on the new codegen |
+| `live/program.test.ts`, `live/arrivals.test.ts` | the one host binding: start refusals, two events arriving together |
+| `runtime/boundary/host-{codecs,constants,identity,resolvers,resources}.test.ts` | the host binding: codecs, constants, frozen identity, resolvers, resources |
+| `runtime/host/contexts.test.ts`, `deploy.test.ts` | contexts and the store in the one run |
+| `runtime/scheduler/spawn.test.ts`, `instance/{awaitables,callbacks,races,waits,on-cancel,futures,context-constants,instance-ends}.test.ts`, `callbacks.test-kit.ts`, `futures.test-kit.ts` | the run's primitives and the services written in Istalang |
+| `runtime/scheduler/instance/{slots,weak-side}.test.ts` | the same rules as properties over the new slots and weak references |
+| `runtime/lifetimes/{collector,counts,disposal,holders}.test.ts`, `lifetimes.test-kit.ts` | the collector and counts of the one run |
+| `runtime/lifetimes/{oracle,native-audit}.test{,-kit}.ts`, `test/lifetimes-oracle.sweep.test.ts`, `cli/commands/test.sweep.test.ts` | the ownership verifier, and capabilities checked when natives are bound |
+| `runtime/lifetimes/{in-place,value-semantics,written-json,shared-values}.test.ts`, `in-place.test-kit.ts`, `in-place.bench.ts` | in place if unique, and fast-check aliasing |
+| `runtime/snapshot/{snapshot,check}.test.ts` | the new snapshot format and what reading one back refuses |
+| `runtime/natives.test.ts`, `stdlib/{positions,ranges}.test.ts`, `stdlib/prelude/natives.test.ts`, `stdlib/random/natives.test.ts`, `stdlib/std-externs.test-kit.ts` | the natives on primitives, after L moves some to Istalang |
+| `runtime/testing/{mocks,run-tests}.test.ts`, `testing.test-kit.ts` | `ista test` and mocks on the new pipeline; the `suites` goldens hold every suite's results |
+| `stdlib/futures/futures.test.ts`, `stdlib/runtime/{delegate,job-serving}.test.ts`, `delegate.test-kit.ts` | futures, jobs and `delegate` in the one run |
+| `runtime/runtime.test-kit.ts`, `cli/cli.test-kit.ts` (its heap check) | a test run and the CLI's heap check over the new run |
+| `compiler/compile.test-kit.ts` (`compiledText`, `compiledDefinition`), `compile.sweep.test.ts` | compiling to the new Definition. Its checker helpers (`checkedAfterStd`, `diagnosedAt`) stay |
+| `stdlib/prelude/prelude.test-kit.ts` (`mainGives`, `mainOutcome`) | running a program to its outcome on the new pipeline |
+| `test/fmt-preserves-behaviour.sweep.test.ts` | formatting keeps behavior, run on the new pipeline |
+
+## Staying, through rewritten helpers
+
+These test the checker, the std or the language. They reach the old pipeline only to run a program
+to its outcome, through `mainGives` (`stdlib/prelude/prelude.test-kit.ts`), `startToEnd` with
+`testRuntime` (`runtime/runtime.test-kit.ts`), `compiledText` (`compiler/compile.test-kit.ts`),
+`decodeJson` on an outcome's text, or the test run of `runtime/testing/testing.test-kit.ts`. Once R1
+rewrites those helpers, they stay, unchanged but for imports:
+
+- `compiler/checker/`: `constructs/closures/function-values`,
+  `constructs/declarations/aliases/{recursive-aliases,recursive-trait-objects}`,
+  `constructs/expressions/literals/indented-values`, `constructs/expressions/structs/{structs,variants}`,
+  `constructs/patterns/{parameter-patterns,type-patterns}`, `constructs/patterns/walk/kinds/variant-calls`,
+  `desugaring/deferred-calls`, `list-separators`, `resolution/applying/joint`,
+  `resolution/choosing/literal-arguments`, `resolution/conformance/{conformance,field-getters}`,
+  `rules/computation/index`, `rules/{getters,keyed-reads}`, `types/fitting/holds`,
+  `types/identity/{recursive-holdings,recursive-unfolding,recursive-uses}`,
+  `types/inference/{relate,settle}`, `wiring/body/{constraint-scope,scope-protocol}`;
+- `compiler/parser/grammar/declarations/import-lists`,
+  `compiler/proposal-{5,7}-behaviour`, `compiler/proposal-13-transients{,-refusals}`;
+- `stdlib/json/json-union`, `stdlib/prelude/{appending,error-trace,iteration}`;
+- `test/written-types.test-kit.ts`.
+
+Tests using only `diagnosedAt` or `checkedAfterStd` (the rest of `compiler/checker/**`,
+`compiler/compile.test.ts`, `test/computed/**`, the editor's navigation kit) are untouched.
+
+## Staying, through the CLI
+
+These run `ista` in process (`cli/cli.test-kit.ts`) and stay as the CLI moves to the new pipeline,
+the kit's heap check rewritten in R1: `cli/cli.test.ts`, `cli/commands/{fmt,lsp,run,run.sweep,
+run-host,run-host-process,test}.test.ts`, `editor/vscode-client/server-command.test.ts`,
+`test/examples.test.ts`. Rewritten in R1, since R1 changes what they assert:
+`cli/commands/build.test.ts`'s refusals of ista code and of what only the interpreter has, which
+compiled code now runs.
+
+## Rewritten in R1, outside the deleted folders
+
+| Test | Why |
+|---|---|
+| `compiler/checker/surface/constant-form.test.ts` | builds and compares the old Definition's values (`definition/values`) |
+| `compiler/proposal-8-behaviour.test.ts` | reads the old Definition's code-entry modes |
+| `compiler/syntax/declarations/field-defaults.test.ts` | reads the old Definition's functions |
+| `test/unions/variance-conversions.test.ts` | reads snapshots back (`runtime/snapshot`) |
+| `test/definitions/{subset,broadcast,fixture-kit}.ts` | hand-written old Definitions. `subsetSource` and `subsetOutcome`, which `check.test.ts` and `run.test.ts` read, stay |
+
+## Dropped
+
+| Test | Why |
+|---|---|
+| `runtime/host/host.bench.ts`, `runtime/scheduler/wake.bench.ts` | the old host's and scheduler's speed |
+| `runtime/scheduler/instance/{heap,unheld,instance-names}.test.ts`, `heap.test-kit.ts` | the old heap's indexes and walk, replaced by the root walk |

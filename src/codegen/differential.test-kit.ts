@@ -1,6 +1,6 @@
 /**
- * Running one program on both backends, the interpreter and compiled JavaScript, and reading what
- * each run showed (docs/work/js-codegen/design.md, "Verification"): how it ended, its log records,
+ * Running a program as compiled JavaScript and reading what it showed, as the goldens' pipeline reads
+ * an interpreter run (test/golden/pipeline.ts, `shownByInterpreter`): how it ended, its log records,
  * and the calls its host saw. The interpreter is the reference.
  *
  * - Both run on a manual clock and one seed, so timers and random values agree.
@@ -15,54 +15,19 @@ import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { compileProgram, diagnose } from '../compiler/compile.ts';
-import { moduleIdOf } from '../compiler/program/program.ts';
-import { type Definition, definitionFormat } from '../definition/definition.ts';
-import { isError } from '../foundation/diagnostics/diagnostic.ts';
+import { logLine, type Observation, panicEnding } from '../../test/golden/observation.ts';
+import { type RecordingHost, recording } from '../../test/golden/pipeline.ts';
+import type { Definition } from '../definition/definition.ts';
 import type { LiveProgram } from '../live/program.ts';
-import { loadProject } from '../project/project.ts';
-import type { HostExterns } from '../runtime/boundary/host-natives.ts';
 import { ManualClock } from '../runtime/clock.ts';
-import type { LogRecord } from '../runtime/instance-state.ts';
-import { testRuntime, testSeed } from '../runtime/runtime.test-kit.ts';
+import { testSeed } from '../runtime/runtime.test-kit.ts';
 import { emitProgram } from './emit.ts';
-
-/** What a run showed: how it ended, what it logged, and what its host was called with. */
-export interface Shown {
-  readonly ended: string;
-  readonly logs: readonly string[];
-  readonly hostCalls: readonly string[];
-}
-
-/** A host's externs, and the calls they were given, in order, as JSON text. */
-export interface RecordingHost {
-  readonly externs: HostExterns;
-  readonly calls: readonly string[];
-}
-
-/** `externs`, recording every call they are given. */
-export function recording(externs: HostExterns): RecordingHost {
-  const calls: string[] = [];
-  return {
-    calls,
-    externs: Object.fromEntries(
-      Object.entries(externs).map(([key, extern]) => [
-        key,
-        (argumentValues: readonly unknown[], call: Parameters<typeof extern>[1]) => {
-          calls.push(`${key} ${jsonText(argumentValues)}`);
-          return extern(argumentValues, call);
-        },
-      ]),
-    ),
-  };
-}
 
 /** How the corpus starts a program's work in a context. */
 const inContext = /await runtime\.run\(runtime\.id\(\)\) _main\(\)/u;
 /** A function's mark, or a future's kind, saying it is ista code. */
 const istaMark = /\bista(?=\s+(?:async\s+)?fn\b)/gu;
 const istaKind = /"ista"/gu;
-const ending = /\.ista$/u;
 
 /**
  * `text`, a corpus program, with its work started as live code rather than in a context, and every
@@ -73,48 +38,6 @@ export function asLive(text: string): string {
     .replace(inContext, 'await _main()')
     .replace(istaMark, 'live')
     .replace(istaKind, '"live"');
-}
-
-/** The Definition of the module `text` at `path` in `directory`, or the first error it reports. */
-export function compiledAt(
-  directory: string,
-  path: string,
-  text: string,
-): { readonly definition: Definition } | { readonly problem: string } {
-  const id = moduleIdOf(pathToFileURL(join(directory, path)));
-  const { program } = loadProject(directory, [], {
-    buffers: [{ id, name: path.replace(ending, ''), label: path, read: () => text }],
-  });
-  const compilation = compileProgram(program, id);
-  if (compilation.kind === 'compiled') {
-    return { definition: compilation.definition };
-  }
-  const [error] = [...diagnose(program).values()].flatMap(({ diagnostics }) =>
-    diagnostics.filter(isError),
-  );
-  return {
-    problem: error === undefined ? compilation.kind : `error ${error.code}: ${error.message}`,
-  };
-}
-
-/** What running `definition`'s `main` on the interpreter showed. */
-export async function shownByInterpreter(
-  definition: Definition,
-  host: RecordingHost = recording({}),
-): Promise<Shown> {
-  const { runtime } = testRuntime({ host: host.externs, clock: new ManualClock() });
-  const deployed = runtime.deploy(definitionFormat.write(definition).text);
-  const { state, logs } = await deployed.start('run');
-  const shown = { logs: logs.map(logLine), hostCalls: host.calls };
-  switch (state.kind) {
-    case 'finished':
-      return { ended: deployed.outcomeText(state), ...shown };
-    case 'panicked':
-    case 'terminated':
-      return { ended: panicLine(state.message, state.trace), ...shown };
-    default:
-      return { ended: `ended ${state.kind}`, ...shown };
-  }
 }
 
 const emitted = mkdtempSync(join(tmpdir(), 'ista-js-'));
@@ -140,7 +63,7 @@ export async function compiledToJavaScript(definition: Definition): Promise<Live
 export async function shownByJavaScript(
   program: LiveProgram,
   host: RecordingHost = recording({}),
-): Promise<Shown> {
+): Promise<Observation> {
   const ended = await program.start({
     externs: host.externs,
     clock: new ManualClock(),
@@ -148,21 +71,6 @@ export async function shownByJavaScript(
   });
   const shown = { logs: ended.logs.map(logLine), hostCalls: host.calls };
   return ended.kind === 'finished'
-    ? { ended: ended.text, ...shown }
-    : { ended: panicLine(ended.message, ended.trace), ...shown };
-}
-
-function panicLine(message: string, trace: string): string {
-  return `panic: ${message} ${trace.split('\n')[0] ?? ''}`;
-}
-
-function logLine({ level, message, fields }: LogRecord): string {
-  return `${level} ${message} ${jsonText(fields)}`;
-}
-
-/** `json`, JSON a host works with, as text, its bigints marked. */
-function jsonText(json: unknown): string {
-  return JSON.stringify(json, (_key, value: unknown) =>
-    typeof value === 'bigint' ? `${value}n` : value,
-  );
+    ? { ending: { outcome: ended.text }, ...shown }
+    : { ending: panicEnding(ended.message, ended.trace), ...shown };
 }

@@ -1,0 +1,44 @@
+{
+  "collections/panic-index.ista": {
+    "frame": "at collections/panic-index._main (collections/panic-index.ista:8:3)"
+  },
+  "collections/panic-key.ista": {
+    "frame": "at collections/panic-key._main (collections/panic-key.ista:8:3)"
+  },
+  "collections/panic-missing-reference.ista": {
+    "frame": "at collections/panic-missing-reference._main (collections/panic-missing-reference.ista:12:10)"
+  },
+  "collections/panic-open-range.ista": {
+    "frame": "at collections/panic-open-range._main (collections/panic-open-range.ista:8:3)"
+  },
+  "collections/panic-slice.ista": {
+    "frame": "at collections/panic-slice._main (collections/panic-slice.ista:8:3)"
+  },
+  "collections/panic-span-replace.ista": {
+    "frame": "at collections/panic-span-replace._main (collections/panic-span-replace.ista:8:3)"
+  },
+  "collections/panic-stepped-replace.ista": {
+    "frame": "at collections/panic-stepped-replace._main (collections/panic-stepped-replace.ista:8:3)"
+  },
+  "collections/panic-zero-step.ista": {
+    "frame": "at collections/panic-zero-step._main (collections/panic-zero-step.ista:8:3)"
+  },
+  "holders/live-eager-panic.ista": {
+    "frame": "at holders/live-eager-panic.inner (holders/live-eager-panic.ista:9:3)"
+  },
+  "patterns/panic.ista": {
+    "frame": "at patterns/panic.decided (patterns/panic.ista:11:16)"
+  },
+  "run/panic-after-separators.ista": {
+    "frame": "at run/panic-after-separators.boom (run/panic-after-separators.ista:8:25)"
+  },
+  "run/panic-remainder.ista": {
+    "frame": "at run/panic-remainder.rest (run/panic-remainder.ista:5:3)"
+  },
+  "run/panic.ista": {
+    "frame": "at run/panic.ratio (run/panic.ista:5:3)"
+  },
+  "values/panic-too-deep.ista": {
+    "frame": "at values/panic-too-deep._main (values/panic-too-deep.ista:14:3)"
+  }
+}

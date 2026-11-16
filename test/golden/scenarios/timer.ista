@@ -1,0 +1,18 @@
+# A child instance waiting on a timer at a named waypoint: its host sees where it waits and until
+# when, wakes it early to nothing new, then once the timer is due (§3.8, §9).
+import * as log from 'log'
+import * as time from 'time'
+import * as runtime from 'runtime'
+
+ista async fn child() -> Int:
+  log.info("waiting")
+  @Waypoint{"approval"}
+  await time.delay(1s)
+  log.info("approved")
+  time.now().value
+
+live async fn main() -> Int: await runtime.run(runtime.id()) _main()
+
+ista async fn _main() -> Int:
+  spawn child()
+  0

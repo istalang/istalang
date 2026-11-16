@@ -1,0 +1,18 @@
+# An extern constant is read once per instance and kept across its commits (§3.6), so a restart
+# doesn't read it again.
+import * as time from 'time'
+import * as runtime from 'runtime'
+
+extern seed: Int
+
+ista async fn child() -> String:
+  const first = seed
+  await time.delay(1s)
+  String(first) + "/" + String(seed)
+
+live async fn main() -> Int: await runtime.run(runtime.id()) _main()
+
+ista async fn _main() -> Int:
+  spawn child()
+  spawn child()
+  0

@@ -1,5 +1,6 @@
-# outcome: 5000050000
-# Frames are data (§5): recursion far deeper than a host stack allows still runs.
+# outcome: 500500
+# Calls nest as deep as the implementation allows, at least 1,000 calls (§5), so this recursion
+# runs everywhere.
 
 fn sum(n: Int) -> Int:
   if n == 0:
@@ -9,4 +10,4 @@ fn sum(n: Int) -> Int:
 import * as runtime from 'runtime'
 live async fn main(): await runtime.run(runtime.id()) _main()
 ista async fn _main():
-  sum(100_000)
+  sum(1_000)

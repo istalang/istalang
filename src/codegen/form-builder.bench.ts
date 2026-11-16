@@ -5,20 +5,17 @@
  *
  * The form runs as a browser's host runs it: `nextEvent` resolves with each change, and the form
  * shows its view and waits for the next one, which ends a change. What is timed is the build
- * (`dist/`), which Node loads itself (vitest.config.ts): the compiled module imports the runtime
- * library as `istalang/live` from inside the package, and the interpreter is the built runtime.
+ * (built-program.test-kit.ts), and the interpreter is the built runtime.
  */
 
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
-import { afterAll, test as it } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { test as it } from 'vitest';
+import { compiledAt } from '../../test/golden/pipeline.ts';
 import { definitionFormat } from '../definition/definition.ts';
-import type { LiveProgram } from '../live/program.ts';
 import type { HostExterns } from '../runtime/boundary/host-natives.ts';
 import { seedBytes } from '../runtime/random-draws.ts';
-import { compiledAt } from './differential.test-kit.ts';
-import { emitProgram } from './emit.ts';
+import { builtProgram } from './built-program.test-kit.ts';
 
 /** The built module at `path` under `dist/`, typed as its source. */
 async function built<Module>(path: string): Promise<Module> {
@@ -100,24 +97,9 @@ async function served(
 
 const formStart = { function: form?.key ?? '', arguments: [params, user] };
 
-/** `definition` built as `ista build` builds it, inside the package, and loaded. */
-async function builtProgram(): Promise<LiveProgram> {
-  const emitted = emitProgram(definition, { runtime: 'istalang/live' });
-  if (emitted.kind === 'refused') {
-    throw new Error(emitted.problem);
-  }
-  const folder = mkdtempSync(fileURLToPath(new URL('../../dist/bench-', import.meta.url)));
-  afterAll(() => {
-    rmSync(folder, { recursive: true, force: true });
-  });
-  const file = join(folder, 'supplier.mjs');
-  writeFileSync(file, emitted.text);
-  return ((await import(pathToFileURL(file).href)) as { readonly default: LiveProgram }).default;
-}
-
 it('a change of the supplier form, compiled to JavaScript', async ({ bench, expect }) => {
   expect(form).toBeDefined();
-  const program = await builtProgram();
+  const program = await builtProgram(definition);
   const host = await served((externs) => program.start({ ...formStart, externs }));
   let changes = 0;
   await bench('compiled', async () => {

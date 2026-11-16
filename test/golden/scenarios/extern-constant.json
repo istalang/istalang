@@ -1,0 +1,12 @@
+{
+  "program": "extern-constant.ista",
+  "host": "extern-constant.host.mjs",
+  "steps": [
+    { "start": "run" },
+    { "stored": true },
+    { "restart": true },
+    { "clock": 1000 },
+    { "wake": "run/1" },
+    { "wake": "run/2" }
+  ]
+}

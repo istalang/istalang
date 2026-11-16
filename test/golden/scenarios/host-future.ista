@@ -1,0 +1,10 @@
+# A live run awaits the futures its host's externs give, resolved as the host's promises settle, in
+# memory (proposal 8, Rule 9); a host's int arrives as a bigint and goes back as one.
+extern live fn quote(item: String) -> Future<Int, "live">
+extern fn record(item: String, price: Int)
+
+live async fn main() -> Int:
+  const first = await quote("apple")
+  const second = await quote("pear")
+  record("pair", first + second)
+  first + second

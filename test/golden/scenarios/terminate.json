@@ -1,0 +1,12 @@
+{
+  "program": "terminate.ista",
+  "steps": [
+    { "start": "run" },
+    { "stored": true },
+    { "inspect": "run/1" },
+    { "terminate": "run/1" },
+    { "wake": "run/1" },
+    { "terminate": "run/1" },
+    { "retry": "run/1" }
+  ]
+}

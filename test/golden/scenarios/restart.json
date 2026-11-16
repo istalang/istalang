@@ -1,0 +1,10 @@
+{
+  "program": "timer.ista",
+  "steps": [
+    { "start": "run" },
+    { "restart": true },
+    { "inspect": "run/1" },
+    { "clock": 1000 },
+    { "wake": "run/1" }
+  ]
+}

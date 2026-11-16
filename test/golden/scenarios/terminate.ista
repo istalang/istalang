@@ -1,0 +1,21 @@
+# A child instance that panics holding a lease: its host terminates it, which disposes what it held
+# as of its last commit (§3.12, §7), and a terminated instance stays so.
+import * as log from 'log'
+import * as runtime from 'runtime'
+
+shared struct Lease:
+  name: String
+
+fn dispose(self: Lease):
+  log.info("disposed " + self->name)
+
+ista async fn child() -> Int:
+  const lease = new Lease{name: "child's"}
+  await runtime.commit()
+  panic("gave up on " + lease->name)
+
+live async fn main() -> Int: await runtime.run(runtime.id()) _main()
+
+ista async fn _main() -> Int:
+  spawn child()
+  0

@@ -1,0 +1,7 @@
+# panic: A call nests deeper than the runtime allows.
+# Calls running in a segment nest on the host's stack, as deep as the implementation allows, at
+# least 1,000 calls; one past that panics (§5).
+
+fn down(n: Int) -> Int: 1 + down(n + 1)
+
+live async fn main() -> Int: down(0)

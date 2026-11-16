@@ -6,9 +6,9 @@
  * - A persisted value nests at most `maximumDepth` levels (definition/values/values.ts). A segment
  *   leaving a deeper value, where an execution can reach it or as its outcome, panics where it
  *   ended instead, so it commits nothing (§5).
- * - A segment has at most `maximumFrames` frames running at once across its run stack: enough for
- *   deep recursion in heap frames (test/corpus/run/recursion.ista runs 100,000 frames deep), while
- *   stopping unbounded recursion before it exhausts the host's memory.
+ * - A segment has at most `maximumFrames` frames running at once across its run stack: far past
+ *   the 1,000 nested calls the spec guarantees (§5), while stopping unbounded recursion before it
+ *   exhausts the host's memory.
  */
 
 import { maximumDepth } from '../../../definition/values/values.ts';

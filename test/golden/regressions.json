@@ -1,0 +1,29 @@
+{
+  "cleanup-lets-go.ista": {
+    "logs": [
+      "info disposed 3 {}",
+      "info disposed 2 {}",
+      "info disposed 0 {}",
+      "info disposed 4 {}",
+      "info disposed 1 {}",
+      "info after both {}"
+    ]
+  },
+  "field-loop-cells.ista": {
+    "logs": ["info visit a {}", "info visit b {}", "info disposed 7 {}", "info after walk {}"]
+  },
+  "field-loop-lifetimes.ista": {
+    "logs": ["info visit a {}", "info visit b {}", "info disposed 7 {}", "info after walk {}"]
+  },
+  "field-loop-reads.ista": {
+    "logs": ["info int 1 {}", "info other b {}", "info disposed 7 {}", "info after walk {}"]
+  },
+  "run-end-disposal.ista": {
+    "logs": [
+      "info returning {}",
+      "info disposed callback's {}",
+      "info disposed held sleeper's {}",
+      "info disposed sleeper's {}"
+    ]
+  }
+}

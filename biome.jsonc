@@ -84,9 +84,10 @@
       }
     },
     {
-      // Tool configuration files must default-export their config, and a text import (an `.ista`
-      // source compiled in by the build) has nothing but a default export to declare.
-      "includes": ["*.config.ts", ".dependency-cruiser.mjs", "src/**/*.d.ts"],
+      // Tool configuration files must default-export their config, a host module (`ista run
+      // --host`) its externs, and a text import (an `.ista` source compiled in by the build) has
+      // nothing but a default export to declare.
+      "includes": ["*.config.ts", ".dependency-cruiser.mjs", "src/**/*.d.ts", "**/*.host.mjs"],
       "linter": { "rules": { "style": { "noDefaultExport": "off" } } }
     },
     {
