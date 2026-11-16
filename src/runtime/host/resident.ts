@@ -57,9 +57,14 @@ export class Resident {
   replay: Replay | undefined;
   /** When its segment started: the time its clock reads all segment long. */
   startedAt = 0n;
-  /** What leaves it at its next commit: what it did to others, and its log records. */
+  /**
+   * What leaves it at its next commit: what its segment did to others and its log records, which a
+   * failed segment never did (§5), and what its end tells the calls still waiting on it, which leaves
+   * it all the same.
+   */
   effects: (() => void)[] = [];
   logs: LogRecord[] = [];
+  endings: (() => void)[] = [];
   /** Where its log records go while a host advances it itself, rather than to the host's reports. */
   heardBy: ((records: readonly LogRecord[]) => void) | undefined;
   /** The answers of the calls into it running as it last committed, by their futures' ids. */

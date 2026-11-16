@@ -151,8 +151,12 @@ export class DurableWorld implements World {
       this.#made({ name: key, program, seed: this.seams.seed() }, crashEveryAwait);
     const sent = { ...into, closure: copied(into.closure), passed: into.passed.map(copied) };
     const answered = (end: InvocationEnd) => {
-      const crossed = end.kind === 'returned' ? { ...end, value: copied(end.value) } : end;
-      context.effects.push(() => answer(crossed));
+      if (end.kind === 'returned') {
+        const crossed = { ...end, value: copied(end.value) };
+        context.effects.push(() => answer(crossed));
+      } else {
+        context.endings.push(() => answer(end));
+      }
     };
     const replay = { kind: 'invocation', call: sent.closure, passed: sent.passed } as const;
     context.feed(invoking(sent, answered), this.seams.clock.now(), replay);

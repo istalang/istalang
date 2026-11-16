@@ -10,7 +10,7 @@
  *   again (§3.12) and a termination disposes what it held then (§7).
  * - **Too deep to persist** (§5): what it would commit panics at the await that commits it.
  * - **Letting out**: its effects on others, its end to what waits on it, and its log records, to
- *   the host advancing it or else the host's reports.
+ *   the host advancing it or else the host's reports; a panicked segment's end alone.
  */
 
 import { bytesToHex } from '@noble/hashes/utils.js';
@@ -124,23 +124,31 @@ function written(resident: Resident, status: PersistedStatus): string {
   return snapshotFormat.write({ ...before, ...header(resident, panicked) } as Snapshot).text;
 }
 
-/** What leaves `resident` as it commits: its effects, its end and its log records. */
-export function letOut(resident: Resident, reports: HostReports | undefined): void {
-  for (const effect of resident.effects.splice(0)) {
+/**
+ * What leaves `resident` as it commits: its effects, its end and its log records; of a panicked
+ * segment, which never happened (§5), its end alone.
+ */
+function letOut(resident: Resident, reports: HostReports | undefined): void {
+  const { end, status } = resident;
+  const failed = status.kind === 'panicked';
+  const effects = resident.effects.splice(0);
+  const logs = resident.logs.splice(0);
+  for (const effect of failed ? [] : effects) {
     effect();
   }
-  const { end, status } = resident;
+  for (const ending of resident.endings.splice(0)) {
+    ending();
+  }
   if (end !== undefined) {
     const watchers = resident.endWatchers.splice(0);
     for (const watcher of watchers) {
       watcher(end);
     }
-    if (status.kind === 'panicked' && watchers.length === 0 && !resident.run.instance.heard) {
+    if (failed && watchers.length === 0 && !resident.run.instance.heard) {
       reports?.panicked(resident.name, status);
     }
   }
-  const logs = resident.logs.splice(0);
-  if (logs.length > 0) {
+  if (!failed && logs.length > 0) {
     (resident.heardBy ?? reports?.logs)?.(logs);
   }
 }
@@ -150,6 +158,7 @@ function rerun(resident: Resident, seams: CommitSeams): void {
   const { inputs, answers } = resident;
   resident.effects = [];
   resident.logs = [];
+  resident.endings = [];
   resident.spawned = [];
   const replaced = resident.run;
   resident.run = seams.freshRun(resident);
