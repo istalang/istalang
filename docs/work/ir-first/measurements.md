@@ -50,14 +50,15 @@ R1's build against R0's, each bench run in turn in one session: R1's from the br
 259b21c5, the commit that recorded R0's numbers, each built fresh first, since `npm run bench` times
 `dist/` and doesn't build it. Apple M2 Max, Node 24.9.0.
 
-**FormBuilder**, a supplier form change, compiled, at `d0613bf3` (two of the rounds at `0d1d8f28`,
-whose run is the same): five interleaved rounds at a load average of 7.5 to 9, about 18 over 15
-minutes, other agents running. Ranges are across rounds:
+**FormBuilder**, a supplier form change, compiled: eight interleaved rounds, five at a load average
+of 7.5 to 9 (at `0d1d8f28` and `d0613bf3`, whose runs are the same) and three at 10.6 to 15.6 at
+`18081621`, which checks the call rule at every async start; other agents running. Ranges are
+across rounds:
 
 | Build | Mean | p75 | Min | p99 |
 |---|---|---|---|---|
-| R1 | 1.09–1.24 ms | 0.79–0.92 ms | 0.71–0.75 ms | 7.8–9.1 ms |
-| R0 | 1.66–1.80 ms | 1.06–1.12 ms | 0.86–0.90 ms | 19–26 ms |
+| R1 | 1.08–1.31 ms | 0.79–0.96 ms | 0.71–0.75 ms | 6.5–10.4 ms |
+| R0 | 1.66–1.80 ms | 1.06–1.15 ms | 0.85–0.90 ms | 19–26 ms |
 
 R1 is faster than R0 on every measure: mean −30%, p75 −20%, min −17%, p99 −60%. Both draw the same
 view per change, 8,047 bytes of JSON. Earlier rounds recorded R1 slower on p75 and min (1.24–1.54 and
