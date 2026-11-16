@@ -2,6 +2,7 @@
  * Deployed programs (§9): a Definition text read, validated, emitted and stored once per hash, and
  * starting what a host may start of it by key, with its arguments as JSON.
  *
+ * - A start runs on a turn of its own, as every host call does (host-turns.ts).
  * - A host starts live or simple code only, as a live run: in memory, never written to the store,
  *   its promise settling with how it ended, at once when its root call returns (§10). Ista code
  *   runs in the contexts live code calls (§9), each an instance of the world, which a start's
@@ -19,6 +20,7 @@ import type { Advanced, Finished, LogRecord, StartOptions } from '../instance-st
 import { Refusal } from '../refusal.ts';
 import { Future } from '../run/objects/future.ts';
 import type { DurableWorld } from './durable-world.ts';
+import { hostTurn } from './host-turns.ts';
 import type { WorldProgram } from './resident.ts';
 
 /** What a host hears of the instances it doesn't advance itself: their log records and panics. */
@@ -60,7 +62,7 @@ export function deployed(world: DurableWorld, program: WorldProgram): DeployedPr
   return {
     hash,
     definition,
-    start: (name, request = {}) => started(world, program, name, request),
+    start: (name, request = {}) => hostTurn(() => started(world, program, name, request)),
     outcomeText: (finished) =>
       finished.encoded === undefined
         ? plainText(finished.outcome)

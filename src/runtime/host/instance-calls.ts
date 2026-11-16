@@ -8,12 +8,15 @@
  * - A retry runs the failed segment again from the instance as it stood before it, at the time it
  *   started (§3.12), the call starting it included when it was the first.
  * - Inspecting reads its last commit only.
+ * - Each call that runs code runs on a turn of its own (host-turns.ts), so calls on one instance
+ *   run one after another, and a refusal rejects.
  */
 
 import type { Advanced, Inspection, InstanceState, LogRecord } from '../instance-state.ts';
 import { Refusal } from '../refusal.ts';
 import type { PersistedStatus } from '../snapshot/format.ts';
 import type { DurableWorld } from './durable-world.ts';
+import { hostTurn } from './host-turns.ts';
 import { type DeployedProgram, deployed } from './programs.ts';
 import type { Resident } from './resident.ts';
 import { waitingAt } from './waiting.ts';
@@ -36,26 +39,25 @@ export function instanceCalls(world: DurableWorld): InstanceCalls {
     return resident;
   };
   return {
-    wake: (instance) => {
-      const resident = residentOf(instance);
-      return Promise.resolve(
-        resident.ended
+    wake: (instance) =>
+      hostTurn(() => {
+        const resident = residentOf(instance);
+        return resident.ended
           ? { state: stateOf(resident), spawned: [], logs: [] }
-          : advanced(world, resident, () => resident.wake(world.seams.clock.now())),
-      );
-    },
-    retry: (instance) => {
-      const resident = residentOf(instance);
-      const status = panicked(resident);
-      return Promise.resolve(advanced(world, resident, () => retried(world, resident, status)));
-    },
-    terminate: (instance) => {
-      const resident = residentOf(instance);
-      const { message, trace } = panicked(resident);
-      return Promise.resolve(
-        advanced(world, resident, () => world.terminate(resident, { message, trace })),
-      );
-    },
+          : advanced(world, resident, () => resident.wake(world.seams.clock.now()));
+      }),
+    retry: (instance) =>
+      hostTurn(() => {
+        const resident = residentOf(instance);
+        const status = panicked(resident);
+        return advanced(world, resident, () => retried(world, resident, status));
+      }),
+    terminate: (instance) =>
+      hostTurn(() => {
+        const resident = residentOf(instance);
+        const { message, trace } = panicked(resident);
+        return advanced(world, resident, () => world.terminate(resident, { message, trace }));
+      }),
     inspect: (instance) => inspectionOf(residentOf(instance)),
     programOf: (instance) => deployed(world, residentOf(instance).program),
   };

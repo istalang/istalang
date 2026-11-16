@@ -148,6 +148,10 @@ In a Definition built to run tests (spec §10):
 - `programs.ts`: `DeployedProgram.start(name, {function?, arguments?, crashEveryAwait?})` runs a
   live run named `name` (what `runtime.id()` reads). Its start entry decodes the arguments and calls
   the root without awaiting; the start's encoding entry runs the moment the root's outcome settles,
+- **Host turns** (`host-turns.ts`): the world's work runs synchronously to its end once begun, and a
+  host's extern runs inside it. So every host call that runs code (a start, a wake, a retry, a
+  termination) starts on a turn of its own: one an extern makes starts once the call it was made in
+  ended, and calls on one instance run one after another.
   and the live run finishes then: readied work never runs, suspended calls stop (spec §10). The
   instances it reached go on as far as they can without waiting.
 - `retry` restores a panicked instance as it stood before its failed segment and runs it again at
