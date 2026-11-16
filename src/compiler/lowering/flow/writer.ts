@@ -18,6 +18,7 @@
  *   close and its nested functions are keyed there.
  */
 
+import type { Place } from '../../../definition/instructions/places.ts';
 import type { Register } from '../../../definition/operands.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type {
@@ -244,6 +245,11 @@ export class FlowWriter {
       this.writeCell(register, produced, span, operation !== undefined && this.declaring.has(operation));
       return;
     }
+    if (code.typeOf(register).kind === 'reference') {
+      const place: Place = { root: { kind: 'reference', register }, path: [] };
+      code.emit({ kind: 'store', span, place, value: code.take(produced, span) });
+      return;
+    }
     code.letGo([register], span);
     code.emit({ kind: 'move', span, dst: register, src: code.take(produced, span) });
   }
@@ -267,7 +273,10 @@ export class FlowWriter {
     if (known === undefined) {
       this.bind(value, register);
     }
-    code.emit({ kind: 'move', span, dst: register, src: code.take(produced, span) });
+    // A path may give it twice, as `a and b` gives `a` first: the second ends the first.
+    const taken = code.take(produced, span);
+    code.letGo([register], span);
+    code.emit({ kind: 'move', span, dst: register, src: taken });
   }
 
   /** Writes `produced` into the variable living in the cell `cell`: a new cell where it is made. */
@@ -387,6 +396,11 @@ export class FlowWriter {
     if (target !== this.#next) {
       this.context.code.jump(this.labelOf(target), span);
     }
+  }
+
+  /** Jumps to `block` from code written before the next block begins, as a landing is. */
+  jumpTo(block: BlockId, span: AnchoredSpan): void {
+    this.context.code.jump(this.labelOf(block), span);
   }
 
   /** Whether `register` keeps what `hold`s keep. */

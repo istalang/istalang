@@ -36,7 +36,14 @@ import {
 } from '../calls/closed-calls.ts';
 import { emitCall, emitFunctionCall } from '../calls/emit-call.ts';
 import { packElementsOf } from '../calls/packs.ts';
-import { caseResolver, caseValue, openWait, parked, waitRegisters } from '../calls/waits.ts';
+import {
+  caseResolver,
+  caseValue,
+  openWait,
+  parked,
+  type WaitingMode,
+  waitRegisters,
+} from '../calls/waits.ts';
 import { nestedSpanOf } from '../functions/bodies.ts';
 import { constantValue } from '../tables/constants.ts';
 import { ownEntryOf } from '../tables/own-entries.ts';
@@ -345,27 +352,32 @@ function awaitedBy(
     return unreachable(`What an await at ${span.from} waits on is no value.`);
   }
   const { context } = writer;
-  const open = writer.openedWait(() => openWait(context, context.waitingMode(), span));
+  const [given, mode] = resolverArguments(writer, closed);
+  const open = writer.openedWait(() => openWait(context, mode, span));
   writer.awaiting(future.value);
-  return caseResolver(context, open, givenType(writer, closed), span);
+  return caseResolver(context, open, given, span);
 }
 
 /**
- * The type of what a case's awaitable gives once it settles: the `T` of the `Resolver<T, K>` its
- * `onAwait`, `closed`, takes.
+ * What a case waits on, of the `Resolver<T, K>` its `onAwait`, `closed`, takes: what its awaitable
+ * gives once it settles, `T`, and the kind its wait waits in, `K` (proposal 8, Rule 5), which code
+ * that never parks, a `select` with an `else`, has of its awaitable.
  */
-function givenType(writer: FlowWriter, closed: ClosedCall): Type {
+function resolverArguments(writer: FlowWriter, closed: ClosedCall): readonly [Type, WaitingMode] {
   const { checker } = writer.context;
   const done = calledParameters(checker, closed)[1]?.type;
   const resolver =
     done === undefined
       ? undefined
       : substitute(done, substitutionOfCall(checker, closed), checker.typeRules);
-  const [given] =
+  const [given, mode] =
     (resolver === undefined
       ? undefined
       : wellKnownArguments(checker, wellKnown.resolver, resolver)) ?? [];
-  return given ?? unreachable(`An onAwait takes no resolver at ${closed.kind}.`);
+  if (given === undefined || mode?.kind !== 'literal') {
+    return unreachable(`An onAwait takes no resolver at ${closed.kind}.`);
+  }
+  return [given, mode.value === 'ista' ? 'ista' : 'live'];
 }
 
 function calledValue(writer: FlowWriter, operation: Of<'callValue'>): void {

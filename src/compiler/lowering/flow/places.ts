@@ -60,7 +60,13 @@ export function writePlace(writer: FlowWriter, operation: Extract<Operation, { r
     return;
   }
   const root = writer.valueOf(place.root);
-  if (place.path.length === 0 && root.kind === 'variable' && writer.keyed.get(value) === undefined) {
+  const throughReference = writer.context.code.typeOf(writer.registerOf(place.root)).kind === 'reference';
+  if (
+    place.path.length === 0 &&
+    root.kind === 'variable' &&
+    !throughReference &&
+    writer.keyed.get(value) === undefined
+  ) {
     writer.define(place.root, writer.registerOf(value), span, operation);
     return;
   }

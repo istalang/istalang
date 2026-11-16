@@ -34,6 +34,7 @@ const helpers = [
   'contextConstant',
   'makeContextConstant',
   'callValue',
+  'currentExecution',
   'start',
   'mocked',
   'unreachableHere',

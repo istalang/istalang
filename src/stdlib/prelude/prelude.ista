@@ -44,6 +44,7 @@ trait Awaitable<T>:
 
 # A future resolves `done` at once when it has settled, else as it settles.
 K fn onAwait<T, K in Persistence>(self: Future<T, K>, done: Resolver<T, K>):
+  _registered(done)
   if _settled(self):
     done.resolve(_valueOf(self))
   else:
@@ -52,16 +53,26 @@ K fn onAwait<T, K in Persistence>(self: Future<T, K>, done: Resolver<T, K>):
 
 # One wait's one-shot resolver (Rule 5). A second `resolve` panics, and `tryResolve` says whether it
 # decided the wait, for races; once another case decided it, neither decides anything. One let go of
-# unresolved panics: an awaitable misused it. It holds what it calls, its decision and its `onCancel`
-# callbacks, never the futures it is registered on. Its rank is where it decides among what settles
-# together (spec §8): a case's by its waiter and position, an at-resolver's by the resolver it
-# decides and its position, a callback's after every case, by when it was made.
+# unresolved is cancelled, unless it is a case's never registered on anything while its wait still
+# waits, which panics: an awaitable dropped it. It holds what it calls, its decision and its
+# `onCancel` callbacks, never the futures it is registered on. Its rank is where it decides among
+# what settles together (spec §8): a case's by its waiter and position, an at-resolver's by the
+# resolver it decides and its position, a callback's after every case, by when it was made.
 shared struct Resolver<T, K in Persistence>:
   decide: Fn<(T,), Bool, K>
   rank: Array<Int>
   # 0 pending, 1 resolved, 2 cancelled
   state: Int = 0
   cancels: Array<Fn<(), Unit, K>> = []
+  registered: Bool = false
+  # A case's: whether its wait still waits. An at-resolver's: marks the resolver it decides registered.
+  waited: Fn<(), Bool, K>? = none
+  onRegistered: Fn<(), Unit, K>? = none
+
+# Notes that `resolver` is registered on what it waits on, which keeps it alive.
+K fn _registered<T, K in Persistence>(resolver: Resolver<T, K>):
+  resolver->registered = true
+  drop resolver->onRegistered?.()
 
 K fn resolve<T, K in Persistence>(self: Resolver<T, K>, value: T):
   if self->state == 1: panic("A resolver was resolved twice.")
@@ -93,7 +104,8 @@ K fn Resolver.of<T, K in Persistence>(callback: Fn<(T,), Unit, K>) -> Resolver<T
 # decides as a `select` case does and takes nothing once `done` is decided.
 K fn Resolver.at<T, K in Persistence>(done: Resolver<(Int, T), K>, position: Int) -> Resolver<T, K>:
   fn decided(value: T) -> Bool: done.tryResolve((position, value))
-  new Resolver<T, K>{decide: decided, rank: [...done->rank, position]}
+  fn registered(): _registered(done)
+  new Resolver<T, K>{decide: decided, rank: [...done->rank, position], onRegistered: registered}
 
 # Has `callback` called once `self` is cancelled: another case decided its wait, its waiter moved on
 # without it, or a future it is registered on was disposed. It runs as a `Resolver.of` callback
@@ -103,8 +115,12 @@ K fn onCancel<T, K in Persistence>(self: Resolver<T, K>, callback: Fn<(), Unit, 
   if self->state == 0: self->cancels.push(callback)
 
 K fn dispose<T, K in Persistence>(self: Resolver<T, K>):
-  if self->state == 0:
-    panic("A resolver was let go of unresolved: an awaitable dropped what it was to resolve.")
+  if self->state != 0: return
+  if not self->registered and (self->waited?.() ?? false):
+    panic(
+      "A resolver was let go of unresolved, so the wait it was to decide never can. An awaitable keeps the work it starts alive by registering its resolver, or a Resolver.at of it, on that work; to map a value, await it in an async fn."
+    )
+  _cancel(self)
 
 # Cancels `resolver`, still pending, running its `onCancel` callbacks.
 K fn _cancel<T, K in Persistence>(resolver: Resolver<T, K>):
@@ -139,7 +155,8 @@ K fn _caseResolver<T, K in Persistence>(wait: _Wait<K>, position: Int, into: Sha
         cancel()
     _unpark(wait->call, position)
     true
-  const resolver = new Resolver<T, K>{decide, rank: [0, _idOf(wait->call), position]}
+  fn waited() -> Bool: wait->decided == -1
+  const resolver = new Resolver<T, K>{decide, rank: [0, _idOf(wait->call), position], waited}
   const weak = WeakRef(resolver)
   fn cancel():
     if weak.deref() is Resolver<T, K> as pending: _cancel(pending)

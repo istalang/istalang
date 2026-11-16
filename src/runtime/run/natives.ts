@@ -31,7 +31,14 @@ import type { CompositeValue, Value } from '../../definition/values/values.ts';
 import { errorOf, okOf } from '../../definition/values/declared-values.ts';
 import type { TypeDefinition } from '../../definition/tables/types.ts';
 import { Instance, type InstanceEnd } from './instances.ts';
-import { Future, Reference, Resource, type RunObject, type WeakReference } from './objects.ts';
+import {
+  Execution,
+  Future,
+  Reference,
+  Resource,
+  type RunObject,
+  type WeakReference,
+} from './objects.ts';
 
 /** The instances spawned so far, by name, whose ends `result()` waits for. */
 const spawnedInstances = new Map<string, Instance>();
@@ -73,11 +80,21 @@ export function bindNatives(run: Run, binding: NativeBinding): (index: number) =
     let current: readonly Value[] = [];
     const context = contextOf(run, entry, { binding, random, passed: () => current });
     const counted = run.isCounted(entry.result);
+    const references = entry.parameters.flatMap((parameter, at) =>
+      parameter.type.kind === 'reference' ? [at] : [],
+    );
     return ((...given: Value[]) => {
       const outer = current;
       current = given;
+      // A native reads what a `&` argument refers to, and changes it through `changes`.
+      const values =
+        references.length === 0
+          ? given
+          : given.map((value, at) =>
+              references.includes(at) ? run.deref(value as unknown as Reference) : value,
+            );
       try {
-        const result = native(given, context);
+        const result = native(values, context);
         if (counted) {
           run.lifetimes.hold(result);
         }
@@ -155,7 +172,10 @@ function contextOf(
       reference: (referent) =>
         run.weakReference(referent as unknown as RunObject) as unknown as Value,
       target: (weak) => (weak as unknown as WeakReference).target as unknown as Value | undefined,
-      watch: unavailable('disposed() watches'),
+      watch: (watched) =>
+        (watched instanceof Execution
+          ? run.disposingOf(watched)
+          : run.disposedOf(watched as unknown as WeakReference)) as unknown as Value,
     },
     resources: {
       create: (type, payload) => new Resource(run.newId(), type, payload) as unknown as Value,

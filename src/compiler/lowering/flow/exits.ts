@@ -213,11 +213,11 @@ function selected(writer: FlowWriter, { node, holds }: TestOf<'select'>, to: rea
     }
     const losers = holds.flatMap((held, other) => (other === index ? [] : held));
     code.letGo([position, ...waitRegisters(open), ...writer.registersEnding(losers)], span);
-    writer.goTo(to[index] ?? unreachable('A select case goes nowhere.'), span);
+    writer.jumpTo(to[index] ?? unreachable('A select case goes nowhere.'), span);
   });
   if (otherwise !== undefined) {
     code.place(otherwise);
     code.letGo([position, ...waitRegisters(open), ...writer.registersEnding(holds.flat())], span);
-    writer.goTo(to[cases.length] ?? unreachable('A select has no else.'), span);
+    writer.jumpTo(to[cases.length] ?? unreachable('A select has no else.'), span);
   }
 }

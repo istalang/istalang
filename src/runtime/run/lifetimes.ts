@@ -62,12 +62,17 @@ export class Lifetimes {
     }
   };
 
-  /** One holder fewer of `value`; disposes what loses its last one, in rounds. */
-  readonly letGo = (value: Value | undefined): void => {
+  /**
+   * One holder fewer of each of `values`, let go of together; disposes what loses its last one, in
+   * rounds, so values losing it at one block exit go newest first.
+   */
+  readonly letGo = (...values: (Value | undefined)[]): void => {
     const outermost = this.#zeros === undefined;
     const zeros = this.#zeros ?? [];
     this.#zeros = zeros;
-    this.#release(value, zeros);
+    for (const value of values) {
+      this.#release(value, zeros);
+    }
     if (outermost) {
       try {
         this.#collect(zeros);

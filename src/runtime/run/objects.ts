@@ -103,6 +103,10 @@ export class Execution extends RunObject {
   readonly instance: Instance;
   /** Whether it has returned or stopped. */
   ended = false;
+  /** Whether it waits at a `park`, its frame saved. */
+  parked = false;
+  /** What its `disposing()` gives (§7), made the first time it is asked for. */
+  disposing: Future | undefined;
 
   constructor(id: number, futureId: number, instance: Instance) {
     super(id);
@@ -113,6 +117,8 @@ export class Execution extends RunObject {
 
 export class WeakReference extends RunObject {
   target: RunObject | undefined;
+  /** What its `disposed()` gives (§7), made the first time it is asked for. */
+  disposed: Future | undefined;
 
   constructor(id: number, target: RunObject) {
     super(id);

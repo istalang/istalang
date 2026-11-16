@@ -254,7 +254,8 @@ const emitters: Handlers<EntryScope, Instruction, [], string> = {
     }
     return `${register(i.dst)} = ${called};`;
   },
-  currentCall: (_, i) => `${register(i.dst)} = frame.execution;`,
+  currentCall: (scope, i) =>
+    `${register(i.dst)} = ${scope.onFrames ? 'frame.execution' : 'currentExecution()'};`,
   given: (_, i) => `if (${register(i.parameter)} !== undefined) { ${goTo(i.target)} }`,
   mocked: (scope, i) => {
     const parameters = scope.entry.parameters.map((_, index) => register(index)).join(', ');
@@ -265,14 +266,11 @@ const emitters: Handlers<EntryScope, Instruction, [], string> = {
     return `if (frame.stopping) { ${goTo(i.stop)} } frame.pc = ${parkResumeOf(scope, i)}; frame.registers = [${saved}]; return PARKED;`;
   },
   stopped: () => 'return STOPPED;',
-  letGo: (scope, i) =>
-    i.registers
-      .map((each) =>
-        lifetime(scope, each) === 'counted'
-          ? `letGo(${register(each)}); ${register(each)} = undefined;`
-          : `${register(each)} = undefined;`,
-      )
-      .join(' '),
+  letGo: (scope, i) => {
+    const counted = i.registers.filter((each) => lifetime(scope, each) === 'counted');
+    const released = counted.length === 0 ? '' : `letGo(${counted.map(register).join(', ')}); `;
+    return released + i.registers.map((each) => `${register(each)} = undefined;`).join(' ');
+  },
 };
 
 /** The key a transient's cell is shared by: its function and register. */

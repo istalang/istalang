@@ -110,7 +110,7 @@ export class Run {
 
   readonly hold = (value: Value | undefined): void => this.lifetimes.hold(value);
   readonly share = (value: Value | undefined): void => this.lifetimes.share(value);
-  readonly letGo = (value: Value | undefined): void => this.lifetimes.letGo(value);
+  readonly letGo = (...values: (Value | undefined)[]): void => this.lifetimes.letGo(...values);
   readonly equal = valuesEqual;
   readonly mapOf = (entries: readonly (readonly [Value, Value])[]): Value => mapOf(entries);
   readonly PARKED = PARKED;
@@ -366,6 +366,9 @@ export class Run {
     return this.#running;
   }
 
+  /** The execution whose code runs now, as simple code nested in it reads its call (§7). */
+  readonly currentExecution = (): Execution | undefined => this.#running;
+
   /** Readies `execution` to resume with `decision`, the position its wait was decided for. */
   unpark(execution: Execution, decision: Value): void {
     this.#ready.push({ kind: 'resume', execution, decision });
@@ -572,11 +575,13 @@ export class Run {
     this.#running = execution;
     const { frame } = execution;
     frame.decision = decision as Value;
+    execution.parked = false;
     try {
       const result = this.#guarded(execution.instance, () =>
         (this.#entries[frame.function] as (given: Frame) => unknown)(frame),
       );
       if (result === PARKED) {
+        execution.parked = true;
         return;
       }
       execution.ended = true;
@@ -588,8 +593,61 @@ export class Run {
     }
   }
 
+  /**
+   * The future `weak`'s `disposed()` gives (§7): settled once its referent is disposed, at once if
+   * it was already; waiting on it holds nothing.
+   */
+  disposedOf(weak: WeakReference): Future {
+    weak.disposed ??= new Future(this.newId());
+    if (weak.target === undefined && !weak.disposed.settled) {
+      this.settle(weak.disposed, null);
+    }
+    return weak.disposed;
+  }
+
+  /** The future `execution`'s `disposing()` gives (§7): settled once its call is disposed. */
+  disposingOf(execution: Execution): Future {
+    execution.disposing ??= new Future(this.newId());
+    if (execution.frame.stopping && !execution.disposing.settled) {
+      this.settle(execution.disposing, null);
+    }
+    return execution.disposing;
+  }
+
+  /**
+   * Stops `execution`, whose future was disposed (§7): its `disposing()` settles, and where that
+   * unparks it, it resumes at once, before anything else; else it stops where it waits, its stop
+   * landing letting go of what its frame holds. Either way, the next `park` it reaches stops it.
+   */
+  #stop(execution: Execution): void {
+    if (execution.ended) {
+      return;
+    }
+    execution.frame.stopping = true;
+    if (execution.disposing !== undefined) {
+      this.settle(execution.disposing, null);
+    }
+    if (!execution.parked) {
+      return;
+    }
+    const at = this.#ready.findIndex(
+      (ready) => ready.kind === 'resume' && ready.execution === execution,
+    );
+    const ready = at < 0 ? undefined : this.#ready.splice(at, 1)[0];
+    this.#resume(execution, ready?.kind === 'resume' ? ready.decision : STOP);
+  }
+
   /** What disposing `object`, which lost its last holder, does; what it held. */
   #disposed(object: RunObject): readonly Value[] {
+    const released = this.#disposedHolding(object);
+    const disposed = this.#weakReferences.get(object)?.disposed;
+    if (disposed !== undefined) {
+      this.settle(disposed, null);
+    }
+    return released;
+  }
+
+  #disposedHolding(object: RunObject): readonly Value[] {
     const weak = this.#weakReferences.get(object);
     if (weak !== undefined) {
       weak.target = undefined;
@@ -606,6 +664,9 @@ export class Run {
         for (const cancel of object.cancels.splice(0)) {
           cancel();
         }
+      }
+      if (object.execution !== undefined) {
+        this.#stop(object.execution);
       }
       const callbacks = object.callbacks.splice(0).map(({ callback }) => callback);
       return object.settled ? [object.value, ...callbacks] : callbacks;
