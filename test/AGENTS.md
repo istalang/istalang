@@ -9,6 +9,7 @@ Inputs that tests across phases share. Unit tests live beside their code (`src/*
 - `subset.ts`: the M2.4 subset program and its outcome, which the checker's and `ista run`'s tests share.
 - Hand-written `.ista` cases, valid and invalid, go under `corpus/`. Never copy spec text there.
 - `golden/`: what every program, suite and host scenario showed on the interpreter before the IR-first rewrite, which every pipeline is held to (`golden/golden.md`).
+- `suites/`: test modules by area of the run (awaitables, callbacks, waits, instances, aliasing, disposal, functions), holding the rules the old pipeline's unit tests asserted; the `suites` goldens run them.
 - `spec-suites/`: hand-written test modules for spec examples whose tests the spec elides, each run by an end-to-end test against the spec's own example code, written beside it at run time.
 
 Principles:
