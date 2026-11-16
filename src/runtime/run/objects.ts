@@ -138,7 +138,6 @@ export class WeakReference extends RunObject {
   }
 }
 
-/** A `&` parameter's value: the place in `cell`'s value at `path`. */
 /** A mock's handle (testing.ista `Mock<F>`): its target, its replacement and the calls it took. */
 export class MockObject extends RunObject {
   readonly target: number;
@@ -154,6 +153,7 @@ export class MockObject extends RunObject {
   }
 }
 
+/** A `&` parameter's value: the place in `cell`'s value at `path`. */
 export class Reference {
   readonly cell: Cell;
   readonly path: readonly Step[];
