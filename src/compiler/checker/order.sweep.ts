@@ -3,7 +3,8 @@
  * (docs/work/m6-m7/incremental-checking.md, 7A.3): over every corpus program and std test module,
  * the modules of `names/`, a cycle across two modules and the std modules themselves, asking the
  * modules in a random order after random lookups and bodies gives each module what asking in load
- * order gives. Reports are made only inside entries, and every checker keys a type alike.
+ * order gives; and every checker keys a type alike. It runs in slices, the
+ * `order-<n>.sweep.test.ts` beside it (test/slices.ts); order.test.ts holds the hand-written cases.
  */
 
 import fc from 'fast-check';
@@ -11,18 +12,17 @@ import { describe, expect, it } from 'vitest';
 import namesLib from '../../../test/corpus/names/lib.ista';
 import namesMain from '../../../test/corpus/names/main.ista';
 import { invalidPrograms, runPrograms } from '../../../test/corpus/programs.ts';
-import { Unreachable } from '../../foundation/structures/unreachable.ts';
+import { sliceOf } from '../../../test/slices.ts';
 import { stdProgramOf } from '../binder/bind.test-kit.ts';
 import { stdTests } from '../parser/edits.test-kit.ts';
-import { isStdModule, type ModuleId, type Program } from '../program/program.ts';
+import { ownModules } from '../program/program.test-kit.ts';
+import type { Program } from '../program/program.ts';
 import { declaredFunctions, type FunctionDeclaration } from '../syntax/declarations/index.ts';
 import { nodesUnder } from '../syntax/tree/index.ts';
 import type { Identifier } from '../syntax/tree/node.ts';
-import { handMadeSpan } from '../syntax/tree/tree.test-kit.ts';
 import type { TypeNode } from '../syntax/types/index.ts';
-import { checkedApart } from './check.test-kit.ts';
+import { checkedApart, diagnosticsOf } from './check.test-kit.ts';
 import type { Checker } from './check.ts';
-import { checkerDiagnostics } from './diagnostics/index.ts';
 
 /** A program to ask questions of; `withStd` asks its std modules too, not only its own. */
 interface Source {
@@ -64,7 +64,7 @@ const sources: readonly Source[] = [
 
 /** What a test may ask of a program: its modules, and the nodes and functions in them. */
 function askable(program: Program, withStd = false) {
-  const modules = [...program.modules.keys()].filter((id) => withStd || !isStdModule(program, id));
+  const modules = [...(withStd ? program.modules.keys() : ownModules(program))];
   const nodes = modules.flatMap((module) => {
     const tree = program.modules.get(module)?.tree;
     return tree === undefined ? [] : nodesUnder(tree, tree.root).map((node) => ({ module, node }));
@@ -107,10 +107,6 @@ function ask(checker: Checker, asked: Asked, { kind, index }: Question): void {
   }
 }
 
-function diagnosticsOf(checker: Checker, modules: readonly ModuleId[]) {
-  return new Map(modules.map((module) => [module, checker.diagnosticsOf(module)]));
-}
-
 const questions = fc.array(
   fc.record({
     kind: fc.constantFrom<Question['kind']>('lookup', 'body', 'result'),
@@ -119,85 +115,53 @@ const questions = fc.array(
   { maxLength: 12 },
 );
 
-describe('a checker', () => {
-  describe.each(sources)('over $name', (source) => {
-    it('gives each module the diagnostics of asking in load order, whatever was asked first', () => {
-      const program = source.program();
-      const asked = askable(program, source.withStd);
-      const expected = diagnosticsOf(checkedApart(program), asked.modules);
-      const reversed = asked.modules.toReversed();
-      expect(diagnosticsOf(checkedApart(program), reversed)).toEqual(
-        new Map(reversed.map((module) => [module, expected.get(module)])),
-      );
-      fc.assert(
-        fc.property(
-          questions,
-          fc.shuffledSubarray(asked.modules, { minLength: asked.modules.length }),
-          (before, order) => {
-            const checker = checkedApart(program);
-            for (const question of before) {
-              ask(checker, asked, question);
-            }
-            expect(diagnosticsOf(checker, order)).toEqual(
-              new Map(order.map((module) => [module, expected.get(module)])),
-            );
-          },
-        ),
-        { numRuns: 3 },
-      );
+/** Registers the tests of the slice `file` (its `import.meta.url`) runs. */
+export function orderSweepSlice(file: string): void {
+  const slice = sliceOf(file);
+  describe('a checker', () => {
+    describe.each(slice.of(sources))('over $name', (source) => {
+      it('gives each module the diagnostics of asking in load order, whatever was asked first', () => {
+        const program = source.program();
+        const asked = askable(program, source.withStd);
+        const expected = diagnosticsOf(checkedApart(program), asked.modules);
+        const reversed = asked.modules.toReversed();
+        expect(diagnosticsOf(checkedApart(program), reversed)).toEqual(
+          new Map(reversed.map((module) => [module, expected.get(module)])),
+        );
+        fc.assert(
+          fc.property(
+            questions,
+            fc.shuffledSubarray(asked.modules, { minLength: asked.modules.length }),
+            (before, order) => {
+              const checker = checkedApart(program);
+              for (const question of before) {
+                ask(checker, asked, question);
+              }
+              expect(diagnosticsOf(checker, order)).toEqual(
+                new Map(order.map((module) => [module, expected.get(module)])),
+              );
+            },
+          ),
+          { numRuns: 3 },
+        );
+      });
     });
-  });
 
-  it('answers a cycle alike whichever member is asked first', () => {
-    const program = stdProgramOf({
-      'main.ista': [
-        'fn f(n: Int):',
-        '  if n > 0:',
-        '    const x: Bool = g(n - 1)',
-        '  return "none"',
-        'fn g(n: Int):',
-        '  if n > 0:',
-        '    const y: Bool = f(n - 1)',
-        '  return 1',
-      ].join('\n'),
-    });
-    const { modules, functions } = askable(program);
-    const askedFirst = (name: string) => {
-      const checker = checkedApart(program);
-      const first = functions.find((declaration) => declaration.name.text === name);
-      if (first !== undefined) {
-        checker.resultOf(first);
-      }
-      return diagnosticsOf(checker, modules);
-    };
-    expect(askedFirst('g')).toEqual(askedFirst('f'));
+    it.each(slice.of(runPrograms.map(({ name, text }) => ({ name, text }))))(
+      'keys every type of $name as any other checker of its program does',
+      ({ text }) => {
+        const program = stdProgramOf({ 'main.ista': text });
+        const { functions } = askable(program);
+        const keysOf = (checker: Checker) =>
+          functions.flatMap((declaration) => [
+            checker.typeKeys.typeKey(checker.resultOf(declaration)),
+            ...checker
+              .parametersOf(declaration)
+              .map((parameter) => checker.typeKeys.typeKey(parameter.type)),
+          ]);
+        const first = keysOf(checkedApart(program));
+        expect(keysOf(checkedApart(program))).toEqual(first);
+      },
+    );
   });
-
-  it('refuses a report made outside every entry', () => {
-    const program = stdProgramOf({ 'main.ista': 'fn f(): 1\n' });
-    const [module] = askable(program).modules;
-    const checker = checkedApart(program);
-    expect(
-      () =>
-        module !== undefined &&
-        checker.report(module, checkerDiagnostics.recursiveReturnType(handMadeSpan(0, 1), 'f')),
-    ).toThrow(Unreachable);
-  });
-
-  it.each(runPrograms.map(({ name, text }) => ({ name, text })))(
-    'keys every type of $name as any other checker of its program does',
-    ({ text }) => {
-      const program = stdProgramOf({ 'main.ista': text });
-      const { functions } = askable(program);
-      const keysOf = (checker: Checker) =>
-        functions.flatMap((declaration) => [
-          checker.typeKeys.typeKey(checker.resultOf(declaration)),
-          ...checker
-            .parametersOf(declaration)
-            .map((parameter) => checker.typeKeys.typeKey(parameter.type)),
-        ]);
-      const first = keysOf(checkedApart(program));
-      expect(keysOf(checkedApart(program))).toEqual(first);
-    },
-  );
-});
+}

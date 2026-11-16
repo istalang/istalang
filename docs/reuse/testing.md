@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-11-13
-last_updated: 2026-11-16
+last_updated: 2026-11-17
 tags: [reuse, testing, test-kit, arbitraries, fast-check, corpus]
 ---
 
@@ -35,12 +35,13 @@ tags: [reuse, testing, test-kit, arbitraries, fast-check, corpus]
 - probe many edits of one program, each made and checked after it as an editor does, so only the edit is checked → `editedMainProgram` (`src/editor/language-service/language-service.test-kit.ts`)
 - state what a language server must answer over the corpus, from the corpus project loaded apart, and its open documents there → `corpusProgram`, `programDocuments`, `ProgramDocument` (`src/editor/lsp/corpus-client.test-kit.ts`)
 - tell whether a resolved name was looked up in scope (not a qualified tail, a declaring name, an ADL callee or an own call) → `isLookedUp` (`src/compiler/binder/bind.test-kit.ts`)
-- build an in-memory `Program` or `ModuleLoader` → `programOf`, `memoryLoader`, `idOf`, `moduleAt`, `loadedPaths` (`src/compiler/program/program.test-kit.ts`)
+- build an in-memory `Program` or `ModuleLoader`, or list the modules a test owns (all but std) → `programOf`, `memoryLoader`, `idOf`, `moduleAt`, `ownModules`, `loadedPaths` (`src/compiler/program/program.test-kit.ts`)
 - edit a module's text as an editor does (random edit sequences, or one name renamed inside one function's body), over the corpus and std test modules → `editSequences`, `applied`, `editInsideBody`, `bodyEditChoices`, `editedTexts`, `stdTests` (`src/compiler/parser/edits.test-kit.ts`)
 - build a `Program` with the prelude or all std modules (cached) → `preludeProgramOf`, `stdProgramOf`, `boundReport` (`src/compiler/binder/bind.test-kit.ts`)
 - inspect bound entities by name occurrence in source order → `namesIn`, `entityOfName`, `declaringName` (`src/compiler/binder/bind.test-kit.ts`)
 - sweep every name the binder resolved over the corpus and std modules → `boundCorpus`, `resolvedNames` (`src/compiler/binder/bind.test-kit.ts`)
-- check a `main.ista` snippet with all std modules, or any module of several such as a test module (`reportedAt`), or wrap statements in a function → `reported`, `reportedAt`, `inFunction` (`src/compiler/checker/check.test-kit.ts`)
+- check a `main.ista` snippet with all std modules, or any module of several such as a test module (`reportedAt`), or wrap statements in a function → `reported`, `reportedAt`, `inFunction`; a checker apart from `checkProgram`'s, and its diagnostics by module → `checkedApart`, `diagnosticsOf` (`src/compiler/checker/check.test-kit.ts`)
+- check revision after revision of an edited program, each checker from the one before, beside checkers made afresh → `revisionsOf`, `checkedRevision`, `answeredBothWays`, `bodiesChecked`, `answered` (`src/compiler/checker/revisions.test-kit.ts`)
 - check many small `stdProgramOf` programs, each checker taking over the std modules' results checked once per file → `checkedAfterStd` (`src/compiler/compile.test-kit.ts`)
 - ask a checked `main.ista` by names as written, ask every query a tool may ask of a node, or compare two checkers' answers at every node of a module → `checkedMain`, `answersAt`, `spelledAnswers` (`src/compiler/checker/lookup/lookup.test-kit.ts`)
 - check a rule across every std module at once → `everyStdModule` (`src/stdlib/std-modules.test-kit.ts`)
@@ -55,6 +56,7 @@ tags: [reuse, testing, test-kit, arbitraries, fast-check, corpus]
 - generate random token/fragment soup or randomly mutated valid programs → `soupOf` (`test/soup.ts`), `brokenText` (`test/broken.ts`)
 - generate random `Value`s or deeply nested values → `valueArbitrary`, `nested` (`src/definition/values/values.test-kit.ts`)
 - check what a program, suite or host scenario shows when run against what was recorded before the IR-first rewrite, or add a subject or scenario → the goldens (`test/golden/golden.md`; `subjects.ts`, `scenarios/`, `pipeline/` the one seam a pipeline replaces)
+- run a long sweep in slices side by side, its items dealt round `<sweep>-<n>.sweep.test.ts` files → `sliceOf` (`test/slices.ts`)
 - check something of every compiled corpus program, example and demo, compiling each once → a row of the corpus sweep (`test/sweep/checks.ts`; what a row reads of a subject, derived once: `compiledOf`, `writtenOf`, `observedOf` in `test/sweep/swept.ts`)
 - a Definition without where its code stands (spans, line starts), to compare two layouts of one program → `withoutPlaces` (`src/definition/definition.test-kit.ts`); a program's diagnostics positions aside → `diagnosticsWithoutPlaces` (`src/compiler/compile.test-kit.ts`)
 - a Definition's verified code with an owned register never let go of, which the verifier must refuse → `leakingMutants` (`src/definition/validation/ownership.test-kit.ts`)

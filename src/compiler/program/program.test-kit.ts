@@ -11,6 +11,7 @@ import type { Span } from '../../foundation/text/span.ts';
 import { type AnchoredSpan, spanIn } from '../syntax/tree/positions.ts';
 import {
   buildProgram,
+  isStdModule,
   type LocatedModule,
   type ModuleId,
   type ModuleLoader,
@@ -76,6 +77,11 @@ export function moduleAt(program: Program, key: string): ProgramModule {
     throw new Error(`${key} is not in the program`);
   }
   return module;
+}
+
+/** The modules of `program` a test owns: all but the std modules. */
+export function ownModules(program: Program): readonly ModuleId[] {
+  return [...program.modules.keys()].filter((id) => !isStdModule(program, id));
 }
 
 /** Where `node`, a node of `module`, stands in that module's text. */

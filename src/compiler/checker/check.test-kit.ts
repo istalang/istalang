@@ -10,7 +10,8 @@ import { reportedIn } from '../../foundation/diagnostics/diagnostic.test-kit.ts'
 import type { Persistence } from '../../foundation/language/well-known/index.ts';
 import { stdProgramOf } from '../binder/bind.test-kit.ts';
 import { checkedAfterStd, diagnosedAt } from '../compile.test-kit.ts';
-import type { Program } from '../program/program.ts';
+import type { ModuleId, Program } from '../program/program.ts';
+import type { Checker } from './check.ts';
 import { type CheckerOptions, ProgramChecker } from './wiring/program/program-checker.ts';
 
 /** Everything reported for `text` as module `main.ista`, beside the std modules and `others`. */
@@ -45,4 +46,9 @@ export function inFunction(body: string, kind?: Persistence): string {
  */
 export function checkedApart(program: Program, options?: CheckerOptions): ProgramChecker {
   return new ProgramChecker(program, options);
+}
+
+/** The diagnostics of each of `modules`, asked of `checker` in their order. */
+export function diagnosticsOf(checker: Checker, modules: readonly ModuleId[]) {
+  return new Map(modules.map((module) => [module, checker.diagnosticsOf(module)]));
 }

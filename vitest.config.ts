@@ -7,6 +7,12 @@
  * iterates on: every test but the editor's and the sweeps outside the compiler, which `slow` runs.
  * A run of every project (`npm run test:full`, `verify`) runs both.
  *
+ * `quick` runs its files unisolated: the files a worker runs share one module graph, so they parse
+ * and check the std modules once (`stdProgramOf`, `checkedAfterStd`) and the compiler stays JIT-warm,
+ * which roughly halves the project's CPU time. Module state is therefore shared across files: a
+ * test keeps nothing but what it derives from its inputs, nothing that hangs on which files ran
+ * before. A sweep too long for one file runs in slices side by side (test/slices.ts).
+ *
  * A test gets 7 s, not vitest's 5: suites of several worktrees run side by side, and a property
  * over the corpus slows past 5 s under that load. One compiling whole programs case after case
  * takes `wholeProgramTimeout` (src/compiler/compile.test-kit.ts).
@@ -44,6 +50,7 @@ export default defineConfig({
         extends: true,
         test: {
           name: 'quick',
+          isolate: false,
           include: tests,
           exclude: [...configDefaults.exclude, ...slowTests],
         },

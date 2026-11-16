@@ -27,7 +27,7 @@ Compiler, runtime and tooling for Istalang (spec: `docs/spec.md`). One npm packa
 - **Coupling stays loose.** Phases talk through contracts (`compiler/syntax/`, later `definition/`). An open set of handlers is a typed table (`satisfies Record<Kind, Handler>`). Dependencies are passed in at composition roots, with no DI container and no import side effects.
 - **Derive, never mirror.** Memoize derived data, keyed by its immutable input. Never store a copy and sync it.
 - **Reduce** to existing features where you can, instead of a 2nd similar implementation. Prefer .ista impl over builtin/ts implementation.
-- **Tests sit beside their code** as `*.test.ts`, with shared helpers in `*.test-kit.ts`. Prefer properties over generated, broken and hostile inputs (fast-check) to snapshots of one observed output.
+- **Tests sit beside their code** as `*.test.ts`, with shared helpers in `*.test-kit.ts`; a sweep run in slices registers its tests from `*.sweep.ts` (`test/slices.ts`). Prefer properties over generated, broken and hostile inputs (fast-check) to snapshots of one observed output.
 - **Biome runs every stable rule as an error**, including the project, type-aware and test domains. Each exception in `biome.jsonc` states its reason. dependency-cruiser enforces the layers.
 - Alway implement a **robust** approach, never a hacky solution to fix a specific case. If it can be written in a generic way to be used in other places too, do it and refactor those other places too.
 - When different units-of-code have incompatible APIs, your first try must be to **refactor and unify** them, not writing a new wrapper adding more code to maintain.

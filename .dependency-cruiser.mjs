@@ -274,6 +274,9 @@ const parserGrammar = '^src/compiler/parser/grammar/';
 
 const parserCategory = `${parserGrammar}(expressions/|statements/|declarations/|types\\.ts$|patterns\\.ts$)`;
 
+/** What only tests run, by its file's suffix: tests, their kits, sweeps run in slices, benchmarks. */
+const testCode = ['test', 'test-kit', 'sweep', 'bench'];
+
 export default {
   forbidden: [
     {
@@ -392,7 +395,7 @@ export default {
   options: {
     parser: 'swc',
     tsConfig: { fileName: 'tsconfig.json' },
-    exclude: { path: '\\.(test|test-kit|bench)\\.ts$' },
+    exclude: { path: `\\.(${testCode.join('|')})\\.ts$` },
     doNotFollow: { path: 'node_modules' },
     // Subpaths resolve through a package's `exports`, as Node resolves them: some exist nowhere
     // else, and only for Node (`vscode-languageserver/node`).
