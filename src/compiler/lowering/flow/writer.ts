@@ -48,6 +48,7 @@ import {
   declaringWrites,
   knownVariableRegister,
   variableRegister,
+  variableType,
 } from './variables.ts';
 
 /** How a flow's root gives its value: by returning from the entry, or into a register. */
@@ -197,9 +198,9 @@ export class FlowWriter {
     const flowValue = this.valueOf(value);
     const type =
       flowValue.kind === 'variable'
-        ? (this.context.body.declaredTypeOf(flowValue.entity.name) ?? flowValue.type)
-        : flowValue.type;
-    return concreteType(this.context, type ?? unreachable(`Value ${value} was never checked.`));
+        ? variableType(this.context, flowValue.entity.name, flowValue.type)
+        : flowValue.type && concreteType(this.context, flowValue.type);
+    return type ?? unreachable(`Value ${value} was never checked.`);
   }
 
   /** `value`'s register, and its type. */

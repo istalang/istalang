@@ -25,7 +25,7 @@ import type { Type } from '../../checker/types/type/index.ts';
 import type { Identifier } from '../../syntax/tree/node.ts';
 import { packElements } from '../calls/packs.ts';
 import type { FunctionContext } from '../context.ts';
-import { concreteType } from '../flow/variables.ts';
+import { concreteType, variableType } from '../flow/variables.ts';
 import { writeFlow } from '../flow/writer.ts';
 import type { BodyOwner } from '../tables/instances.ts';
 import { tupleOf } from '../values/struct-values.ts';
@@ -85,7 +85,7 @@ export function declareFrame(
     return [{ register, hasDefault: mayBeLeftOut(parameter) }];
   });
   for (const { entity, type } of context.frame.captures) {
-    const captured = concreteType(context, type);
+    const captured = variableType(context, entity.name, type) ?? unreachable('A capture is typed.');
     const stored = context.body.inCell(entity.name) ? context.checker.cellOf(captured) : captured;
     const register = code.borrow(tables.types.reference(stored));
     context.variables.declare(entity.name, typeKey(context, captured), register);

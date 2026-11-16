@@ -50,6 +50,20 @@ export class VariableRegisters {
   }
 }
 
+/**
+ * The type the variable `name` holds where the entry reads it: as its body declares it there, as one
+ * name holds each pass's field in a field loop (§4), else `checked`; read as the entry reads types.
+ * A capture is typed so too, as the function it captures may be typed finally only after.
+ */
+export function variableType(
+  context: FunctionContext,
+  name: Identifier,
+  checked: Type | undefined,
+): Type | undefined {
+  const type = context.body.declaredTypeOf(name) ?? checked;
+  return type === undefined ? undefined : concreteType(context, type);
+}
+
 /** `type` as the entry reads it now: its type parameters and field loops' keys substituted. */
 export function concreteType(context: FunctionContext, type: Type): Type {
   return substitute(type, context.substitution(), context.checker.typeRules);
