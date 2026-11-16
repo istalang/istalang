@@ -86,7 +86,9 @@ export function dispatchEntry(lowering: Lowering, dispatch: Dispatch): FunctionD
     unreachable(`'${required.name.text}' is called through any without its receiver.`);
   }
   const at = { module: checker.moduleOf(required), span: required.name.span };
-  switchOverMembers(code, on, receiver, (type, variant) => {
+  // A receiver by `&` is switched on by the value it refers to.
+  const switched = references[0] === true ? loaded(code, receiver, on) : receiver;
+  switchOverMembers(code, on, switched, (type, variant) => {
     const witness = checker.traitObjects.memberWitnesses(through, constraint, type)?.[member];
     if (witness === undefined) {
       unreachable(
@@ -103,7 +105,7 @@ export function dispatchEntry(lowering: Lowering, dispatch: Dispatch): FunctionD
       const register = fittedIn(code, { value, type: called.type }, met.type, at);
       return { kind: 'value' as const, register };
     });
-    const self = memberReceiver(code, receiver, { on, type, variant, references });
+    const self = memberReceiver(code, switched, { on, type, variant, references });
     const closed = closeWitness(witness, dispatch, checker);
     const call = code.call(closed, [self, ...passed]);
     const given = givesFuture ? code.await(call, resultOfCall(checker, closed)) : call;
@@ -261,4 +263,16 @@ function switchOverMembers(
     code.code.place(label);
     write(type, variant);
   }
+}
+
+/** Borrows the value of `type` the reference in `reference` refers to. */
+function loaded(code: SynthesizedCode, reference: Register, type: Type): Register {
+  const dst = code.code.borrow(code.typed(type));
+  code.code.emit({
+    kind: 'load',
+    span: code.span,
+    dst,
+    place: { root: { kind: 'reference', register: reference }, path: [] },
+  });
+  return dst;
 }
