@@ -86,8 +86,8 @@ it alone holds its value's top node.
   first step). Everything below the top node, and every other value, is copied along the path.
 - **For natives:** a `&` argument tells its native's `changes` whether its place is the sole holder,
   so building a collection item by item stays linear without counting plain data.
-- **JSON kept by identity:** a value changed in place is first forgotten by `WrittenJson`, as the
-  interpreter's in-place writes do.
+- **Memos kept by identity:** a value changed in place is first forgotten by `WrittenJson`, as the
+  interpreter's in-place writes do, and by lifetimes' memo of whether it reaches a counted object.
 
 ## Lifetimes and disposal (spec §7)
 
