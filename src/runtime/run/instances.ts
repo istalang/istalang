@@ -12,8 +12,6 @@
  *   after its parent; its end settles what waits on its `result()`.
  */
 
-import type { TypeDefinition } from '../../definition/tables/types.ts';
-import { errorOf, okOf } from '../../definition/values/declared-values.ts';
 import type { Value } from '../../definition/values/values.ts';
 import type { Future } from './objects.ts';
 
@@ -57,9 +55,24 @@ export class Instance {
   }
 }
 
-/** What an instance's end answers a wait on it of `Result` entry `result` with (§9). */
-export function endAnswer(types: readonly TypeDefinition[], result: number, end: InstanceEnd): Value {
-  return end.kind === 'finished'
-    ? okOf(types, result, end.outcome)
-    : errorOf(types, result, { message: end.message, code: 'panic', trace: end.trace });
+/**
+ * How an instance or a call into it ended, as a wait on it is told (§9): what it gave alone, or none
+ * with its panic's message and trace, which the std's Istalang makes the `Result` code reads.
+ */
+export function instanceEnding(end: InvocationEnd): Value {
+  const tuple = (outcome: readonly Value[], message: string, trace: string): Value => ({
+    kind: 'tuple',
+    elements: [{ kind: 'array', elements: [...outcome] }, message, trace],
+  });
+  switch (end.kind) {
+    case 'finished':
+      return tuple([end.outcome], '', '');
+    case 'returned':
+      return tuple([end.value], '', '');
+    default:
+      return tuple([], end.message, end.trace);
+  }
 }
+
+/** How an invocation in an instance ended: what it gave, or how its instance ended. */
+export type InvocationEnd = InstanceEnd | { readonly kind: 'returned'; readonly value: Value };

@@ -101,19 +101,40 @@ live fn onAwait<R>(self: Call<R>, done: Resolver<Result<R>, "live">): self.resul
 live fn call<R is Sendable>(self: Runtime, key: String, f: sendable ista async fn() -> R) -> Call<R>:
   Call<R>{result: _call(self->_host, key, f)}
 
-extern live fn _call<R is Sendable>(
+live async fn _call<R is Sendable>(
   runtime: _Runtime
   key: String
   f: sendable ista async fn() -> R
-) -> Future<Result<R>, "live">
+) -> Result<R>:
+  _answer(await _called(runtime, key, f))
+
+# How the call ended, as the run tells it: what it gave alone, or none with its context's panic's
+# message and trace.
+extern live fn _called<R is Sendable>(
+  runtime: _Runtime
+  key: String
+  f: sendable ista async fn() -> R
+) -> Future<(Array<R>, String, String), "live">
 
 # A call into the context named `key` that the loop serving its jobs makes: as `_call`, but the
 # context's panic, which ends it, is still the host's to hear, as though no call waited (§9).
-extern live fn _jobCall<R is Sendable>(
+live async fn _jobCall<R is Sendable>(
   runtime: _Runtime
   key: String
   f: sendable ista async fn() -> R
-) -> Future<Result<R>, "live">
+) -> Result<R>:
+  _answer(await _jobCalled(runtime, key, f))
+
+extern live fn _jobCalled<R is Sendable>(
+  runtime: _Runtime
+  key: String
+  f: sendable ista async fn() -> R
+) -> Future<(Array<R>, String, String), "live">
+
+# The `Result` a call into a context gives (§9): `Ok` of what it gave, or `Err` of its panic.
+fn _answer<R>(ending: (Array<R>, String, String)) -> Result<R>:
+  const value, message, trace = ending
+  if value.length() == 1: Ok(value[0]) else: Err(Error{message, code: "panic", trace})
 
 # Runs `f` in the context named `key` of a runtime over the host's store, and gives what it gave;
 # its panic panics here, as it did there (§9).

@@ -18,6 +18,6 @@ export const instanceNatives = (keys: NativeKeys): Natives<NativeContext & WithI
     [entry],
     context,
   ) => context.instances.spawn(given(entry), declaredResult(context), {}),
-  [keys.of('result', knownTypeKey(wellKnown.instance, parameterKey('T')))]: ([handle], context) =>
-    context.instances.ended(instanceNameOf(handle), resultTypeArgument(context, 0)),
+  [keys.of('_ended', knownTypeKey(wellKnown.instance, parameterKey('T')))]: ([handle], context) =>
+    context.instances.ended(instanceNameOf(handle)),
 });

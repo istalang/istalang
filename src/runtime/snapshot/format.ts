@@ -108,7 +108,7 @@ const body = z.strictObject({
   live: z.array(objectId),
   timers: z.array(z.strictObject({ at: integer, future: objectId })),
   /** The futures settling with how another instance ends (§9), and the instance each watches. */
-  watches: z.array(z.strictObject({ future: objectId, instance: z.string(), result: typeId })),
+  watches: z.array(z.strictObject({ future: objectId, instance: z.string() })),
   /** What is ready to run, in order: parked calls readied, with their decisions, and callbacks. */
   ready: z.array(
     z.union([

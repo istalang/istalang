@@ -263,7 +263,16 @@ extern struct Fn<Args, Result, Kind in Mark = "simple", Send in Sendability = "p
 # What `spawn` gives (§9): a handle to the new instance, compared by identity, which holds nothing.
 # `result()` resolves with its first end: `Ok` of its outcome, or `Err` of its panic.
 extern sendable struct Instance<T>
-extern ista fn result<T is Sendable>(self: Instance<T>) -> Future<Result<T>, "ista">
+ista async fn result<T is Sendable>(self: Instance<T>) -> Result<T>: _answer(await self._ended())
+
+# How an instance ended, as the run tells it: its outcome alone, finished, or none with its panic's
+# message and trace.
+extern ista fn _ended<T is Sendable>(self: Instance<T>) -> Future<(Array<T>, String, String), "ista">
+
+# The `Result` a wait on an instance's end gives (§9): `Ok` of its outcome, or `Err` of its panic.
+fn _answer<T>(ending: (Array<T>, String, String)) -> Result<T>:
+  const outcome, message, trace = ending
+  if outcome.length() == 1: Ok(outcome[0]) else: Err(Error{message, code: "panic", trace})
 
 # Starts `f` as a new, independent instance once the caller's segment commits, and goes on at once
 # (§9). The instance awaits the future `f` gives and ends with its value, so `spawn purchase(req)`,

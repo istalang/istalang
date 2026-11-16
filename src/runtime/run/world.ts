@@ -8,11 +8,8 @@
  */
 
 import type { Value } from '../../definition/values/values.ts';
-import type { InstanceEnd } from './instances.ts';
+import type { InstanceEnd, InvocationEnd } from './instances.ts';
 import type { Run } from './run.ts';
-
-/** How an invocation in another instance ended: what it gave, or how its instance ended. */
-export type InvocationEnd = InstanceEnd | { readonly kind: 'returned'; readonly value: Value };
 
 /** What one run asks of the instances beside it. */
 export interface World {

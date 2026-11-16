@@ -158,7 +158,7 @@ export interface NativeInstances {
    */
   readonly spawn: (entry: Value, type: TypeId, options: SpawnOptions) => Value;
   /** A future that resolves with a `Result` of type entry `result` once `instance` has ended. */
-  readonly ended: (instance: string, result: TypeId) => Value;
+  readonly ended: (instance: string) => Value;
 }
 
 /**
@@ -168,12 +168,11 @@ export interface NativeInstances {
  */
 /**
  * A call into a context as code makes it: the context's key, the closure it calls, which takes
- * nothing, the type entry of the `Result` its future gives, and who makes it.
+ * nothing, and who makes it.
  */
 interface NativeContextCall {
   readonly key: string;
   readonly call: Value;
-  readonly result: TypeId;
   readonly maker: CallMaker;
 }
 
@@ -186,9 +185,8 @@ export interface NativeContexts {
    */
   readonly open: (store: Value, type: TypeId) => Value;
   /**
-   * Makes `call` into its context of `runtime`, made if new: a live future resolving with a
-   * `Result` of type entry `call.result`, `Ok` of what the call gave, or `Err` once the context
-   * panicked (code `panic`).
+   * Makes `call` into its context of `runtime`, made if new: a live future resolving with how it
+   * ended (`instanceEnding`): what it gave, or the context's panic.
    */
   readonly call: (runtime: Value, call: NativeContextCall) => Value;
   /**

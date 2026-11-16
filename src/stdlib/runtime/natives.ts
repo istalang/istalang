@@ -44,8 +44,8 @@ export const runtimeInterpreterNatives = (
     context.contexts.hostStore(declaredResult(context)),
   [keys.ofStatic('_Runtime', 'open', keys.type('Store'))]: ([store], context) =>
     context.futures.resolved(context.contexts.open(given(store), resultTypeArgument(context, 0))),
-  [contextCallKey(keys, '_call')]: contextCall('program'),
-  [contextCallKey(keys, '_jobCall')]: contextCall('jobs'),
+  [contextCallKey(keys, '_called')]: contextCall('program'),
+  [contextCallKey(keys, '_jobCalled')]: contextCall('jobs'),
   [keys.of('_served', keys.type('_Runtime'), 'Int')]: ([runtime, known], context) =>
     context.contexts.served(given(runtime), Number(int(known))),
   [keys.of('_jobServer')]: (_arguments, context) =>
@@ -61,10 +61,5 @@ function contextCallKey(keys: NativeKeys, name: string): string {
 /** The native of a call into a context that `maker` makes. */
 function contextCall(maker: CallMaker): Native<NativeContext & WithContexts> {
   return ([runtime, key, entry], context) =>
-    context.contexts.call(given(runtime), {
-      key: text(key),
-      call: given(entry),
-      result: resultTypeArgument(context, 0),
-      maker,
-    });
+    context.contexts.call(given(runtime), { key: text(key), call: given(entry), maker });
 }

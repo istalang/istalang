@@ -36,8 +36,8 @@ import {
   WeakReference,
 } from './objects.ts';
 import * as primitives from './primitives.ts';
-import { endAnswer, type Instance } from './instances.ts';
-import type { InvocationEnd, World } from './world.ts';
+import { type Instance, type InvocationEnd, instanceEnding } from './instances.ts';
+import type { World } from './world.ts';
 import { Traces } from './traces.ts';
 
 /** What a parked frame's resumable function returns. */
@@ -75,11 +75,7 @@ export interface PersistedRun {
   readonly serial: number;
   readonly live: readonly Execution[];
   readonly timers: readonly { readonly at: bigint; readonly future: Future }[];
-  readonly watches: readonly {
-    readonly future: Future;
-    readonly instance: string;
-    readonly result: number;
-  }[];
+  readonly watches: readonly { readonly future: Future; readonly instance: string }[];
   readonly invocations: readonly { readonly future: Future; readonly invocation: Invocation }[];
   /** What is ready to run as it commits, in order: resumes of parked calls and readied callbacks. */
   readonly ready: readonly (
@@ -104,7 +100,7 @@ export class Run {
    * The futures settling with how another instance ends (§9): the instance each watches, and the
    * `Result` entry it answers with.
    */
-  readonly #watches = new Map<Future, { readonly instance: string; readonly result: number }>();
+  readonly #watches = new Map<Future, string>();
   #objects = 0;
   /** The transients shared now, by `function:register`, innermost last (§3.4). */
   readonly #transients = new Map<string, Cell[]>();
@@ -442,17 +438,17 @@ export class Run {
    * A future settling with how the instance `name` ends, as `answer` says (§9): the world tells it,
    * and a snapshot keeps the watch.
    */
-  watchEnd(name: string, result: number): Future {
+  watchEnd(name: string): Future {
     const future = new Future(this.newId());
-    this.#watch(future, { instance: name, result });
+    this.#watch(future, name);
     return future;
   }
 
-  #watch(future: Future, watched: { readonly instance: string; readonly result: number }): void {
-    this.#watches.set(future, watched);
-    this.world.watchEnd(this, watched.instance, (end) => {
+  #watch(future: Future, instance: string): void {
+    this.#watches.set(future, instance);
+    this.world.watchEnd(this, instance, (end) => {
       this.#watches.delete(future);
-      this.settle(future, endAnswer(this.definition.types, watched.result, end));
+      this.settle(future, instanceEnding(end));
     });
   }
 
@@ -462,7 +458,7 @@ export class Run {
       serial: this.#objects,
       live: [...this.#live],
       timers: [...this.#timers],
-      watches: [...this.#watches].map(([future, watched]) => ({ future, ...watched })),
+      watches: [...this.#watches].map(([future, instance]) => ({ future, instance })),
       invocations: [...this.#invocations].map(([future, invocation]) => ({ future, invocation })),
       ready: this.#ready.flatMap((ready): PersistedRun['ready'] => {
         switch (ready.kind) {
@@ -487,8 +483,8 @@ export class Run {
       this.#live.add(execution);
     }
     this.#timers = [...state.timers];
-    for (const { future, ...watched } of state.watches) {
-      this.#watch(future, watched);
+    for (const { future, instance } of state.watches) {
+      this.#watch(future, instance);
     }
     for (const { future, invocation } of state.invocations) {
       this.attachInvocation(future, invocation);

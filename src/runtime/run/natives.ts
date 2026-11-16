@@ -30,7 +30,7 @@ import {
 import type { CompositeValue, Value } from '../../definition/values/values.ts';
 import { errorOf, okOf } from '../../definition/values/declared-values.ts';
 import type { TypeDefinition } from '../../definition/tables/types.ts';
-import { endAnswer, type Instance } from './instances.ts';
+import { type Instance, instanceEnding } from './instances.ts';
 import type { World } from './world.ts';
 import {
   Execution,
@@ -167,8 +167,7 @@ function contextOf(
     instances: {
       spawn: (closure, type) =>
         ({ kind: 'extern', type, payload: run.world.spawn(run, closure) }) as Value,
-      ended: (name, result) =>
-        run.watchEnd(name, result) as unknown as Value,
+      ended: (name) => run.watchEnd(name) as unknown as Value,
     },
     testing: {
       mock: unavailable('the test world'),
@@ -181,14 +180,9 @@ function contextOf(
       hostStore: (type) => ({ kind: 'extern', type, payload: 'host' }) as Value,
       open: (store, type) =>
         new Resource(run.newId(), type, { store }) as unknown as Value,
-      call: (_runtime, { key, call, result }) => {
+      call: (_runtime, { key, call }) => {
         const future = new Future(run.newId());
-        run.world.call(run, key, call, (end) => {
-          run.settle(
-            future,
-            end.kind === 'returned' ? okOf(types, result, end.value) : endAnswer(types, result, end),
-          );
-        });
+        run.world.call(run, key, call, (end) => run.settle(future, instanceEnding(end)));
         return future as unknown as Value;
       },
       served: () => new Future(run.newId()) as unknown as Value,
