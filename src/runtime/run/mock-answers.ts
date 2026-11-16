@@ -8,7 +8,8 @@
  * - **Other values** pass as they are within one instance; between two, only sendable ones cross,
  *   copied, so neither shares a composite with the other (§9).
  * - **An async replacement's future** is followed by one of the caller's, settled as it settles
- *   within one instance, else in a turn of its own (`Run.arrive`). The holder lets go of its
+ *   within one instance, else in a turn of its own (`Run.arrive`), in whichever run of the
+ *   caller's instance it lands in. The holder lets go of its
  *   future once it settles, or once the caller lets go of its own first, as a host frees what a
  *   disposed future waited on: a receive losing a `select` takes nothing.
  */
@@ -60,24 +61,34 @@ function followed(
   type: TypeReference | undefined,
 ): Future {
   const within = holder === caller;
-  const inTurn = (run: Run, step: () => void) => (within ? step() : run.arrive(step));
   const future = new Future(caller.newId());
   let held = true;
   const release = () => {
     if (held) {
       held = false;
-      inTurn(holder, () => holder.lifetimes.letGo(answer as unknown as Value));
+      if (within) {
+        holder.lifetimes.letGo(answer as unknown as Value);
+      } else {
+        holder.arrive(answer, (run, given) => run.lifetimes.letGo(given as unknown as Value));
+      }
     }
   };
+  // Settles the caller's future in whichever run of its instance the answer lands in.
+  const settleIn = (run: Run, followed: Future, sent: Value) => {
+    const owned = arrived(run, sent, within);
+    if (type !== undefined) {
+      run.lifetimes.adopt(owned, type);
+    }
+    run.settle(followed, owned);
+  };
   const settle = (value: Value) => {
-    const owned = arrived(caller, value, within);
+    const sent = crossing(value, within, hostJson);
     release();
-    inTurn(caller, () => {
-      if (type !== undefined) {
-        caller.lifetimes.adopt(owned, type);
-      }
-      caller.settle(future, owned);
-    });
+    if (within) {
+      settleIn(caller, future, sent);
+    } else {
+      caller.arrive(future, (run, followed) => settleIn(run, followed, sent));
+    }
   };
   // A replacement that never waited gives a future settled already.
   const { settled }: { readonly settled: boolean } = answer;

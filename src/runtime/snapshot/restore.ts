@@ -50,6 +50,7 @@ export function restore(
   for (const persisted of snapshot.objects) {
     filled(run, persisted, { object, restored });
   }
+  run.restoredObjects(objects);
   const { instance, lifetimes } = run;
   instance.draws = snapshot.draws;
   instance.spawned = snapshot.spawned;

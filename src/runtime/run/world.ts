@@ -4,30 +4,26 @@
  * They meet only through a `World` (host/durable-world.ts): a call into a context, a spawn and a
  * wait on an instance's end. What crosses is a sendable value, copied, so no composite is shared
  * by two runs' counts; and each answer arrives in the waiting run as a turn of its own
- * (`Run.arrive`), never inside another run's step.
+ * (`Run.arrive`), never inside another run's step, acting on the future it settles in whichever run
+ * of its instance it lands in.
  */
 
 import type { TypeId } from '../../definition/operands.ts';
 import type { Value } from '../../definition/values/values.ts';
 import type { Inspection, SpawnOptions } from '../instance-state.ts';
 import type { TestWatch } from '../natives.ts';
-import type { InstanceEnd, InvocationEnd } from './instances.ts';
 import type { HeldMock } from './mock-answers.ts';
+import type { Future } from './objects.ts';
 import type { Run } from './run.ts';
 
 /** What one run asks of the instances beside it. */
 export interface World {
   /** Starts `closure` as a new instance `parent` spawned (§9); the new instance's name. */
   readonly spawn: (parent: Run, closure: Value, spawning: Spawning) => string;
-  /** Runs `closure` in the context `key` (§9); `answer` is told, in `caller`, how it ended. */
-  readonly call: (
-    caller: Run,
-    key: string,
-    closure: Value,
-    answer: (end: InvocationEnd) => void,
-  ) => void;
-  /** Tells `watch`, in `watcher`, how the instance `name` ended, once it has. */
-  readonly watchEnd: (watcher: Run, name: string, watch: (end: InstanceEnd) => void) => void;
+  /** Runs `closure` in the context `key` (§9), settling `future`, in `caller`, with how it ended. */
+  readonly call: (caller: Run, key: string, closure: Value, future: Future) => void;
+  /** Settles `future`, in `watcher`, a watch on the instance `name`, once it has ended. */
+  readonly watchEnd: (watcher: Run, name: string, future: Future) => void;
   /**
    * The newest mock of entry `index` held by an instance `caller` was spawned from, the nearest
    * holding one (§10); undefined where none does.

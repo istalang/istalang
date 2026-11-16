@@ -184,7 +184,7 @@ function contextOf(
         new Resource(run.newId(), type, { store }) as unknown as Value,
       call: (_runtime, { key, call }) => {
         const future = new Future(run.newId());
-        run.world.call(run, key, call, (end) => run.settle(future, instanceEnding(end)));
+        run.world.call(run, key, call, future);
         return future as unknown as Value;
       },
       served: () => new Future(run.newId()) as unknown as Value,

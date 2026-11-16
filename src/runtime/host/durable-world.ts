@@ -26,7 +26,8 @@ import type { LogRecord, StartOptions } from '../instance-state.ts';
 import type { Natives } from '../natives.ts';
 import { seedBytes } from '../random-draws.ts';
 import type { InstanceStore } from '../store.ts';
-import { Instance, type InstanceEnd, type InvocationEnd } from '../run/instances.ts';
+import { Instance, type InstanceEnd, type InvocationEnd, instanceEnding } from '../run/instances.ts';
+import type { Future } from '../run/objects.ts';
 import type { HeldMock } from '../run/mock-answers.ts';
 import { type Invocation, Run } from '../run/run.ts';
 import type { Spawning, TestingWorld, World } from '../run/world.ts';
@@ -178,16 +179,16 @@ export class DurableWorld implements World {
     return name;
   };
 
-  readonly call = (
-    caller: Run,
-    key: string,
-    closure: Value,
-    answer: (end: InvocationEnd) => void,
-  ): void => {
-    this.invokeIn(caller, key, { closure, passed: [] }, answer);
+  readonly call = (caller: Run, key: string, closure: Value, future: Future): void => {
+    this.invokeIn(caller, key, { closure, passed: [] }, (end) =>
+      caller.arrive(future, (run, answered) => run.settle(answered, instanceEnding(end))),
+    );
   };
 
-  /** Runs `closure` with `passed` in the context `key` (§9); `answer` is told, in `caller`, how it ended. */
+  /**
+   * Runs `closure` with `passed` in the context `key` (§9); `answer` is told how it ended as the
+   * context commits.
+   */
   invokeIn(
     caller: Run,
     key: string,
@@ -205,7 +206,7 @@ export class DurableWorld implements World {
         copied(sent),
         (end) => {
           const crossed = end.kind === 'returned' ? { ...end, value: copied(end.value) } : end;
-          context.effects.push(() => caller.arrive(() => answer(crossed)));
+          context.effects.push(() => answer(crossed));
         },
         { passed: passed.map(copied) },
       ),
@@ -223,11 +224,11 @@ export class DurableWorld implements World {
     return undefined;
   };
 
-  readonly watchEnd = (watcher: Run, name: string, watch: (end: InstanceEnd) => void): void => {
+  readonly watchEnd = (watcher: Run, name: string, future: Future): void => {
     const watched = this.residents.get(name) ?? this.load(name);
     const told = (end: InstanceEnd) => {
       const crossed = end.kind === 'finished' ? { ...end, outcome: copied(end.outcome) } : end;
-      watcher.arrive(() => watch(crossed));
+      watcher.arrive(future, (run, watching) => run.endWatched(watching, crossed));
     };
     const end = watched === undefined ? undefined : endOf(watched.status);
     if (end !== undefined) {
@@ -424,10 +425,12 @@ export class DurableWorld implements World {
     resident.effects = [];
     resident.logs = [];
     resident.spawned = [];
+    const replaced = resident.run;
     resident.run = this.#runOf(resident.name, resident);
     if (resident.text !== undefined) {
       restore(resident.run, snapshotFormat.read(resident.text), answers);
     }
+    replaced.succeededBy(resident.run);
     for (const input of inputs) {
       input(resident.run);
     }

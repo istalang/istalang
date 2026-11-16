@@ -20,11 +20,17 @@ import type { CodeFunction } from '../../definition/tables/functions.ts';
 import type { TypeReference } from '../../definition/tables/types.ts';
 import { disposeOf, lifetimeOf } from '../../definition/tables/types.ts';
 import { mapOf, valuesEqual } from '../../definition/values/equality.ts';
+import { copied } from '../../definition/values/replacing.ts';
 import type { Value } from '../../definition/values/values.ts';
 import { unreachable } from '../../foundation/structures/unreachable.ts';
 import { type HostFilling, panicOf } from '../natives.ts';
 import { drawOf } from '../random-draws.ts';
-import { type Instance, type InvocationEnd, instanceEnding } from './instances.ts';
+import {
+  type Instance,
+  type InstanceEnd,
+  type InvocationEnd,
+  instanceEnding,
+} from './instances.ts';
 import { Lifetimes } from './lifetimes.ts';
 import { answerOfMock } from './mock-answers.ts';
 import { Mocks } from './mocks.ts';
@@ -45,6 +51,18 @@ import * as primitives from './primitives.ts';
 import { runNatives } from './run-natives.ts';
 import { Traces } from './traces.ts';
 import type { World } from './world.ts';
+
+/**
+ * A turn arriving from outside the run (`Run.arrive`): what it does to the object it concerns, in the
+ * run it lands in, and its place among every run's arrivals.
+ */
+interface Arrival {
+  /** The object, in the run it arrived at; undefined once it moved on, its id naming it there. */
+  readonly object: RunObject | undefined;
+  readonly id: number;
+  readonly turn: (run: Run, object: RunObject) => void;
+  readonly order: number;
+}
 
 /** What a parked frame's resumable function returns. */
 const PARKED = Symbol('parked');
@@ -113,9 +131,18 @@ export class Run {
   readonly #transients = new Map<string, Cell[]>();
   readonly #weakReferences = new WeakMap<RunObject, WeakReference>();
   #timers: { readonly at: bigint; readonly future: Future }[] = [];
-  readonly #arrivals: { readonly turn: () => void; readonly order: number }[] = [];
+  readonly #arrivals: Arrival[] = [];
   /** How many turns arrived at any run, which orders arrivals across runs (`firstArrival`). */
   static #arrived = 0;
+  /** The run its instance goes on in, once a segment run again replaced this one (`succeededBy`). */
+  #successor: Run | undefined;
+  /** The objects a snapshot read back made, by id, which a turn arriving from another run acts on. */
+  #restoredObjects: ReadonlyMap<number, RunObject> = new Map();
+  /**
+   * Told of each turn the run takes as an input its world can apply again, to a run of the same
+   * instance read back from a snapshot (a segment run again, §5).
+   */
+  onArrivalTaken: ((input: (run: Run) => void) => void) | undefined;
   #wake: (() => void) | undefined;
   /** How many host fillings are still pending. */
   #hostWork = 0;
@@ -578,10 +605,13 @@ export class Run {
 
   #watch(future: Future, instance: string): void {
     this.#watches.set(future, instance);
-    this.world.watchEnd(this, instance, (end) => {
-      this.#watches.delete(future);
-      this.settle(future, instanceEnding(end));
-    });
+    this.world.watchEnd(this, instance, future);
+  }
+
+  /** Settles `future`, a watch on another instance's end, with how it ended (§9). */
+  endWatched(future: Future, end: InstanceEnd): void {
+    this.#watches.delete(future);
+    this.settle(future, instanceEnding(end));
   }
 
   /** What a snapshot of this run's instance keeps besides what its objects hold (snapshot/). */
@@ -762,17 +792,22 @@ export class Run {
           return false;
         }
         state = 'resolved';
-        this.arrive(() => {
-          done();
-          this.lifetimes.hold(value);
-          this.settle(future, value);
+        this.arrive(future, (run, filled) => {
+          if (run === this) {
+            done();
+          }
+          const held = copied(value);
+          run.lifetimes.hold(held);
+          run.settle(filled, held);
         });
         return true;
       },
       fail: (panic) => {
         state = 'resolved';
-        this.arrive(() => {
-          done();
+        this.arrive(future, (run) => {
+          if (run === this) {
+            done();
+          }
           throw panic;
         });
       },
@@ -788,13 +823,57 @@ export class Run {
     return this.#hostWork > 0;
   }
 
-  /** Readies `turn`, arriving from outside the run, and wakes what waits for an arrival. */
-  arrive(turn: () => void): void {
-    this.#arrivals.push({ turn, order: Run.#arrived });
+  /**
+   * Readies `turn`, arriving from outside the run, and wakes what waits for an arrival. It acts on
+   * `object` in the run it lands in: this one, or one its instance goes on in (`succeededBy`), in
+   * which it acts on the object of the same id.
+   */
+  arrive<Target extends RunObject>(object: Target, turn: (run: Run, object: Target) => void): void {
+    this.#queue({
+      object,
+      id: object.object,
+      turn: turn as Arrival['turn'],
+      order: Run.#arrived,
+    });
     Run.#arrived += 1;
+  }
+
+  #queue(arrival: Arrival): void {
+    if (this.#successor !== undefined) {
+      this.#successor.#queue({ ...arrival, object: undefined });
+      return;
+    }
+    this.#arrivals.push(arrival);
     const wake = this.#wake;
     this.#wake = undefined;
     wake?.();
+  }
+
+  /**
+   * Hands the instance on to `next`, a run of it read back from a snapshot (§5): what arrived and
+   * hasn't run, and all that arrives from now on, lands there.
+   */
+  succeededBy(next: Run): void {
+    this.#successor = next;
+    for (const arrival of this.#arrivals.splice(0)) {
+      next.#queue({ ...arrival, object: undefined });
+    }
+  }
+
+  /** Knows the objects a snapshot read back made, by id (snapshot/restore.ts). */
+  restoredObjects(objects: ReadonlyMap<number, RunObject>): void {
+    this.#restoredObjects = objects;
+  }
+
+  /**
+   * Runs `arrival` here, on its object, or on the object of its id a snapshot read back made; on
+   * nothing when there is none, an object this run made again, whose maker gives it its own.
+   */
+  #land(arrival: Arrival): void {
+    const object = arrival.object ?? this.#restoredObjects.get(arrival.id);
+    if (object !== undefined) {
+      arrival.turn(this, object);
+    }
   }
 
   /**
@@ -821,9 +900,10 @@ export class Run {
   takeArrivals(done: () => boolean = () => false, untilParked = false): boolean {
     let took = false;
     for (let next = this.#arrivals.shift(); next !== undefined; next = this.#arrivals.shift()) {
-      const { turn } = next;
+      const arrival = next;
       took = true;
-      turn();
+      this.onArrivalTaken?.((run) => run.#land({ ...arrival, object: undefined }));
+      this.#land(arrival);
       this.drain(done, untilParked);
       if (done() || (untilParked && this.parkedSinceCommit)) {
         break;
