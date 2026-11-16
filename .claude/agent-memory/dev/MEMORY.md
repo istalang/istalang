@@ -15,3 +15,4 @@
 - [IR first](project_ir-first.md) — everything lowered to IR, all backends alike, no interpreter-only features; greenfield refactor plans
 - [Few big phases](feedback_few-big-phases.md) — rewrites: one late-tested phase over many small ones keeping deleted code green
 - [Agents merge themselves](feedback_agents-merge-themselves.md) — partitions rebase and ff the integration branch; no idle integrator
+- [Expert for tasks](feedback_expert-for-tasks.md) — cold agents doing work are `--agent expert`; `dev` only plans big tasks
