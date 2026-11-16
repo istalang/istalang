@@ -1,88 +1,268 @@
 # The decimal module (spec §3.8): exact decimal numbers of any size, for arithmetic such as money.
 #
 # A Decimal is a type the runtime implements, so no code can build one in a form of its own: every
-# value has one text, which `==` and map keys compare, so they compare numbers. Every function of
-# two numbers takes a Decimal or an int on either side, never a float, whose rounding is what a
-# Decimal exists to avoid (§3.9). The operators are declared here, so argument-dependent lookup
-# finds them wherever a Decimal is used (§3.13); so are `abs`, `floor`, `ceil` and `round`,
-# which `math` has for floats.
+# value has one form, `units` scaled down by `scale` places after the point, `scale` at least 0 and,
+# above 0, `units` no multiple of 10, so `==` and map keys compare numbers. The runtime only keeps
+# that form (`_decimal`, `_parts`); the arithmetic is written here, on ints, and `_of` brings each
+# result to it. Every function of two numbers takes a Decimal or an int on either side, never a
+# float, whose rounding is what a Decimal exists to avoid (§3.9). The operators are declared here,
+# so argument-dependent lookup finds them wherever a Decimal is used (§3.13); so are `abs`, `floor`,
+# `ceil` and `round`, which `math` has for floats.
 
 import * as json from 'json'
+import * as math from 'math'
 import Rounding from 'math'
+import indexOf, padStart, repeat, slice from 'strings'
 
 extern struct Decimal
 
-extern fn Decimal.from(value: Int) -> Decimal
+# The Decimal whose one form is `units` and `scale`, and the parts of a Decimal's.
+extern fn _decimal(units: Int, scale: Int) -> Decimal
+extern fn _parts(self: Decimal) -> (Int, Int)
 
-extern fn Int.from(value: Decimal) -> Int # truncates toward zero
-extern fn Float.from(value: Decimal) -> Float # the nearest float
+# A count of places past this panics: a Decimal having them would have a text longer than any
+# string the runtime can hold.
+const _maximumPlaces = 1_000_000_000
+
+# `/` keeps as many significant digits as IEEE 754's decimal128 does.
+const _significantDigits = 34
+
+fn Decimal.from(value: Int) -> Decimal: _decimal(value, 0)
+
+# Truncates toward zero.
+fn Int.from(value: Decimal) -> Int:
+  const units, scale = value._parts()
+  const divisor = 10 ** scale
+  if units < 0: -((-units) // divisor)
+  else: units // divisor
+
+# The nearest float, which reading its text gives.
+fn Float.from(value: Decimal) -> Float:
+  match Float.parse(value.toString()):
+    case Ok(nearest): nearest
+    case Err(error): panic(error.message)
 
 # The text of a value has no exponent, no zeros ending its fraction and no `-0`: `-12.5`. `parse`
 # reads an optional `-`, digits and an optional fraction, so a text's length bounds its value's.
-extern fn toString(self: Decimal) -> String
-extern fn Decimal.parse(text: String) -> Result<Decimal>
+fn toString(self: Decimal) -> String:
+  const units, scale = self._parts()
+  _written(units, scale)
+
+fn Decimal.parse(text: String) -> Result<Decimal>:
+  if not _isDecimalText(text):
+    return Err(Error{message: "'" + text + "' is not a decimal number.", code: "parse"})
+  const point = text.indexOf(".")
+  if point < 0: return Ok(_decimal(_int(text), 0))
+  const fraction = text.slice(point + 1)
+  Ok(_of(_int(text.slice(0, point) + fraction), fraction.length()))
 
 # Exactly `places` digits after the point: `-12.50`.
-extern fn toFixed(self: Decimal, places: Int, mode: Rounding = Rounding.HalfEven) -> String
+fn toFixed(self: Decimal, places: Int, mode: Rounding = Rounding.HalfEven) -> String:
+  const units, scale = self.round(places, mode)._parts()
+  const text = _written(units, scale)
+  if places == scale: text
+  elif scale == 0: text + "." + "0".repeat(places)
+  else: text + "0".repeat(places - scale)
 
 fn toJson(self: Decimal) -> json.Json: json.encodeText(self)
 fn Decimal.fromJson(value: json.Json, path: String) -> Result<Decimal>: json.decodeText(value, path)
 
 # `+`, `-` and `*` are exact.
-extern fn add(left: Decimal, right: Decimal) -> Decimal
-extern fn add(left: Decimal, right: Int) -> Decimal
-extern fn add(left: Int, right: Decimal) -> Decimal
-extern fn subtract(left: Decimal, right: Decimal) -> Decimal
-extern fn subtract(left: Decimal, right: Int) -> Decimal
-extern fn subtract(left: Int, right: Decimal) -> Decimal
-extern fn multiply(left: Decimal, right: Decimal) -> Decimal
-extern fn multiply(left: Decimal, right: Int) -> Decimal
-extern fn multiply(left: Int, right: Decimal) -> Decimal
-extern fn negate(value: Decimal) -> Decimal
+fn add(left: Decimal, right: Decimal) -> Decimal:
+  const (leftUnits, rightUnits), scale = _aligned(left, right)
+  _of(leftUnits + rightUnits, scale)
+
+fn add(left: Decimal, right: Int) -> Decimal: left + Decimal(right)
+fn add(left: Int, right: Decimal) -> Decimal: Decimal(left) + right
+
+fn subtract(left: Decimal, right: Decimal) -> Decimal:
+  const (leftUnits, rightUnits), scale = _aligned(left, right)
+  _of(leftUnits - rightUnits, scale)
+
+fn subtract(left: Decimal, right: Int) -> Decimal: left - Decimal(right)
+fn subtract(left: Int, right: Decimal) -> Decimal: Decimal(left) - right
+
+fn multiply(left: Decimal, right: Decimal) -> Decimal:
+  const leftUnits, leftScale = left._parts()
+  const rightUnits, rightScale = right._parts()
+  _of(leftUnits * rightUnits, leftScale + rightScale)
+
+fn multiply(left: Decimal, right: Int) -> Decimal: left * Decimal(right)
+fn multiply(left: Int, right: Decimal) -> Decimal: Decimal(left) * right
+
+fn negate(value: Decimal) -> Decimal:
+  const units, scale = value._parts()
+  _decimal(-units, scale)
 
 # `/` rounds half to even to 34 significant digits, as IEEE 754's decimal128 does; `divide` with
 # `places` rounds the exact quotient to that many digits after the point. There is no infinite
 # Decimal, so every division by zero panics.
-extern fn divide(left: Decimal, right: Decimal) -> Decimal
-extern fn divide(left: Decimal, right: Int) -> Decimal
-extern fn divide(left: Int, right: Decimal) -> Decimal
-extern fn divide(
+fn divide(left: Decimal, right: Decimal) -> Decimal:
+  const dividend, divisor = _ratio(left, right)
+  if dividend == 0: return Decimal(0)
+  # The quotient lies between 10 ** (magnitude - 1) and 10 ** (magnitude + 1), so moved `shift`
+  # places it has 34 or 35 digits before the point, and one place less makes the 35 34.
+  const magnitude = _digitCount(dividend) - _digitCount(divisor)
+  let shift = _significantDigits - magnitude
+  const whole = _scaledQuotient(math.abs(dividend), math.abs(divisor), shift, Rounding.TowardZero)
+  if whole >= 10 ** _significantDigits: shift -= 1
+  _of(_scaledQuotient(dividend, divisor, shift, Rounding.HalfEven), shift)
+
+fn divide(left: Decimal, right: Int) -> Decimal: left / Decimal(right)
+fn divide(left: Int, right: Decimal) -> Decimal: Decimal(left) / right
+
+fn divide(
   left: Decimal
   right: Decimal
   places: Int
   mode: Rounding = Rounding.HalfEven
-) -> Decimal
-extern fn divide(
-  left: Decimal
-  right: Int
-  places: Int
-  mode: Rounding = Rounding.HalfEven
-) -> Decimal
-extern fn divide(
-  left: Int
-  right: Decimal
-  places: Int
-  mode: Rounding = Rounding.HalfEven
-) -> Decimal
+) -> Decimal:
+  const dividend, divisor = _ratio(left, right)
+  _checkedPlaces(places)
+  _of(_scaledQuotient(dividend, divisor, places, mode), places)
+
+fn divide(left: Decimal, right: Int, places: Int, mode: Rounding = Rounding.HalfEven) -> Decimal:
+  divide(left, Decimal(right), places, mode)
+
+fn divide(left: Int, right: Decimal, places: Int, mode: Rounding = Rounding.HalfEven) -> Decimal:
+  divide(Decimal(left), right, places, mode)
 
 # As on ints, `a == (a // b) * b + a % b`, and `%` takes the divisor's sign (§3.9).
-extern fn floorDivide(left: Decimal, right: Decimal) -> Decimal
-extern fn floorDivide(left: Decimal, right: Int) -> Decimal
-extern fn floorDivide(left: Int, right: Decimal) -> Decimal
-extern fn remainder(left: Decimal, right: Decimal) -> Decimal
-extern fn remainder(left: Decimal, right: Int) -> Decimal
-extern fn remainder(left: Int, right: Decimal) -> Decimal
+fn floorDivide(left: Decimal, right: Decimal) -> Decimal:
+  const dividend, divisor = _ratio(left, right)
+  Decimal(dividend // divisor)
 
-extern fn compare(left: Decimal, right: Decimal) -> Int
-extern fn compare(left: Decimal, right: Int) -> Int
-extern fn compare(left: Int, right: Decimal) -> Int
+fn floorDivide(left: Decimal, right: Int) -> Decimal: left // Decimal(right)
+fn floorDivide(left: Int, right: Decimal) -> Decimal: Decimal(left) // right
 
-extern fn abs(self: Decimal) -> Decimal
+fn remainder(left: Decimal, right: Decimal) -> Decimal: left - (left // right) * right
+fn remainder(left: Decimal, right: Int) -> Decimal: left % Decimal(right)
+fn remainder(left: Int, right: Decimal) -> Decimal: Decimal(left) % right
 
-extern fn round(self: Decimal, places: Int = 0, mode: Rounding = Rounding.HalfEven) -> Decimal
+fn compare(left: Decimal, right: Decimal) -> Int:
+  const (leftUnits, rightUnits), _ = _aligned(left, right)
+  compare(leftUnits, rightUnits)
+
+fn compare(left: Decimal, right: Int) -> Int: compare(left, Decimal(right))
+fn compare(left: Int, right: Decimal) -> Int: compare(Decimal(left), right)
+
+fn abs(self: Decimal) -> Decimal:
+  const units, scale = self._parts()
+  _decimal(math.abs(units), scale)
+
+fn round(self: Decimal, places: Int = 0, mode: Rounding = Rounding.HalfEven) -> Decimal:
+  _checkedPlaces(places)
+  const units, scale = self._parts()
+  if scale <= places: self
+  else: _of(_rounded(units, 10 ** (scale - places), mode), places)
 
 fn floor(self: Decimal) -> Decimal: self.round(0, Rounding.Floor)
 fn ceil(self: Decimal) -> Decimal: self.round(0, Rounding.Ceiling)
 
 # Exact for an exponent of at least 0; a negative one divides as `/` does.
-extern fn power(base: Decimal, exponent: Int) -> Decimal
+fn power(base: Decimal, exponent: Int) -> Decimal:
+  const units, scale = base._parts()
+  const places = scale * math.abs(exponent)
+  if places > _maximumPlaces:
+    panic(
+      base.toString() + " to the power " + exponent + " has more digits than a Decimal can hold."
+    )
+  # A positive power of units ending in no zero ends in none either, so it is already one form.
+  const raised = _decimal(units ** math.abs(exponent), places)
+  if exponent < 0: Decimal(1) / raised
+  else: raised
+
+# The Decimal `units` scaled down by `scale` places makes, `scale` being any int: its one form, with
+# no zeros ending its units after the point. Zeros are taken off a run at a time, the run doubling
+# while the units end in it, so units ending in many take as few divisions as their count's digits.
+fn _of(units: Int, scale: Int) -> Decimal:
+  if units == 0: return Decimal(0)
+  if scale < 0: return _decimal(units * 10 ** -scale, 0)
+  let rest = units
+  let places = scale
+  let run = 1
+  while places > 0 and rest % 10 == 0:
+    const taken = math.min(run, places)
+    const divisor = 10 ** taken
+    if rest % divisor == 0:
+      rest = rest // divisor
+      places -= taken
+      run *= 2
+    else:
+      run = 1
+  _decimal(rest, places)
+
+# Both numbers' units at the larger of their scales, and that scale.
+fn _aligned(left: Decimal, right: Decimal) -> ((Int, Int), Int):
+  const leftUnits, leftScale = left._parts()
+  const rightUnits, rightScale = right._parts()
+  const scale = math.max(leftScale, rightScale)
+  ((leftUnits * 10 ** (scale - leftScale), rightUnits * 10 ** (scale - rightScale)), scale)
+
+# `left / right` as a dividend and a divisor of ints; a Decimal has no infinity, so a divisor of
+# zero panics.
+fn _ratio(left: Decimal, right: Decimal) -> (Int, Int):
+  const leftUnits, leftScale = left._parts()
+  const rightUnits, rightScale = right._parts()
+  if rightUnits == 0: panic("Division by zero.")
+  (leftUnits * 10 ** rightScale, rightUnits * 10 ** leftScale)
+
+# `dividend / divisor` moved `shift` places to the left of the point, rounded to an int in `mode`.
+fn _scaledQuotient(dividend: Int, divisor: Int, shift: Int, mode: Rounding) -> Int:
+  if shift >= 0: _rounded(dividend * 10 ** shift, divisor, mode)
+  else: _rounded(dividend, divisor * 10 ** -shift, mode)
+
+# `dividend / divisor` rounded to an int in `mode`: a tie compares twice the remainder with the
+# divisor, so it is found exactly.
+fn _rounded(dividend: Int, divisor: Int, mode: Rounding) -> Int:
+  if divisor < 0: return _rounded(-dividend, -divisor, mode)
+  const quotient = dividend // divisor
+  const remainder = dividend % divisor
+  if remainder == 0: return quotient
+  const half = compare(2 * remainder, divisor)
+  const below = quotient
+  const above = quotient + 1
+  match mode:
+    case Rounding.Floor: below
+    case Rounding.Ceiling: above
+    case Rounding.TowardZero: if dividend < 0: above else: below
+    case Rounding.AwayFromZero: if dividend < 0: below else: above
+    case Rounding.HalfEven: if half < 0 or (half == 0 and below % 2 == 0): below else: above
+    case Rounding.HalfAwayFromZero: if half < 0 or (half == 0 and dividend < 0): below else: above
+
+# A count of places after the point; a negative one is a bug in the program.
+fn _checkedPlaces(places: Int):
+  if places < 0 or places > _maximumPlaces:
+    panic("A Decimal can't have " + places + " places after the point.")
+
+# `units` scaled down by `scale` places, written with a `-` before a negative one.
+fn _written(units: Int, scale: Int) -> String:
+  const sign = if units < 0: "-" else: ""
+  const digits = String(math.abs(units))
+  if scale == 0: return sign + digits
+  const padded = digits.padStart(scale + 1, "0")
+  const point = padded.length() - scale
+  sign + padded.slice(0, point) + "." + padded.slice(point)
+
+# How many digits an int's magnitude has.
+fn _digitCount(value: Int) -> Int: String(math.abs(value)).length()
+
+# Whether `text` is an optional `-`, digits, then maybe a `.` and digits.
+fn _isDecimalText(text: String) -> Bool:
+  let position = 0
+  let digits = 0
+  let afterPoint = false
+  for character in text:
+    if character >= "0" and character <= "9": digits += 1
+    elif character == "." and not afterPoint and digits > 0:
+      afterPoint = true
+      digits = 0
+    elif not (character == "-" and position == 0): return false
+    position += 1
+  digits > 0
+
+# The int `text` writes, which `_isDecimalText` read as digits.
+fn _int(text: String) -> Int:
+  match Int.parse(text):
+    case Ok(value): value
+    case Err(error): panic(error.message)

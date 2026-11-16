@@ -24,7 +24,7 @@ tags: [reuse, stdlib, natives, ranges, positions, time, decimal]
 - read or keep the JSON the instance wrote a value as, by type, in a native's context → `WithEncodings`, `NativeEncodings` (`src/runtime/natives.ts`)
 - generate the four `Int`/`Float` overloads of a binary native or throw division by zero → `numeric`, `asFloat`, `divisionByZero` (`src/stdlib/numeric.ts`)
 - map `math.Rounding` variants to float rounding functions → `roundingType`, `floatRoundings` (`src/stdlib/math/rounding.ts`)
-- map `math.Rounding` variants to decimal.js rounding modes → `decimalRoundings` (`src/stdlib/decimal/arithmetic.ts`)
+- hold Istalang numbers to decimal.js in a test, its `math.Rounding` modes included → `decimalJsRoundings` (`src/stdlib/decimal/decimal-js.test-kit.ts`)
 - validate or compute sequence indices, `at(i)`, or `slice(start, end)` → `checkedIndex`, `atPosition`, `sliceBounds`, `sliced` (`src/stdlib/positions.ts`)
 - select or replace sequence items by a prelude `Range` → `selectionOf`, `selected`, `splicesOf` (`src/stdlib/positions.ts`)
 - read a prelude `Range`, require both ends, count steps, or test membership → `rangeOf`, `bounded`, `countOf`, `reaches`, `textOf` (`src/stdlib/ranges.ts`)
@@ -42,7 +42,7 @@ tags: [reuse, stdlib, natives, ranges, positions, time, decimal]
 - Every std module is listed once in `src/stdlib/std-sources.ts`; `stdlibLoader` reads it without natives (a cruiser rule), and `stdModules`, then `stdNatives`, attach the natives by name.
 - A std function that can be written over existing functions and the language's operators is `.ista` (AGENTS.md, Reduce): methods taking a function value (`map`, `filter`, `sort`, `futures.retry`, `docs/arch/architecture.md`), defaults, and helpers over other externs. A native is for what `.ista` can't reach (host and JavaScript APIs: Unicode, regex, crypto, decimal arithmetic; the runtime's seams) and for hot primitives kept native for speed (mixed-number arithmetic, `indexOf`, `at`, `slice`, `trim`, map reads: the audit's finding 7 is cancelled for this reason).
 - A std native's key restates its `.ista` extern's signature (`docs/audit/dry-review-2026-11-13.md`, finding 10): change both in one commit.
-- Extern types needing canonical equality (`decimal.Decimal`, `time.Zone`) keep their canonical string as the extern payload (`docs/arch/architecture.md`).
+- Extern types needing canonical equality keep their one form as the extern payload: `time.Zone` its canonical string, `decimal.Decimal` its units and scale, which only its module's code builds (`docs/arch/architecture.md`).
 - External input failures (`parse`, `crypto.decode`, `json.parse`) return `Result`; broken preconditions throw `Panic`; broken invariants call `unreachable`.
 - A native keeps no language value past its call outside the instance: it returns it, changes a value it takes by `&` through `NativeContext.changes`, or stores it through a capability (`NativeSlots`, `NativeFutures`, `NativeWaits`, `NativeWeakSide`, `NativeTesting`, `NativeEncodings`), never in a closure or module state. Lifetimes read holders from registers and heap objects alone (`src/runtime/lifetimes/`).
 

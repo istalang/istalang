@@ -7,7 +7,7 @@
 import { Decimal } from 'decimal.js';
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { decimalRoundings } from '../decimal/arithmetic.ts';
+import { decimalJsRoundings } from '../decimal/decimal-js.test-kit.ts';
 import { floatRoundings, type Rounding } from './rounding.ts';
 
 const modes = Object.keys(floatRoundings) as Rounding[];
@@ -19,7 +19,7 @@ function signless(x: number): number {
 
 /** `x` rounded in `mode` by decimal.js, from its shortest decimal text. */
 function roundedText(x: number, mode: Rounding): number {
-  return new Decimal(String(x)).toDecimalPlaces(0, decimalRoundings[mode]).toNumber();
+  return new Decimal(String(x)).toDecimalPlaces(0, decimalJsRoundings[mode]).toNumber();
 }
 
 describe('floatRoundings', () => {

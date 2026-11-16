@@ -1,128 +1,35 @@
 /**
- * The `decimal` module's natives (decimal.ista), over the arithmetic of arithmetic.ts.
- *
- * A `Decimal` is a value of an extern type whose payload is its canonical text, the one form
- * `toString` writes and a snapshot keeps: every native reads its operands from that text and writes
- * its result back as text, so no other form can reach `==`. An `Int` operand reads as its digits.
+ * The `decimal` module's natives (decimal.ista): a Decimal's one form, which its module's code
+ * computes and the runtime only keeps. The payload is that form, its units and scale, so `==` and
+ * a snapshot compare and keep exactly it; a snapshot round trip may give a safe int back as a
+ * number, which reads as the same int.
  */
 
-import type { KeyType, NativeParameter } from '../../definition/extern-key.ts';
 import type { Value } from '../../definition/values/values.ts';
-import { conversionFunction } from '../../foundation/language/well-known/implicit-calls.ts';
-import type { Native, NativeContext, Natives } from '../../runtime/natives.ts';
-import { roundingType } from '../math/rounding.ts';
+import { unreachable } from '../../foundation/structures/unreachable.ts';
+import type { NativeContext, Natives } from '../../runtime/natives.ts';
 import type { NativeKeys } from '../std-module.ts';
-import { int, text, textPayloadOf, variantEntry } from '../values/arguments.ts';
-import { okExtern, parseResult, resultExtern } from '../values/results.ts';
-import {
-  canonicalText,
-  type Decimal,
-  type DecimalRounding,
-  decimalOf,
-  decimalRoundings,
-  divided,
-  dividedTo,
-  fixedText,
-  floorDivided,
-  nearestFloat,
-  power,
-  readDecimal,
-  remainderOf,
-  roundedTo,
-  truncatedInt,
-} from './arithmetic.ts';
+import { externPayloadOf, int } from '../values/arguments.ts';
+import { resultExtern } from '../values/results.ts';
 
-/** The name the module declares its type by (decimal.ista). */
-const typeName = 'Decimal';
+export const decimalNatives = (keys: NativeKeys): Natives<NativeContext> => ({
+  [keys.of('_decimal', 'Int', 'Int')]: ([units, scale], context) =>
+    resultExtern(context, [int(units), int(scale)]),
+  [keys.of('_parts', keys.type('Decimal'))]: ([value]) => ({
+    kind: 'tuple',
+    elements: partsOf(value),
+  }),
+});
 
-/** An operation on two numbers, given the arguments after them (`divide`'s places and mode). */
-type Operation = (
-  left: Decimal,
-  right: Decimal,
-  context: NativeContext,
-  rest: readonly (Value | undefined)[],
-) => Value;
-
-/** The natives of `decimal`, whose `Rounding` is the `math` module's, keyed by `mathKeys`. */
-export const decimalNatives = (keys: NativeKeys, mathKeys: NativeKeys): Natives<NativeContext> => {
-  const decimal = keys.type(typeName);
-  const rounding = roundingType(mathKeys);
-  const mixed = mixedOverloads(keys, decimal);
-  return {
-    [keys.ofStatic(typeName, conversionFunction, 'Int')]: ([value], context) =>
-      decimalResult(context, decimalOf(int(value))),
-    [keys.ofStatic('Int', conversionFunction, decimal)]: ([value]) => truncatedInt(operand(value)),
-    [keys.ofStatic('Float', conversionFunction, decimal)]: ([value]) =>
-      nearestFloat(operand(value)),
-    [keys.of('toString', decimal)]: ([value]) => textPayloadOf(value),
-    [keys.ofStatic(typeName, 'parse', 'String')]: ([source], context) => {
-      const read = readDecimal(text(source));
-      const value = read && okExtern(context, canonicalText(read));
-      return parseResult(context, text(source), 'a decimal number', value);
-    },
-    [keys.of('toFixed', decimal, 'Int', rounding)]: ([value, places, mode], context) =>
-      fixedText(operand(value), int(places), modeOf(context, mode)),
-    ...mixed('add', (left, right, context) => decimalResult(context, left.plus(right))),
-    ...mixed('subtract', (left, right, context) => decimalResult(context, left.minus(right))),
-    ...mixed('multiply', (left, right, context) => decimalResult(context, left.times(right))),
-    ...mixed('divide', (left, right, context) => decimalResult(context, divided(left, right))),
-    ...mixed(
-      'divide',
-      (left, right, context, [places, mode]) =>
-        decimalResult(context, dividedTo(left, right, int(places), modeOf(context, mode))),
-      'Int',
-      rounding,
-    ),
-    ...mixed('floorDivide', (left, right, context) =>
-      decimalResult(context, floorDivided(left, right)),
-    ),
-    ...mixed('remainder', (left, right, context) =>
-      decimalResult(context, remainderOf(left, right)),
-    ),
-    ...mixed('compare', (left, right) => BigInt(left.cmp(right))),
-    [keys.of('negate', decimal)]: ([value], context) =>
-      decimalResult(context, operand(value).neg()),
-    [keys.of('abs', decimal)]: ([value], context) => decimalResult(context, operand(value).abs()),
-    [keys.of('round', decimal, 'Int', rounding)]: ([value, places, mode], context) =>
-      decimalResult(context, roundedTo(operand(value), int(places), modeOf(context, mode))),
-    [keys.of('power', decimal, 'Int')]: ([value, exponent], context) =>
-      decimalResult(context, power(operand(value), int(exponent))),
-  };
-};
-
-/**
- * What builds the overloads of an operation taking a Decimal or an int on either side, then
- * `rest`, each reading both operands as decimals.
- */
-function mixedOverloads(keys: NativeKeys, decimal: KeyType) {
-  const pairs = [
-    [decimal, decimal],
-    [decimal, 'Int'],
-    ['Int', decimal],
-  ] as const;
-  return (
-    name: string,
-    operation: Operation,
-    ...rest: readonly NativeParameter[]
-  ): Natives<NativeContext> => {
-    const native: Native<NativeContext> = ([left, right, ...others], context) =>
-      operation(operand(left), operand(right), context, others);
-    return Object.fromEntries(
-      pairs.map(([left, right]) => [keys.of(name, left, right, ...rest), native]),
-    );
-  };
-}
-
-/** A Decimal or an int argument, as a number. */
-function operand(value: Value | undefined): Decimal {
-  return decimalOf(typeof value === 'bigint' ? value : textPayloadOf(value));
-}
-
-/** A Decimal of the extern's declared result type. */
-function decimalResult(context: NativeContext, value: Decimal): Value {
-  return resultExtern(context, canonicalText(value));
-}
-
-function modeOf(context: NativeContext, mode: Value | undefined): DecimalRounding {
-  return variantEntry(context, mode, decimalRoundings);
+/** The units and the scale a Decimal's payload holds. */
+function partsOf(value: Value | undefined): bigint[] {
+  const payload = externPayloadOf(value);
+  if (!Array.isArray(payload)) {
+    unreachable('A Decimal holds its units and scale.');
+  }
+  return payload.map((part: unknown) =>
+    typeof part === 'bigint' || typeof part === 'number'
+      ? BigInt(part)
+      : unreachable('A Decimal holds ints.'),
+  );
 }
