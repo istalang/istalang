@@ -61,17 +61,24 @@ export function variableRegister(
   value: Extract<FlowValue, { readonly kind: 'variable' }>,
   type: Type,
 ): Register {
-  const { checker, tables, code, variables } = context;
-  const key = checker.typeKeys.typeKey(type);
-  const { name } = value.entity;
-  const known = variables.registerOf(name, key);
+  const known = knownVariableRegister(context, value, type);
   if (known !== undefined) {
     return known;
   }
+  const { checker, tables, code, variables } = context;
   const stored = value.inCell ? checker.cellOf(type) : type;
   const register = code.allocate(tables.types.reference(stored));
-  variables.declare(name, key, register);
+  variables.declare(value.entity.name, checker.typeKeys.typeKey(type), register);
   return register;
+}
+
+/** The register the variable `value` of `type` lives in, if it was used already. */
+export function knownVariableRegister(
+  context: FunctionContext,
+  value: Extract<FlowValue, { readonly kind: 'variable' }>,
+  type: Type,
+): Register | undefined {
+  return context.variables.registerOf(value.entity.name, context.checker.typeKeys.typeKey(type));
 }
 
 /** The variable `operation` writes whole: its `into`, or the root of a place it writes with no path. */

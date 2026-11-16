@@ -188,7 +188,7 @@ function selected(writer: FlowWriter, { node, holds }: TestOf<'select'>, to: rea
   const { open, futures } = writer.takeWait();
   const position =
     node.elseClause === undefined
-      ? parked(context, writer.waypointAt(node), span)
+      ? parked(context, open, { waypoint: writer.waypointAt(node), span })
       : decidedAt(context, open, span);
   const landings = cases.map(() => code.newLabel());
   const otherwise = node.elseClause === undefined ? undefined : code.newLabel();

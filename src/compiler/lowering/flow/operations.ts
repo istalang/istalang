@@ -83,7 +83,7 @@ export const operationWriters: {
     const { code } = writer.context;
     const { span } = site;
     const { open, futures } = writer.takeWait();
-    code.letGo([parked(writer.context, writer.waypointAt(site), span)], span);
+    code.letGo([parked(writer.context, open, { waypoint: writer.waypointAt(site), span })], span);
     futures.forEach((future, position) => {
       writer.give(future, code.copy(caseValue(writer.context, open, position, span), span));
     });

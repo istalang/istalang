@@ -98,9 +98,25 @@ export function caseResolver(
   );
 }
 
-/** Parks the running call until `open` is decided; the position it was decided for. */
-export function parked(context: CodeContext, waypoint: string | undefined, span: AnchoredSpan) {
-  return context.code.park(waypoint, span);
+/**
+ * Parks the running call until `open` is decided, every case known as it stops (`_parking`); the
+ * position it was decided for.
+ */
+export function parked(
+  context: CodeContext,
+  open: OpenWait,
+  { waypoint, span }: { readonly waypoint: string | undefined; readonly span: AnchoredSpan },
+): Register {
+  const { code, tables } = context;
+  const instance = preludeInstance(context, waitFunctions.parking, [literalType(open.mode)]);
+  const unit = tables.types.reference({ kind: 'primitive', name: 'Unit' });
+  const parking = emitCall(
+    context,
+    { span, callee: tables.functionIndex(instance), arguments: [open.wait] },
+    unit,
+  );
+  code.letGo([parking], span);
+  return code.park(waypoint, span);
 }
 
 /**
@@ -163,7 +179,7 @@ export function awaitFuture(
   const unit = tables.types.reference({ kind: 'primitive', name: 'Unit' });
   const result = emitCall(context, { span, callee, arguments: [future, done] }, unit);
   code.letGo([done, result], span);
-  code.letGo([parked(context, undefined, span)], span);
+  code.letGo([parked(context, open, { waypoint: undefined, span })], span);
   const value = code.copy(caseValue(context, open, 0, span), span);
   code.letGo(waitRegisters(open), span);
   return value;

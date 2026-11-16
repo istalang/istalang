@@ -113,6 +113,8 @@ export class Execution extends RunObject {
   parked = false;
   /** What its `disposing()` gives (§7), made the first time it is asked for. */
   disposing: Future | undefined;
+  /** What it was called with, its closure among them, which it holds until it ends. */
+  given: readonly Value[] = [];
 
   constructor(id: number, futureId: number, instance: Instance) {
     super(id);

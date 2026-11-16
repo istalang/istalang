@@ -6,7 +6,8 @@
  *   object and in a WeakMap for a composite, and what loses its last holder is disposed. Values
  *   losing it together go in rounds, the newest object first; what a disposed value held loses its
  *   holder only once that disposal is done, in the next round. A let-go during a round joins it
- *   rather than starting one of its own.
+ *   rather than starting one of its own, but for one `apart` from it: a disposed call's cleanup,
+ *   whose let-gos are disposed before its call is gone (§7).
  * - **Heap** values reach none: nothing is counted, but a value given a second holder is marked
  *   shared, for good. A write changes a value in place only while it is unique: counted once, or
  *   never shared. A shared value is copied, its parts then shared or held by the copy too.
@@ -85,6 +86,16 @@ export class Lifetimes {
     }
   }
 
+  /** Another holder of `value`, of `type`: counted, or marked shared where it is a heap value. */
+  keep(value: Value | undefined, type: TypeReference): void {
+    const lifetime = lifetimeOf(this.#types, type);
+    if (lifetime === 'counted') {
+      this.hold(value);
+    } else if (lifetime === 'heap') {
+      this.share(value);
+    }
+  }
+
   /** Marks `value`, a heap value, as having another holder. */
   readonly share = (value: Value | undefined): void => {
     if (isNode(value)) {
@@ -111,6 +122,19 @@ export class Lifetimes {
       }
     }
   };
+
+  /** Runs `cleanup`, whose let-gos are collected together, in rounds of their own, as it ends. */
+  apart(cleanup: () => void): void {
+    const outer = this.#zeros;
+    const zeros: RunObject[] = [];
+    this.#zeros = zeros;
+    try {
+      cleanup();
+      this.#collect(zeros);
+    } finally {
+      this.#zeros = outer;
+    }
+  }
 
   /** Whether `node` has one holder: changing it in place changes no other's value. */
   isUnique(node: Value): boolean {

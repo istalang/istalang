@@ -64,6 +64,7 @@ export const waitFunctions = {
   wait: '_wait',
   caseResolver: '_caseResolver',
   decided: '_decided',
+  parking: '_parking',
 } as const;
 
 /** The function `Disposable` requires (§3.10, §7). */

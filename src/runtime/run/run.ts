@@ -69,6 +69,8 @@ export class Run {
   readonly #traces: Traces;
   readonly #natives: (index: number) => Entry;
   readonly #ready: Ready[] = [];
+  /** The execution whose call is being disposed now, its `disposing()` future settling. */
+  #disposingNow: Execution | undefined;
   #objects = 0;
   /** The transients shared now, by `function:register`, innermost last (§3.4). */
   readonly #transients = new Map<string, Cell[]>();
@@ -323,10 +325,21 @@ export class Run {
     return run(...passed, ...leftOut, closure);
   }
 
-  /** Starts async entry `index` with `passed`: runs it until it parks or returns; its future. */
+  /**
+   * Starts async entry `index` with `passed`: runs it until it parks or returns; its future. Its
+   * frame outlives the caller's step, so it holds what it was given until it ends.
+   */
   readonly start = (index: number, passed: readonly Value[], closure: Value | undefined): Future => {
     const entry = this.definition.functions[index] as CodeFunction;
     const execution = new Execution(this.newId(), this.newId(), this.instance);
+    passed.forEach((value, at) => {
+      const type = entry.registers[at]?.type;
+      if (type !== undefined) {
+        this.lifetimes.keep(value, type);
+      }
+    });
+    this.lifetimes.hold(closure);
+    execution.given = [...passed, closure ?? null];
     const registers: (Value | undefined)[] = Array.from({ length: entry.registers.length });
     passed.forEach((value, at) => {
       registers[at] = value;
@@ -374,9 +387,24 @@ export class Run {
   /** The execution whose code runs now, as simple code nested in it reads its call (§7). */
   readonly currentExecution = (): Execution | undefined => this.#running;
 
-  /** Readies `execution` to resume with `decision`, the position its wait was decided for. */
+  /**
+   * Readies `execution` to resume with `decision`, the position its wait was decided for: decided
+   * anew as its call is disposed (`disposingWins`), it resumes where it was readied first.
+   */
   unpark(execution: Execution, decision: Value): void {
-    this.#ready.push({ kind: 'resume', execution, decision });
+    const at = this.#ready.findIndex(
+      (ready) => ready.kind === 'resume' && ready.execution === execution,
+    );
+    if (at < 0) {
+      this.#ready.push({ kind: 'resume', execution, decision });
+    } else {
+      this.#ready[at] = { kind: 'resume', execution, decision };
+    }
+  }
+
+  /** Whether `execution`'s call is being disposed, its `disposing()` future settling (§7). */
+  disposingWins(execution: Execution): boolean {
+    return this.#disposingNow === execution;
   }
 
   /** The resume `unpark` readied for `execution`, taken back out of the ready queue. */
@@ -605,7 +633,14 @@ export class Run {
         return;
       }
       execution.ended = true;
-      if (result !== STOPPED && result !== undefined) {
+      this.lifetimes.letGo(...execution.given);
+      if (result === STOPPED || result === undefined) {
+        return;
+      }
+      // A call stopping as it is disposed returns into no future: what it returns is let go of.
+      if (execution.frame.stopping) {
+        this.lifetimes.letGo(result as Value);
+      } else {
         this.settle(execution.future, result as Value);
       }
     } finally {
@@ -644,14 +679,21 @@ export class Run {
       return;
     }
     execution.frame.stopping = true;
-    if (execution.disposing !== undefined) {
-      this.settle(execution.disposing, null);
-    }
-    if (!execution.parked) {
-      return;
-    }
-    const ready = this.#unready(execution);
-    this.#resume(execution, ready?.kind === 'resume' ? ready.decision : STOP);
+    this.lifetimes.apart(() => {
+      if (execution.disposing !== undefined) {
+        const outer = this.#disposingNow;
+        this.#disposingNow = execution;
+        try {
+          this.settle(execution.disposing, null);
+        } finally {
+          this.#disposingNow = outer;
+        }
+      }
+      if (execution.parked) {
+        const ready = this.#unready(execution);
+        this.#resume(execution, ready?.kind === 'resume' ? ready.decision : STOP);
+      }
+    });
   }
 
   /** What disposing `object`, which lost its last holder, does; what it held. */

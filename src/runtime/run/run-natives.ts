@@ -90,6 +90,8 @@ export function runNatives(run: Run): Natives {
       run.stayRunning(call as unknown as Execution);
       return null;
     },
+    'prelude._disposingWins(prelude._Call)': ([call]) =>
+      run.disposingWins(call as unknown as Execution),
     'prelude._idOf(prelude._Call)': ([call]) => BigInt((call as unknown as Execution).object),
     'prelude._made()': () => {
       made += 1;

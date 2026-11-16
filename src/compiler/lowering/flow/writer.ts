@@ -43,7 +43,12 @@ import type { TypedValue } from '../values/holdings.ts';
 import { exitWriters } from './exits.ts';
 import { type FlowLayout, layoutOf } from './layout.ts';
 import { operationWriters } from './operations.ts';
-import { concreteType, declaringWrites, variableRegister } from './variables.ts';
+import {
+  concreteType,
+  declaringWrites,
+  knownVariableRegister,
+  variableRegister,
+} from './variables.ts';
 
 /** How a flow's root gives its value: by returning from the entry, or into a register. */
 export type FlowEnd =
@@ -152,7 +157,7 @@ export class FlowWriter {
       const { code } = this.context;
       const { registers } = code.allocating(() => writerOf(operation)(this, operation));
       const own = 'into' in operation ? operation.into : undefined;
-      const value = own === undefined ? undefined : this.#registers.get(own);
+      const value = own === undefined ? undefined : this.#knownRegister(own);
       const extras = registers.filter(
         (register) => register !== value && !code.isBorrowed(register) && !this.#isValues(register),
       );
@@ -165,8 +170,11 @@ export class FlowWriter {
     exitWriters[exit.kind](this, exit as never);
   }
 
-  /** Whether some value lives in `register`, what a future gave included. */
+  /** Whether some value lives in `register`, a variable's or what a future gave included. */
   #isValues(register: Register): boolean {
+    if (this.context.variables.isVariable(register)) {
+      return true;
+    }
     for (const each of [...this.#registers.values(), ...this.#given.values()]) {
       if (each === register) {
         return true;
@@ -199,7 +207,10 @@ export class FlowWriter {
     return { register: this.registerOf(value), type: this.typeOf(value) };
   }
 
-  /** `value`'s register: its variable's, or the one its operation gave. */
+  /**
+   * `value`'s register: a parameter's, its variable's at the type the pass being written reads it
+   * as, or the one its operation gave.
+   */
   registerOf(value: ValueId): Register {
     const known = this.#registers.get(value);
     if (known !== undefined) {
@@ -210,8 +221,19 @@ export class FlowWriter {
       return unreachable(`Value ${value} is read before anything gave it.`);
     }
     const register = variableRegister(this.context, flowValue, this.typeOf(value));
-    this.bind(value, register);
+    this.context.code.pin(register);
     return register;
+  }
+
+  /** `value`'s register where it has one already, as `registerOf` finds it. */
+  #knownRegister(value: ValueId): Register | undefined {
+    const flowValue = this.valueOf(value);
+    return (
+      this.#registers.get(value) ??
+      (flowValue.kind === 'variable'
+        ? knownVariableRegister(this.context, flowValue, this.typeOf(value))
+        : undefined)
+    );
   }
 
   /** Makes `register` `value`'s; a variable's, or a value read twice, is copied where taken. */
@@ -304,7 +326,7 @@ export class FlowWriter {
       if (this.#aliases.has(value)) {
         return [];
       }
-      const known = this.#registers.get(value);
+      const known = this.#knownRegister(value);
       return known === undefined ? [] : [known, ...(this.#extras.get(value) ?? [])];
     });
     return [...new Set(registers)];
