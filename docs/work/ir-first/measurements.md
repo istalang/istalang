@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-11-16
-last_updated: 2026-11-16
+last_updated: 2026-11-17
 tags: [measurements, perf, recursion, ir-first]
 ---
 
@@ -76,3 +76,28 @@ view per change, 8,047 bytes of JSON. Earlier rounds recorded R1 slower on p75 a
 0.7× its hand-written time on the mean, R0's measure (R0: 5.5×), within the 2× gate. On mins it is
 2.5×: the hand-written loop's mean sits far above its min in every run, R0's included, and each
 compiled iteration of the bench is a whole start.
+
+## Definition size and deploy (B116)
+
+R1 instantiated about 25 await functions per awaited type (the futures and resolvers are generic
+Istalang), and a deploy validated and re-encoded each Definition three times. Fixed by a resolver's
+state moving into a `_Resolution<K>` that takes no value, so per awaited type only what passes a
+value on is compiled (about 10 functions), and by validation running once, as a text is read, a
+deploy keying the text it was given. Measured from the sources under Node's type stripping, Node
+24.9.0, the median of 6 rounds after 2 warm-ups at a load average of 20 to 40; `deploy` is
+`createRuntime(...).deploy(text)`, `write` is `definitionFormat.write`, compile includes checking.
+
+| Program | Build | Functions | Definition | Compile | Write | Deploy |
+|---|---|---|---|---|---|---|
+| minimal `runtime.run(id) _main()` | before (`ac95388a`) | 161 | 491 KB | 79 ms | 29 ms | 52 ms |
+| | after | 119 | 296 KB | 73 ms | 15 ms | 18 ms |
+| delegate test's `purchase` | before | 616 | 1,925 KB | 200 ms | 101 ms | 188 ms |
+| | after | 444 | 1,171 KB | 139 ms | 49 ms | 64 ms |
+
+R0 compiled the minimal program to 25 functions, its futures being native. `npx vitest run --project
+quick`: 140 s before, 125 s after, both at a load average near 38, each with checker tests timing out
+under that load. What remains per awaited type: `onAwait` and its callback, `_caseResolver` and its
+`decide`, `resolve`, `_decides`, `dispose`, and the three future natives' entries. Sharing those
+across types needs instances keyed by their parameters' lifetime classes (shape stenciling), left
+out as more machinery than it saves.
+

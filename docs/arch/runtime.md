@@ -43,8 +43,10 @@ settle once and call their callbacks in rank order, park and unpark of an execut
   (`_standing`: pending, lost, or withdrawn). What settling a set of futures settles in turn (a
   future following another, as a mock's answer does) settles together after it
   (`Run.settleTogether`).
-- **Resolvers** are shared structs (`decide`, `rank`, `state`, `cancels`, ...). `resolve` panics on
-  a second resolve; one resolved to no effect (state 4) stays cancellable.
+- **Resolvers** are shared structs of `decide` and their state, a `_Resolution<K>` (`rank`, `state`,
+  `cancels`, ...), which takes no value: only what passes a value on is compiled per awaited type,
+  the rest once per mode (ir-first B116). `resolve` panics on a second resolve; one resolved to no
+  effect (state 4) stays cancellable.
 - **Waits** (`_Wait`): `_caseResolver` decides the wait and unparks the call; `_parking`, emitted
   before every `park`, marks every case known; losers are cancelled once the wait is decided and its
   cases known (`_losersCancelled`). A `select` with `else` (`_decided`) takes back its call's resume
