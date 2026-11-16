@@ -5,15 +5,20 @@
  * - Every index lands in its table: types, functions, constants, a code entry's registers and
  *   labels, a start's entry and the purpose's.
  * - Every code entry ends where no path runs off its end.
+ * - The call rule (foundation/language/call-rule.ts) over the entries the purpose names, which the
+ *   runtime calls itself: a test's runner and suites as ista code, the job server as live code. Any
+ *   other call is checked by the run, against the kind of code running it.
  * - Ownership (./ownership.ts): every register owning something is let go of once on every path.
  *
  * Issues name where they are, so a bad Definition is refused with the first thing wrong in it.
  */
 
 import type { z } from 'zod';
+import { mayCall } from '../../foundation/language/call-rule.ts';
+import type { Mark } from '../../foundation/language/well-known/index.ts';
 import { endsBlock, operandsOf } from '../instructions/instruction.ts';
 import type { CodeFunction } from '../tables/functions.ts';
-import type { Tables } from '../tables/index.ts';
+import type { Purpose, Tables } from '../tables/index.ts';
 import { typesIn } from '../tables/types.ts';
 import { ownershipIssues } from './ownership.ts';
 
@@ -41,6 +46,13 @@ function issuesOf(definition: Tables): readonly string[] {
   for (const start of definition.starts) {
     within('function', start.function, functions.length, `start ${start.key}`);
     within('function', start.encode, functions.length, `start ${start.key}'s encoding`);
+  }
+  for (const { function: called, caller, where } of purposeCalls(definition.purpose)) {
+    within('function', called, functions.length, where);
+    const entry = functions[called];
+    if (entry !== undefined && !(entry.kind === 'code' && mayCall(caller, entry.mode))) {
+      issues.push(`${where}: ${caller} code may not call ${entry.name}.`);
+    }
   }
   functions.forEach((entry, index) => {
     if (entry.kind === 'code') {
@@ -74,4 +86,25 @@ function codeIssues(entry: CodeFunction, where: string, definition: Tables): rea
     issues.push(`${where}: its last instruction, ${last.kind}, runs off the end.`);
   }
   return issues;
+}
+
+/** The entries `purpose` names, each with the mark of the code calling it and where it is named. */
+function purposeCalls(
+  purpose: Purpose,
+): readonly { readonly function: number; readonly caller: Mark; readonly where: string }[] {
+  if (purpose.kind === 'program') {
+    const { jobServer } = purpose;
+    return jobServer === undefined
+      ? []
+      : [{ function: jobServer, caller: 'live', where: 'job server' }];
+  }
+  return [
+    { function: purpose.list, caller: 'ista', where: "tests' list" },
+    { function: purpose.run, caller: 'ista', where: "tests' runner" },
+    ...purpose.suites.map((suite) => ({
+      function: suite.function,
+      caller: 'ista' as const,
+      where: `suite ${suite.title}`,
+    })),
+  ];
 }

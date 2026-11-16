@@ -19,8 +19,11 @@ every decision; a backend (docs/arch/codegen.md) writes what each instruction sa
 
 A Definition is persisted for an instance's whole life: one zod schema validates, decodes and
 encodes it; the text is canonical JSON in a version envelope, keyed by its content hash
-(`formats/format.ts`). Validation checks every index and runs the ownership verifier
-(`validation/ownership.ts`), which judges each instruction on its last visit of a dataflow fixpoint.
+(`formats/format.ts`). Validation checks every index, holds the entries a purpose names to the
+call rule (a test's runner and suites ista code calls, the job server live code calls), and runs
+the ownership verifier (`validation/ownership.ts`), which judges each instruction on its last visit
+of a dataflow fixpoint. A function type carries no mark, so the run holds every async call it starts
+to the rule: an instance starts code of its own kind alone.
 
 ## Decisions
 

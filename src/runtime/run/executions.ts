@@ -11,11 +11,16 @@
  *   `park` it reaches stops it.
  * - **Commits** are each await's (§6): an execution parking marks the instance's segment as one
  *   to commit, and the one parking last names the await a failed commit panics at.
+ * - **The call rule** (foundation/language/call-rule.ts): an instance starts async code of its own
+ *   kind alone. The IR's function types carry no mark, so only the run sees which kind a call
+ *   starts; a start of the other kind is a lowering bug.
  */
 
 import type { Definition } from '../../definition/definition.ts';
 import type { CodeFunction } from '../../definition/tables/functions.ts';
 import type { Value } from '../../definition/values/values.ts';
+import { mayCall } from '../../foundation/language/call-rule.ts';
+import { unreachable } from '../../foundation/structures/unreachable.ts';
 import type { Instance } from './instances.ts';
 import type { Lifetimes } from './lifetimes.ts';
 import { Execution, type Frame } from './objects/execution.ts';
@@ -74,6 +79,11 @@ export class Executions {
   start(index: number, passed: readonly Value[], closure: Value | undefined): Future {
     const { definition, instance, lifetimes, newId, startedTransients } = this.#seams;
     const entry = definition.functions[index] as CodeFunction;
+    if (!mayCall(instance.kind, entry.mode)) {
+      unreachable(
+        `A ${instance.kind} instance starts ${entry.mode} code, which the call rule refuses.`,
+      );
+    }
     const execution = new Execution(newId(), newId(), instance);
     passed.forEach((value, at) => {
       const type = entry.registers[at]?.type;

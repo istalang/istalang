@@ -13,6 +13,7 @@
  */
 
 import type { Value } from '../../definition/values/values.ts';
+import type { Persistence } from '../../foundation/language/well-known/index.ts';
 import type { Future } from './objects/future.ts';
 
 /** An instance's state: running, or ended with what it gave or the panic that ended it. */
@@ -46,6 +47,11 @@ export class Instance {
   constructor(name: string, durable: boolean) {
     this.name = name;
     this.durable = durable;
+  }
+
+  /** The kind of async code it runs (§9): ista code in an ista instance, live code in a live run. */
+  get kind(): Persistence {
+    return this.durable ? 'ista' : 'live';
   }
 
   /** Ends the instance as `end` says, telling everything waiting on it. */
