@@ -542,12 +542,13 @@ shared struct Shared<T>:
 # which the runtime makes, reads and writes as it does a shared struct's.
 extern shared struct _Cell<T>
 
-# Disposal (§7): the runtime disposes a future and a slot once nothing holds them.
-# Declaring their `dispose` is what makes them Disposable (§3.10), and what tells the compiler the
-# runtime does it. A slot's is ista, so a slot is ista data, which only ista code handles (proposal
-# 8, Rule 6).
+# Disposal (§7): the runtime disposes a future and a slot once nothing holds them. Declaring their
+# `dispose` is what makes them Disposable (§3.10). A future's is the runtime's own. A slot's is ista,
+# so a slot is ista data, which only ista code handles (proposal 8, Rule 6); a slot dies along with
+# the values in it, so its disposal lets go of its contents, disposed in the slot's own round before
+# anything created before them.
 extern K fn dispose<T, K in Persistence>(self: Future<T, K>)
-ista fn dispose<T>(self: Slot<T>): ()
+ista fn dispose<T>(self: Slot<T>): self->contents = []
 
 # What `defer` gives (§7): a disposable whose release calls `run`, so `_ = defer log(x)` computes
 # `x` now and logs when the block ends, and `hold _ = defer log(x)` when the function does. Its
