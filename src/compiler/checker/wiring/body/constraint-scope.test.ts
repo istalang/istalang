@@ -12,7 +12,7 @@ import {
 } from '../../../../foundation/diagnostics/diagnostic.test-kit.ts';
 import { mainGives } from '../../../../stdlib/prelude/prelude.test-kit.ts';
 import { stdProgramOf } from '../../../binder/bind.test-kit.ts';
-import { diagnosedAt } from '../../../compile.test-kit.ts';
+import { diagnosedAt, wholeProgramTimeout } from '../../../compile.test-kit.ts';
 import { idOf } from '../../../program/program.test-kit.ts';
 import { programModule } from '../../../program/program.ts';
 import { functionsOf } from '../../../syntax/declarations/field-defaults.ts';
@@ -381,7 +381,7 @@ describe('records', () => {
   const isExpression = (node: SyntaxNode): node is Expression =>
     Object.hasOwn(expressionHandlers, node.kind);
 
-  it('never keep a variable, over the corpus', () => {
+  it('never keep a variable, over the corpus', { timeout: wholeProgramTimeout }, () => {
     for (const { text } of [...runPrograms, ...invalidPrograms]) {
       const program = stdProgramOf({ 'main.ista': text });
       const checker = checkProgram(program);
