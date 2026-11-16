@@ -57,7 +57,7 @@ const object = z.discriminatedUnion('kind', [
     registers: z.array(register),
     closure: value.optional(),
     parked: z.boolean(),
-    given: z.array(value),
+    given: z.array(register),
     disposing: objectId.optional(),
   }),
   z.strictObject({

@@ -138,7 +138,7 @@ function objectOf(object: RunObject, { named, persisted }: Naming): PersistedObj
       registers: frame.registers.map((register) => registerOf(register, { named, persisted })),
       ...(frame.closure === undefined ? {} : { closure: persisted(frame.closure) }),
       parked: object.parked,
-      given: object.given.map(persisted),
+      given: object.given.map((given) => registerOf(given, { named, persisted })),
       ...(object.disposing === undefined ? {} : { disposing: named(object.disposing) }),
     };
   }

@@ -16,6 +16,7 @@
  */
 
 import type { Definition } from '../../definition/definition.ts';
+import { locationOf } from '../../definition/traces.ts';
 import { copied } from '../../definition/values/replacing.ts';
 import type { Value } from '../../definition/values/values.ts';
 import type { EmittedProgram } from '../../codegen/emit.ts';
@@ -97,6 +98,8 @@ export class DurableWorld implements World {
   readonly #live = new Map<Run, WorldProgram>();
   readonly #options = new Map<Run, StartOptions>();
   readonly #bind: (hash: string) => WorldProgram;
+  /** What waits on the end of an instance spawned but not yet made, its parent's segment uncommitted. */
+  readonly #awaitingSpawn = new Map<string, ((end: InstanceEnd) => void)[]>();
 
   constructor(seams: WorldSeams, bind: (hash: string) => WorldProgram) {
     this.seams = seams;
@@ -136,6 +139,8 @@ export class DurableWorld implements World {
     const owner = this.#residentOfRun(parent);
     const started = () => {
       const child = this.#made(name, this.#programOf(parent), owner?.crashEveryAwait ?? false);
+      child.endWatchers.push(...(this.#awaitingSpawn.get(name) ?? []));
+      this.#awaitingSpawn.delete(name);
       child.unstarted = true;
       child.replay = sent;
       owner?.spawned.push(name);
@@ -171,8 +176,10 @@ export class DurableWorld implements World {
     const end = watched === undefined ? undefined : endOf(watched.status);
     if (end !== undefined) {
       told(end);
+    } else if (watched === undefined) {
+      this.#awaitingSpawn.set(name, [...(this.#awaitingSpawn.get(name) ?? []), told]);
     } else {
-      watched?.endWatchers.push(told);
+      watched.endWatchers.push(told);
     }
   };
 
@@ -297,7 +304,12 @@ export class DurableWorld implements World {
       if (!(error instanceof TooDeep)) {
         throw error;
       }
-      status = { kind: 'panicked', message: error.message, trace: '', segmentStartedAt: segment.startedAt };
+      // What it would commit can't be persisted: it panics at the await that commits (§5).
+      const parked = resident.run.lastParked;
+      const at = parked === undefined ? undefined : parkedAt(resident.program.definition, parked.frame);
+      const trace = at === undefined ? '' : `at ${at.function} (${at.location})`;
+      resident.run.instance.ended({ kind: 'panicked', message: error.message, trace });
+      status = { kind: 'panicked', message: error.message, trace, segmentStartedAt: segment.startedAt };
       text = this.#written(resident, status);
     }
     resident.status = snapshotFormat.read(text).status;
@@ -467,4 +479,26 @@ function emptySnapshot(instance: string): Snapshot {
     invocations: [],
     contextConstants: [],
   };
+}
+
+/**
+ * Where a frame parked at `pc` waits (§10): its function's name, its waypoint, if the program named
+ * one, and the source of its await; undefined when it isn't parked at a `park`.
+ */
+export function parkedAt(
+  definition: Definition,
+  { function: index, pc }: { readonly function: number; readonly pc: number },
+): { readonly function: string; readonly waypoint: string | undefined; readonly location: string } | undefined {
+  const entry = definition.functions[index];
+  if (entry?.kind !== 'code') {
+    return undefined;
+  }
+  const park = entry.instructions[pc - entry.instructions.length];
+  return park?.kind === 'park'
+    ? {
+        function: entry.name,
+        waypoint: park.waypoint,
+        location: locationOf(definition, entry.module, park.span.start),
+      }
+    : undefined;
 }

@@ -13,8 +13,6 @@
  */
 
 import { memo } from '../../foundation/structures/memo.ts';
-import { locationOf } from '../../definition/traces.ts';
-import type { CodeFunction } from '../../definition/tables/functions.ts';
 import { copied } from '../../definition/values/replacing.ts';
 import { type HostExterns, withHost } from '../boundary/host-natives.ts';
 import type { Clock } from '../clock.ts';
@@ -29,7 +27,7 @@ import type { Natives } from '../natives.ts';
 import { Refusal } from '../refusal.ts';
 import { snapshotFormat } from '../snapshot/format.ts';
 import type { InstanceStore } from '../store.ts';
-import { DurableWorld, type Resident, type WorldProgram } from './durable-world.ts';
+import { DurableWorld, parkedAt, type Resident, type WorldProgram } from './durable-world.ts';
 import { type DeployedProgram, deployed, type HostReports, readDefinition } from './programs.ts';
 
 export interface RuntimeSeams {
@@ -169,14 +167,8 @@ function waitingAt(resident: Resident): readonly WaitingPoint[] {
   const executions = new Map(objects.flatMap((object) => (object.kind === 'execution' ? [[object.id, object]] : [])));
   return live.flatMap((id) => {
     const execution = executions.get(id);
-    if (execution === undefined || !execution.parked) {
-      return [];
-    }
-    const entry = definition.functions[execution.function] as CodeFunction;
-    const park = entry.instructions[execution.pc - entry.instructions.length];
-    return park?.kind === 'park'
-      ? [{ waypoint: park.waypoint, location: locationOf(definition, entry.module, park.span.start) }]
-      : [];
+    const at = execution?.parked === true ? parkedAt(definition, execution) : undefined;
+    return at === undefined ? [] : [{ waypoint: at.waypoint, location: at.location }];
   });
 }
 

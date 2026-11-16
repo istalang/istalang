@@ -47,8 +47,8 @@ K fn onAwait<T, K in Persistence>(self: Future<T, K>, done: Resolver<T, K>):
   if _settled(self):
     done.resolve(_valueOf(self))
   else:
-    fn arrived(value: T): done.resolve(value)
-    fn standing() -> Int: _standing(done)
+    K fn arrived(value: T): done.resolve(value)
+    K fn standing() -> Int: _standing(done)
     _onSettled(self, arrived, done->rank, standing)
 
 # One wait's one-shot resolver (Rule 5). A second `resolve` panics, and `tryResolve` says whether it
@@ -121,9 +121,9 @@ K fn Resolver.of<T, K in Persistence>(callback: Fn<(T,), Unit, K>) -> Resolver<T
 # while `done` is, so an awaitable racing several through one each, as `futures.first` does,
 # decides as a `select` case does and takes nothing once `done` is decided.
 K fn Resolver.at<T, K in Persistence>(done: Resolver<(Int, T), K>, position: Int) -> Resolver<T, K>:
-  fn decided(value: T) -> Bool: done.tryResolve((position, value))
-  fn registered(): _registered(done)
-  fn deciding() -> Int: _standing(done)
+  K fn decided(value: T) -> Bool: done.tryResolve((position, value))
+  K fn registered(): _registered(done)
+  K fn deciding() -> Int: _standing(done)
   new Resolver<T, K>{
     decide: decided,
     rank: [...done->rank, position],
@@ -173,15 +173,15 @@ K fn _wait<K in Persistence>(call: _Call) -> _Wait<K>: new _Wait<K>{call}
 # even if another did first, cancelled or not, while the call hasn't gone on: the case on its own
 # `disposing()` wins (§7).
 K fn _caseResolver<T, K in Persistence>(wait: _Wait<K>, position: Int, into: Shared<T?>) -> Resolver<T, K>:
-  fn overrides() -> Bool: wait->decided >= 0 and _disposingWins(wait->call)
-  fn decide(value: T) -> Bool:
+  K fn overrides() -> Bool: wait->decided >= 0 and _disposingWins(wait->call)
+  K fn decide(value: T) -> Bool:
     if wait->decided != -1 and not overrides(): return false
     wait->decided = position
     into->value = value
     _unpark(wait->call, position)
     if wait->known: _losersCancelled(wait)
     true
-  fn waited() -> Bool: wait->decided == -1
+  K fn waited() -> Bool: wait->decided == -1
   const resolver = new Resolver<T, K>{
     decide,
     rank: [0, _idOf(wait->call), position],
@@ -189,7 +189,7 @@ K fn _caseResolver<T, K in Persistence>(wait: _Wait<K>, position: Int, into: Sha
     overrides,
   }
   const weak = WeakRef(resolver)
-  fn cancel(withdrawn: Bool):
+  K fn cancel(withdrawn: Bool):
     if weak.deref() is Resolver<T, K> as pending: _cancel(pending, withdrawn)
   wait->cancels.push(cancel)
   resolver
@@ -329,7 +329,7 @@ ista fn read<T>(self: Slot<T>) -> Future<T, "ista">:
 
 # An operation given up on is passed over; awaited again, it is served where it stands.
 ista fn _servedWhenAwaited<T, U>(slot: Slot<T>, future: Future<U, "ista">):
-  fn served(): _serve(slot)
+  ista fn served(): _serve(slot)
   _onAwaited(future, served)
 
 # Serves `slot`'s queue from its head, one event after another, as far as it can.

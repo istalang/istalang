@@ -12,17 +12,17 @@
  */
 
 import { type EmittedProgram, emitProgram } from '../codegen/emit.ts';
-import type { Definition } from '../definition/definition.ts';
+import { type Definition, definitionFormat } from '../definition/definition.ts';
 import { jsonText, jsonTypeOf, plainOfJson } from '../definition/values/json-values.ts';
 import type { Value } from '../definition/values/values.ts';
 import { memo } from '../foundation/structures/memo.ts';
 import { type HostExterns, withHost } from './boundary/host-natives.ts';
-import { jsonIn, startOf } from './boundary/starts.ts';
 import type { Clock } from './clock.ts';
+import { DurableWorld } from './host/durable-world.ts';
+import { deployed } from './host/programs.ts';
 import type { LogRecord } from './instance-state.ts';
 import type { Natives } from './natives.ts';
-import { Future } from './run/objects.ts';
-import { MemoryWorld } from './run/world.ts';
+import { memoryStore } from './store.ts';
 
 /** What every start of a program is bound to: the natives, the host's externs, a clock, a seed. */
 export interface HostBinding {
@@ -51,10 +51,12 @@ export interface Start {
 }
 
 const emitted = new WeakMap<Definition, EmittedProgram>();
+const hashes = new WeakMap<Definition, string>();
 
 /**
  * Starts `definition`'s live code as `start` says, bound by `binding`, running `code`, the code
- * compiled from it; how it ended.
+ * compiled from it; how it ended. The ista instances it reaches are the world's, in a store of
+ * their own that ends with the start, committed at every await as any host's are (§5).
  */
 export async function startLive(
   definition: Definition,
@@ -62,62 +64,35 @@ export async function startLive(
   start: Start = {},
   code: EmittedProgram = memo(emitted, definition, () => emitProgram(definition)),
 ): Promise<LiveRun> {
-  const passed = start.arguments ?? [];
-  const started = startOf(definition, start.key, passed.length);
   const logs: LogRecord[] = [];
-  const world = new MemoryWorld(definition, code, {
-    natives: withHost(binding.natives, binding.externs ?? {}),
-    clock: binding.clock,
-    seed: binding.seed,
-    instance: start.instance ?? 'run',
-    log: (record) => logs.push(record),
+  const program = {
+    definition,
+    hash: memo(hashes, definition, () => definitionFormat.write(definition).hash),
+    emitted: code,
+  };
+  const world = new DurableWorld(
+    {
+      natives: withHost(binding.natives, binding.externs ?? {}),
+      store: memoryStore(),
+      clock: binding.clock,
+      seed: () => binding.seed,
+      reports: { logs: (records) => logs.push(...records), panicked: () => undefined },
+    },
+    () => program,
+  );
+  const { state, logs: own } = await deployed(world, program).start(start.instance ?? 'run', {
+    ...(start.key === undefined ? {} : { function: start.key }),
+    ...(start.arguments === undefined ? {} : { arguments: start.arguments }),
   });
-  const run = world.root;
-  try {
-    const given = run.call(
-      started.function,
-      passed.map((each) => jsonIn(definition, each)),
-    );
-    const outcome = await settled(world, binding.clock, given);
-    if (outcome === undefined) {
+  logs.push(...own);
+  switch (state.kind) {
+    case 'finished':
+      return { end: finished(definition, state.encoded ?? state.outcome), logs };
+    case 'panicked':
+    case 'terminated':
+      return { end: { kind: 'panicked', message: state.message, trace: state.trace }, logs };
+    default:
       return { end: { kind: 'unsettled' }, logs };
-    }
-    const end = finished(definition, run.call(started.encode, [outcome]) as Value);
-    run.finish([given as Value]);
-    return { end, logs };
-  } catch (error) {
-    const { message, trace } = run.panicOf(error);
-    return { end: { kind: 'panicked', message, trace }, logs };
-  }
-}
-
-/** The outcome `given` gives: at once from simple code, else once its future settles, if it does. */
-async function settled(
-  world: MemoryWorld,
-  clock: Clock,
-  given: unknown,
-): Promise<Value | undefined> {
-  if (!(given instanceof Future)) {
-    return given as Value;
-  }
-  const done = () => given.settled;
-  for (;;) {
-    world.drain(done);
-    if (given.settled) {
-      return given.value;
-    }
-    const timer = world.nextTimer();
-    if (world.awaitsHost) {
-      // biome-ignore lint/performance/noAwaitInLoops: each turn waits on what the last one left.
-      await (timer === undefined
-        ? world.arrival()
-        : Promise.race([world.arrival(), clock.until(timer)]));
-    } else if (timer === undefined) {
-      return undefined;
-    } else {
-      await clock.until(timer);
-    }
-    world.fireDue(clock.now());
   }
 }
 

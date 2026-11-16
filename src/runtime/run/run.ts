@@ -516,6 +516,8 @@ export class Run {
 
   /** Whether an execution parked since the instance last committed: each await commits (§6). */
   parkedSinceCommit = false;
+  /** The execution that parked last, whose await a commit that fails names. */
+  lastParked: Execution | undefined;
 
   /** The invocations still running, by the future of the call each started. */
   readonly #invocations = new Map<Future, Invocation>();
@@ -791,6 +793,7 @@ export class Run {
       if (result === PARKED) {
         execution.parked = true;
         this.parkedSinceCommit = true;
+        this.lastParked = execution;
         return;
       }
       execution.ended = true;

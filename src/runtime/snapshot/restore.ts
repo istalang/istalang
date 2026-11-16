@@ -164,7 +164,9 @@ function filled(run: Run, persisted: PersistedObject, { object, restored }: Read
         stopping: false,
       };
       execution.parked = persisted.parked;
-      execution.given = persisted.given.map(restored);
+      execution.given = persisted.given.map(
+        (given) => registerOf(given, { object, restored }) ?? null,
+      );
       if (persisted.disposing !== undefined) {
         execution.disposing = object(persisted.disposing) as Future;
       }
