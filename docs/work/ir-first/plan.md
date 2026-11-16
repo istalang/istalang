@@ -1,5 +1,5 @@
 ---
-description: phase plan and process for the IR-first rewrite (design.md) — goldens from the interpreter, a new typed IR, lowering, run and codegen built as vertical slices beside the old pipeline, then the old deleted; read before forking, building or reviewing any ir-first phase
+description: phase plan and process for the IR-first rewrite (design.md) — goldens from the interpreter, then a new typed IR, lowering, run and codegen built as vertical slices on the ir-first branch with the old pipeline deleted; read before forking, building or reviewing any ir-first phase
 owner: tech-lead
 status: active
 applies_to: istalang
@@ -10,31 +10,34 @@ tags: [plan, rewrite, definition, lowering, runtime, codegen, lifetimes, natives
 
 # IR first — plan
 
-Design: `design.md`. Evidence: `research/`. Greenfield: no compatibility; breakage is caught by
-goldens and tests.
+Design: `design.md`. Contracts between phases: `contracts.md`. Evidence: `research/`.
 
 ## Process
 
-- **Rewrite in vertical slices.** Each slice runs its constructs end to end, through new lowering,
-  IR, codegen and run, and turns a named set of goldens green. The first slice fixes the IR's
-  shape, so a contract flaw surfaces in week one, not at integration.
-- **Old code moves aside.** R0 moves the old pipeline into `src/legacy/`, so new code takes the
-  final folder names. The CLI keeps the old pipeline until S7, which deletes `src/legacy/`.
-- **Parallel pairs.** S2 ∥ S4: async and the std live in different layers, and S4 writes Istalang
-  against S1's contract. The rest is sequential:
-  - lifetimes dispose S2's futures;
-  - durability persists what S2 and S3 make;
-  - tests and mocks run on durable instances.
-- **Contract amendments come to the tech-lead,** who broadcasts them. Every phase merges to main,
-  green, with qa and a reviewer. S7's reviewer reviews the whole feature as the merge review.
+- **R0 lands on main; everything else on the `ir-first` branch.** S1a deletes the old pipeline
+  there, and the CLI moves over slice by slice. Main keeps a working CLI until the merge review,
+  which diffs the branch against the tag `ir-first-base`.
+- **Vertical slices with a ratchet.** R0's manifest assigns every golden to one phase. A phase
+  turns its own green and keeps every earlier phase's green.
+- **Each slice brings its constructs' lifetimes.** S1a lands the ownership core, so the IR's shape,
+  lifetimes included, is fixed first.
+- **Parallel:** C ∥ S1a; S4 ∥ S2 → S3; S5b ∥ S5c. Shared files have one owner each (`contracts.md`).
+- **Every phase:** qa and a reviewer when done; updates `docs/arch` and `docs/reuse` for what it
+  lands. Contract amendments come to the tech-lead. Open design questions open their phase as a
+  spike.
 
 | Phase | Scope | Acceptance |
 |---|---|---|
-| R0 Goldens | Capture the interpreter's results (design, Decision 1) as files under `test/golden/`, with a runner. Amend the spec (design, Spec amendments) and mark the goldens those amendments change. Move the old pipeline into `src/legacy/`. | The golden runner is green against the legacy pipeline. Every corpus program, spec example, std suite, host scenario and FormBuilder view has a golden. The spec is amended. No behavior change. |
-| S1 Skeleton | The new IR (schema, validation) with typed registers, reach facts, cells, references and split fields. New lowering, codegen with inline primitive operations, and a minimal run for simple and live code with no waits: values, control flow, calls, closures, structs, enums, collections, primitive natives. | The goldens of every program within those constructs are green on the new pipeline (named list). The `Int` loop is within 2× of hand-written bigint. |
-| S2 Async (∥ S4) | Live async entries as resumable functions over frame records; the ready queue; park and unpark; futures, resolvers, waits, `select`, slots, timers, watches and settle order in Istalang over run primitives; host futures; the host binding. | Async, waits, `select`, slots and timers goldens green. A suspended frame spills and restores into an identical run (property). |
-| S3 Lifetimes | Hold and let-go, stop landings, keeps and holds, disposal and the collector, weak refs, `disposed()`/`disposing()`, declared `dispose`, in place if unique; the ownership verifier. | Holders, weak-side and disposal goldens green. The verifier fails on IR with a hold or let-go dropped or doubled (property). Linear `push` into a `let` and through a handle (n=10⁵ / 10⁴ < 15). fast-check aliasing. FormBuilder views byte-identical, ≤ 1 ms per change. |
-| S4 Std in Istalang (∥ S2) | Field-loop annotations and the enum variant loop in the checker; every JSON encoder and decoder in Istalang; about 95 natives moved to Istalang (decimal first); the rest take and give primitives; capabilities per extern. | Std suites and JSON goldens green on the new pipeline. No TS codec synthesis and no `decimal.js`. No native builds an `Optional`, `Result` or enum. |
-| S5 Durable | Ista code, segments, commits, snapshots (frames as data, root walk, ids), contexts, context constants, instances, spawn and crossings, jobs, retry, terminate, `crashEveryAwait`, the recursion rule. | Every durable-feature golden green, `crashEveryAwait` included. Property: a snapshot commits, restores and continues identically. |
-| S6 Tests and mocks | `ista test` on the new pipeline; `mocked` in test builds with `mockOf` and the registry in Istalang. | Every std and corpus `.test.ista` golden green. A production Definition holds no mock check. |
-| S7 Switch and delete | The CLI (`run`, `test`, `build`) and the host API on the new pipeline; `src/legacy/` (interpreter, scheduler, old lowering, old Definition, old live run and codegen) deleted; architecture, Definition and LLVM docs rewritten. | Every golden green. Verify green. No `src/legacy/`. Merge review of the whole feature. |
+| R0 Goldens (main) | Goldens and host scenarios as data, a runner, the manifest, the coverage map (`contracts.md`). Recursion floor measured, spec amended. Baseline benches. Tag `ir-first-base`. js-codegen docs archived. | Runner green on the old pipeline. Every corpus program, spec example, std suite, scenario and FormBuilder view assigned in the manifest. Every deleted test file mapped. No behavior change. |
+| C Checker (∥ S1a) | Field-loop annotations; the enum variant loop (§3.16). | Spec examples and checker tests for both. |
+| S1a Skeleton | Delete the old pipeline. The Definition contract doc and schema: typed registers, reach facts, extern entries (capabilities, keeps, holds). Native contract over primitives. Ownership core: hold/let-go, verifier, counts, declared `dispose`, collector. Object ids. Start wrapper and outcome encoder in Istalang. Codegen with inline primitive ops; minimal run; recursion; CLI `run`/`build`. Int, Bool, String, control flow, calls, structs. | S1a goldens green. Typed-IR gate (`contracts.md`). Verifier fails on a dropped or doubled hold (property). `Int` loop within 2× of hand-written bigint. |
+| S1b Widening | Closures, cells, references, enums, collections, sync transients; split by construct family at fork time. | S1b goldens green. Typed-IR gate. |
+| S2 Async | Spike: settle order in Istalang. Resumable frames, ready queue, park/unpark, stop a suspended call, `disposing()` priority; futures, resolvers, waits, `select`, timers, watches in Istalang; stop landings; async transients; host futures and the host binding. | S2 goldens green. A suspended frame spills and restores identically (property). |
+| S3 Lifetimes | In place if unique (write paths, the six collection changes), weak refs, `disposed()`. | S3 goldens green. fast-check aliasing. Linear `push` into a `let` and through a handle. |
+| S4 Std in Istalang (∥ S2 → S3) | JSON codecs complete; about 95 natives in Istalang, decimal first; the rest on primitives; capabilities per extern. | S4 goldens green. No TS codec synthesis, no production `decimal.js`, no native builds an `Optional`, `Result` or enum. String linearity gate. |
+| I1 (tech-lead) | Integrates S3 and S4. | FormBuilder views byte-identical, per change no slower than the R0 baseline. |
+| S5a Durable core | Ista code, segments, commits, snapshots (frames as data, root walk), slots, `crashEveryAwait`. | S5a goldens green. Snapshot round trip, also across two builds (property). |
+| S5b Instances (∥ S5c) | Spawn, crossings (`copy`), result, isolate. | S5b goldens green. |
+| S5c Contexts (∥ S5b) | Contexts, context constants, jobs, retry, terminate. | S5c goldens green. |
+| S6 Tests and mocks | Spikes: starts past the mock check, a function's identity as a value, cross-instance ancestor lookup. `mocked`, `mockOf`, the registry in Istalang; the test runner; CLI `test`. | Every `.test.ista` golden green. A production Definition holds no mock check. |
+| S7 Finish | The host API; browser bundle; LLVM doc (`native-binary.md`); merge review of the branch against `ir-first-base`. | Every golden green. Verify green. The run bundles with no Node built-in. |

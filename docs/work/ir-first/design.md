@@ -54,7 +54,9 @@ target. Migrating that shape costs more than writing the right one.
    - **Captured before anything changes:** the current interpreter's results over the corpus, spec
      examples, std suites, host scenarios and FormBuilder views.
    - **What a result is:** outcome or panic (message and innermost frame), logs, host calls and
-     visible disposal effects.
+     visible disposal effects, observed independently of the snapshot's shape.
+   - **One home each:** an outcome a corpus header (`# outcome:`/`# panic:`) or a `.test.ista`
+     assertion already states stays there; goldens hold only what nothing states yet.
    - **Changing one:** a golden changes only with a named spec amendment.
 2. **One run.**
    - **Object model:** `src/live`'s, with object ids from the instance's serial. A commit finds
@@ -86,9 +88,10 @@ target. Migrating that shape costs more than writing the right one.
 6. **Services in Istalang** run over these primitives:
    - park and unpark an execution, enqueue a closure call, timer-at;
    - a host-future token, the current execution;
-   - weak references and cells.
+   - weak references and cells;
+   - stopping a suspended call, and the `disposing()` priority resume.
 
-   Heap kinds: cell, resource, weakRef, execution, contextConstant.
+   Object ids come from the instance's serial from the first slice on. Heap kinds: cell, resource, weakRef, execution, contextConstant.
 7. **Protocols are lowered:**
    - a start wrapper awaits the root and encodes its outcome;
    - `copy` at spawn and context calls;
@@ -104,10 +107,12 @@ target. Migrating that shape costs more than writing the right one.
 
 ## Spec amendments
 
-- **Recursion:** the depth limit is implementation-defined, at least 10,000 calls, with one panic
-  text.
-- **`select` losers:** they let go of their holdings when the winner resumes, which lowering emits
-  at each case's target.
+- **Recursion:** the depth limit is implementation-defined, with one panic text. Its floor is
+  what compiled code reaches on Node and browsers with large frames and no depth counter, measured
+  before the amendment.
+- **`select` losers:** resolvers still cancel at the decision, so a value reaching a losing take's
+  slot right after the winner's stays there; only the losers' holdings are let go when the winner
+  resumes, which lowering emits at each case's target.
 - **JSON codecs:** field loops expose field annotations (`@JsonName`, `@JsonSkip`), and enums get a
   variant loop (§3.16), so every encoder and decoder is Istalang.
 
@@ -124,10 +129,14 @@ target. Migrating that shape costs more than writing the right one.
 - **Golden runner** over the new pipeline, reporting per corpus folder.
 - **Ownership verifier.**
 - **fast-check aliasing:** no shared value observably changes.
-- **Snapshot round trip:** suspend, commit, restore, compare.
-- **Perf gates:**
-  - FormBuilder ≤ 1 ms per change;
-  - an `Int` loop within 2× of the same loop hand-written over bigint.
+- **Snapshot round trip:** suspend, commit, restore, compare; also across two builds of one
+  Definition.
+- **Perf gates,** each relative within one bench run:
+  - FormBuilder per change no slower than today's compiled code (recorded in R0);
+  - an `Int` loop within 2× of the same loop hand-written over bigint;
+  - string operations written in Istalang linear in the string's length.
+- **Decimal:** `decimal.js` stays only as a dev-time fast-check oracle.
+- **Browser:** the run bundles with no Node built-in.
 
 ## Out of scope (filed)
 
