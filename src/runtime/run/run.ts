@@ -20,7 +20,7 @@ import { lifetimeOf } from '../../definition/tables/types.ts';
 import { mapOf, valuesEqual } from '../../definition/values/equality.ts';
 import type { Value } from '../../definition/values/values.ts';
 import type { EmittedProgram } from '../../codegen/emit.ts';
-import { panicOf } from '../natives.ts';
+import { type HostFilling, panicOf } from '../natives.ts';
 import { bindNatives, type NativeBinding } from './natives.ts';
 import { runNatives } from './run-natives.ts';
 import { Lifetimes } from './lifetimes.ts';
@@ -73,6 +73,11 @@ export class Run {
   /** The transients shared now, by `function:register`, innermost last (§3.4). */
   readonly #transients = new Map<string, Cell[]>();
   readonly #weakReferences = new WeakMap<RunObject, WeakReference>();
+  #timers: { readonly at: bigint; readonly future: Future }[] = [];
+  readonly #arrivals: (() => void)[] = [];
+  #wake: (() => void) | undefined;
+  /** How many host fillings are still pending. */
+  #hostWork = 0;
   /** The execution running now, whose code a native or `currentCall` reads. */
   #running: Execution | undefined;
   /** The live run a host started, which every other instance it drives runs beside. */
@@ -371,24 +376,135 @@ export class Run {
     this.#ready.push({ kind: 'call', closure, arguments: passed });
   }
 
-  /**
-   * Settles `future` with `value`, which it holds, calling every callback waiting on it at once, in
-   * the settle order (spec §8): by rank, then as they were added.
-   */
+  /** Settles `future` with `value`, which it holds, as `settleTogether` does. */
   settle(future: Future, value: Value): void {
-    if (future.settled) {
-      return;
+    this.settleTogether([[future, value]]);
+  }
+
+  /**
+   * Settles each future with its value, which it holds, calling every callback waiting on any of
+   * them at once, in the settle order (spec §8): by rank, then as they were added.
+   */
+  settleTogether(settling: readonly (readonly [Future, Value])[]): void {
+    const waiting: { readonly callback: Value; readonly rank: readonly bigint[]; readonly value: Value }[] = [];
+    for (const [future, value] of settling) {
+      if (future.settled) {
+        continue;
+      }
+      future.settled = true;
+      future.value = value;
+      for (const { callback, rank } of future.callbacks.splice(0)) {
+        waiting.push({ callback, rank, value });
+      }
     }
-    future.settled = true;
-    future.value = value;
-    const waiting = future.callbacks.splice(0).toSorted((first, second) => compareRanks(first.rank, second.rank));
-    for (const { callback } of waiting) {
+    const ordered = waiting.toSorted((first, second) => compareRanks(first.rank, second.rank));
+    for (const { callback, value } of ordered) {
       const result = this.callValue(callback, [value]);
       this.lifetimes.letGo(result as Value);
       this.lifetimes.letGo(callback);
     }
-    for (const listener of future.listeners.splice(0)) {
-      listener(value);
+    for (const [future, value] of settling) {
+      for (const listener of future.listeners.splice(0)) {
+        listener(value);
+      }
+    }
+  }
+
+  /** A future settling at `at`, in milliseconds since the Unix epoch (`time.at`). */
+  timer(at: bigint): Future {
+    const future = new Future(this.newId());
+    this.#timers.push({ at, future });
+    return future;
+  }
+
+  /** When the earliest timer still pending comes due; undefined with none. */
+  nextTimer(): bigint | undefined {
+    let earliest: bigint | undefined;
+    for (const { at, future } of this.#timers) {
+      if (!future.settled && future.count > 0 && (earliest === undefined || at < earliest)) {
+        earliest = at;
+      }
+    }
+    return earliest;
+  }
+
+  /** Settles every timer due at `now` or before, the earliest instant's together first. */
+  fireDue(now: bigint): void {
+    for (let at = this.nextTimer(); at !== undefined && at <= now; at = this.nextTimer()) {
+      const due = this.#timers.filter((timer) => timer.at === at && !timer.future.settled);
+      this.#timers = this.#timers.filter((timer) => !due.includes(timer));
+      this.settleTogether(due.map(({ future }) => [future, null]));
+      this.drain();
+    }
+  }
+
+  /** How a host fills `future`, its extern's pending future (§9), each fill an arrival. */
+  filling(future: Future): HostFilling {
+    let state: 'pending' | 'resolved' | 'cancelled' = 'pending';
+    this.#hostWork += 1;
+    const done = () => {
+      this.#hostWork -= 1;
+    };
+    future.cancels.push(() => {
+      if (state === 'pending') {
+        state = 'cancelled';
+        done();
+      }
+    });
+    return {
+      fill: (value) => {
+        if (state !== 'pending') {
+          return false;
+        }
+        state = 'resolved';
+        this.arrive(() => {
+          done();
+          this.lifetimes.hold(value);
+          this.settle(future, value);
+        });
+        return true;
+      },
+      fail: (panic) => {
+        state = 'resolved';
+        this.arrive(() => {
+          done();
+          throw panic;
+        });
+      },
+      onCancel: (callback) => {
+        future.cancels.push(callback);
+      },
+      state: () => state,
+    };
+  }
+
+  /** Whether a host still owes the run something it waits on. */
+  get awaitsHost(): boolean {
+    return this.#hostWork > 0;
+  }
+
+  /** Readies `turn`, arriving from outside the run, and wakes what waits for an arrival. */
+  arrive(turn: () => void): void {
+    this.#arrivals.push(turn);
+    const wake = this.#wake;
+    this.#wake = undefined;
+    wake?.();
+  }
+
+  /** Settles once something arrives from outside the run, at once if something has. */
+  arrival(): Promise<void> {
+    return this.#arrivals.length > 0
+      ? Promise.resolve()
+      : new Promise((resolve) => {
+          this.#wake = resolve;
+        });
+  }
+
+  /** Runs what arrived from outside the run, one turn at a time, each draining what it readied. */
+  takeArrivals(): void {
+    for (let turn = this.#arrivals.shift(); turn !== undefined; turn = this.#arrivals.shift()) {
+      turn();
+      this.drain();
     }
   }
 
@@ -486,6 +602,11 @@ export class Run {
       return object.counted ? [object.value] : [];
     }
     if (object instanceof Future) {
+      if (!object.settled) {
+        for (const cancel of object.cancels.splice(0)) {
+          cancel();
+        }
+      }
       const callbacks = object.callbacks.splice(0).map(({ callback }) => callback);
       return object.settled ? [object.value, ...callbacks] : callbacks;
     }

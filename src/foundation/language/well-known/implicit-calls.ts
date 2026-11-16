@@ -55,10 +55,10 @@ export const awaitFunction = 'onAwait';
  * the position a wait was decided for at once, or -1, the wait then given up.
  */
 /**
- * What a host extern's wrapper calls for a future its host fills (§9): a pending future of the
- * prelude's, and the callback resolving it, which the host's native is given.
+ * What a host extern's wrapper calls for the future its host fills (§9): a pending future of the
+ * run's, which the host's native is given and the run settles with what the host gives.
  */
-export const hostFutureFunction = '_filled';
+export const hostFutureFunction = '_pendingFuture';
 
 export const waitFunctions = {
   wait: '_wait',

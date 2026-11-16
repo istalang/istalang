@@ -29,8 +29,8 @@ export function recordExternSignatures(store: InstanceStore, definition: Definit
   const known: Record<string, string> =
     text === undefined ? {} : { ...externSignaturesFormat.read(text) };
   const declared = definition.functions.flatMap((entry) =>
-    entry.kind === 'extern' && entry.declaredType !== undefined
-      ? [[entry.key, entry.declaredType] as const]
+    entry.kind === 'extern' && entry.host !== undefined
+      ? [[entry.key, entry.host.declaredType] as const]
       : [],
   );
   const changed = declared.filter(([key, type]) => known[key] !== undefined && known[key] !== type);

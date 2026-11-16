@@ -1,0 +1,31 @@
+# outcome: 499
+# A case whose `onAwait` runs after an earlier case decided the wait loses once the waiter stops at
+# the `select`, every case known (§8): its resolver is cancelled then, which calls its `onCancel`.
+
+import * as time from 'time'
+
+struct Cold:
+  value: Int
+
+live fn onAwait(self: Cold, done: Resolver<Int, "live">): done.resolve(self.value)
+
+struct Keep:
+  cancelled: Shared<Int>
+  kept: Shared<Array<Resolver<Int, "live">>>
+
+live fn onAwait(self: Keep, done: Resolver<Int, "live">):
+  const cancelled = self.cancelled
+  fn mark(): cancelled->value = 99
+  done.onCancel(mark)
+  self.kept->value.push(done)
+
+live async fn main() -> Int:
+  const cancelled = new Shared{value: 0}
+  const kept: Shared<Array<Resolver<Int, "live">>> = new Shared{value: []}
+  const cold = Cold{value: 4}
+  const keep = Keep{cancelled, kept}
+  const won = await select:
+    case cold as v: v * 100
+    case keep as v: v
+  await time.delay(1ms)
+  won + cancelled->value

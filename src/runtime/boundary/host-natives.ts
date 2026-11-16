@@ -8,9 +8,9 @@
  *   with every integer a `bigint` (definition/values/json-values.ts), so a host needs nothing of
  *   the runtime's value shapes.
  * - An extern returning a `Future` is live (proposal 8, Rule 9; the checker refuses any other), so
- *   only a live run calls one, which waits in memory: it takes the resolver of the live future its
- *   call gives, `call.resolver()`, and resolves it when it can; or, taking none, gives back a
- *   promise of the JSON, which resolves it as it settles. A resolver
+ *   only a live run calls one, which waits in memory: its wrapper passes it the run's pending
+ *   future it awaits, which the host fills through the resolver it takes, `call.resolver()`, when
+ *   it can; or, taking none, gives back a promise of the JSON, which fills it as it settles. A resolver
  *   taken is the future's one producer: a promise given back as well, as an `async` extern's is,
  *   resolves nothing, though its rejection still panics. Anything else it gives back is its result.
  * - A live resolver is one-shot: a second `resolve` is a bug, which panics the run, and
@@ -35,12 +35,11 @@ import {
 } from '../../definition/values/json-values.ts';
 import type { Value } from '../../definition/values/values.ts';
 import {
+  type HostFilling,
   type Native,
   type NativeContext,
-  type NativeResolver,
   type Natives,
   Panic,
-  type Resolvable,
   type WithFutures,
 } from '../natives.ts';
 import { Refusal } from '../refusal.ts';
@@ -104,131 +103,120 @@ function hostNative(extern: HostExtern): Native<HostContext> {
   return (values, context) => {
     const shape = jsonTypeOf(context.types);
     const read = (plain: unknown) => jsonOfPlain(plain, shape);
-    let taken: { readonly resolvable: Resolvable; readonly host: HostResolver } | undefined;
+    const filled = fillsFuture(context) ? context.futures.filling(values.at(-1) ?? null) : undefined;
+    const passed = filled === undefined ? values : values.slice(0, -1);
+    let taken: HostResolver | undefined;
     let running = true;
     const call: HostCall = {
       instance: context.instance,
       resolver: () => {
-        if (!(running && returnsFuture(context))) {
+        if (!running || filled === undefined) {
           throw new Panic(`The host's ${context.name} took a resolver for no future of its call.`);
         }
-        if (taken === undefined) {
-          const resolvable = context.futures.resolvable();
-          taken = { resolvable, host: hostResolverOf(resolvable.resolver, read, context.name) };
-        }
-        return taken.host;
+        taken ??= hostResolverOf(filled, read, context.name);
+        return taken;
       },
     };
     let given: unknown;
     try {
       given = extern(
-        values.map((value) => plainOfJson(value, shape)),
+        passed.map((value) => plainOfJson(value, shape)),
         call,
       );
     } finally {
       running = false;
     }
-    return returnsFuture(context)
-      ? futureOf(given, taken?.resolvable, context, read)
-      : fitting(given, read);
+    if (filled === undefined) {
+      return fitting(given, read);
+    }
+    if (given instanceof Promise) {
+      given.then(
+        (plain: unknown) => {
+          if (taken === undefined) {
+            fillWith(filled, plain, read);
+          }
+        },
+        (reason: unknown) => {
+          const why = reason instanceof Error ? reason.message : String(reason);
+          filled.fail(new Panic(`The host's ${context.name} rejected: ${why}`, { cause: reason }));
+        },
+      );
+    } else if (taken === undefined) {
+      throw new Panic(
+        `The host's ${context.name} gave no promise and took no resolver, though it returns a Future.`,
+      );
+    }
+    return null;
   };
 }
 
-/** Whether the extern called returns a future the host fills. */
-function returnsFuture({ resultType, types }: NativeContext): boolean {
-  return resultType !== undefined && hasRole(types, resultType, 'future');
+/**
+ * Whether the extern called fills a future: its wrapper passes it last, the pending future of the
+ * run's it awaits (lowering/synthesized/boundary/host-externs.ts).
+ */
+function fillsFuture({ signature, types }: NativeContext): boolean {
+  const last = signature.parameters.at(-1);
+  return last?.kind === 'named' && !hasRole(types, last.type, 'json');
 }
 
-/** The live future `given` stands for: the promise's, or the one whose resolver it took. */
-function futureOf(
-  given: unknown,
-  taken: Resolvable | undefined,
-  context: HostContext,
-  read: (plain: unknown) => Value,
-): Value {
-  if (given instanceof Promise) {
-    const { future, resolver } = taken ?? context.futures.resolvable();
-    given.then(
-      (plain: unknown) => {
-        if (taken === undefined) {
-          resolveWith(resolver, plain, read);
-        }
-      },
-      (reason: unknown) => {
-        const why = reason instanceof Error ? reason.message : String(reason);
-        resolver.fail(new Panic(`The host's ${context.name} rejected: ${why}`, { cause: reason }));
-      },
-    );
-    return future;
-  }
-  if (taken !== undefined) {
-    return taken.future;
-  }
-  throw new Panic(
-    `The host's ${context.name} gave no promise and took no resolver, though it returns a Future.`,
-  );
-}
-
-/** `resolver` as the host resolves it, with JSON `read` reads, for the extern `name`. */
+/** `filled` as the host resolves it, with JSON `read` reads, for the extern `name`. */
 function hostResolverOf(
-  resolver: NativeResolver,
+  filled: HostFilling,
   read: (plain: unknown) => Value,
   name: string,
 ): HostResolver {
-  const host = new JsonResolver(resolver, read, name);
-  dropped.register(host, failWhenDropped(resolver, name));
+  const host = new JsonResolver(filled, read, name);
+  dropped.register(host, failWhenDropped(filled, name));
   return host;
 }
 
 /**
- * A live future's resolver as its host holds it, taking JSON. Each of its functions holds the
+ * A host future's resolver as its host holds it, taking JSON. Each of its functions holds the
  * whole, so a host keeping only `resolve` keeps it from being collected as dropped.
  */
 class JsonResolver implements HostResolver {
-  readonly #resolver: NativeResolver;
+  readonly #filled: HostFilling;
   readonly #read: (plain: unknown) => Value;
   readonly #name: string;
 
-  constructor(resolver: NativeResolver, read: (plain: unknown) => Value, name: string) {
-    this.#resolver = resolver;
+  constructor(filled: HostFilling, read: (plain: unknown) => Value, name: string) {
+    this.#filled = filled;
     this.#read = read;
     this.#name = name;
   }
 
   readonly resolve = (value: unknown): void => {
-    if (this.#resolver.state === 'resolved') {
-      this.#resolver.panic(new Panic(`The host's ${this.#name} resolved its future twice.`));
+    if (this.#filled.state() === 'resolved') {
+      this.#filled.fail(new Panic(`The host's ${this.#name} resolved its future twice.`));
       return;
     }
-    resolveWith(this.#resolver, value, this.#read);
+    fillWith(this.#filled, value, this.#read);
   };
 
-  readonly tryResolve = (value: unknown): boolean => resolveWith(this.#resolver, value, this.#read);
+  readonly tryResolve = (value: unknown): boolean => fillWith(this.#filled, value, this.#read);
 
   readonly onCancel = (callback: () => void): void => {
-    this.#resolver.onCancel(callback);
+    this.#filled.onCancel(callback);
   };
 }
 
 /**
- * What fails `resolver`'s wait once its host let go of it. It is made here, apart from the host's
- * resolver, since a closure sharing that one's scope would keep it alive and never let it go.
+ * What fails `filled` once its host let go of it. It is made here, apart from the host's resolver,
+ * since a closure sharing that one's scope would keep it alive and never let it go.
  */
-function failWhenDropped(resolver: NativeResolver, name: string): () => void {
+function failWhenDropped(filled: HostFilling, name: string): () => void {
   return () => {
-    resolver.fail(new Panic(`The host's ${name} dropped its resolver unresolved.`));
+    if (filled.state() === 'pending') {
+      filled.fail(new Panic(`The host's ${name} dropped its resolver unresolved.`));
+    }
   };
 }
 
 /**
- * Resolves `resolver` with `plain` as `read` reads it, or fails its wait when JSON can't hold it;
- * whether it took the value.
+ * Fills `filled` with `plain` as `read` reads it, or fails it when JSON can't hold it; whether it
+ * took the value.
  */
-function resolveWith(
-  resolver: NativeResolver,
-  plain: unknown,
-  read: (plain: unknown) => Value,
-): boolean {
+function fillWith(filled: HostFilling, plain: unknown, read: (plain: unknown) => Value): boolean {
   let value: Value;
   try {
     value = fitting(plain, read);
@@ -236,10 +224,10 @@ function resolveWith(
     if (!(error instanceof Panic)) {
       throw error;
     }
-    resolver.fail(error);
+    filled.fail(error);
     return false;
   }
-  return resolver.tryResolve(value);
+  return filled.fill(value);
 }
 
 /** What the host gave, `read` as a value; a panic when JSON can't hold it. */

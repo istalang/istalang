@@ -85,6 +85,8 @@ export class Future extends RunObject {
   readonly callbacks: Waiting[] = [];
   /** What of the run itself waits on it: a call into a context waits on its invocation's. */
   readonly listeners: ((value: Value) => void)[] = [];
+  /** What the run does if it is disposed before it settles: a host's cancel (§9). */
+  readonly cancels: (() => void)[] = [];
   /** The execution it is the future of, for an async call's. */
   readonly execution: Execution | undefined;
 

@@ -54,7 +54,7 @@ interface ScenarioSubject {
 export type Subject = ProgramSubject | SuiteSubject | ScenarioSubject;
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
-const regressions = `${root}src/codegen/regressions/`;
+const regressions = `${root}test/regressions/`;
 const amended = fileURLToPath(new URL('./amended/', import.meta.url));
 const formBuilder = `${root}examples/FormBuilder/`;
 const stdlib = `${root}src/stdlib/`;

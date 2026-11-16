@@ -175,12 +175,9 @@ function nativeParts(lowering: Lowering, declaration: HostExternDeclaration) {
     json,
     /** `count` parameters, each JSON. */
     jsons: (count: number) => Array.from({ length: count }, () => ({ type: json })),
-    /** The callback filling the future of `awaited`'s kind the extern gives, with JSON. */
-    filling: (_: AwaitedType): TypeReference => ({
-      kind: 'function',
-      parameters: [json],
-      result: { kind: 'primitive', name: 'Unit' },
-    }),
+    /** The pending future, of `awaited`'s kind, the host fills with JSON. */
+    filling: (awaited: AwaitedType): TypeReference =>
+      tables.types.reference(futureOf(checker, jsonType, awaited.mode)),
   };
 }
 
@@ -220,27 +217,22 @@ export function writeHostCall(
   }
   const instance = rootInstance(checker, declaration, [json, awaited.mode]);
   const unit = { kind: 'primitive', name: 'Unit' } as const;
-  const filling: TypeReference = {
-    kind: 'function',
-    parameters: [tables.types.reference(json)],
-    result: unit,
-  };
-  const future = tables.types.reference(futureType);
-  const pair = emitCall(
+  const future = emitCall(
     context,
     { span, callee: tables.functionIndex(instance), arguments: [] },
-    { kind: 'tuple', elements: [future, filling] },
+    tables.types.reference(futureType),
   );
-  const callback = code.tupleItem(pair, 1, filling, span);
+  code.pin(future);
   code.letGo(
-    [emitCall(context, { span, callee: call.native, arguments: [...encoded, callback] }, unit)],
+    [emitCall(context, { span, callee: call.native, arguments: [...encoded, future] }, unit)],
     span,
   );
   const filled = awaitFuture(
     context,
-    { future: code.tupleItem(pair, 0, future, span), type: futureType, mode: context.waitingMode() },
+    { future, type: futureType, mode: context.waitingMode() },
     span,
   );
+  code.letGo([future], span);
   return emitInbound(
     context,
     filled,

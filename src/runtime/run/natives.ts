@@ -134,8 +134,8 @@ function contextOf(
         future.value = value;
         return future as unknown as Value;
       },
-      timer: unavailable('timers'),
-      resolvable: unavailable('host futures'),
+      timer: (at) => run.timer(at) as unknown as Value,
+      filling: (future) => run.filling(future as unknown as Future),
     },
     waits: {
       onAwait: unavailable('waits'),

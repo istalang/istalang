@@ -156,12 +156,6 @@ K fn _decided<K in Persistence>(wait: _Wait<K>) -> Int:
   for cancel in cancels: cancel()
   -1
 
-# A pending future and what settles it, which a host extern's native is given to fill (§9).
-K fn _filled<T, K in Persistence>() -> (Future<T, K>, Fn<(T,), Unit, K>):
-  const future = _pendingFuture<T, K>()
-  fn fill(value: T): _settle(future, value)
-  (future, fill)
-
 # The run's primitives the futures above stand on (ir-first design, decision 6).
 extern K fn _settled<T, K in Persistence>(future: Future<T, K>) -> Bool
 extern K fn _valueOf<T, K in Persistence>(future: Future<T, K>) -> T

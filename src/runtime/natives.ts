@@ -83,8 +83,8 @@ export interface NativeFutures {
   readonly resolved: (value: Value) => Value;
   /** A future that resolves at `at`, in milliseconds since the Unix epoch (`time.at`). */
   readonly timer: (at: bigint) => Value;
-  /** A live future something outside the run resolves, and its resolver: a live run's (proposal 8). */
-  readonly resolvable: () => Resolvable;
+  /** How a host fills `future`, the pending future its extern's call gives (§9). */
+  readonly filling: (future: Value) => HostFilling;
 }
 
 /**
@@ -107,6 +107,19 @@ export interface NativeWaits {
 }
 
 /** Whether a resolver waits for its value, took one or failed, or lost its future first. */
+/**
+ * How a host fills the future its extern gives: once, with its value, which arrives as a turn of
+ * its own; or by failing it, which panics where the run waits on it; unless the future was disposed
+ * first, which cancels it and calls the host's `onCancel` callbacks.
+ */
+export interface HostFilling {
+  /** Fills the future with `value`, unless it was filled or cancelled; whether it took it. */
+  readonly fill: (value: Value) => boolean;
+  readonly fail: (panic: Panic) => void;
+  readonly onCancel: (callback: () => void) => void;
+  readonly state: () => ResolverState;
+}
+
 export type ResolverState = 'pending' | 'resolved' | 'cancelled';
 
 /** A live future's one-shot resolver, as a native resolves it (proposal 8, Rules 5 and 9). */

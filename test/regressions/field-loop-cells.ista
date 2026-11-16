@@ -1,0 +1,28 @@
+# outcome: 0
+# A variable living in a cell inside a field loop holds each pass's value (§4, §7): its cell is made
+# as the type that reaches a disposable, so the lease one pass makes stays held until that pass ends.
+
+import * as log from 'log'
+
+shared struct Lease { id: Int }
+
+fn dispose(self: Lease): log.info("disposed " + String(self->id))
+
+fn touch<T>(x: &T): ()
+
+fn make(n: Int) -> Int: n
+
+fn make(s: String) -> Lease: new Lease{id: 7}
+
+struct Pair { a: Int, b: String }
+
+fn walk(pair: Pair):
+  for key, value in ...pair:
+    let made = make(value)
+    touch(&made)
+    log.info("visit " + key)
+
+live async fn main() -> Int:
+  walk(Pair{a: 1, b: "hi"})
+  log.info("after walk")
+  0
