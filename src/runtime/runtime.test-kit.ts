@@ -131,59 +131,6 @@ export async function startToEnd(
   return endedOf(test, instance, state);
 }
 
-/** How an instance nothing will wake again ended: finished, panicked, or `stuck` waiting. */
-type Settled = Exclude<InstanceState, { kind: 'waiting' | 'ready' }> | { readonly kind: 'stuck' };
-
-/**
- * Runs every instance the store keeps on from its last commit, as a later run on the store
- * resumes them: a ready one woken, and a waiting one once time reaches its timer, until none can be
- * woken any more; how each settled, by name.
- */
-export async function settleStored(test: TestRuntime): Promise<ReadonlyMap<string, Settled>> {
-  const { runtime, store, clock } = test;
-  for (;;) {
-    const states = store
-      .instances()
-      .toSorted((first, second) => first.localeCompare(second))
-      .map((name) => [name, runtime.inspect(name).state] as const);
-    const next = nextToWake(states);
-    if (next === undefined) {
-      return new Map(states.map(([name, state]) => [name, settledOf(state)]));
-    }
-    if (next.at !== undefined && clock.now() < next.at) {
-      clock.set(next.at);
-    }
-    // biome-ignore lint/performance/noAwaitInLoops: each wake runs on what the last one committed.
-    await runtime.wake(next.name);
-  }
-}
-
-/** The instance to wake next: the first ready, else the one whose timer is due soonest. */
-function nextToWake(
-  states: readonly (readonly [string, InstanceState])[],
-): { readonly name: string; readonly at?: bigint } | undefined {
-  const ready = states.find(([, state]) => state.kind === 'ready');
-  if (ready !== undefined) {
-    return { name: ready[0] };
-  }
-  let soonest: { readonly name: string; readonly at: bigint } | undefined;
-  for (const [name, state] of states) {
-    if (
-      state.kind === 'waiting' &&
-      state.until !== undefined &&
-      (soonest === undefined || state.until < soonest.at)
-    ) {
-      soonest = { name, at: state.until };
-    }
-  }
-  return soonest;
-}
-
-/** How an instance in `state`, which nothing will wake again, ended. */
-function settledOf(state: InstanceState): Settled {
-  return state.kind === 'waiting' || state.kind === 'ready' ? { kind: 'stuck' } : state;
-}
-
 /** A context for natives that never use theirs; touching it is a bug in the test. */
 export const unusedContext: FullNativeContext = new Proxy({} as FullNativeContext, {
   get: (_target, property) => {

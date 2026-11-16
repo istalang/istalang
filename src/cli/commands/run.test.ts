@@ -1,6 +1,7 @@
 /**
  * `ista run` end to end, through the CLI in-process, on real time: what it prints, logs and
- * reports (every corpus program's outcome is run.sweep.test.ts's). With a store, a context killed
+ * reports (how every corpus program ends on real time is the corpus sweep's, test/sweep). With a
+ * store, a context killed
  * while it waits is resumed by a later run of the program on that store, in a process of its own.
  */
 

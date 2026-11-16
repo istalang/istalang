@@ -28,7 +28,8 @@ import { isTestModulePath } from '../../src/foundation/language/well-known/testi
 import { loadProject } from '../../src/project/project.ts';
 import { corpusDirectory, runProgramOf, runPrograms } from '../corpus/programs.ts';
 import { specCode, specExamples } from '../corpus/spec-examples.ts';
-import type { ProgramRun, SuiteProject } from './pipeline.ts';
+import type { Ending } from './observation.ts';
+import type { ProgramRun, SuiteProject } from './pipeline/index.ts';
 import { type Scenario, scenarios } from './scenarios.ts';
 
 /** What a program's first line states it ends with. */
@@ -40,7 +41,7 @@ export interface ProgramSubject extends ProgramRun {
   readonly stated?: Stated;
 }
 
-interface SuiteSubject {
+export interface SuiteSubject {
   readonly kind: 'suite';
   readonly name: string;
   readonly project: SuiteProject;
@@ -48,13 +49,21 @@ interface SuiteSubject {
   readonly paths: readonly string[];
 }
 
-interface ScenarioSubject {
+export interface ScenarioSubject {
   readonly kind: 'scenario';
   readonly name: string;
   readonly scenario: Scenario;
 }
 
 export type Subject = ProgramSubject | SuiteSubject | ScenarioSubject;
+
+/** The ending `subject`'s first line states, if it states one. */
+export function statedEnding({ stated }: ProgramSubject): Partial<Ending> | undefined {
+  if (stated === undefined) {
+    return undefined;
+  }
+  return stated.expects === 'outcome' ? { outcome: stated.expected } : { panic: stated.expected };
+}
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const regressions = `${root}test/regressions/`;
@@ -176,6 +185,9 @@ function suiteSubjects(): SuiteSubject[] {
 /** The group of programs stating what the pipeline doesn't show yet, each a reported defect. */
 export const defectsGroup = 'defects';
 
+/** The group of programs written by hand to spec amendments, their goldens too. */
+export const amendedGroup = 'amended';
+
 /** Every subject, by the group whose golden file records it. */
 export const subjectGroups: ReadonlyMap<string, readonly Subject[]> = new Map<
   string,
@@ -183,7 +195,7 @@ export const subjectGroups: ReadonlyMap<string, readonly Subject[]> = new Map<
 >([
   ['corpus', corpusSubjects()],
   ['regressions', statingSubjects(regressions)],
-  ['amended', statingSubjects(amended)],
+  [amendedGroup, statingSubjects(amended)],
   [defectsGroup, statingSubjects(defects)],
   ['spec-examples', specExampleSubjects()],
   ['form-builder', formBuilderSubjects()],

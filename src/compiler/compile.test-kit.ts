@@ -13,12 +13,15 @@ import { definitionFormat } from '../definition/definition.ts';
 import { isError } from '../foundation/diagnostics/diagnostic.ts';
 import { memo } from '../foundation/structures/memo.ts';
 import { stdProgramOf } from './binder/bind.test-kit.ts';
+import { bindProgram } from './binder/bind.ts';
 import { type Checker, checkProgram } from './checker/check.ts';
 import { isCycle } from './checker/rules/lifetimes/lifetimes.test-kit.ts';
+import { typeKeys } from './checker/types/identity/type-keys.ts';
 import { compileProgram, diagnose, type ModuleDiagnostics, mainOf } from './compile.ts';
 import { lower } from './lowering/lower.ts';
 import { type Files, idOf } from './program/program.test-kit.ts';
-import type { Program } from './program/program.ts';
+import type { ModuleId, Program } from './program/program.ts';
+import { nodesUnder } from './syntax/tree/index.ts';
 
 let stdChecked: Program | undefined;
 
@@ -67,9 +70,8 @@ const compiledTexts = new Map<string, string>();
 /**
  * The Definition text of the program rooted at `main`, with every std module, though static
  * lifetimes rejects its cycles (design.md §7): lowering reads no verdict of the rule, so tests run
- * such programs anyway, the oracle checking their heaps. They are the oracle's own, whose programs
- * make cycles, and those the rule over-rejects (docs/work/static-lifetimes/findings.md). Throws
- * at any other error.
+ * such programs anyway, those the rule over-rejects (docs/work/static-lifetimes/findings.md).
+ * Throws at any other error.
  */
 export function textDespiteCycles(main: string): string {
   const program = stdProgramOf({ main });
@@ -101,4 +103,29 @@ export function diagnosedAt(program: Program, key: string): ModuleDiagnostics {
     throw new Error(`${key} was not loaded`);
   }
   return result;
+}
+
+/**
+ * Numbers the identities of `module`'s names and nodes, its last first, before checking `program`
+ * numbers them in its own order: a Definition must not show which was numbered first.
+ */
+export function numberBackwards(program: Program, module: ModuleId): void {
+  const tree = program.modules.get(module)?.tree;
+  const bindings = bindProgram(program);
+  for (const node of tree === undefined ? [] : nodesUnder(tree, tree.root).toReversed()) {
+    const entity = node.kind === 'Identifier' ? bindings.entityOf(module, node) : undefined;
+    typeKeys.identityOf(entity ?? node);
+  }
+}
+
+/** Each diagnostic of `program` by module path, positions aside, as formatting a module moves them. */
+export function diagnosticsWithoutPlaces(program: Program) {
+  return [...diagnose(program).values()].flatMap(({ source, diagnostics }) =>
+    diagnostics.map(({ severity, code, message }) => ({
+      path: source.path,
+      severity,
+      code,
+      message,
+    })),
+  );
 }

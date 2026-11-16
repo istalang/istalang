@@ -1,9 +1,9 @@
 /**
- * Static lifetimes is sound (docs/work/static-lifetimes/plan.md, C3): over soups of writes,
- * closures (inert ones kept in a handle they capture among them, proposal 14), async calls, inboxes
- * and awaitables, a program the checker accepts compiles to a Definition the ownership verifier
- * passes and runs to its end, and one it rejects is rejected for a cycle alone, since every
- * fragment checks otherwise.
+ * Static lifetimes over soups of writes, closures (inert ones kept in a handle they capture among
+ * them, proposal 14), async calls, inboxes and awaitables (docs/work/static-lifetimes/plan.md, C3):
+ * a program the checker accepts compiles to a Definition the ownership verifier passes and runs to
+ * its end, and one it rejects is rejected for a cycle alone, since every fragment checks otherwise.
+ * Programs closing a cycle at run time (cyclic-programs.ts) are rejected.
  */
 
 import fc from 'fast-check';
@@ -153,7 +153,7 @@ describe('static lifetimes over fragment soups', () => {
     expect(diagnosedAt(program, 'main').diagnostics.filter(isError)).toEqual([]);
   });
 
-  it('keeps the oracle invariant when inert closures in handles close cycles with disposables nearby', async () => {
+  it('accepts and runs inert closures in handles closing cycles with disposables nearby', async () => {
     const extra = [
       'shared struct Emitter { listeners: Array<inert fn(Int) -> Unit> = [] }',
       'fn on(self: Emitter, f: inert fn(Int) -> Unit):',
@@ -188,7 +188,7 @@ describe('static lifetimes over fragment soups', () => {
     });
   });
 
-  it('never lets a program it accepts trip the oracle, and rejects only for cycles', {
+  it('runs every program it accepts to its end, and rejects only for cycles', {
     timeout: wholeProgramTimeout,
   }, async () => {
     await fc.assert(
@@ -207,7 +207,7 @@ describe('static lifetimes over fragment soups', () => {
   });
 
   it.each(cyclicPrograms)(
-    'rejects rather than letting the oracle trip on $name',
+    'rejects $name, which closes a cycle at run time',
     async ({ body, extra = [] }) => {
       const text = programOf(body, extra);
       const program = stdProgramOf({ main: text });

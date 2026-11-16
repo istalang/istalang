@@ -73,6 +73,16 @@
       }
     },
     {
+      // A corpus sweep check is a test body the sweep runs inside an `it` per subject and check
+      // (test/sweep/sweep.ts), asserting what the kind of subject or run it was given calls for.
+      "includes": ["test/sweep/checks/**"],
+      "linter": {
+        "rules": {
+          "suspicious": { "noMisplacedAssertion": "off", "noConditionalExpect": "off" }
+        }
+      }
+    },
+    {
       // `vscode` is the editor's own module, given to an extension at run time; no package
       // provides it, and its types come from @types/vscode, which biome's resolver doesn't map
       // from `vscode`.

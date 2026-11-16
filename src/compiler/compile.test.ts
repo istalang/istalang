@@ -1,7 +1,7 @@
 /**
  * The coordinator's results: diagnostics from every phase so far, merged per module, keyed by the
  * module's id, and derived once per program. That a Definition never shows the numbers types are
- * keyed by is compile.sweep.test.ts's.
+ * keyed by is the corpus sweep's (test/sweep/checks/numbering.ts).
  */
 
 import { describe, expect, it } from 'vitest';

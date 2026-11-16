@@ -2,7 +2,7 @@
  * What crosses the host boundary spelled (§9, docs/arch/definition.md, "Externs"): the key binding
  * an extern to its native or a startable function to what a host starts it by, and the type a host
  * extern provides as declared, both persisted by stores and host tables across deploys. So their
- * spelling is frozen bytes (extern-keys.sweep.test.ts), rendered by `externKey` and `keyTypeText`
+ * spelling is frozen bytes (extern-keys.test-kit.ts), rendered by `externKey` and `keyTypeText`
  * (definition/extern-key.ts); this module only projects the checker's types onto `KeyType`.
  *
  * - The projection is lossy on purpose, and its own walk: it leaves out a function type's `&`

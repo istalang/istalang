@@ -12,7 +12,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { test as it } from 'vitest';
-import { compiledAt } from '../../test/golden/pipeline.ts';
+import { compiledAt } from '../../test/golden/pipeline/index.ts';
 import type { HostExterns } from '../runtime/boundary/host-natives.ts';
 import { builtProgram } from './built-program.test-kit.ts';
 

@@ -12,7 +12,9 @@ tags: [goldens, testing, scenarios, ir-first]
 
 What programs show when run, recorded from the interpreter before the IR-first rewrite deleted it
 (`docs/work/ir-first/contracts.md`, "Goldens"), so every later pipeline is held to it.
-`golden.sweep.test.ts` runs them; `GOLDEN=update` records instead of checking.
+The corpus sweep runs them (`test/sweep`, its `golden` check), each subject compiled once beside
+its other checks; `GOLDEN=update` records instead of checking, in one process, and freezes the
+extern keys the programs spell (`src/compiler/lowering/tables/extern-keys.txt`) too.
 
 ## One home per result
 
@@ -74,7 +76,7 @@ with `frame`, `waiting` (`until`, `watching`) or `ready`.
 
 ## A new pipeline
 
-`pipeline.ts` is the only module that knows the pipeline: a new one replaces it, keeping its
+`pipeline/` is the only folder that knows the pipeline: a new one replaces it, keeping its
 exports, and sets `runsAmendments`, which turns the `amended` group from expected failures into
 checks. A golden changes only with a named spec amendment (`docs/work/ir-first/design.md`), cited
 where it changes.

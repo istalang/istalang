@@ -1,8 +1,7 @@
 /**
  * Programs that close a cycle through a disposable at run time across language constructs, each
- * as the statements of a soup's `_main` and the declarations it adds (lifetimes-oracle.sweep.test.ts
- * runs them): static lifetimes must reject each with a cycle diagnostic, never let it run into the
- * oracle.
+ * as the statements of a soup's `_main` and the declarations it adds (lifetimes-soups.sweep.test.ts
+ * runs them): static lifetimes must reject each with a cycle diagnostic.
  */
 
 interface CyclicCase {
