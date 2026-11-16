@@ -15,6 +15,10 @@ with a periodic cycle collector.
 code base doing the right thing once, not a dozen hacky patch-work maintained. it must be kept
 green field!" They expect lowering and runtime to need big refactors.
 
-**How to apply:** plans are complete refactoring plans (structure, deletion, one home per rule),
+Decided 2026-11-16: capture golden outputs from the interpreter, then delete it completely; where
+new code differs throughout, rewrite rather than migrate ("fastest cleanest path"; breakage is
+acceptable, tests catch it). Primitive ops (Int `+`) must be as fast as hand-written JS in codegen.
+
+**How to apply:** plans are complete rewrite/refactoring plans (structure, deletion, one home per rule),
 never a feature or perf patch on top of what exists; no backward compatibility. Work lives in
 `docs/work/ir-first/`. Related: [[simplicity-first]], [[build-on-constructs]].
