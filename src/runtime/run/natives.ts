@@ -278,9 +278,6 @@ export function changesOf(run: Run, reference: Reference, counted: boolean): Val
       const popped = elements().pop();
       return popped;
     },
-    reverse: () => {
-      elements().reverse();
-    },
     splice: (start, count, items) => {
       kept(items);
       released(elements().splice(start, count, ...items));

@@ -15,7 +15,7 @@ import { preludeInterpreterNatives, preludeNatives } from './prelude/natives.ts'
 import { randomNatives } from './random/natives.ts';
 import { regexNatives } from './regex/natives.ts';
 import { runtimeInterpreterNatives, runtimeNatives } from './runtime/natives.ts';
-import { type ModuleNatives, nativeKeysOf, type StdModule, stdModule } from './std-module.ts';
+import { type ModuleNatives, type StdModule, stdModule } from './std-module.ts';
 import { type StdModuleName, stdModuleSources } from './std-sources.ts';
 import { stringsNatives } from './strings/natives.ts';
 import { testingNatives } from './testing/natives.ts';
@@ -30,10 +30,7 @@ const nativesOf: Partial<Record<StdModuleName, ModuleNatives>> = {
   strings: { everywhere: stringsNatives },
   regex: { everywhere: regexNatives },
   math: { everywhere: mathNatives },
-  // `decimal` rounds in `math`'s modes, so its natives are keyed by `math`'s keys too.
-  decimal: {
-    everywhere: (keys) => decimalNatives(keys, nativeKeysOf('math' satisfies StdModuleName)),
-  },
+  decimal: { everywhere: decimalNatives },
   random: { everywhere: randomNatives },
   log: { everywhere: logNatives },
   crypto: { everywhere: cryptoNatives },

@@ -60,34 +60,14 @@ describe('prelude natives', () => {
     );
   });
 
-  it('divide by zero as IEEE 754 does, whatever the operand types', () => {
+  it('divide floats by zero as IEEE 754 does', () => {
     fc.assert(
-      fc.property(fc.bigInt({ min: -(2n ** 50n), max: 2n ** 50n }), finite, (whole, fraction) => {
-        const cases = [
-          [keys.of('divide', 'Int', 'Int'), whole, 0n, Number(whole) / 0],
-          [keys.of('divide', 'Int', 'Float'), whole, -0, Number(whole) / -0],
-          [keys.of('divide', 'Float', 'Int'), fraction, 0n, fraction / 0],
-          [keys.of('divide', 'Float', 'Float'), fraction, 0, fraction / 0],
-        ] as const;
-        for (const [key, dividend, zero, quotient] of cases) {
-          expect(call(key, dividend, zero)).toBe(quotient);
+      fc.property(finite, (fraction) => {
+        for (const zero of [0, -0]) {
+          expect(call(keys.of('divide', 'Float', 'Float'), fraction, zero)).toBe(fraction / zero);
         }
       }),
     );
-  });
-
-  it('mix ints into floats, and always divide as floats', () => {
-    fc.assert(
-      fc.property(fc.bigInt({ min: -(2n ** 50n), max: 2n ** 50n }), finite, (whole, fraction) => {
-        expect(call(keys.of('add', 'Int', 'Float'), whole, fraction)).toBe(
-          Number(whole) + fraction,
-        );
-        expect(call(keys.of('multiply', 'Float', 'Int'), fraction, whole)).toBe(
-          fraction * Number(whole),
-        );
-      }),
-    );
-    expect(call(keys.of('divide', 'Int', 'Int'), 7n, 2n)).toBe(3.5);
   });
 
   it('compare consistently with the order of the values', () => {

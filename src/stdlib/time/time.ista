@@ -30,15 +30,50 @@ fn compare(left: Time, right: Time) -> Int: compare(left.value, right.value)
 
 fn compare(left: Duration, right: Duration) -> Int: compare(left.value, right.value)
 
-# ISO 8601 text (§3.8, §9): a time as JavaScript's Date.toJSON writes it, a duration as
-# Temporal.Duration does. Both are Stringable and Parsable, and cross as JSON as that text.
-extern fn toString(self: Time) -> String
+# ISO 8601 text (§3.8, §9). Both are Stringable and Parsable, and cross as JSON as that text.
+#
+# - A time is written as JavaScript's Date.toJSON writes it: UTC, with milliseconds, and a six-digit
+#   signed year outside 0000–9999. Beyond the instants a JavaScript Date holds, ±8.64e15 ms, there
+#   is no such text, so writing one panics.
+# - A duration is written as Temporal.Duration writes the exact time between two instants: hours at
+#   most, since a day is a calendar unit that isn't always 24 hours, as `PT1H30M`, with seconds
+#   carrying any milliseconds (`PT0.25S`), `PT0S` for none, and `-` before a negative one.
+# - Reading accepts what writing gives, plus a UTC offset instead of `Z` and a time without
+#   milliseconds; a duration may also count days, read as 24 hours each. Calendar units (years,
+#   months, weeks) have no fixed length, and anything finer than a millisecond can't be held, so
+#   both are refused rather than rounded.
+fn toString(self: Time) -> String:
+  if self.value < -_maximumTime or self.value > _maximumTime:
+    panic("The time " + self.value + " ms from the epoch has no ISO 8601 text.")
+  const year, month, day = _civilDate(self.value // _millisecondsPerDay)
+  const ofDay = self.value % _millisecondsPerDay
+  const date = _yearText(year) + "-" + _padded(month, 2) + "-" + _padded(day, 2)
+  const hour = _padded(ofDay // _millisecondsPerHour, 2)
+  const minute = _padded(ofDay // _millisecondsPerMinute % 60, 2)
+  const second = _padded(ofDay // _millisecondsPerSecond % 60, 2)
+  date + "T" + hour + ":" + minute + ":" + second + "." + _padded(ofDay % 1000, 3) + "Z"
 
-extern fn toString(self: Duration) -> String
+fn toString(self: Duration) -> String:
+  const magnitude = if self.value < 0: -self.value else: self.value
+  const seconds = (magnitude % _millisecondsPerMinute) // _millisecondsPerSecond
+  const milliseconds = magnitude % _millisecondsPerSecond
+  let parts = ""
+  if magnitude >= _millisecondsPerHour: parts += String(magnitude // _millisecondsPerHour) + "H"
+  if magnitude % _millisecondsPerHour >= _millisecondsPerMinute:
+    parts += String((magnitude % _millisecondsPerHour) // _millisecondsPerMinute) + "M"
+  if seconds > 0 or milliseconds > 0: parts += String(seconds) + _fraction(milliseconds) + "S"
+  const sign = if self.value < 0: "-" else: ""
+  sign + "PT" + (if parts == "": "0S" else: parts)
 
-extern fn Time.parse(text: String) -> Result<Time>
+fn Time.parse(text: String) -> Result<Time>:
+  match _timeMilliseconds([for character in text: character]):
+    case Int as milliseconds: Ok(Time{value: milliseconds})
+    case None: Err(_notIso(text, "time"))
 
-extern fn Duration.parse(text: String) -> Result<Duration>
+fn Duration.parse(text: String) -> Result<Duration>:
+  match _durationMilliseconds([for character in text: character]):
+    case Int as milliseconds: Ok(Duration{value: milliseconds})
+    case None: Err(_notIso(text, "duration"))
 
 fn toJson(self: Time) -> json.Json: json.encodeText(self)
 
@@ -103,3 +138,180 @@ extern fn Time.of(dateTime: DateTime, zone: Zone) -> Time
 
 # ISO 8601 with `zone`'s offset, `2026-10-25T13:00:00.000+01:00`, which `Time.parse` reads.
 extern fn format(self: Time, zone: Zone) -> String
+
+const _millisecondsPerSecond = 1000
+const _millisecondsPerMinute = 60_000
+const _millisecondsPerHour = 3_600_000
+const _millisecondsPerDay = 86_400_000
+
+# The furthest a JavaScript Date reaches from the epoch, either way.
+const _maximumTime = 8_640_000_000_000_000
+
+# Days since the epoch from a proleptic Gregorian date and back, counted in eras of 400 years, each
+# 146,097 days, from 0000-03-01, so a leap day ends a year (Howard Hinnant's `days_from_civil`).
+fn _civilDate(days: Int) -> (Int, Int, Int):
+  const shifted = days + 719_468
+  const era = shifted // 146_097
+  const dayOfEra = shifted - era * 146_097
+  const yearOfEra = (
+    dayOfEra - dayOfEra // 1460 + dayOfEra // 36_524 - dayOfEra // 146_096
+  ) // 365
+  const dayOfYear = dayOfEra - (365 * yearOfEra + yearOfEra // 4 - yearOfEra // 100)
+  const shiftedMonth = (5 * dayOfYear + 2) // 153
+  const day = dayOfYear - (153 * shiftedMonth + 2) // 5 + 1
+  const month = if shiftedMonth < 10: shiftedMonth + 3 else: shiftedMonth - 9
+  (yearOfEra + era * 400 + (if month <= 2: 1 else: 0), month, day)
+
+fn _civilDays(year: Int, month: Int, day: Int) -> Int:
+  const marchYear = if month <= 2: year - 1 else: year
+  const era = marchYear // 400
+  const yearOfEra = marchYear - era * 400
+  const shiftedMonth = if month > 2: month - 3 else: month + 9
+  const dayOfYear = (153 * shiftedMonth + 2) // 5 + day - 1
+  const dayOfEra = yearOfEra * 365 + yearOfEra // 4 - yearOfEra // 100 + dayOfYear
+  era * 146_097 + dayOfEra - 719_468
+
+fn _daysInMonth(year: Int, month: Int) -> Int:
+  if month == 2:
+    if year % 4 == 0 and (year % 100 != 0 or year % 400 == 0): 29
+    else: 28
+  elif month == 4 or month == 6 or month == 9 or month == 11: 30
+  else: 31
+
+# Four digits within 0000–9999, else a sign and six, as JavaScript writes a year.
+fn _yearText(year: Int) -> String:
+  if year >= 0 and year <= 9999: _padded(year, 4)
+  elif year < 0: "-" + _padded(-year, 6)
+  else: "+" + _padded(year, 6)
+
+# `value`, below `10 ** digits`, in exactly `digits` digits: the digits after the leading 1 of
+# `10 ** digits + value`. Every program loads this module, so it pads without importing `strings`.
+fn _padded(value: Int, digits: Int) -> String: String(10 ** digits + value)[1..]
+
+# A count of milliseconds as the fraction of a second ending a duration's seconds, without the
+# zeros ending it: `.25` for 250; none for 0.
+fn _fraction(milliseconds: Int) -> String:
+  if milliseconds == 0: return ""
+  let digits = milliseconds
+  let width = 3
+  while digits % 10 == 0:
+    digits = digits // 10
+    width -= 1
+  "." + _padded(digits, width)
+
+fn _notIso(text: String, what: String) -> Error:
+  Error{message: "'" + text + "' is not an ISO 8601 " + what + ".", code: "parse"}
+
+# The time `chars` name, in milliseconds since the epoch: a date and a time of day to the second,
+# maybe a fraction of up to three digits, then `Z` or an offset from UTC; none for text that isn't
+# one, or names no instant a JavaScript Date holds.
+fn _timeMilliseconds(chars: Array<String>) -> Int?:
+  const signed = chars.length() > 0 and (chars[0] == "+" or chars[0] == "-")
+  const shape = if signed: "#000000-00-00T00:00:00" else: "0000-00-00T00:00:00"
+  if not _fits(chars, 0, shape): return none
+  # Where the year ends, each later field a fixed step from it.
+  const y = shape.length() - 15
+  const year = _number(chars, 0, y)
+  const month = _number(chars, y + 1, y + 3)
+  const day = _number(chars, y + 4, y + 6)
+  const hour = _number(chars, y + 7, y + 9)
+  const minute = _number(chars, y + 10, y + 12)
+  const second = _number(chars, y + 13, y + 15)
+  const isCalendarTime = month >= 1 and month <= 12 and day >= 1
+  if not isCalendarTime or day > _daysInMonth(year, month): return none
+  if hour >= 24 or minute >= 60 or second >= 60: return none
+  let at = shape.length()
+  let milliseconds = 0
+  if at < chars.length() and chars[at] == ".":
+    const digits = _digitRun(chars, at + 1)
+    if digits == 0 or digits > 3: return none
+    milliseconds = _number(chars, at + 1, at + 1 + digits) * 10 ** (3 - digits)
+    at += 1 + digits
+  const clock = hour * _millisecondsPerHour + minute * _millisecondsPerMinute + second * 1000
+  const local = _civilDays(year, month, day) * _millisecondsPerDay + clock + milliseconds
+  if local < -_maximumTime or local > _maximumTime: return none
+  match _zoneOffset(chars, at):
+    case Int as offset: local - offset
+    case None: none
+
+# How far ahead of UTC the zone ending `chars` at `at` is, in milliseconds: `Z`, or a sign and an
+# offset below 24:00; none for anything else.
+fn _zoneOffset(chars: Array<String>, at: Int) -> Int?:
+  if at + 1 == chars.length() and chars[at] == "Z": return 0
+  if at + 6 != chars.length() or not _fits(chars, at, "#00:00"): return none
+  const hours = _number(chars, at + 1, at + 3)
+  const minutes = _number(chars, at + 4, at + 6)
+  if hours >= 24 or minutes >= 60: return none
+  const offset = hours * _millisecondsPerHour + minutes * _millisecondsPerMinute
+  if chars[at] == "-": -offset
+  else: offset
+
+# The milliseconds `chars` name as a duration: an optional sign, `P`, days, then after `T` hours,
+# minutes and seconds with up to three digits of fraction, each optional and in that order, with at
+# least one; none for text that isn't one.
+fn _durationMilliseconds(chars: Array<String>) -> Int?:
+  const signed = chars.length() > 0 and (chars[0] == "+" or chars[0] == "-")
+  let at = if signed: 1 else: 0
+  if at >= chars.length() or chars[at] != "P": return none
+  at += 1
+  let total = 0
+  let counted = false
+  const days = _digitRun(chars, at)
+  if days > 0:
+    if at + days >= chars.length() or chars[at + days] != "D": return none
+    total += _number(chars, at, at + days) * _millisecondsPerDay
+    at += days + 1
+    counted = true
+  if at < chars.length():
+    if chars[at] != "T" or at + 1 == chars.length(): return none
+    at += 1
+    for unit, size in [("H", _millisecondsPerHour), ("M", _millisecondsPerMinute)]:
+      const digits = _digitRun(chars, at)
+      if digits > 0 and at + digits < chars.length() and chars[at + digits] == unit:
+        total += _number(chars, at, at + digits) * size
+        at += digits + 1
+        counted = true
+    const seconds = _digitRun(chars, at)
+    if seconds > 0:
+      total += _number(chars, at, at + seconds) * _millisecondsPerSecond
+      at += seconds
+      if at < chars.length() and (chars[at] == "." or chars[at] == ","):
+        const fraction = _digitRun(chars, at + 1)
+        if fraction == 0 or fraction > 3: return none
+        total += _number(chars, at + 1, at + 1 + fraction) * 10 ** (3 - fraction)
+        at += 1 + fraction
+      if at >= chars.length() or chars[at] != "S": return none
+      at += 1
+      counted = true
+    if at != chars.length(): return none
+  if not counted: return none
+  if chars[0] == "-": -total
+  else: total
+
+# Whether `chars` hold `shape` from `at`: `0` a digit, `#` a sign, and any other character itself.
+fn _fits(chars: Array<String>, at: Int, shape: String) -> Bool:
+  if at + shape.length() > chars.length(): return false
+  let position = at
+  for expected in shape:
+    const character = chars[position]
+    const fits = match expected:
+      case "0": _isDigit(character)
+      case "#": character == "+" or character == "-"
+      case _: character == expected
+    if not fits: return false
+    position += 1
+  true
+
+# How many digits run in `chars` from `at`.
+fn _digitRun(chars: Array<String>, at: Int) -> Int:
+  let end = at
+  while end < chars.length() and _isDigit(chars[end]): end += 1
+  end - at
+
+fn _isDigit(character: String) -> Bool: character >= "0" and character <= "9"
+
+# The int the digits of `chars` from `start` to `end` write, which a sign may begin.
+fn _number(chars: Array<String>, start: Int, end: Int) -> Int:
+  match Int.parse(chars[start..end].join("")):
+    case Ok(value): value
+    case Err(error): panic(error.message)

@@ -1,17 +1,13 @@
 /**
- * Times and durations as ISO 8601 text (§3.8, §9), in milliseconds since the Unix epoch and
- * milliseconds.
+ * Times and durations as ISO 8601 text, over JavaScript's `Date` and regexes: an independent
+ * implementation the `time` module's code (time.ista) is tested against, as decimal.js is for
+ * `decimal`'s.
  *
- * - A time is written as JavaScript's `Date.toJSON` writes it: UTC, with milliseconds, and the
- *   six-digit signed year JavaScript uses outside 0000–9999. Beyond the instants a JavaScript
- *   `Date` can hold, ±8.64e15 ms, there is no such text, so writing one is refused.
- * - A duration is written as `Temporal.Duration` writes the exact time between two instants:
- *   hours at most, since a day is a calendar unit that isn't always 24 hours, as `PT1H30M`, with
- *   seconds carrying any milliseconds (`PT0.25S`), `PT0S` for none, and `-` before a negative one.
+ * - A time is written as JavaScript's `Date.toJSON` writes it; beyond the instants a `Date` holds
+ *   there is no such text.
+ * - A duration is written as `Temporal.Duration` writes the exact time between two instants.
  * - Reading accepts what writing gives, plus a UTC offset instead of `Z` and a time without
- *   milliseconds; a duration may also count days, read as 24 hours each. Calendar units (years,
- *   months, weeks) have no fixed length, and anything finer than a millisecond can't be held, so
- *   both are refused rather than rounded.
+ *   milliseconds; a duration may also count days, read as 24 hours each.
  */
 
 import {

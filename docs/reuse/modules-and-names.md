@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-11-13
-last_updated: 2026-11-15
+last_updated: 2026-11-16
 tags: [reuse, language, modules, program, binder, names]
 ---
 
@@ -19,7 +19,7 @@ tags: [reuse, language, modules, program, binder, names]
 - spell a checked declaration's module-qualified name, or a type's table key (its checker key with qualified names for numbers: what a Definition orders union variants by and names variants, instances and structural entries by, alike however the type was written and whatever else the program declares) → `qualifiedNameOf`, `declaredNameOf`, `tableKey` (`src/compiler/lowering/tables/names.ts`); an extern's or startable function's key, or a host extern's declared type, a frozen projection of types → `keyOf`, `declaredTypeOf` (`src/compiler/lowering/tables/extern-keys.ts`), its bytes held by `extern-keys.sweep.test.ts`
 - build an extern key (`prelude.add(Int, Float)`) from a signature or native table → `externKey`, `nativeKey`, `keyTypeText` (`src/definition/extern-key.ts`)
 - build type descriptors for `nativeKey` → `namedKey`, `functionKey`, `tupleKey`, `parameterKey` (a primitive by its name) (`src/definition/extern-key.ts`)
-- mark a `nativeKey` parameter as `&` reference or `...` rest → `referenceKey`, `restKey` (`src/definition/extern-key.ts`)
+- mark a `nativeKey` parameter as `&` reference → `referenceKey` (`src/definition/extern-key.ts`)
 - look up a language-role module (`prelude`, `time`, `json`, `lifetimes`, `testing`), the `std:` scheme, or a well-known declaration (`wellKnown.holds`, `wellKnown.keeps` among them) → `languageModules`, `stdScheme`, `wellKnown` (`src/foundation/language/well-known/index.ts`)
 - look up well-known variant and field names (a union's layout, `Result`, a cursor's `Step`) → `unionLayout`, `resultVariants`, `resultFields`, `stepVariants` (`src/foundation/language/well-known/variants.ts`); `Json` is a union, whose members json-values.ts finds by what each variant holds
 - look up well-known codec function names and helpers → `codecFunctions`, `derivedCodecs`, `codecHelpers`, `writeThrough` (`json.encode`, what lowering's write call is) (`src/foundation/language/well-known/codecs.ts`)

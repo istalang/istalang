@@ -5,7 +5,7 @@
  *
  * - A DateTime holds what Temporal's PlainDateTime does, to the millisecond, under the same field
  *   names, read and built by name. Text with a finer fraction is refused rather than rounded, as
- *   `Time.parse` refuses it (iso.ts).
+ *   `Time.parse` refuses it (time.ista).
  * - A Zone holds its canonical id, which only `Zone.parse` and `utc` make, so every zone a native
  *   is given exists, unless a snapshot moved to a host whose zone data lacks it, which panics.
  *   `DateTime.parse` refuses a date that doesn't exist, so one reaches the other natives only in a

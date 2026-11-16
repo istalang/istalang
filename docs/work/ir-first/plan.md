@@ -1,5 +1,5 @@
 ---
-description: phase plan and process for the IR-first rewrite (design.md) — goldens from the interpreter, the std moved to Istalang on main, and one rewrite of everything after the checker on the ir-first branch, tested late against the goldens; read before forking, building or reviewing any ir-first phase
+description: phase plan and process for the IR-first rewrite (design.md) — goldens from the interpreter, natives moved to Istalang on main, and one rewrite of everything after the checker on the ir-first branch, tested late against the goldens; read before forking, building or reviewing any ir-first phase
 owner: tech-lead
 status: active
 applies_to: istalang
@@ -26,5 +26,5 @@ phase, tested late against goldens. What can be tested now runs on main against 
 | Phase | Scope | Acceptance |
 |---|---|---|
 | R0 Goldens (main) | Goldens and host scenarios as data, with a runner; the coverage map; recursion floor measured and the spec amended, with the goldens it changes written by hand; baseline benches; js-codegen docs archived (`contracts.md`). | Runner green on the old pipeline, except the hand-written amended goldens. Every corpus program, spec example, std suite, scenario and FormBuilder view has its result recorded. Coverage map complete. |
-| L Std in Istalang (main) | Field-loop annotations and the enum variant loop in the checker; every JSON encoder and decoder in Istalang; about 95 natives moved to Istalang, decimal first. | Goldens and verify green on the old pipeline. No TS codec synthesis, no production `decimal.js`. Strings linear. |
-| R1 Rewrite (branch) | Delete the old pipeline. The new Definition, lowering, codegen and run (`design.md`), every decision there; the remaining natives on primitives; runtime services in Istalang; CLI and host API; docs rewritten. Order inside is the implementer's, the IR schema first. | Every golden green. Verify green. Typed-IR gate. Properties: the verifier fails on a dropped or doubled hold; fast-check aliasing; snapshot round trip across two builds; spill and restore. Perf gates. No native builds an `Optional`, `Result` or enum. The run bundles with no Node built-in. |
+| L Std in Istalang (main) | About 95 natives moved to Istalang, decimal first. | Goldens and verify green on the old pipeline. No production `decimal.js`. Strings linear. |
+| R1 Rewrite (branch) | Delete the old pipeline. The new Definition, lowering (derived JSON codecs in one module, design decision 9), codegen and run (`design.md`), every decision there; the remaining natives on primitives; runtime services in Istalang; CLI and host API; docs rewritten. Order inside is the implementer's, the IR schema first. | Every golden green. Verify green. Typed-IR gate. Properties: the verifier fails on a dropped or doubled hold; fast-check aliasing; snapshot round trip across two builds; spill and restore. Perf gates. No native builds an `Optional`, `Result` or enum. The run bundles with no Node built-in. |

@@ -3,8 +3,8 @@
  * `externKey` gives their declarations (prelude.ista declares them; docs/arch/definition.md,
  * "Externs").
  *
- * - `Int` is a bigint, so integer arithmetic is exact at any size (§2); mixing an int with a float
- *   converts the int, and `/` always divides as floats.
+ * - `Int` is a bigint, so integer arithmetic is exact at any size (§2). An operator takes two
+ *   operands of one type: those mixing an int and a float, and `/` on ints, are the prelude's code.
  * - `//` floors and `%` takes the divisor's sign, so `a == (a // b) * b + a % b` holds (§3.9).
  * - `/` divides as IEEE 754 does, so dividing by zero gives an infinity or NaN (§2); `//` and `%`
  *   by zero have no int to give, which is a bug in the program, so they panic (§3.12). So does an
@@ -88,12 +88,7 @@ const arithmeticNatives = (keys: NativeKeys): Natives<NativeContext> => ({
     (left, right) => left * right,
     (left, right) => left * right,
   ),
-  ...numeric(
-    keys,
-    'divide',
-    (left, right) => Number(left) / Number(right),
-    (left, right) => left / right,
-  ),
+  [keys.of('divide', 'Float', 'Float')]: ([left, right]) => float(left) / float(right),
   ...numeric(
     keys,
     'compare',

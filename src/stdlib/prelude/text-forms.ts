@@ -1,12 +1,13 @@
 /**
- * How the primitives are written as text and read back (§3.10, `Stringable` and `Parsable`): what
- * `toString`, `String(x)` and appending to a string spell, and what `parse` accepts.
+ * How the numbers are written as text and read back (§3.10, `Stringable` and `Parsable`): what
+ * `toString`, `String(x)` and appending to a string spell, and what `parse` accepts. A Bool's are
+ * the prelude's code.
  *
  * - A float keeps its `.0` when whole, so `1.0` never reads as the int `1`; NaN and the infinities
  *   are spelled as JavaScript spells them, so `parse` reads every text `toString` writes.
  * - `parse` is strict, since its text comes from outside: decimal digits for an int, at any size,
- *   JavaScript's number syntax for a float, and exactly `true` or `false`. What it refuses is a
- *   `Result` of an `Error` with code `parse`, never a panic (§3.12).
+ *   and JavaScript's number syntax for a float. What it refuses is a `Result` of an `Error` with
+ *   code `parse`, never a panic (§3.12).
  */
 
 import type { Value } from '../../definition/values/values.ts';
@@ -38,8 +39,6 @@ export function primitiveText(value: Value | undefined): string {
 const readers = {
   Int: (source: string) => (intSyntax.test(source) ? BigInt(source) : undefined),
   Float: (source: string) => (floatSyntax.test(source) ? Number(source) : floatWords.get(source)),
-  Bool: (source: string) =>
-    source === 'true' || source === 'false' ? source === 'true' : undefined,
 } as const satisfies Partial<Record<PrimitiveName, (source: string) => Value | undefined>>;
 // biome-ignore-end lint/style/useNamingConvention: the keys are the primitive types' names (§2).
 
@@ -53,7 +52,7 @@ export function readPrimitive(type: ParsedPrimitive, source: string): Value | un
 
 export const textFormNatives = (keys: NativeKeys): Natives<NativeContext> => ({
   ...Object.fromEntries(
-    (['Int', 'Float', 'Bool'] as const).map((type) => [
+    (['Int', 'Float'] as const).map((type) => [
       keys.of('toString', type),
       ([value]: readonly Value[]) => primitiveText(value),
     ]),

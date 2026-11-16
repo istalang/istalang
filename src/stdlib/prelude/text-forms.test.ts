@@ -1,5 +1,5 @@
 /**
- * The primitives' text forms (§3.10): `parse` reads back every text `toString` writes, for any
+ * The numbers' text forms (§3.10): `parse` reads back every text `toString` writes, for any
  * value, and refuses text that isn't one, whatever it is, without throwing.
  */
 
@@ -11,7 +11,7 @@ const wholeFloat = /\.0$|e/u;
 const intSyntax = /^[+-]?\d+$/u;
 
 describe('primitive text forms', () => {
-  it('read back every int, float and bool as written', () => {
+  it('read back every int and float as written', () => {
     fc.assert(
       fc.property(fc.bigInt(), (value) => {
         expect(readPrimitive('Int', primitiveText(value))).toBe(value);
@@ -23,9 +23,6 @@ describe('primitive text forms', () => {
         expect(readPrimitive('Float', primitiveText(value))).toBe(Object.is(value, -0) ? 0 : value);
       }),
     );
-    for (const value of [true, false]) {
-      expect(readPrimitive('Bool', primitiveText(value))).toBe(value);
-    }
   });
 
   it('keep a whole float distinct from an int', () => {
@@ -42,8 +39,6 @@ describe('primitive text forms', () => {
       fc.property(fc.string(), (source) => {
         const int = readPrimitive('Int', source);
         expect(int === undefined || intSyntax.test(source)).toBe(true);
-        const bool = readPrimitive('Bool', source);
-        expect(bool === undefined || source === 'true' || source === 'false').toBe(true);
         expect(() => readPrimitive('Float', source)).not.toThrow();
       }),
     );
