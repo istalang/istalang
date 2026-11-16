@@ -199,31 +199,44 @@ export class Lifetimes {
   }
 
   /**
+   * `root` with each value along `path` made its writer's to change (`owned`), from the root down,
+   * since a value is unique only while everything above it is: the root its holder takes, and the
+   * value at the path's end.
+   */
+  opened(
+    root: Value,
+    path: readonly Step[],
+  ): { readonly root: CompositeValue; readonly node: CompositeValue } {
+    const own = this.owned(root as CompositeValue);
+    let node = own;
+    for (const [part, position] of path) {
+      const children = (node as unknown as Record<string, Value[]>)[part] ?? [];
+      const next = this.owned(children[position] as CompositeValue);
+      children[position] = next;
+      node = next;
+    }
+    return { root: own, node };
+  }
+
+  /**
    * `root` with the value at `path` replaced by `value`, moved in, each value along the path
-   * changed in place where unique (`owned`); the value replaced let go of when `counted`.
+   * changed in place where unique (`opened`); the value replaced let go of when `counted`.
    */
   withPart(root: Value, path: readonly Step[], value: Value, counted: boolean): Value {
-    if (path.length === 0) {
+    const last = path.at(-1);
+    if (last === undefined) {
       if (counted) {
         this.letGo(root);
       }
       return value;
     }
-    const own = this.owned(root as CompositeValue);
-    let parent: CompositeValue = own;
-    for (const [at, [part, position]] of path.entries()) {
-      const children = (parent as unknown as Record<string, Value[]>)[part] ?? [];
-      const child = children[position] ?? null;
-      if (at === path.length - 1) {
-        children[position] = value;
-        if (counted) {
-          this.letGo(child);
-        }
-      } else {
-        const next = this.owned(child as CompositeValue);
-        children[position] = next;
-        parent = next;
-      }
+    const { root: own, node } = this.opened(root, path.slice(0, -1));
+    const [part, position] = last;
+    const children = (node as unknown as Record<string, Value[]>)[part] ?? [];
+    const replaced = children[position] ?? null;
+    children[position] = value;
+    if (counted) {
+      this.letGo(replaced);
     }
     return own;
   }
@@ -306,13 +319,28 @@ function typedParts(
         ? of(node.fields, (at) => entry.variants[node.variant]?.fields[at]?.type)
         : [];
     case 'extern':
-      if (node.kind === 'array') {
-        return of(node.elements, () => entry.arguments[0]);
-      }
-      return node.kind === 'map' ? of(node.entries.flat(), (at) => entry.arguments[at % 2]) : [];
+      return node.kind === 'array' || node.kind === 'map'
+        ? of(childValues(node), (at) => itemTypeOf(types, type, at))
+        : [];
     default:
       return of(childValues(node), () => undefined);
   }
+}
+
+/**
+ * The type of item `at` of a collection of `type`, an array's or a map's, taking its items in turn:
+ * an array's elements, or a map's keys and values alternately.
+ */
+function itemTypeOf(
+  types: readonly TypeDefinition[],
+  type: TypeReference,
+  at: number,
+): TypeReference | undefined {
+  const entry = type.kind === 'named' ? types[type.type] : undefined;
+  if (entry?.kind === 'alias') {
+    return itemTypeOf(types, entry.type, at);
+  }
+  return entry?.kind === 'extern' ? entry.arguments[at % entry.arguments.length] : undefined;
 }
 
 /** A shallow copy of `node`, its parts in a list of their own. */
