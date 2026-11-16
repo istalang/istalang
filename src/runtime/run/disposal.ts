@@ -3,6 +3,8 @@
  * values it held are given back, to lose their holder in the next round.
  *
  * - A **cell** of a shared struct runs its declared `dispose`, then lets go of its value.
+ * - A declared `dispose` is code a disposal runs: what it lets go of, its own locals included, is
+ *   disposed in rounds of its own as it returns, before what the disposed value held (§7).
  * - A **future** cancels what a host was to fill and the resolvers waiting on it (§6), stops its
  *   call (executions.ts), and lets go of what waits on it and of its value.
  * - A **resource** is marked disposed and forgotten, and released: by the runtime, where its
@@ -30,8 +32,11 @@ export interface DisposalSeams {
   readonly mocks: Mocks;
   /** The entry of the `dispose` of extern type entry `type`, if it declares one. */
   readonly disposeOf: (type: number) => number | undefined;
-  /** Runs entry `index`, a declared `dispose`, on `passed`; what it gives. */
-  readonly call: (index: number, passed: readonly Value[]) => unknown;
+  /**
+   * Runs entry `index`, a declared `dispose`, on `disposed`, disposing what its code lets go of
+   * before going on.
+   */
+  readonly runDispose: (index: number, disposed: Value) => void;
   /** Calls the closure `closure` with nothing; what it gives. */
   readonly callValue: (closure: Value) => unknown;
   readonly letGo: (...values: (Value | undefined)[]) => void;
@@ -54,7 +59,7 @@ export function disposerOf(seams: DisposalSeams): Disposer {
 function releasedBy(object: RunObject, seams: DisposalSeams): readonly Value[] {
   if (object instanceof Cell) {
     if (object.dispose !== undefined) {
-      seams.letGo(seams.call(object.dispose, [object as unknown as Value]) as Value);
+      seams.runDispose(object.dispose, object as unknown as Value);
     }
     return object.counted ? [object.value] : [];
   }
@@ -67,7 +72,7 @@ function releasedBy(object: RunObject, seams: DisposalSeams): readonly Value[] {
     object.release?.();
     const dispose = seams.disposeOf(object.type);
     if (dispose !== undefined) {
-      seams.letGo(seams.call(dispose, [object as unknown as Value]) as Value);
+      seams.runDispose(dispose, object as unknown as Value);
     }
   }
   if (object instanceof MockObject) {

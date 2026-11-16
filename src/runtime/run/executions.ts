@@ -166,8 +166,14 @@ export class Executions {
     }
   }
 
-  /** Readies `execution` to resume with `decision`, the position its wait was decided for. */
+  /**
+   * Readies `execution` to resume with `decision`, the position its wait was decided for; an ended
+   * call, stopped while what it waited on lives on into the round after, resumes no more.
+   */
   unpark(execution: Execution, decision: Value): void {
+    if (execution.ended) {
+      return;
+    }
     if (this.#disposingNow === execution) {
       execution.decidedDisposing = decision;
     }
@@ -188,7 +194,12 @@ export class Executions {
     return execution.disposing;
   }
 
-  /** Stops `execution`, whose future was disposed (§7). */
+  /**
+   * Stops `execution`, whose future was disposed (§7). Resuming on its `disposing()`, it runs
+   * cleanup code, whose let-gos are disposed in rounds of their own before its call is gone;
+   * stopped where it waits, it runs none, so what its frame held loses its holder with the rest of
+   * its disposal, in the round after.
+   */
   stop(execution: Execution): void {
     if (execution.ended) {
       return;
@@ -205,11 +216,15 @@ export class Executions {
           this.#disposingNow = outer;
         }
       }
-      if (execution.parked) {
+      if (execution.parked && execution.decidedDisposing !== undefined) {
         queue.unready(execution);
-        this.resume(execution, execution.decidedDisposing ?? STOP);
+        this.resume(execution, execution.decidedDisposing);
       }
     });
+    if (execution.parked) {
+      queue.unready(execution);
+      this.resume(execution, STOP);
+    }
   }
 
   /** Stops every call still suspended, newest first, as the run finishes. */

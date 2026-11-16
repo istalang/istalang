@@ -150,7 +150,8 @@ export class Run {
       resources: this.resources,
       mocks: this.mocking.held,
       disposeOf: (type) => disposeOf(this.definition.types, type),
-      call: (index, passed) => this.call(index, passed),
+      runDispose: (index, disposed) =>
+        this.lifetimes.apart(() => this.lifetimes.letGo(this.call(index, [disposed]) as Value)),
       callValue: (closure) => this.callValue(closure, []),
       letGo: (...values) => this.lifetimes.letGo(...values),
       stop: (execution) => this.executions.stop(execution),
