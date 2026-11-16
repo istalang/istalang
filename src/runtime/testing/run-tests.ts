@@ -69,7 +69,7 @@ export async function* runTests(
   text: string,
   options: TestRunOptions,
 ): AsyncGenerator<TestReport, void, undefined> {
-  const { value: definition, hash: version } = definitionFormat.readCanonical(text);
+  const { value: definition, hash: version } = definitionFormat.readKeyed(text);
   const { purpose } = definition;
   if (purpose.kind !== 'tests') {
     unreachable('This Definition was not built to run tests.');

@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-11-16
-last_updated: 2026-11-16
+last_updated: 2026-11-17
 tags: [definition, ir, lowering]
 ---
 
@@ -17,9 +17,10 @@ every decision; a backend (docs/arch/codegen.md) writes what each instruction sa
 (docs/arch/runtime.md) executes it. A committed instance's **snapshot** is the run's
 (`src/runtime/snapshot/`, docs/arch/runtime.md).
 
-A Definition is persisted for an instance's whole life: one zod schema validates, decodes and
-encodes it; the text is canonical JSON in a version envelope, keyed by its content hash
-(`formats/format.ts`). Validation checks every index, holds the entries a purpose names to the
+A Definition is persisted for an instance's whole life: one zod schema decodes and encodes it,
+`write` giving canonical JSON in a version envelope, and a reader keys the text it was given by its
+content hash (`formats/format.ts`). Validation runs once, as a text is read, which every text goes
+through before any of it runs: writing checks the shape alone. Validation checks every index, holds the entries a purpose names to the
 call rule (a test's runner and suites ista code calls, the job server live code calls), and runs
 the ownership verifier (`validation/ownership.ts`), which judges each instruction on its last visit
 of a dataflow fixpoint. A function type carries no mark, so the run holds every async call it starts

@@ -47,13 +47,10 @@ export interface DeployedProgram {
   readonly outcomeText: (finished: Finished) => string;
 }
 
-/** Reads a Definition text: its value, the hash a store keys it by, and its canonical text. */
-export function readDefinition(text: string): {
-  readonly program: WorldProgram;
-  readonly canonical: string;
-} {
-  const { value: definition, hash, text: canonical } = definitionFormat.readCanonical(text);
-  return { program: { definition, hash, emitted: emitProgram(definition) }, canonical };
+/** Reads a Definition text, validating it: its value, the hash a store keys it by, its code. */
+export function readDefinition(text: string): WorldProgram {
+  const { value: definition, hash } = definitionFormat.readKeyed(text);
+  return { definition, hash, emitted: emitProgram(definition) };
 }
 
 /** `program`, deployed to `world`: what a host starts and reads of it. */

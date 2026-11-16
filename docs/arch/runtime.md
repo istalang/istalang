@@ -4,7 +4,7 @@ owner: toolchain
 status: active
 applies_to: src/runtime, src/stdlib/prelude (async section)
 last_verified: 2026-11-16
-last_updated: 2026-11-16
+last_updated: 2026-11-17
 tags: [runtime, run, snapshot, durability, lifetimes, futures]
 ---
 
@@ -150,8 +150,8 @@ In a Definition built to run tests (spec §10):
 ## The host runtime (`host/`)
 
 - `index.ts`: `createRuntime({natives, store, clock, seed, host?, reports?})` gives
-  `deploy(text)`, `wake`, `retry`, `terminate`, `inspect` and `programOf`. A Definition is read and
-  emitted once per hash and written to the store once.
+  `deploy(text)`, `wake`, `retry`, `terminate`, `inspect` and `programOf`. A Definition is read,
+  validated and emitted once per hash and written to the store once, as it was given.
 - **Host turns** (`host-turns.ts`): the world's work runs synchronously to its end once begun, and a
   host's extern runs inside it. So every host call that runs code (a start, a wake, a retry, a
   termination) starts on a turn of its own: one an extern makes starts once the call it was made in

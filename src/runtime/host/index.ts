@@ -3,7 +3,7 @@
  * start, and wake, inspect, retry and terminate the instances its code reaches.
  *
  * - A Definition arrives as its persisted text, the form the store keeps; deploying reads and
- *   validates it, emits its code once per hash, and writes it to the store once. Each deploy holds
+ *   validates it, emits its code once per hash, and writes it to the store once, as it was given. Each deploy holds
  *   the host's externs to the types the store recorded (§3.6, boundary/extern-signatures.ts).
  * - Instances are the world's (durable-world.ts): each committed to the store at every segment's
  *   end, so a runtime opened over the same store goes on where an earlier one committed (§5). One
@@ -39,9 +39,9 @@ export interface Runtime extends InstanceCalls {
 export function createRuntime(seams: RuntimeSeams): Runtime {
   const byHash = new Map<string, WorldProgram>();
   const bound = (text: string): WorldProgram => {
-    const { program, canonical } = readDefinition(text);
+    const program = readDefinition(text);
     return memo(byHash, program.hash, () => {
-      seams.store.writeDefinition(program.hash, canonical);
+      seams.store.writeDefinition(program.hash, text);
       return program;
     });
   };

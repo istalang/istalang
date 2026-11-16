@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-11-16
-last_updated: 2026-11-16
+last_updated: 2026-11-17
 tags: [reuse, runtime, snapshot, persistence, lifetimes, host]
 ---
 
@@ -16,7 +16,7 @@ How the run works: docs/arch/runtime.md.
 
 - encode/decode canonical JSON text, refuse text nesting too deeply before it is parsed, hash a text → `encodeJson`, `decodeJson`, `NestingError`, `contentHash` (`src/definition/formats/codec.ts`)
 - define a versioned format `{ format, version, body }` with depth/zod validation → `defineFormat`, `Format`, `FormatError` (`src/definition/formats/format.ts`)
-- read or write a persisted `Definition` text, with its canonical text and hash → `definitionFormat`, `Format.readCanonical` (`src/definition/definition.ts`)
+- read (validating it) or write (checking its shape) a persisted `Definition` text, with the hash a store keys it by → `definitionFormat`, `Format.readKeyed` (`src/definition/definition.ts`); what a format checks beyond its shape, once as it reads → `defineFormat`'s `problemsOf`
 - read or write an instance's snapshot → `snapshotFormat`, `Snapshot` (`src/runtime/snapshot/format.ts`); write one from a run → `snapshotOf`, `TooDeep` (`snapshot/write.ts`); read one back into a fresh run → `restore`, `rootInvocation` (`snapshot/restore.ts`)
 - a run of one instance: calls, starts, parks, the ready queue, settling futures, timers, host fillings, its random draws → `Run` (`src/runtime/run/run.ts`); what a snapshot keeps of it beside its objects → `Run.persisted`, `Run.restored`
 - act on a run's object from outside it, in whichever run of its instance the turn lands in, the turn kept as an input a segment run again applies again → `Run.arrive`, `Run.onArrivalTaken`, `Run.succeededBy`

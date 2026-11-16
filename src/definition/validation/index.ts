@@ -13,7 +13,6 @@
  * Issues name where they are, so a bad Definition is refused with the first thing wrong in it.
  */
 
-import type { z } from 'zod';
 import { mayCall } from '../../foundation/language/call-rule.ts';
 import type { Mark } from '../../foundation/language/well-known/index.ts';
 import { endsBlock, operandsOf } from '../instructions/instruction.ts';
@@ -22,15 +21,8 @@ import type { Purpose, Tables } from '../tables/index.ts';
 import { typesIn } from '../tables/types.ts';
 import { ownershipIssues } from './ownership.ts';
 
-/** Reports every way `definition` breaks the rules above to `context`. */
-export function validate(definition: Tables, context: z.RefinementCtx): void {
-  for (const issue of issuesOf(definition)) {
-    context.addIssue({ code: 'custom', message: issue });
-  }
-}
-
 /** Every way `definition` breaks the rules above, each a message naming where. */
-function issuesOf(definition: Tables): readonly string[] {
+export function validationIssues(definition: Tables): readonly string[] {
   const issues: string[] = [];
   const within = (what: string, index: number, size: number, where: string) => {
     if (index >= size) {

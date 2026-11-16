@@ -9,8 +9,13 @@
  * (docs/arch/architecture.md, InstanceStore).
  *
  * The body is a zod schema whose codecs turn JSON into the in-memory form (bigints, tagged
- * floats), so writing runs the same schema in reverse. That keeps one description per format,
- * and writing validates too: invalid content fails as the same FormatError reading gives.
+ * floats), so writing runs the same schema in reverse. That keeps one description per format, and
+ * writing checks the shape too: a value it can't encode fails as the same FormatError reading gives.
+ * What a body must hold beyond its shape (`problemsOf`, a Definition's validation) is checked once,
+ * as a text is read, which every text goes through before anything runs of it.
+ *
+ * A reader keying what it read (`readKeyed`) keys the text it was given by its hash: what `write`
+ * wrote is canonical already, so nothing is encoded again to key it.
  *
  * The codecs recurse on the host's stack, so a body nesting deeper than any valid one can is
  * refused before either runs (`maximumTextDepth`), whether it is read, on its text before it is
@@ -41,31 +46,33 @@ interface Persisted {
   readonly hash: string;
 }
 
-/** A text read and written back: its value, its canonical text and that text's hash. */
-interface Canonical<Value> extends Persisted {
+/** A text read: its value, the text, and the hash a store keys it by. */
+interface Keyed<Value> extends Persisted {
   readonly value: Value;
 }
+
+/** What a body must hold beyond its shape: each way `value` breaks it, a message naming where. */
+type Problems<Value> = (value: Value) => readonly string[];
 
 export interface Format<Body extends z.ZodType> {
   readonly name: string;
   readonly version: number;
   /** Decodes and validates a text; throws FormatError on any mismatch. */
   readonly read: (text: string) => z.output<Body>;
+  /** Encodes a value, checking its shape alone; throws FormatError where it can't. */
   readonly write: (value: z.output<Body>) => Persisted;
-  /**
-   * Reads a text and writes its value back, for a reader that keys what it read by its hash; throws
-   * FormatError as `read` does.
-   */
-  readonly readCanonical: (text: string) => Canonical<z.output<Body>>;
+  /** Reads a text, for a reader that keys what it read by its hash; throws as `read` does. */
+  readonly readKeyed: (text: string) => Keyed<z.output<Body>>;
 }
 
 const envelope = z.strictObject({ format: z.unknown(), version: z.unknown(), body: z.unknown() });
 
-/** Ties a body schema to a format name and version. */
+/** Ties a body schema, and what a body must hold beyond it, to a format name and version. */
 export function defineFormat<Body extends z.ZodType>(
   name: string,
   version: number,
   body: Body,
+  problemsOf: Problems<z.output<Body>> = () => [],
 ): Format<Body> {
   const persisted: Format<Body> = {
     name,
@@ -82,7 +89,11 @@ export function defineFormat<Body extends z.ZodType>(
       }
       const result = body.safeParse(contents);
       if (!result.success) {
-        throw invalid(name, result.error);
+        throw invalid(name, z.prettifyError(result.error));
+      }
+      const problems = problemsOf(result.data);
+      if (problems.length > 0) {
+        throw invalid(name, problems.map((problem) => `✖ ${problem}`).join('\n'));
       }
       return result.data;
     },
@@ -90,15 +101,12 @@ export function defineFormat<Body extends z.ZodType>(
       requireShallow(name, value);
       const result = z.safeEncode(body, value);
       if (!result.success) {
-        throw invalid(name, result.error);
+        throw invalid(name, z.prettifyError(result.error));
       }
       const text = encodeJson({ format: name, version, body: result.data });
       return { text, hash: contentHash(text) };
     },
-    readCanonical(text) {
-      const value = persisted.read(text);
-      return { value, ...persisted.write(value) };
-    },
+    readKeyed: (text) => ({ value: persisted.read(text), text, hash: contentHash(text) }),
   };
   return persisted;
 }
@@ -111,8 +119,8 @@ function requireShallow(name: string, contents: unknown): void {
 }
 
 /** One readable error for invalid content, whether it was being read or written. */
-function invalid(name: string, error: z.ZodError): FormatError {
-  return new FormatError(`Invalid ${name} body:\n${z.prettifyError(error)}`);
+function invalid(name: string, problems: string): FormatError {
+  return new FormatError(`Invalid ${name} body:\n${problems}`);
 }
 
 function readEnvelope(text: string, name: string): z.output<typeof envelope> {

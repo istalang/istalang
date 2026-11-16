@@ -15,12 +15,15 @@
 import type { z } from 'zod';
 import { defineFormat } from './formats/format.ts';
 import { tables } from './tables/index.ts';
-import { validate } from './validation/index.ts';
+import { validationIssues } from './validation/index.ts';
 
-const definition = tables.superRefine(validate);
-
-export type Definition = z.output<typeof definition>;
+export type Definition = z.output<typeof tables>;
 
 const version = 4;
 
-export const definitionFormat = defineFormat('istalang-definition', version, definition);
+export const definitionFormat = defineFormat(
+  'istalang-definition',
+  version,
+  tables,
+  validationIssues,
+);
