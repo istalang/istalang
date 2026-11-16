@@ -41,7 +41,7 @@ import type { FunctionContext } from '../context.ts';
 import type { Label } from '../functions/code-writer.ts';
 import type { TypedValue } from '../values/holdings.ts';
 import { exitWriters } from './exits.ts';
-import { type FlowLayout, layoutOf, type PassVisit } from './layout.ts';
+import { type FlowLayout, layoutOf } from './layout.ts';
 import { operationWriters } from './operations.ts';
 import { concreteType, declaringWrites, variableRegister } from './variables.ts';
 
@@ -393,8 +393,7 @@ export class FlowWriter {
    * temporaries, so they are let go of first: overwriting a register ends nothing.
    */
   goTo(block: BlockId, span: AnchoredSpan): void {
-    const visit = this.passesHere().find(({ top }) => top === block);
-    const target = visit?.next ?? block;
+    const target = this.#layout.towards(this.#block, block);
     const started = this.#started.get(target);
     if (started !== undefined) {
       const { code, variables } = this.context;
@@ -429,11 +428,6 @@ export class FlowWriter {
   /** Where the field loop whose top is being written goes first. */
   firstPass(): BlockId {
     return this.#layout.firstOf(this.#block);
-  }
-
-  /** The passes the block being written is in. */
-  passesHere(): readonly PassVisit[] {
-    return this.#layout.passesOf(this.#block);
   }
 
   /** Goes on past the flow, its root's value given into `end.into`. */

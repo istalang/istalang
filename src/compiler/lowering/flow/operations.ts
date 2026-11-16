@@ -22,7 +22,7 @@ import type { Register } from '../../../definition/operands.ts';
 import { wellKnown } from '../../../foundation/language/well-known/index.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import { type ConstantForm, literalTypeForm } from '../../checker/surface/constant-form.ts';
-import type { Argument, Operation } from '../../checker/surface/flow-ir.ts';
+import type { Argument, Operation, ValueId } from '../../checker/surface/flow-ir.ts';
 import type { Type } from '../../checker/types/type/index.ts';
 import { substitute } from '../../checker/types/parts/substitution.ts';
 import { isPrimitive } from '../../checker/types/type/primitives.ts';
@@ -168,12 +168,12 @@ function made(writer: FlowWriter, { into, made: what, parts, site }: Of<'make'>)
   const { context } = writer;
   const { code, tables } = context;
   const { span } = site;
-  const registers = parts.map((part) => writer.registerOf(part));
   const type = writer.typeOf(into);
+  if (what.kind === 'struct' || what.kind === 'handle') {
+    return structMade(writer, type, { fields: what.fields, parts }, span);
+  }
+  const registers = parts.map((part) => writer.registerOf(part));
   switch (what.kind) {
-    case 'struct':
-    case 'handle':
-      return structMade(writer, type, { fields: what.fields, registers }, span);
     case 'tuple':
       return tupleOf(context, registers, span);
     case 'array': {
@@ -206,7 +206,7 @@ function made(writer: FlowWriter, { into, made: what, parts, site }: Of<'make'>)
       return dst;
     }
     default: {
-      const unhandled: never = what;
+      const unhandled: never = what.kind;
       return unhandled;
     }
   }
@@ -261,15 +261,13 @@ function mapEntries(
 function structMade(
   writer: FlowWriter,
   type: Type,
-  {
-    fields,
-    registers,
-  }: { readonly fields: readonly (string | undefined)[]; readonly registers: readonly Register[] },
+  { fields, parts }: { readonly fields: readonly (string | undefined)[]; readonly parts: readonly ValueId[] },
   span: AnchoredSpan,
 ): Register {
+  // A pass visiting no field is never written, so its part is never read.
   const named = new Map(
     fields.flatMap((name, index) =>
-      name === undefined ? [] : [[name, registers[index] as Register] as const],
+      name === undefined ? [] : [[name, writer.registerOf(parts[index] as ValueId)] as const],
     ),
   );
   return type.kind === 'nominal' || type.kind === 'anonymous'
