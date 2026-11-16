@@ -122,6 +122,7 @@ export class DurableWorld implements World {
       child.endWatchers.push(...(this.#awaitingSpawn.get(name) ?? []));
       this.#awaitingSpawn.delete(name);
       child.encoder = encoder;
+      child.terminatesOnPanic = options.terminatesOnPanic === true;
       child.unstarted = true;
       owner?.spawned.push(name);
       child.feed(child.starting(sent), this.seams.clock.now(), { kind: 'start', call: sent });
@@ -210,6 +211,7 @@ export class DurableWorld implements World {
     const resident = this.#made(made, snapshot.crashEveryAwait);
     resident.text = text;
     resident.encoder = snapshot.encoder;
+    resident.terminatesOnPanic = snapshot.terminatesOnPanic;
     restore(resident.run, snapshot);
     return resident;
   }
@@ -300,6 +302,10 @@ export class DurableWorld implements World {
     const ran = run.drain(undefined, true);
     if (resident.inputs.length > 0 && !took && !ran && atCommit(run)) {
       commit(resident, this.#commits);
+      const { status } = resident;
+      if (status.kind === 'panicked' && resident.terminatesOnPanic) {
+        this.terminate(resident, { message: status.message, trace: status.trace });
+      }
       return true;
     }
     return took || ran;

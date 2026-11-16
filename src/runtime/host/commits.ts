@@ -102,11 +102,12 @@ function tooDeepTrace(resident: Resident): string {
 
 /** What every snapshot of `resident` states besides its run: its program, status and options. */
 function header(resident: Resident, status: PersistedStatus) {
-  const { program, crashEveryAwait, encoder } = resident;
+  const { program, crashEveryAwait, encoder, terminatesOnPanic } = resident;
   return {
     definition: program.hash,
     status,
     crashEveryAwait,
+    terminatesOnPanic,
     ...(encoder === undefined ? {} : { encoder }),
   };
 }
@@ -195,6 +196,7 @@ function emptySnapshot({ name, seed }: Resident): Snapshot {
     draws: 0,
     spawned: 0,
     crashEveryAwait: false,
+    terminatesOnPanic: false,
     objects: [],
     live: [],
     timers: [],

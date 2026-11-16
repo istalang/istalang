@@ -42,6 +42,8 @@ export class Resident {
   crashEveryAwait: boolean;
   /** The entry encoding its outcome, a spawned instance's whose type a codec writes (§9). */
   encoder: number | undefined;
+  /** Whether its panic terminates it at once, as an isolated instance's does (§9). */
+  terminatesOnPanic = false;
   status: PersistedStatus;
   run: Run;
   /** The snapshot it last committed, if it ever did. */

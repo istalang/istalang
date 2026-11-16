@@ -90,6 +90,34 @@ describe('a spawned instance', () => {
     expect(logged.get('p/1')).toEqual(['defer', 'disposed out']);
     expect(logged.get('p/2')).toEqual(['defer', 'disposed out']);
   });
+  it('is terminated at once when isolated and it panics, keeping its panic (§9 runtime.isolate)', async () => {
+    const text = compiledText(
+      lines(
+        "import * as runtime from 'runtime'",
+        "import * as time from 'time'",
+        'ista async fn child(n: Int) -> Int:',
+        '  await time.delay(10ms)',
+        '  n * 2',
+        'fn broken() -> Int: panic("broken")',
+        'live async fn main() -> String: await runtime.run(runtime.id()) _main()',
+        'ista async fn _main() -> String:',
+        '  const doubled = await (spawn child(21)).result()',
+        '  const isolated = await runtime.isolate(fn(): broken())',
+        '  match (doubled, isolated):',
+        '    case (Ok(value), Err(error)): "" + value + " " + error.code + " " + error.message',
+        '    case _: "unexpected"',
+      ),
+    );
+    const test = testRuntime();
+    expect(await startToEnd(test, text, { instance: 'p' })).toEqual({
+      kind: 'finished',
+      outcome: '"42 panic broken"',
+    });
+    expect(test.runtime.inspect('p/2').state).toMatchObject({
+      kind: 'terminated',
+      message: 'broken',
+    });
+  });
 });
 
 describe("an instance's context constants", () => {

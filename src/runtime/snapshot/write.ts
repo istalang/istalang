@@ -41,6 +41,7 @@ export interface Written {
   readonly definition: string;
   readonly status: PersistedStatus;
   readonly crashEveryAwait: boolean;
+  readonly terminatesOnPanic: boolean;
 }
 
 /** `run`'s instance as a snapshot; throws `TooDeep` for a value too deep to persist. */

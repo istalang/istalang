@@ -192,6 +192,7 @@ In a Definition built to run tests (spec §10):
 - `retry` restores a panicked instance as it stood before its failed segment and runs it again at
   the time it first started, replaying the call that started it (answering nobody: its caller heard
   the panic); `terminate` disposes what it held
-  then and commits it holding nothing; `inspect` reads the last commit: state (a finished one with
+  then and commits it holding nothing, as happens at once to an isolated instance
+  (`runtime.isolate`, `terminatesOnPanic`, kept in its snapshot) whose segment panics; `inspect` reads the last commit: state (a finished one with
   its outcome's JSON, where encoded), and where each parked execution waits (`parkedAt`: function,
   waypoint, source location).

@@ -139,6 +139,8 @@ const body = z.strictObject({
   draws: count,
   spawned: count,
   crashEveryAwait: z.boolean(),
+  /** Whether its panic terminates it at once, an isolated instance's (§9 `runtime.isolate`). */
+  terminatesOnPanic: z.boolean(),
   /** The entry encoding the outcome of a spawned instance, when a codec writes it (§9). */
   encoder: functionId.optional(),
   objects: z.array(object),
