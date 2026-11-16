@@ -119,7 +119,7 @@ order", "a late case loses at the stop" show twin-chasing; 15 "as the interprete
   (clean-dev: single source of truth). Disappears with R3.
 - **Slot serving pauses for select losers** (instance/slots.ts banner; holder-writes.ts `noteLosersReleased`,
   `losersUncollected`): a patch compensating for releasing losers at decision while zeros are confirmed only at the
-  step's end. Fix: losers' holdings as IR data released by the wait primitive (ir-lifetimes L2a) and slot serving in
+  step's end. Fix: losers' holdings as IR data released by the wait primitive (ir-first plan G4a) and slot serving in
   the same collector round; or the spec simplification in §5.
 - **Copies to protect in place:** instance/crossing.ts ("Every value crossing is rebuilt") and root-outcome.ts
   `copied` exist because of I's run-time in-place policy (D13/D14). Fix: explicit `copy` IR at spawn/context calls.
@@ -178,7 +178,7 @@ service that can be written once in Istalang; (d) a twin of another unit or dead
   run-lifetimes 112, weak-side 126} (inventory D7–D12, D15).
 
 What the primitive set reduces to once (b) and (c) leave: frames (call, return, jump, suspend at `await`/`select`,
-resume), cells/resources/weak references with identity, counts + collector rounds (ir-lifetimes), a ready queue,
+resume), cells/resources/weak references with identity, counts + collector rounds (ir-first design decision 4), a ready queue,
 park/unpark of an execution, timer-at and host-future tokens, context-constant and transient slots, random draws,
 natives. Heap kinds drop from 13 (snapshot/objects.ts `heapObject`) to about 5 (cell, resource, weakRef, execution,
 contextConstant): slot, future, wait, resolver become shared structs; run, answer, outcome, mock become lowered or ista.
@@ -192,17 +192,17 @@ drives any backend. Leaves first; each arrow is "needs".
    instance-state), shared primitives (counts, collector, settle-order, random-draws), boundary/ and the snapshot
    contract (objects, snapshot, holdings, check, random) out of the interpreter's folder; delete the
    `live-imports-interpreter` allow-list. Prereq: none. Moves ≈2.8k LOC, deletes none.
-2. **R2 Lifetimes in the IR** (designed: docs/work/ir-lifetimes/design.md, plan L1→L4→L2a→L2b→L3). Deletes the (b)
-   lifetime policies (holder-writes, in-place, live reach walk ≈720) and the D7–D15 twins (≈500). Prereqs: L1 typed
-   registers. R3 needs L2a/L2b.
+2. **R2 Lifetimes in the IR** (designed: docs/work/ir-first/design.md (decision 4), ir-first plan G3→G4a→G4b→G4c). Deletes the (b)
+   lifetime policies (holder-writes, in-place, live reach walk ≈720) and the D7–D15 twins (≈500). Prereqs: G3 typed
+   registers. R3 needs G4a/G4b.
 3. **R3 Runtime objects in Istalang:** `Future`, `Resolver`, waits, `Slot` (today `extern shared struct` in
    stdlib/prelude/prelude.ista), timers' grouping, `disposed()`/`disposing()` watches, mock registry. Deletes (c) 1,444
    + (d) waits/timers 499 + snapshot/check/waits.ts 226 + heap-indexes 73 + most holdings tables (snapshot/holdings,
    live/lifetimes/holdings) and native capabilities `futures`, `waits`, `slots` — ≈2.5k LOC. Prereqs (Mikado leaves):
-   (i) R2 L2a/L2b, so fields of these structs get lowered holds and let-gos instead of runtime holdings tables;
+   (i) R2 G4a/G4b, so fields of these structs get lowered holds and let-gos instead of runtime holdings tables;
    (ii) IR primitives for park/unpark of an execution, ready-enqueue of a closure call, timer-at, host-future token,
    current execution — replacing today's `wait`/`resolver`/`await`/`select` runtime semantics; (iii) select losers as
-   wait data released at decision (L2a); (iv) stop-a-suspended-call and `disposing()` priority resume as primitives
+   wait data released at decision (G4a); (iv) stop-a-suspended-call and `disposing()` priority resume as primitives
    (inventory §1); (v) the settle order expressed in ista; (vi) perf gates (scheduler/wake.bench.ts,
    codegen/form-builder.bench.ts).
 4. **R4 Protocols into lowering:** start wrapper (await root, encode, give both) replacing root-outcome.ts and the
@@ -216,13 +216,13 @@ drives any backend. Leaves first; each arrow is "needs".
    compiled code commits and restores; one event-loop driver (merges live-run.ts/waiting.ts with arrivals.ts); one
    `LiveProgram` API. Removes the "ista code / contexts / instances / tests run on the interpreter only" rule
    (codegen/emit.ts `interpreterOnly`, stdlib `interpreterKeys`). Prereqs: R1, R3 (few heap kinds to persist), R4,
-   L1 typed registers (also the LLVM prerequisite, docs/work/linker/native-binary.md); a perf decision on frames-as-data.
+   G3 typed registers (also the LLVM prerequisite, docs/work/linker/native-binary.md); a perf decision on frames-as-data.
 6. **R6 One instance host:** host/index `residents`, host/contexts `Contexts`, testing/world `World` → one host core
    with a store seam (sync for tests), one drive loop (world/drive.ts, contexts' loop, live-run's). Prereq: none; cheaper
    after R5, which defines what it drives. Deletes ≈300 LOC.
 7. **R7 Names:** one meaning each for "live", "run", `RunEnd`, `LiveExecution`; fold into R5's contract names.
 
-Order: R1 → R2 (L1, L4 in parallel) → R4 (start wrapper, copy) → R2 (L2a, L2b) → R3 → R5 → R6/R7. R6 may start any time.
+Order: R1 → R2 (G3) → R4 (start wrapper, copy) → R2 (G4a, G4b) → R3 → R5 → R6/R7. R6 may start any time.
 
 ## 5. Spec questions to surface (each would delete code)
 - **Recursion limit:** fix it in the spec (or make it implementation-defined) so backends stop diverging (§2.7).

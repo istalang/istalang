@@ -300,14 +300,12 @@ The run owns frames. This brings three things:
 
 ## 8. Docs that contradict the goal
 
-- `docs/work/ir-lifetimes/design.md`, "Interpreter": "the only runtime for ista code (persistent
-  instances, snapshots, commits), contexts, jobs, mocks and `ista test`."
 - `docs/work/js-codegen/design.md`:
   - "Out of scope" keeps those on the interpreter.
   - "Functions" makes a live async entry a generator.
   - "Stopping a call" stops it with `return()`.
 - `docs/arch/definition.md`, Frames, `counted`: superseded by the typed registers of
-  `ir-lifetimes`.
+  `ir-first design decision 4`.
 
 ## Open
 

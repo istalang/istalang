@@ -17,7 +17,7 @@ Design: `design.md`.
 Sequential phases on one branch: P2 counts the objects P1 builds, and P3 changes the writes P2
 counts. Each gets qa and reviewer. P2's reviewer reviews the whole feature (`main..HEAD`), which
 makes it the merge review; the feature merges then. P3 follows on its own branch, its reviewer seeing
-its whole diff. Lifetimes then move into the IR (`docs/work/ir-lifetimes/`), so every backend runs
+its whole diff. Lifetimes then move into the IR (`docs/work/ir-first/`), so every backend runs
 them and none decides them.
 
 | Phase | Scope | Acceptance |

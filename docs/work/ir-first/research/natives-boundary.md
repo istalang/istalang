@@ -132,7 +132,7 @@ A non-JS backend must match these bit for bit; each is defined today by the JS e
   - `changes`: in place when unique (interpreter `InPlace.changesAt`) vs always copy (`live/values/place.ts` `Place.changes`): lifetimes-inventory §5.
   - Audit: `NativeCalls.#checked` runs `HeapCheck.native` (the checker's keeps/holds table) around each interpreter native call; compiled calls are never audited.
   - `trace`/`callerTrace`: frames (interpreter) vs parsing `new Error().stack` (`live/traces.ts`); an LLVM backend needs a third.
-- **Keeps/holds** (`@Keeps`, `@Holds`, §3.16) live only in the checker (`compiler/checker/rules/lifetimes/externs.ts` `keepsOf`, `externHeldOf`); the Definition carries neither (lifetimes-inventory §5; `ir-lifetimes/design.md` puts them in the extern entry).
+- **Keeps/holds** (`@Keeps`, `@Holds`, §3.16) live only in the checker (`compiler/checker/rules/lifetimes/externs.ts` `keepsOf`, `externHeldOf`); the Definition carries neither (lifetimes-inventory §5; `ir-first/design.md` (decision 4) puts them in the extern entry).
 
 ## 6. Host boundary: one contract for JS backends, none yet for native code
 
@@ -154,7 +154,7 @@ A non-JS backend must match these bit for bit; each is defined today by the JS e
 | V5 | Rule split across layers, stale-comment risk | `live/natives-context.ts` `encodings`; interpreter `InPlace` | "forget written JSON on in-place change" exists only in the interpreter; compiled code's correctness rests on "changes no value in place" (P3 in place will falsify it) | stale identity cache at the host boundary (§9 stable references) once compiled in place lands | make the forget part of the in-place IR primitive in every backend |
 | V6 | DRY (cited) | `InPlace` vs `Place.changes`; keeps/holds checker-only; `heldBy` vs `HolderWrites` | lifetimes-inventory §5 | — | `ValueChanges` as IR primitives; keeps/holds in the extern entry; the native audit then applies to both backends |
 | V7 | Double standard | `runtime/host/index.ts` + `host/programs.ts` vs `live/program.ts` | two start APIs for one concept (§6 above); live hard-wires `stdNatives` (DIP: no injection for tests or a host's own std) | every host-facing change made twice; hosts learn two APIs | one `HostBinding {natives, externs, clock, seed}` both entries take; live takes natives from its caller |
-| V8 | DRY (minor) | `capabilitiesOf` vs `runCapabilities`; log stamping `{instance, time: now(), ...entry}`; constant pinning | the same capability assembly and per-capability rules written per runtime | small now; grows per capability | one context builder over a runtime-objects seam once runtime objects unify (`ir-lifetimes/design.md`, "One copy of runtime objects' rules") |
+| V8 | DRY (minor) | `capabilitiesOf` vs `runCapabilities`; log stamping `{instance, time: now(), ...entry}`; constant pinning | the same capability assembly and per-capability rules written per runtime | small now; grows per capability | one context builder over a runtime-objects seam once runtime objects unify (`ir-first/design.md` (decision 4), "One copy of runtime objects' rules") |
 | V9 | Backend-surface multiplier | `stdlib/numeric.ts` `numeric`; decimal `mixed` | 17 mixed numeric natives and 12 Decimal/Int pairs are conversions plus one op; DRY in TS, but each backend implements every overload | ×4 / ×3 natives per op on each new backend | `.ista` overloads over `Float.from`/`Decimal.from` |
 | V10 | Comment rot | `live/natives-context.ts` banner | "Instances, contexts, slots and testing are … ista's (proposal 8, Rule 6): the checker keeps live code from them": false for contexts (`extern live`) and the plain-`extern fn` testing natives | misleads the next reader on why compiled code refuses them | restate: refused because only the interpreter has them (`emit.ts`) |
 | V11 | Doc drift | `docs/work/linker/README.md` | "203 natives" vs 216 | sizing of a native runtime | update the count, or drop it for "the std natives" |
@@ -168,7 +168,7 @@ text (derived, keyed by its input); `json` codecs are synthesized by lowering
 1. **Natives speak primitives** (V4): result building moves to `.ista` wrappers; it shrinks every later step and every future backend's native code.
 2. **Move the ≈95 `.ista` candidates** (§3, V9), decimal first (34 natives, deletes `decimal.js`); measure interpreter cost on array/string loops.
 3. **One capability declaration** (V2, V3): carried per extern in the Definition, checked at bind time; removes `interpreterNativeKeys`, the `everywhere`/`interpreter` split and the stubs.
-4. **One resolver, one context builder** (V1, V8) in `runtime/`, ahead of the runtime-object unification in `ir-lifetimes/design.md`.
+4. **One resolver, one context builder** (V1, V8) in `runtime/`, ahead of the runtime-object unification in `ir-first/design.md` (decision 4).
 5. **In-place and keeps/holds in the IR** (V5, V6), with the written-JSON forget inside the in-place primitive.
 6. **One host binding** (V7) shared by `createRuntime` and `program`; then a JSON-text C ABI for native backends.
 7. **Settle JS-defined semantics in the spec** (§4): float text, UTF-16 order, the Unicode version for case mapping and graphemes, tz data, limits; add golden vectors to the conformance suite.

@@ -11,7 +11,7 @@ tags: [audit, lowering, definition, ir, typed-registers, lifetimes, llvm, clean-
 # Lowering and Definition audit (read-only research)
 
 Evidence snapshot: `main` at `dd0df1ba`. Lifetime rules themselves are in `lifetimes-inventory.md` and
-`docs/work/ir-lifetimes/design.md`; cited here, not redone. IDs (D1, P3…) are referenced by §4.
+`docs/work/ir-first/design.md` (decision 4); cited here, not redone. IDs (D1, P3…) are referenced by §4.
 
 ## 1. Map
 
@@ -61,31 +61,23 @@ Waste is structural (stored derived data, duplicate homes), not unused exports.
 - **D2. Cells are created in four places:** `flow/variables.ts` (`cellRegister`, and `cellHolds` with
   `VariableRegisters.remakeCell`), `SynthesizedCode.inCell`, and the copy-in cells of `flow/places.ts`.
   Fix: one cell constructor on D1's builder.
-- **D3. Entry identity is smeared.**
-  - Key strings are built in `tables/tables.ts` (`native:`, `constant:`, `contextConstant:`, `start:`,
-    `defaults:`, `dispatch:`, `convert:`, `field:`) and in `tables/instances.ts` (`instanceKey`,
-    `nestedKey`, `asyncFitKey`, `conversionKey`).
-  - Names come from parallel functions (`instanceName`, `nestedName`, `asyncFitName`, `conversionName`),
-    headers from five `DefinitionTables` methods.
-  - The guard `owner.kind === 'constant' || owner.kind === 'contextConstant'` repeats four times in
-    `instances.ts`.
-
-  So a new entry kind edits the `PendingEntry` union, an `…Index` method, a key, a name, a header, the
-  `pendingEntry` switch and a builder. Fix: a typed table `Record<EntryKind, {key, header, lower}>`, as
-  AGENTS.md requires for an open set of handlers.
+- **D3. Entry identity is smeared.** Key strings are built in `tables/tables.ts` (`native:`, `constant:`,
+  `start:`, `defaults:`, `dispatch:`, `convert:`, `field:`, …) and `tables/instances.ts` (`instanceKey`,
+  `nestedKey`, `asyncFitKey`, `conversionKey`); names in parallel functions (`instanceName`, `nestedName`,
+  …); headers in five `DefinitionTables` methods. `owner.kind === 'constant' || owner.kind ===
+  'contextConstant'` repeats four times in `instances.ts`. A new entry kind edits the `PendingEntry`
+  union, an `…Index` method, a key, a name, a header, the `pendingEntry` switch and a builder. Fix: a
+  typed table `Record<EntryKind, {key, header, lower}>`, as AGENTS.md requires for an open set of handlers.
 - **D4. A type is spelled four ways:** checker `typeKey` (identity), `tables/names.ts` `tableKey`
   (persisted labels, union variant order), the `KeyType` projection in `tables/extern-keys.ts`, and
   checker type text. The extern projection is "lossy on purpose … as keys did before those were types,
   so no key changes", a compatibility constraint frozen by `extern-keys.sweep.test.ts` and
   `tables/extern-keys.txt`. Greenfield fix: derive extern keys from one spelling and regenerate the file.
-- **D5. Runtime value algebra lives in the contract folder.** These `definition/values/` modules have no
-  lowering importer; runtime/, live/ and stdlib/ import them:
-  - `json-values.ts`, `written-json.ts`;
-  - `equality.ts` (in-place map ops), `parts.ts`, `replacing.ts`;
-  - `instance-handles.ts`, `declared-values.ts`.
-
-  Lowering imports only `values.ts`. Fix: definition keeps the persisted `Value` schema, and the rest
-  moves to a runtime-shared folder.
+- **D5. Runtime value algebra lives in the contract folder.** `definition/values/` `json-values.ts`,
+  `written-json.ts`, `equality.ts` (in-place map ops), `parts.ts`, `replacing.ts`, `instance-handles.ts`
+  and `declared-values.ts` have no lowering importer (only runtime/, live/, stdlib/); lowering imports
+  only `values.ts`. Fix: definition keeps the persisted `Value` schema, the rest moves to a runtime-shared
+  folder.
 
 ### Responsibility
 
@@ -103,15 +95,12 @@ Waste is structural (stored derived data, duplicate homes), not unused exports.
 
 ### Dependencies and seams
 
-- **S1. Lowering reaches checker internals.** It imports 31 checker modules. About 113 of its 174 checker
-  import lines go below `check.ts`/`surface/` into `types/*`:
-  - `parts/substitution`, `unions/*`;
-  - `identity/{identity,folding,unfolding-pairs,type-keys}`;
-  - `fitting/part-pairs`, `type/field-order`.
-
-  This is legal only through the 43-module `checkerSurface` allow-list in `.dependency-cruiser.mjs`.
-  Lowering re-derives layout from raw `Type` algebra (`changesLayout`, `holdingOf`, `laidOutAs`). Fix: one
-  lowering-owned "concrete type → layout" module, so the allow-list shrinks.
+- **S1. Lowering reaches checker internals.** It imports 31 checker modules; about 113 of its 174 checker
+  import lines go below `check.ts`/`surface/` into `types/*` (`parts/substitution`, `unions/*`,
+  `identity/{identity,folding,unfolding-pairs,type-keys}`, `fitting/part-pairs`, `type/field-order`), legal
+  only through the 43-module `checkerSurface` allow-list in `.dependency-cruiser.mjs`. Lowering re-derives
+  layout from raw `Type` algebra (`changesLayout`, `holdingOf`, `laidOutAs`). Fix: one lowering-owned
+  "concrete type → layout" module, so the allow-list shrinks.
 - **S2. Lowering reads syntax** beyond spans: `functions/bodies.ts` (`writtenBodyOf`) and `waypointAt`.
   Fix: the flow carries each suspension's waypoint.
 
@@ -125,15 +114,13 @@ Waste is structural (stored derived data, duplicate homes), not unused exports.
   a lifetime decision silently. Example: `made()` (`operations.ts`) allocates `dst` before its `switch`,
   and five of its eight arms return another register, so `dst` is wasted and released as an extra. Fix:
   helpers return what they own. Lowering-placed lifetimes need this first.
-- **M3. Counted inference accretes edge cases**, about 230 LOC in all:
-  - `functions/plain-registers.ts` (127 LOC), a per-instruction write table, the third per-kind table
-    beside `operandsOf` and `validation/instruction-rules.ts`;
-  - `CodeWriter`'s plain-register state and `holdsPlain`/`holdsCounted`/`holdsOnlyPlain`, where a TSDoc
-    sits above the wrong method;
-  - `flow/variables.ts` `holdsType`/`cellHolds`/`remakeCell`, and `holdsOnlyPlain()` in `boundary/codecs.ts`.
-
-  This is what the five 2026-11-16 commits patched. It is a mini type inference over the untyped IR: the
-  "second type system" `docs/arch/definition.md` cites as its reason to reject a typed IR.
+- **M3. Counted inference accretes edge cases** (about 230 LOC): `functions/plain-registers.ts` (127 LOC, a
+  per-instruction write table, the third per-kind table beside `operandsOf` and
+  `validation/instruction-rules.ts`); `CodeWriter`'s plain-register state and
+  `holdsPlain`/`holdsCounted`/`holdsOnlyPlain` (one TSDoc sits above the wrong method); `flow/variables.ts`
+  `holdsType`/`cellHolds`/`remakeCell`; `holdsOnlyPlain()` in `boundary/codecs.ts`. The five 2026-11-16
+  commits patched it. It is a mini type inference over the untyped IR: the "second type system"
+  `docs/arch/definition.md` cites as its reason to reject a typed IR.
 - **M4. Start entries recompile bodies.** `lowerStart` lowers a function's body again with JSON arguments,
   and `startHeader?` is threaded through `instanceLowering`, `nestedLowering`, `instanceFrame` and
   `nestedFrame`, all so that a start is one frame in traces. Traces already hide handover and extern
@@ -164,9 +151,9 @@ Waste is structural (stored derived data, duplicate homes), not unused exports.
 | Decision | Made where today | Lowering could emit |
 |---|---|---|
 | Whether a register holds a value, a cell or a reference | `runtime/interpreter/registers.ts` `readRegister`/`writeRegister`: a `cells` lookup (`some`/`find`) on every access, plus a test of the contents; the first write makes the cell, which `transient` relies on | explicit cell and reference instructions (P1) |
-| Release-all at `return`, reverse creation order | `instructions/control.ts` banner | let-go instructions (ir-lifetimes) |
-| In place vs copy for `store`, `behind` writes and collection natives | `runtime/lifetimes/in-place.ts` | "in place if unique" (ir-lifetimes) |
-| Letting go of `select` losers' `holds`, and of what a stopped call holds | runtime | written landings (ir-lifetimes) |
+| Release-all at `return`, reverse creation order | `instructions/control.ts` banner | let-go instructions (ir-first design decision 4) |
+| In place vs copy for `store`, `behind` writes and collection natives | `runtime/lifetimes/in-place.ts` | "in place if unique" (ir-first design decision 4) |
+| Letting go of `select` losers' `holds`, and of what a stopped call holds | runtime | written landings (ir-first design decision 4) |
 | Which registers are counted | interpreter all, JS `counted` | reach facts on register types |
 | `==` and map keys | `definition/values/equality.ts`, a structural walk over self-describing values | per-type equality and hash entries, as codecs are per type |
 | Natives building results by name at run time | `declared-values.ts` (`variantOf`, `okOf`, `errOf`) for natives and the scheduler; json natives find `Json` by role (`jsonTypeOf`) and read extern `typeArguments`, as testing natives do | ista or lowering-built wrappers; natives take and give primitives |
@@ -180,10 +167,9 @@ Waste is structural (stored derived data, duplicate homes), not unused exports.
   of an enum value. The last needs a run-time tag check and a layout lookup.
 - **P3. `keep.into` is a hidden `Array` of holders of different types:** an array used as a holder list,
   which no element type can describe.
-- **P4. Flags instead of variants:**
-  - an extern entry's `constant: boolean` with an optional `declaredType`;
-  - extern disposal's optional `function.host`;
-  - the Definition's flavors as optional `main`/`tests`/`jobServer` fields.
+- **P4. Flags instead of variants:** an extern entry's `constant: boolean` with an optional `declaredType`;
+  extern disposal's optional `function.host`; the Definition's flavors as optional
+  `main`/`tests`/`jobServer` fields.
 - **P5. Reach is stated twice, and partially:** in the per-register `counted` list, and as
   `counted: boolean` on extern type entries only. Struct, enum and alias entries can't state it.
 - **Sound:** indexes and variant/field positions are lowering's semantic decisions, and spans are debug
@@ -195,13 +181,9 @@ Waste is structural (stored derived data, duplicate homes), not unused exports.
   windows (M2). Most sites have the type in hand: `FlowWriter.typeOf` types every flow value (`2b81dee1`),
   and the value helpers pass `TypedValue {register, type}` (`values/holdings.ts`). Synthesized code types
   nothing, so D1 comes first.
-- **Missing `TypeReference` kinds.** It has primitive, named, tuple and function, and lacks:
-  - references (`&` parameters, `behind` dst);
-  - waits (`wait` dst; the prelude has no `Wait` type);
-  - hold lists (P3);
-  - `currentCall`'s weak handle.
-
-  Cells are typed already (`cells[].type`, a `_Cell<T>` entry).
+- **Missing `TypeReference` kinds.** It has primitive, named, tuple and function; it lacks references (`&`
+  parameters, `behind` dst), waits (`wait` dst; the prelude has no `Wait` type), hold lists (P3) and
+  `currentCall`'s weak handle. Cells are typed already (`cells[].type`, a `_Cell<T>` entry).
 - **Field loops.** Blocks are already written once per pass (`flow/layout.ts`). A variable, though, is one
   register per declaring name across passes (`VariableRegisters`): its type is read per pass, and
   `remakeCell` overwrites its cell type with whichever pass reaches a disposable. Fix: key the register
@@ -212,14 +194,10 @@ Waste is structural (stored derived data, duplicate homes), not unused exports.
 
 ### 3.4 What an LLVM backend would lack beyond 3.1–3.3
 
-- **Value representation.** Values are self-describing (tags; `Int` is a bigint), and `==`, map keys, `field`
-  (P2) and `switch` read the tags. Without typed registers, every value is boxed.
-- **Drops.** No last-use marks; `return` and `release` rely on the runtime enumerating registers.
-- **Natives.** They are bound by string key and reflect on types at run time; linking by symbol needs
-  fixed signatures.
-- **Verification.** `definition/validation/` checks indexes, construction shapes, arity, `given`/`body`
-  placement and wait legality. It checks neither types nor ownership; the ownership check is proposed in
-  ir-lifetimes.
+Self-describing values (tags; `Int` a bigint) that `==`, map keys, `field` and `switch` read, so every value
+is boxed without typed registers; no last-use marks (`return`/`release` rely on enumerating registers);
+natives bound by string key that reflect on types at run time; and `definition/validation/` checks
+indexes, shapes, arity, prologue and waits but neither types nor ownership.
 
 ## 4. Ranked refactors (Mikado order)
 
@@ -242,7 +220,7 @@ makes a policy decision. Prerequisites come first; ∥ marks items independent o
 6. **Reach facts on every type entry (P5).** Then delete `counted` (W1), `plain-registers.ts`, the
    `CodeWriter` plain state, `holdsType`/`cellHolds`/`remakeCell` (M3) and extern `counted`. The biggest
    deletion: about 230 LOC in lowering, a schema field, and codegen's counted branches. Needs 5.
-7. **Lifetime instructions** per `docs/work/ir-lifetimes/design.md`, with an ownership verifier in
+7. **Lifetime instructions** per `docs/work/ir-first/design.md` (decision 4), with an ownership verifier in
    `definition/validation/`. Needs 3, 5 and 6.
 8. **∥ Move the runtime value algebra out of `definition/` (D5, W2),** before a second runtime is written
    against the contract.
