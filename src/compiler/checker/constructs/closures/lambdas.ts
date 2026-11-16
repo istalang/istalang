@@ -51,7 +51,6 @@ import type { NestedFunction } from '../../surface/checked-body.ts';
 import type { Admits } from '../../types/fitting/expected.ts';
 import { expectedFunction } from '../../types/fitting/expected.ts';
 import { sameType } from '../../types/identity/identity.ts';
-import { capturedSend } from '../../types/traits/sendability.ts';
 import {
   isOneKind,
   kindAdmits,
@@ -69,7 +68,6 @@ import {
 } from '../../types/type/function-types.ts';
 import type { FunctionType, Type } from '../../types/type/index.ts';
 import { errorType, expectsError, neverType, unitType } from '../../types/type/primitives.ts';
-import { cellTypeOf } from '../../types/type/well-known.ts';
 import {
   checkPatternParameter,
   declaredBodyResult,
@@ -77,8 +75,8 @@ import {
   writtenTypeOf,
 } from '../declarations/functions/signatures.ts';
 import { declareParameter } from '../patterns/targets.ts';
-import { capturesOf, FunctionScope } from './function-scope.ts';
-import { givenKindOf, heldKindOf, nestedTypeOf, nestedValueKind } from './nested-types.ts';
+import { FunctionScope } from './function-scope.ts';
+import { givenKindOf, heldKindOf, nestedTypeOf, recordedNested } from './nested-types.ts';
 import { declareOwnCall } from './own-calls.ts';
 import { type GuidedResult, ReturnScope } from './returns.ts';
 
@@ -344,14 +342,16 @@ interface NestedHeader {
 
 function checkNested(context: BodyContext, node: NestedFunction, header: NestedHeader): Type {
   const { name, parameters, declaredResult } = header;
-  const typeWith = nestedTypeOf(context, node, parameters);
   const codeKind = header.givenKind ?? context.codeKind;
   // An async one waits in its kind, which its future needs one of (§3.3).
   if (awaits(node.qualifiers) && !isOneKind(context.checker, codeKind)) {
     context.report(checkerDiagnostics.unkindedFuture(node.span));
   }
   if (name !== undefined && declaredResult !== undefined) {
-    context.variables.declare(name, typeWith(declaredResult, plainSend, codeKind));
+    context.variables.declare(
+      name,
+      nestedTypeOf(context, node, parameters)(declaredResult, plainSend, codeKind),
+    );
   }
   const scope = new FunctionScope(node, {
     isAsync: awaits(node.qualifiers),
@@ -367,29 +367,14 @@ function checkNested(context: BodyContext, node: NestedFunction, header: NestedH
     return scope.returns.result(context, header.tail(declaredResult));
   });
   // What the scope it stands in judges later inside it may capture more, and what its body gave
-  // settles with the scope (wiring/body/constraint-scope.ts): it is recorded again then.
-  const finished = (produces: Type): FunctionType => {
-    const captures = capturesOf(context, scope);
-    const send = capturedSend(
-      context.checker,
-      captures.map((capture) =>
-        context.variables.isChangeable(capture.entity)
-          ? cellTypeOf(context.checker, capture.type)
-          : capture.type,
-      ),
-    );
-    const kind = nestedValueKind(node, header.givenKind, scope);
-    const recorded = typeWith(produces, send, kind);
-    if (name !== undefined) {
-      context.variables.declare(name, recorded);
-    }
-    context.functions.record(node, { type: recorded, result: produces, parameters, captures });
-    return recorded;
-  };
+  // and its parameters' types settle with the scope (wiring/body/constraint-scope.ts): it is
+  // recorded again then.
+  const finished = (produces: Type, solved?: (type: Type) => Type): FunctionType =>
+    recordedNested(context, { ...header, node, scope }, produces, solved);
   const type = finished(result);
   if (context.scopes.isOpen) {
     context.scopes.whenSolved((solved) => {
-      finished(solved(result));
+      finished(solved(result), solved);
     });
   }
   return type;

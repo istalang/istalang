@@ -13,15 +13,18 @@
  */
 
 import { awaits, type FunctionQualifiers } from '../../../syntax/tokens/modifiers.ts';
+import type { Identifier } from '../../../syntax/tree/node.ts';
 import type { SignatureParameter } from '../../check.ts';
 import type { BodyContext } from '../../contexts/body-context.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
 import type { NestedFunction } from '../../surface/checked-body.ts';
 import { sameType } from '../../types/identity/identity.ts';
+import { capturedSend } from '../../types/traits/sendability.ts';
 import { isMarkVariable, simpleMark, writtenKindOf } from '../../types/type/function-kinds.ts';
 import { functionType, headResult } from '../../types/type/function-types.ts';
 import type { FunctionType, Type } from '../../types/type/index.ts';
-import type { FunctionScope } from './function-scope.ts';
+import { cellTypeOf } from '../../types/type/well-known.ts';
+import { capturesOf, type FunctionScope } from './function-scope.ts';
 
 /**
  * The kind a nested function's head or position gives it, checked in `context`: its head's, else
@@ -77,8 +80,21 @@ export function nestedTypeOf(
     });
 }
 
+/** `parameter` with its types as `solved` settles them. */
+function settledParameter(
+  parameter: SignatureParameter,
+  solved: (type: Type) => Type,
+): SignatureParameter {
+  const { rest } = parameter;
+  return {
+    ...parameter,
+    type: solved(parameter.type),
+    rest: rest?.kind === 'array' ? { kind: 'array', item: solved(rest.item) } : rest,
+  };
+}
+
 /** The kind of a nested function as a value, checked in `scope`, given `given` if any. */
-export function nestedValueKind(
+function nestedValueKind(
   node: NestedFunction,
   given: Type | undefined,
   scope: FunctionScope,
@@ -87,4 +103,41 @@ export function nestedValueKind(
     return given;
   }
   return awaits(node.qualifiers) || scope.reliesOnKind ? scope.codeKind : simpleMark;
+}
+
+/**
+ * Records `checked`, a nested function checked in its `scope`, as giving `produces`, its parameters'
+ * types as `solved` settles them, with what it captures and the sendability that allows (§3.14),
+ * and declares it under its name, if it has one; its type.
+ */
+export function recordedNested(
+  context: BodyContext,
+  checked: {
+    readonly node: NestedFunction;
+    readonly name: Identifier | undefined;
+    readonly parameters: readonly SignatureParameter[];
+    readonly givenKind: Type | undefined;
+    readonly scope: FunctionScope;
+  },
+  produces: Type,
+  solved: (type: Type) => Type = (open) => open,
+): FunctionType {
+  const { node, name, scope, givenKind } = checked;
+  const parameters = checked.parameters.map((parameter) => settledParameter(parameter, solved));
+  const captures = capturesOf(context, scope);
+  const send = capturedSend(
+    context.checker,
+    captures.map((capture) =>
+      context.variables.isChangeable(capture.entity)
+        ? cellTypeOf(context.checker, capture.type)
+        : capture.type,
+    ),
+  );
+  const kind = nestedValueKind(node, givenKind, scope);
+  const recorded = nestedTypeOf(context, node, parameters)(produces, send, kind);
+  if (name !== undefined) {
+    context.variables.declare(name, recorded);
+  }
+  context.functions.record(node, { type: recorded, result: produces, parameters, captures });
+  return recorded;
 }
