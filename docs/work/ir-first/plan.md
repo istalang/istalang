@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-11-16
-last_updated: 2026-11-16
+last_updated: 2026-11-17
 tags: [plan, rewrite, definition, lowering, runtime, codegen, lifetimes, natives]
 ---
 
@@ -27,4 +27,4 @@ phase, tested late against goldens. What can be tested now runs on main against 
 |---|---|---|
 | R0 Goldens (main) | Goldens and host scenarios as data, with a runner; the coverage map; recursion floor measured and the spec amended, with the goldens it changes written by hand; baseline benches; js-codegen docs archived (`contracts.md`). | Runner green on the old pipeline, except the hand-written amended goldens. Every corpus program, spec example, std suite, scenario and FormBuilder view has its result recorded. Coverage map complete. |
 | L Std in Istalang (main) | About 95 natives moved to Istalang, decimal first. | Goldens and verify green on the old pipeline. No production `decimal.js`. Strings linear. |
-| R1 Rewrite (branch) | Delete the old pipeline. The new Definition, lowering (derived JSON codecs in one module, design decision 9), codegen and run (`design.md`), every decision there; the remaining natives on primitives; runtime services in Istalang; CLI and host API; docs rewritten. Order inside is the implementer's, the IR schema first. | Every golden green. Verify green. Typed-IR gate. Properties: the verifier fails on a dropped or doubled hold; fast-check aliasing; snapshot round trip across two builds; spill and restore. Perf gates. No native builds an `Optional`, `Result` or enum. The run bundles with no Node built-in. |
+| R1 Rewrite (branch) | Delete the old pipeline. The new Definition, lowering (derived JSON codecs in one module, design decision 9), codegen and run (`design.md`), every decision there; the remaining natives on primitives; runtime services in Istalang; CLI and host API; docs rewritten. Order inside is the implementer's, the IR schema first. | Every golden green. Verify green. Typed-IR gate. Properties: the verifier fails on a dropped or doubled hold; fast-check aliasing; snapshot round trip across two builds; spill and restore. Perf gates. No native builds an `Optional`, `Result` or enum. The run bundles with no Node built-in but `buffer` and `util`, which avsc needs (polyfilled). |

@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-11-16
-last_updated: 2026-11-16
+last_updated: 2026-11-17
 tags: [design, rewrite, definition, lowering, runtime, codegen, llvm, lifetimes, natives]
 ---
 
@@ -144,7 +144,7 @@ target. Migrating that shape costs more than writing the right one.
   - an `Int` loop within 2× of the same loop hand-written over bigint;
   - string operations written in Istalang linear in the string's length.
 - **Decimal:** `decimal.js` stays only as a dev-time fast-check oracle.
-- **Browser:** the run bundles with no Node built-in.
+- **Browser:** the run bundles with no Node built-in but `buffer` and `util`, which avsc (the Definition encoding) needs; a browser build polyfills them.
 
 ## Out of scope (filed)
 
