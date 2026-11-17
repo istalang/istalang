@@ -1,6 +1,6 @@
 /**
  * What emitting one code entry's instructions reads of it: how each register is held, where its
- * labels jump and the JavaScript that reads and writes each register (docs/work/js-codegen/design.md,
+ * labels jump and the JavaScript that reads and writes each register (docs/work/done/js-codegen/design.md,
  * "Functions").
  *
  * - A register is a JavaScript local `r<n>`. A cell register (a variable passed by `&`, captured

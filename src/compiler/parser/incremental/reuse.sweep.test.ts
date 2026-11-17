@@ -1,5 +1,5 @@
 /**
- * Parsing after an edit (docs/work/m6-m7/incremental-checking.md, 7A.7): over random edits of the
+ * Parsing after an edit (docs/work/done/m6-m7/incremental-checking.md, 7A.7): over random edits of the
  * corpus programs and std test modules, the tree built from the one before matches a fresh parse,
  * positions, comments and diagnostics included; after an edit inside one function's body, every
  * other segment keeps its nodes. The module's own segment (its root and docstring) is always new.

@@ -1,6 +1,6 @@
 /**
  * JavaScript source for the data a program carries: its constants and the tables its runtime reads
- * (docs/work/js-codegen/design.md, "Generated code").
+ * (docs/work/done/js-codegen/design.md, "Generated code").
  *
  * - Values as they are in memory (definition/values/values.ts): an `Int` a bigint literal, a
  *   `Float` a number, NaN, the infinities and -0 included, which JSON can't spell. Composites and

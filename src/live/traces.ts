@@ -1,5 +1,5 @@
 /**
- * A trace of compiled code, read off the JavaScript stack (docs/work/js-codegen/design.md, "Traces"),
+ * A trace of compiled code, read off the JavaScript stack (docs/work/done/js-codegen/design.md, "Traces"),
  * so nothing is paid for it until a panic or a native asks.
  *
  * - Each instruction is one line of the program's module, from its entry's `line` on, so a stack

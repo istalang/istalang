@@ -70,7 +70,7 @@ const code = z.strictObject({
   /**
    * The registers that may hold what reaches a disposable (spec §7), ascending: every register but
    * those whose values' types lowering found reach none. A runtime counting holders per register
-   * counts these alone (docs/work/js-codegen/design.md); the interpreter counts every register.
+   * counts these alone (docs/work/done/js-codegen/design.md); the interpreter counts every register.
    */
   counted: z.array(register),
   instructions: z.array(instruction).min(1),

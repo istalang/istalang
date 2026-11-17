@@ -1,5 +1,5 @@
 /**
- * Completion scenarios TY, IM of docs/work/completion/ (type positions; imports), one test each.
+ * Completion scenarios TY, IM of docs/work/done/completion/ (type positions; imports), one test each.
  * A test named `<ID> <title>` pinned with `fails` is a scenario the server does not meet yet
  * (completion-scenarios.test-kit.ts).
  */

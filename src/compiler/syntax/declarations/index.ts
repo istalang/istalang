@@ -14,7 +14,7 @@
  * A function stays one kind, extern or not, because its signature is the same either way. Only its
  * body differs, and an extern function never has one: the parser reports any it finds. The body is
  * not a field: the tree holds it (../tree/index.ts `bodyOf`), so the declaration's node, and all
- * that is keyed by it, can outlive an edit of the body (docs/work/m6-m7/incremental-checking.md).
+ * that is keyed by it, can outlive an edit of the body (docs/work/done/m6-m7/incremental-checking.md).
  *
  * Module items are declarations only. A statement written at the top level is reported and kept
  * as an Invalid node, so a tree never holds a top-level statement.

@@ -1,5 +1,5 @@
 /**
- * The runtime library's entry, `istalang/live` (docs/work/js-codegen/design.md, "Host API"): a
+ * The runtime library's entry, `istalang/live` (docs/work/done/js-codegen/design.md, "Host API"): a
  * compiled program's module default-exports `program(…)` over its tables, which a host starts as
  * it starts a Definition's live code on the interpreter (runtime/host/index.ts).
  *

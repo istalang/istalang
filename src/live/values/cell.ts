@@ -1,5 +1,5 @@
 /**
- * A cell of compiled code (docs/work/js-codegen/design.md, "Registers"): a cell register's shared
+ * A cell of compiled code (docs/work/done/js-codegen/design.md, "Registers"): a cell register's shared
  * variable, or the cell behind a shared struct's handle (§3.18).
  *
  * - A cell is a handle: it compares by identity (`==`, §3.9) through its `object`, so `valuesEqual`

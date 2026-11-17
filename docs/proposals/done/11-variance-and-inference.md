@@ -1,5 +1,5 @@
 ---
-description: proposal 11 of docs/proposals, for identity, variance and constraint-based inference — handles and values told apart by declaration, variance derived or written (`gives`/`takes`), conversions inside types (`Array<Int>` into `Array<Int?>`), one constraint system per expression with a fixed settling policy, the optional join; its phases, what has landed and what comes next. Read for the why and the status; the rules in full are `docs/work/variance-inference/design.md`
+description: proposal 11 of docs/proposals, for identity, variance and constraint-based inference — handles and values told apart by declaration, variance derived or written (`gives`/`takes`), conversions inside types (`Array<Int>` into `Array<Int?>`), one constraint system per expression with a fixed settling policy, the optional join; its phases, what has landed and what comes next. Read for the why and the status; the rules in full are `docs/work/done/variance-inference/design.md`
 owner: tech-lead
 status: active
 applies_to: istalang
@@ -31,7 +31,7 @@ and an `Int` with a `None` joins into an `Int?`.
 can be inferred has to be written; room for variadic type parameters (proposal 12) and proposal 8's
 function kinds.
 
-The full rules, examples and risks are in `docs/work/variance-inference/design.md`, and the phases
+The full rules, examples and risks are in `docs/work/done/variance-inference/design.md`, and the phases
 in `plan.md` beside it. This proposal gives the outline, why it is built this way, and its status.
 
 ## Status
@@ -51,7 +51,7 @@ in `plan.md` beside it. This proposal gives the outline, why it is built this wa
 | C5 Inference cost | Fixedness memoized per system revision; no quadratic scans in settling and readiness; behaviour-neutral | `b0189913` |
 
 The merge review (`c3506066..23bf0ed5`, findings and root causes in
-`docs/work/variance-inference/merge-analysis.md`) approved the corrections on `31d34496`.
+`docs/work/done/variance-inference/merge-analysis.md`) approved the corrections on `31d34496`.
 
 C5 then cut the cost of inferring what form-builder no longer writes, fb-warm 671 ms to ~465 ms,
 with no change in behaviour; what it left is P38.
@@ -164,7 +164,7 @@ Design §9 lists every anchor with its result before and after. In short:
 ## Decisions (the human's)
 
 1. **The design as a whole,** decided 2026-11-08, replacing tracker F25's options and
-   `docs/work/proposals/f25-expected-type-first.md`.
+   `docs/work/done/proposals/f25-expected-type-first.md`.
 2. **Trait-object variance is its own phase** (V2).
 3. **Runtime equality and hashing compare by declaration.**
 4. **A method's receiver binds its type arguments exactly.**

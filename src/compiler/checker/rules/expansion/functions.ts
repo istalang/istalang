@@ -16,7 +16,7 @@
  * so only the bodies those edges reach are checked. Every cycle through one of the module's calls
  * is among them, since a cycle comes back to where it starts.
  *
- * Three entries keep it incremental (docs/work/m6-m7/incremental-checking.md §1): a function's
+ * Three entries keep it incremental (docs/work/done/m6-m7/incremental-checking.md §1): a function's
  * edges apart from where their calls stand, which an edit of its body leaves equal unless it
  * changes what it calls with what; the module's expanding edges, the graph's verdict; and each
  * function's reports, which alone read where its calls stand.

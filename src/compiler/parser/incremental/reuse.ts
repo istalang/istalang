@@ -1,6 +1,6 @@
 /**
  * A module parsed again after an edit, keeping from the tree parsed before it every segment of its
- * text the edit left alike (docs/work/m6-m7/incremental-checking.md §2).
+ * text the edit left alike (docs/work/done/m6-m7/incremental-checking.md §2).
  *
  * The module is scanned and parsed whole, since layout makes the bounds of an edited region subtle,
  * and then each segment of the new tree whose text equals one of the old tree's is given the old

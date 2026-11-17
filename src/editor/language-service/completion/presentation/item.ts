@@ -1,6 +1,6 @@
 /**
  * What completion hands an editor for each item: the name it filters by, and what accepting it
- * does. The model holds what the scenario catalogue asks of an item (docs/work/completion/
+ * does. The model holds what the scenario catalogue asks of an item (docs/work/done/completion/
  * mechanics.md) in the service's own terms, so the protocol's encoding (`sortText`, snippet
  * syntax, commands) has one home, the LSP provider.
  *

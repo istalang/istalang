@@ -65,7 +65,7 @@ P35, P32, P33 and F18 directly. Q46 is the identity of type variables. The exter
 ## Stale
 - **Q34:** fixed in `4bbf814e`. `literal-field.ts:219` now uses `expressionCandidates`, and `visibleCandidates` no longer exists anywhere in `src`.
 - **Q30:** its path is stale (`checker/declaring-modules.ts` is gone; the logic is now in `program-inputs.ts`), but the item itself still holds.
-- **Q44:** mostly done. `docs/work/cohesion/plan.md` is archived; its README "What remains" lists two moves and some wide files, and adding the scan to verify is still open.
+- **Q44:** mostly done. `docs/work/done/cohesion/plan.md` is archived; its README "What remains" lists two moves and some wide files, and adding the scan to verify is still open.
 - **P17:** `openAtEnd` is gone (the bracket code moved to `parser/cursor/brackets.ts`). Whether the pre-pass cost remains was not checked.
 - **B94 row:** its `live` claim is wrong, as noted in cluster A.
 

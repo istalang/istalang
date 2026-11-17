@@ -1,5 +1,5 @@
 /**
- * `ista fmt [files…]`: rewrite modules in the canonical format (docs/work/m6-m7/formatter.md).
+ * `ista fmt [files…]`: rewrite modules in the canonical format (docs/work/done/m6-m7/formatter.md).
  *
  * With no files, every source under the project root. `--check` writes nothing and lists the files
  * that would change, for CI. A file with syntax errors is reported and left as it is: the parser

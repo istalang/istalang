@@ -300,7 +300,7 @@ The run owns frames. This brings three things:
 
 ## 8. Docs that contradict the goal
 
-- `docs/work/js-codegen/design.md`:
+- `docs/work/done/js-codegen/design.md`:
   - "Out of scope" keeps those on the interpreter.
   - "Functions" makes a live async entry a generator.
   - "Stopping a call" stops it with `return()`.

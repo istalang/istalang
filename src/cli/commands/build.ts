@@ -1,6 +1,6 @@
 /**
  * `ista build <entry> --out <file>`: compile the program rooted at `entry` to one JavaScript ES
- * module (docs/work/js-codegen/design.md), which imports the runtime library as `istalang/live` and
+ * module (docs/work/done/js-codegen/design.md), which imports the runtime library as `istalang/live` and
  * default-exports the program a host starts. Its live and simple code runs in a browser or Node;
  * ista code stays on the interpreter, so a program reaching any is refused, naming it.
  *

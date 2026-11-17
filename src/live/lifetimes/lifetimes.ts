@@ -1,5 +1,5 @@
 /**
- * Holders and disposal in a run of compiled code (spec §7; docs/work/js-codegen/design.md,
+ * Holders and disposal in a run of compiled code (spec §7; docs/work/done/js-codegen/design.md,
  * "Lifetimes and disposal"), on the interpreter's counts and collector (runtime/lifetimes/), so both
  * runtimes count and order disposals alike.
  *

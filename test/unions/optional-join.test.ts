@@ -1,6 +1,6 @@
 /**
  * End-to-end and behavioural verification of the optional join (docs/spec.md §2, §4;
- * docs/work/variance-inference/design.md §5): where several producers take one type and none is
+ * docs/work/done/variance-inference/design.md §5): where several producers take one type and none is
  * expected, values that may be `none` agree on the optional of what the others agree on, in any
  * order, each wrapped into it (`if`, `match`, `select`, function and lambda returns, array and map
  * literals, indented literals, array spreads, and field comprehensions), while no other union is

@@ -1,5 +1,5 @@
 /**
- * What a compiled program hands the runtime library (docs/work/js-codegen/design.md, "The module"):
+ * What a compiled program hands the runtime library (docs/work/done/js-codegen/design.md, "The module"):
  * the Definition's tables a run reads, the line each code entry's instructions start at, and its code
  * as a factory the library calls once per run, so each run's externs and state are its own.
  *

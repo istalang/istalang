@@ -1,5 +1,5 @@
 /**
- * Which registers an entry counts (docs/work/js-codegen/design.md, "What lowering adds"): every
+ * Which registers an entry counts (docs/work/done/js-codegen/design.md, "What lowering adds"): every
  * register but those whose values' types reach no disposable, read as the instance reads them, so a
  * future is counted and an `Int` isn't, and one generic function counts per instantiation.
  */

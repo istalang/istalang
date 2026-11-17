@@ -1,5 +1,5 @@
 /**
- * A Definition as one JavaScript ES module (docs/work/js-codegen/design.md): live and simple code,
+ * A Definition as one JavaScript ES module (docs/work/done/js-codegen/design.md): live and simple code,
  * run in a browser or Node by the runtime library, which the module imports by `runtime`.
  *
  * - The module default-exports the runtime library's program over its tables (live/program-tables.ts):

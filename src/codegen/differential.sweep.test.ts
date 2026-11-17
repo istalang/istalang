@@ -1,6 +1,6 @@
 /**
  * Compiled JavaScript runs every corpus program as the interpreter does: the same outcome or panic,
- * the same log records and the same calls of its host (docs/work/js-codegen/design.md,
+ * the same log records and the same calls of its host (docs/work/done/js-codegen/design.md,
  * "Verification"), and so FormBuilder's demos. A program whose work needs ista code is left to the
  * interpreter, and one compiled JavaScript runs differently is named with why.
  */

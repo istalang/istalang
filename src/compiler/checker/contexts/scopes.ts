@@ -1,6 +1,6 @@
 /**
  * A body's constraint scopes, as the constructs checked in them see them
- * (docs/work/variance-inference/i2-scope.md): the members that join one, and what a construct asks
+ * (docs/work/done/variance-inference/i2-scope.md): the members that join one, and what a construct asks
  * of the current one. The scopes themselves, and the protocol placing each expression in them, are
  * wiring/body/ (constraint-scope.ts, body-scopes.ts, scope-protocol.ts).
  *

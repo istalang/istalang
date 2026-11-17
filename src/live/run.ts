@@ -1,5 +1,5 @@
 /**
- * One run of a compiled program (docs/work/js-codegen/design.md): what its code calls as `run`, in
+ * One run of a compiled program (docs/work/done/js-codegen/design.md): what its code calls as `run`, in
  * memory, from its root's call to its end, as the interpreter's live run (proposal 8, Rule 7).
  *
  * - **Executions:** the root, each live async call and each readied callback runs as an execution

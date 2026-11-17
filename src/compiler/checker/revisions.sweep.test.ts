@@ -1,5 +1,5 @@
 /**
- * A checker made after an earlier snapshot's (docs/work/m6-m7/incremental-checking.md, 7A.4,
+ * A checker made after an earlier snapshot's (docs/work/done/m6-m7/incremental-checking.md, 7A.4,
  * 7A.7): over random edit sequences on corpus programs and std test modules, each revision answers
  * every module's diagnostics and every query at every node of every module the test owns as a
  * checker made afresh does; after an edit of a module nothing imports, it checks no body outside

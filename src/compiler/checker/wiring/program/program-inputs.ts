@@ -2,7 +2,7 @@
  * What checking reads of its Program and its Bindings, as inputs of the checker's revision
  * (foundation/structures/entries/): each answer is recorded in the entry computing now, so a later
  * revision takes an entry over whenever what it read still answers alike, however much else changed
- * (docs/work/m6-m7/incremental-checking.md §1, §4).
+ * (docs/work/done/m6-m7/incremental-checking.md §1, §4).
  *
  * - A module is read in parts (its items, the modules its imports name, a function's body, the
  *   nodes holding a node, its tree), never whole, so an entry depends only on the parts it used.

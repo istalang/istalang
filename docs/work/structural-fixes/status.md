@@ -12,7 +12,7 @@ tags: [structural-fixes, status]
 
 ## Origin
 
-- B92 is fixed and merged (`07f6bc5e`; plan `docs/work/b92-union-order/`, done). Its QA filed B94.
+- B92 is fixed and merged (`07f6bc5e`; plan `docs/work/done/b92-union-order/`, done). Its QA filed B94.
 - The human asked for B94 to be solved robustly, with refactoring, and for the other tracker items to be reviewed
   for the same root causes: poor cohesion (an agent sees only part of a feature) and DRY copies (a fix misses
   one). Four scouts ran; their reports are in `research/`.

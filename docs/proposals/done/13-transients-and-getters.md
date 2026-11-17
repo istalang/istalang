@@ -18,11 +18,11 @@ tags: [proposal, language, getters, transient, variables]
 - Some values are computed from fields but should read as fields, for example a scope that an
   expression reads as `data.company.size` while the scope decides what that read does.
 
-Both come up in reactive code (computeds with dynamic dependencies, `docs/work/computed/design.md`),
+Both come up in reactive code (computeds with dynamic dependencies, `docs/work/done/computed/design.md`),
 which these two additions make writable as an ordinary library. Neither addition is specific to it.
 
 The human chose the design and the decisions at the end. Section numbers refer to `docs/spec.md`.
-The plan is `docs/work/transients-getters/plan.md`.
+The plan is `docs/work/done/transients-getters/plan.md`.
 
 ## Transient variables
 

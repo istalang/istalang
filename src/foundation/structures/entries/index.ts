@@ -1,7 +1,7 @@
 /**
  * Results computed once per key, each kept as an entry with what it read while it computed, so a
  * later revision takes an entry over when every read still answers alike, and an answer never
- * depends on who asked first (docs/work/m6-m7/incremental-checking.md §1).
+ * depends on who asked first (docs/work/done/m6-m7/incremental-checking.md §1).
  *
  * - A table names one kind of result and computes it from a key, with the context the key was asked
  *   in (which the key decides), so any revision can compute any entry: also one a later revision

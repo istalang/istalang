@@ -1,5 +1,5 @@
 /**
- * One code entry as JavaScript (docs/work/js-codegen/design.md, "Functions"): a simple entry is a
+ * One code entry as JavaScript (docs/work/done/js-codegen/design.md, "Functions"): a simple entry is a
  * function returning its value; a live async one is a function giving a new future, whose body, a
  * generator the run drives, runs eagerly until its first wait and settles that future as it
  * returns.

@@ -1,4 +1,4 @@
-# The computed module (docs/work/computed/design.md; plan C1's criteria).
+# The computed module (docs/work/done/computed/design.md; plan C1's criteria).
 
 import Suite, Test, test, assertEq, expectPanic from 'testing'
 import Graph, Computed from './computed'

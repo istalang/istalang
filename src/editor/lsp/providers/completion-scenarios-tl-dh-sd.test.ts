@@ -1,5 +1,5 @@
 /**
- * Completion scenarios TL, DH, SD of docs/work/completion/ (top level; declaration headers; struct,
+ * Completion scenarios TL, DH, SD of docs/work/done/completion/ (top level; declaration headers; struct,
  * enum, trait and alias bodies), one test each. A test named `<ID> <title>` pinned with `fails` is
  * a scenario the server does not meet yet (completion-scenarios.test-kit.ts).
  */

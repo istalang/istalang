@@ -27,7 +27,7 @@ live async fn main():
 Run with `ista run --host`, the host's `tree.fixed` differs from the previous call's every time.
 FormBuilder's spec assumes otherwise ("the interpreter's bridge returns the same JavaScript
 reference for a shared struct as long as it hasn't changed"); no such bridge exists. Its computed
-views keep the old object for an equal result (`docs/work/computed/design.md`), so the program
+views keep the old object for an equal result (`docs/work/done/computed/design.md`), so the program
 already knows what didn't change. The boundary throws that away.
 
 ## The rule
@@ -114,7 +114,7 @@ runtime, with no bridge).
 
 ## Its first user
 
-FormBuilder (`docs/work/computed/design.md`): its browser function sends the whole tree after each
+FormBuilder (`docs/work/done/computed/design.md`): its browser function sends the whole tree after each
 event, and the computed views keep unchanged nodes' objects. With this proposal, the host gets
 those nodes' previous objects, and React skips them.
 

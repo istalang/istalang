@@ -1,4 +1,4 @@
-# The order form on the computed runtime (docs/work/computed/plan.md, C2): what a view shows, what
+# The order form on the computed runtime (docs/work/done/computed/plan.md, C2): what a view shows, what
 # an edit re-evaluates, and what validating a whole value gives. The live drivers wrap these steps;
 # test/examples.test.ts runs them as their hosts do.
 

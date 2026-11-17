@@ -1,6 +1,6 @@
 /**
  * Edits of a module's text, as an editor makes them, for the properties that hold what is built
- * after an edit to what is built afresh (docs/work/m6-m7/incremental-checking.md, Acceptance), and
+ * after an edit to what is built afresh (docs/work/done/m6-m7/incremental-checking.md, Acceptance), and
  * the module texts they edit: the corpus programs and the std test modules.
  *
  * Random edits delete or double a line, replace a word or rename it everywhere, append an item, or

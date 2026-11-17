@@ -1,6 +1,6 @@
 /**
  * How long FormBuilder's supplier form takes to redraw after an input changes, compiled to
- * JavaScript and on the interpreter (docs/work/js-codegen/plan.md, P1: 1.5 ms per change at most
+ * JavaScript and on the interpreter (docs/work/done/js-codegen/plan.md, P1: 1.5 ms per change at most
  * compiled), measured with `npm run bench` and kept out of `npm run verify`.
  *
  * The form runs as a browser's host runs it: `nextEvent` resolves with each change, and the form

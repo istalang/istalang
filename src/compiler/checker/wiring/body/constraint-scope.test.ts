@@ -1,5 +1,5 @@
 /**
- * The constraint scope (docs/work/variance-inference/i2-scope.md): whatever path a call or literal
+ * The constraint scope (docs/work/done/variance-inference/i2-scope.md): whatever path a call or literal
  * takes, every member of its scope settles, so a call that can't be made reports its arguments as
  * they settled and leaves their own checks in place, and no record keeps a variable.
  */

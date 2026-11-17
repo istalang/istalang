@@ -1,6 +1,6 @@
 /**
  * Where nodes stand: spans anchored to the segment of text a node belongs to, and the text
- * positions a tree gives them (docs/work/m6-m7/incremental-checking.md, §2).
+ * positions a tree gives them (docs/work/done/m6-m7/incremental-checking.md, §2).
  *
  * A segment is a stretch of a module's text that an edit elsewhere leaves as it is: a top-level
  * item's or a trait member's header, the body of a top-level or trait-member function, or the

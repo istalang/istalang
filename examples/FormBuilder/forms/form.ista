@@ -1,5 +1,5 @@
 # A form built: its model and view on one graph, the events that change it, and what drives it,
-# the browser's and the backend's (docs/work/computed/design.md).
+# the browser's and the backend's (docs/work/done/computed/design.md).
 #
 # - Everything but the browser's driver is simple code: an event sets sources between views, and a
 #   view reads the tree. The driver adds only what live code must: the host's seam. The backend's

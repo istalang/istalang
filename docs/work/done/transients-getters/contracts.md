@@ -1,5 +1,5 @@
 ---
-description: implementation contracts for proposal 13 — the `transient` IR instruction and its runtime lookup, how a getter read is recorded and flows to lowering, and which existing units each part reuses; read before implementing any phase of docs/work/transients-getters/plan.md
+description: implementation contracts for proposal 13 — the `transient` IR instruction and its runtime lookup, how a getter read is recorded and flows to lowering, and which existing units each part reuses; read before implementing any phase of docs/work/done/transients-getters/plan.md
 owner: tech-lead
 status: active
 applies_to: istalang

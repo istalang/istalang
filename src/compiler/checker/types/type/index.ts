@@ -220,7 +220,7 @@ export type ParameterKey =
 
 /**
  * The type of an expression a constraint scope checks only once it knows what is expected of it,
- * or of what several producers agree on (docs/work/variance-inference/i2-scope.md §3): a variable
+ * or of what several producers agree on (docs/work/done/variance-inference/i2-scope.md §3): a variable
  * no declaration introduces, keyed by the expression it stands for.
  */
 export interface Placeholder {

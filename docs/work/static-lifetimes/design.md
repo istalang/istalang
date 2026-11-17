@@ -23,7 +23,7 @@ so a count decides when a disposable loses its last holder.
 2. No new syntax in user code. `WeakRef` is the one way to break a cycle.
 3. Precise where code is common: building a structure, appending, reply channels, generic helpers,
    the std's own modules.
-4. Within the editor's per-edit budget (`docs/work/m6-m7/incremental-checking.md`).
+4. Within the editor's per-edit budget (`docs/work/done/m6-m7/incremental-checking.md`).
 
 ## 1. The invariant
 

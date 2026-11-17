@@ -81,4 +81,4 @@ completion of `get`, semantic tokens, spec §2, §3.1 and §3.16, docs/reuse.
 
 Filed in `docs/work/tracker.md`: a declaration-time "one meaning per name" check (F31, today it is
 reported where used). FormBuilder's generator cycle check
-belongs to the computed feature (`docs/work/computed/design.md`).
+belongs to the computed feature (`docs/work/done/computed/design.md`).

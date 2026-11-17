@@ -1,4 +1,4 @@
-# Derived values with dynamic dependencies, for FormBuilder (docs/work/computed/design.md).
+# Derived values with dynamic dependencies, for FormBuilder (docs/work/done/computed/design.md).
 #
 # - Pull, not push: a write marks no reader. A read brings what it reads up to date first, so a
 #   value nobody reads is never evaluated, and nothing holds a list of readers.
