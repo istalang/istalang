@@ -16,9 +16,9 @@
  * - **Defaults are the callee's** (§3.3): a code entry computes each parameter its call left out in
  *   its prologue (`given`), so a call passes those as omitted. An extern computes nothing, so a call
  *   leaving out its defaults calls a code entry computing them, then the extern.
- * - **An extern states what binding needs:** the capabilities its native uses, checked when natives
- *   are bound, and what each of its calls makes its arguments hold (`keeps`, §3.16), so a backend
- *   counts the holders a native adds without reading it.
+ * - **An extern is its key and signature.** Its native gets every capability the run has, typed by
+ *   those it uses (runtime/natives.ts), and holds what it keeps itself (§3.16), as natives are
+ *   written per backend; so binding needs nothing more of it.
  */
 
 import { z } from 'zod';
@@ -66,21 +66,6 @@ const code = z.strictObject({
 });
 
 /**
- * What a native may use beyond its arguments, which a backend binding it must provide: the clock,
- * random draws, log records, the run's primitives (executions, timers, host futures), the instance
- * and its contexts, a host's externs, and the test world.
- */
-const capability = z.enum([
-  'clock',
-  'random',
-  'logs',
-  'run',
-  'instance',
-  'contexts',
-  'host',
-  'testing',
-]);
-/**
  * A host or runtime function, bound by `key` to a native: the module and declared signature,
  * `time.at(Time)`, so overloads get distinct keys while every instantiation of a generic extern
  * shares one native (docs/arch/definition.md, "Externs"). An extern constant has no parameters.
@@ -92,12 +77,6 @@ const external = z.strictObject({
   constant: z.boolean(),
   parameters: z.array(z.strictObject({ type: typeReference })),
   result: typeReference,
-  capabilities: z.array(capability),
-  /**
-   * For each `&` parameter, by position, the parameters whose values it keeps once the call
-   * returns (§3.16, `@Keeps`): a `&` parameter keeps every other one unless the extern says less.
-   */
-  keeps: z.array(z.strictObject({ parameter: z.int(), kept: z.array(z.int()) })),
   /**
    * For an extern a host implements, the type the host provides as declared, spelled as keys spell
    * types: a function's result, a constant's type. The runtime holds the host to it (§3.6).

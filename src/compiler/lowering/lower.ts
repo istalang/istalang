@@ -248,7 +248,5 @@ function nativeEntry(lowering: Lowering, instance: FunctionInstance): FunctionDe
     result: tables.types.reference(
       substitute(checker.resultOf(declaration), substitution, checker.typeRules),
     ),
-    capabilities: [],
-    keeps: [],
   };
 }

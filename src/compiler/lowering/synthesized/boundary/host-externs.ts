@@ -183,8 +183,6 @@ function nativeParts(lowering: Lowering, declaration: HostExternDeclaration) {
     header: {
       kind: 'extern' as const,
       ...tables.declarationHeader(declaration),
-      capabilities: ['host' as const],
-      keeps: [],
     },
     json,
     /** `count` parameters, each JSON. */
