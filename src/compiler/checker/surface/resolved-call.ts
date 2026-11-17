@@ -76,7 +76,7 @@ export interface PassedItem {
 }
 
 /** An array of the items it lists, one item of the rest parameter collecting it. */
-export interface CollectedItem {
+interface CollectedItem {
   readonly kind: 'collected';
   readonly items: readonly RestItem[];
 }
