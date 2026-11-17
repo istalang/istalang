@@ -79,6 +79,7 @@ describe('loadProject', () => {
       ['json', true],
       ['lifetimes', true],
       ['testing', true],
+      ['endings', true],
       ['inbox', true],
     ]);
   });
