@@ -59,7 +59,7 @@ tags: [reuse, testing, test-kit, arbitraries, fast-check, corpus]
 - run a long sweep in slices side by side, its items dealt round `<sweep>-<n>.sweep.test.ts` files → `sliceOf` (`test/slices.ts`)
 - check something of every compiled corpus program, example and demo, compiling each once → a row of the corpus sweep (`test/sweep/checks.ts`; what a row reads of a subject, derived once: `compiledOf`, `writtenOf`, `observedOf` in `test/sweep/swept.ts`)
 - a Definition without where its code stands (spans, line starts), to compare two layouts of one program → `withoutPlaces` (`src/definition/definition.test-kit.ts`); a program's diagnostics positions aside → `diagnosticsWithoutPlaces` (`src/compiler/compile.test-kit.ts`)
-- a Definition's verified code with an owned register never let go of, which the verifier must refuse → `leakingMutants` (`src/definition/validation/ownership.test-kit.ts`)
+- a Definition's verified code with a dropped let-go or a dropped or doubled hold, which the verifier must refuse → `brokenMutants` (`src/definition/validation/ownership.test-kit.ts`)
 - read what a run shows as a pipeline-independent observation (ending, log lines, host-call lines) → `Observation`, `logLine`, `hostCallLine`, `panicEnding` (`test/golden/observation.ts`)
 - time a Definition as `ista build` builds it → `builtProgram` (`src/codegen/built-program.test-kit.ts`)
 - generate canonical JSON values or non-canonical JSON texts → `exactJson`, `reverseKeys`, `looseText` (`src/definition/formats/codec.test-kit.ts`)

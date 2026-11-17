@@ -2,28 +2,54 @@
  * The ownership verifier (ir-first design, decision 5): every register owning a value lets go of
  * it, or moves it on, exactly once on every path, so no backend leaks a holder or lets go twice.
  *
- * A forward analysis over the code's paths gives each owning register a state: empty, owning, or
- * owning on some paths only. Borrowed registers own nothing and are left out, as are the registers
- * of transients, whose cells the runtime keeps for the call making them (../instructions/places.ts).
+ * A forward analysis over the code's paths gives each owning register a state: what the paths
+ * reaching an instruction may have left in it: empty, owning, or moved out of. Borrowed registers
+ * own nothing and are left out, as are the registers of transients, whose cells the runtime keeps
+ * for the call making them (../instructions/places.ts).
  *
  * - Writing into a register that may own something leaks it: lowering lets go of it first.
  * - Moving out of a register needs it owning on every path; moving out of a borrowed one, or
  *   letting go of one, is a contradiction. Letting go of an empty register does nothing.
- * - Reading a register that is empty on every path reads nothing.
+ * - Reading a register needs it owning on some path and moved out of on none: a hold dropped on
+ *   one path reads what that path gave away. A register empty on some paths, never written there
+ *   or let go of in a loop's earlier turn, may be read where a test those paths made tells them
+ *   apart, as a pattern's binding is read where it matched.
  * - `return` and `stopped` end the call: nothing may still own anything there but what `return`
- *   moves out.
+ *   moves out, which it can't let go of too.
  * - A write that jumps when it finds a value (`contextConstant`, `mocked`) owns it only where it
  *   jumps to; going on, it found none, and the register stays as it was.
  */
 
 import { type Handlers, handlerOf } from '../../foundation/structures/kind-table.ts';
+import { memo } from '../../foundation/structures/memo.ts';
 import { type Instruction, operandsOf, successorsOf } from '../instructions/instruction.ts';
 import type { Register } from '../operands.ts';
 import type { CodeFunction } from '../tables/functions.ts';
 import { transientRegistersOf } from '../tables/functions.ts';
 
-/** A register's state where control reaches: empty, owning, or owning on some paths. */
-type State = 'empty' | 'owning' | 'maybe';
+/** What a path may leave a register as: empty (never written, or let go of), owning, moved out of. */
+type Leaving = 'empty' | 'owning' | 'moved';
+
+/**
+ * A register's state where control reaches: what the paths reaching there may leave it as, one
+ * interned set per combination, so states compare by identity; a join is their union.
+ */
+type State = ReadonlySet<Leaving>;
+
+const interned = new Map<string, State>();
+
+function stateOf(leaving: Iterable<Leaving>): State {
+  const sorted = [...new Set(leaving)].toSorted((first, second) => first.localeCompare(second));
+  return memo(interned, sorted.join(), () => new Set(sorted));
+}
+
+function joined(first: State, second: State): State {
+  return first === second ? first : stateOf([...first, ...second]);
+}
+
+const empty = stateOf(['empty']);
+const owning = stateOf(['owning']);
+const moved = stateOf(['moved']);
 
 /**
  * What an instruction does to ownership: what it moves out of, and what it writes owning. A
@@ -99,10 +125,6 @@ function effectOf(code: CodeFunction, subject: Instruction): Effect {
   };
 }
 
-function joined(first: State, second: State): State {
-  return first === second ? first : 'maybe';
-}
-
 /** Every way `code` breaks the ownership rules, each naming the instruction. */
 export function ownershipIssues(code: CodeFunction): readonly string[] {
   return analyzed(code).issues;
@@ -116,7 +138,7 @@ export function owningBefore(code: CodeFunction): readonly (ReadonlySet<Register
   return analyzed(code).states.map((state) =>
     state === undefined
       ? undefined
-      : new Set(state.flatMap((each, register) => (each === 'owning' ? [register] : []))),
+      : new Set(state.flatMap((each, register) => (each === owning ? [register] : []))),
   );
 }
 
@@ -134,7 +156,7 @@ function analyzed(code: CodeFunction): {
     tracked: (register) => !(transients.has(register) || borrowed.has(register)),
   };
   const states: (State[] | undefined)[] = code.instructions.map(() => undefined);
-  states[0] = code.registers.map(() => 'empty');
+  states[0] = code.registers.map(() => empty);
   // An instruction is judged on its last visit, at the state the analysis settles on for it.
   const issuesAt = new Map<number, readonly string[]>();
   const pending = [0];
@@ -169,7 +191,7 @@ function reachedAnew(
 ): boolean {
   const known = states[next];
   const merged =
-    known === undefined ? [...after] : known.map((state, r) => joined(state, after[r] ?? 'empty'));
+    known === undefined ? [...after] : known.map((state, r) => joined(state, after[r] ?? empty));
   if (known !== undefined && merged.every((state, r) => state === known[r])) {
     return false;
   }
@@ -201,9 +223,12 @@ function judged(
     effect.taken === undefined ? undefined : { after: [...before], to: effect.taken.to };
   const found = [
     ...operandsOf(subject)
-      .read.filter((r) => tracked(r) && after[r] === 'empty' && !effect.letGo.includes(r))
-      .map((r) => `reads register ${String(r)}, empty on every path.`),
-    ...movedOut(effect.moved, after, tracked),
+      .read.filter((r) => tracked(r) && !effect.letGo.includes(r))
+      .flatMap((r) => readOf(r, after[r])),
+    ...effect.moved
+      .filter((r) => effect.letGo.includes(r))
+      .map((r) => `moves out of register ${String(r)} and lets go of it.`),
+    ...movingOut(effect.moved, after, tracked),
     ...letGoOf(effect.letGo, after, tracked),
     ...writtenOwning(effect.owned, after, registers),
     ...effect.borrowed.filter(tracked).map((r) => `borrows into owning register ${String(r)}.`),
@@ -215,20 +240,27 @@ function judged(
   return { after, found, taken };
 }
 
-function movedOut(
-  moved: readonly Register[],
+function readOf(register: Register, state: State | undefined): string[] {
+  if (state?.has('moved') === true) {
+    return [`reads register ${String(register)}, moved out of on some path.`];
+  }
+  return state?.has('owning') === true
+    ? []
+    : [`reads register ${String(register)}, empty on every path.`];
+}
+
+function movingOut(
+  registers: readonly Register[],
   after: State[],
   tracked: (register: Register) => boolean,
 ): string[] {
-  return moved.flatMap((register) => {
+  return registers.flatMap((register) => {
     const was = after[register];
-    after[register] = 'empty';
+    after[register] = moved;
     if (!tracked(register)) {
       return [`moves out of register ${String(register)}, which owns nothing.`];
     }
-    return was === 'owning'
-      ? []
-      : [`moves out of register ${String(register)}, empty on some path.`];
+    return was === owning ? [] : [`moves out of register ${String(register)}, empty on some path.`];
   });
 }
 
@@ -238,7 +270,7 @@ function letGoOf(
   tracked: (register: Register) => boolean,
 ): string[] {
   return letGo.flatMap((register) => {
-    after[register] = 'empty';
+    after[register] = empty;
     return tracked(register)
       ? []
       : [`lets go of register ${String(register)}, which owns nothing.`];
@@ -258,14 +290,16 @@ function writtenOwning(
       return [`writes an owned value into borrowed register ${String(register)}.`];
     }
     const was = after[register];
-    after[register] = 'owning';
-    return was === 'empty' ? [] : [`overwrites what register ${String(register)} owns.`];
+    after[register] = owning;
+    return was?.has('owning') === true
+      ? [`overwrites what register ${String(register)} owns.`]
+      : [];
   });
 }
 
 function stillOwning(after: readonly State[], tracked: (register: Register) => boolean): string[] {
   return after.flatMap((state, register) =>
-    state !== 'empty' && tracked(register)
+    state.has('owning') && tracked(register)
       ? [`ends the call while register ${String(register)} still owns its value.`]
       : [],
   );
