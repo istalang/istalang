@@ -128,7 +128,7 @@ export class TypeTable {
         return { kind: 'primitive', name: type.name };
       case 'nominal':
       case 'anonymous':
-        return { kind: 'named', type: this.#typeEntry(type) };
+        return { kind: 'named', type: this.index(type) };
       case 'recursive': {
         const unfolded = unfoldRecursive(type);
         return unfolded.kind === 'tuple' || unfolded.kind === 'function'
@@ -146,7 +146,7 @@ export class TypeTable {
       case 'any':
         return { kind: 'named', type: this.anyIndex(type) };
       case 'union':
-        return { kind: 'named', type: this.#typeEntry(type) };
+        return { kind: 'named', type: this.index(type) };
       case 'literal':
         return this.reference(baseOf(type));
       default: {
@@ -158,7 +158,7 @@ export class TypeTable {
 
   /** The index of the type entry for `type`. */
   index(type: EntryType): TypeId {
-    return this.#typeEntry(type);
+    return this.#entryOf(type, () => this.#layout(type));
   }
 
   /** The members of the union `type` in the order of its enum's variants. */
@@ -212,11 +212,12 @@ export class TypeTable {
     }
     return entry;
   }
+
   /**
-   * Not `memo`: the index is recorded before the layout is computed, because a recursive type's
-   * layout refers to the type itself.
+   * The index of `type`'s entry, which `layout` computes. Not `memo`: the index is recorded before
+   * the layout is computed, because a recursive type's layout refers to the type itself.
    */
-  #typeEntry(type: EntryType): TypeId {
+  #entryOf(type: Type, layout: () => TypeDefinition): TypeId {
     const key = this.#checker.typeKeys.typeKey(type);
     const known = this.#indexes.get(key);
     if (known !== undefined) {
@@ -225,7 +226,7 @@ export class TypeTable {
     const index = this.#entries.length;
     this.#indexes.set(key, index);
     this.#entries.push(placeholder);
-    this.#entries[index] = this.#layout(type);
+    this.#entries[index] = layout();
     return index;
   }
 
@@ -245,22 +246,13 @@ export class TypeTable {
 
   /** The alias entry of the recursive type `type`, standing for `unfolded`, numbered first. */
   #aliasEntry(type: RecursiveType, unfolded: TupleType | FunctionType): TypeId {
-    const key = this.#checker.typeKeys.typeKey(type);
-    const known = this.#indexes.get(key);
-    if (known !== undefined) {
-      return known;
-    }
-    const index = this.#entries.length;
-    this.#indexes.set(key, index);
-    this.#entries.push(placeholder);
-    this.#entries[index] = {
+    return this.#entryOf(type, () => ({
       kind: 'alias',
       name: tableKey(this.#checker, type),
       arguments: [],
       type: this.#structural(unfolded),
       ...this.#facts(type),
-    };
-    return index;
+    }));
   }
 
   /** The entry describing `type`: its fields, its variants, or what implements it. */
@@ -308,7 +300,7 @@ export class TypeTable {
         const role = roleOf(this.#checker, externRoles, declaration);
         return value === undefined || role !== undefined
           ? extern(role)
-          : { kind: 'shared', ...head, value: this.#typeEntry(value as EntryType), ...disposing };
+          : { kind: 'shared', ...head, value: this.index(value as EntryType), ...disposing };
       }
       case 'StructDeclaration':
         return {
