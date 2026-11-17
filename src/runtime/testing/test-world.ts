@@ -92,13 +92,18 @@ export async function runInWorld(seams: WorldSeams, call: WorldCall): Promise<En
   host.world = world;
   const root = world.liveRun(tested, 'host', (record) => logs.push(record));
   const closure: Value = { kind: 'closure', function: call.function, captures: [] };
-  world.invokeIn(root, testInstance, { closure, passed: call.arguments, hears: true }, (end) => {
-    if (end.kind === 'returned') {
-      ended ??= { kind: 'finished', outcome: end.value };
-    } else if (end.kind === 'panicked') {
-      failed(testInstance, end);
-    }
-  });
+  world.invokeIn(
+    root,
+    testInstance,
+    { closure, passed: call.arguments, hears: () => true },
+    (end) => {
+      if (end.kind === 'returned') {
+        ended ??= { kind: 'finished', outcome: end.value };
+      } else if (end.kind === 'panicked') {
+        failed(testInstance, end);
+      }
+    },
+  );
   const done = () => ended !== undefined;
   for (;;) {
     world.drain(done);
@@ -116,7 +121,7 @@ export async function runInWorld(seams: WorldSeams, call: WorldCall): Promise<En
       }
       // biome-ignore lint/performance/noAwaitInLoops: the world waits for its earliest timer.
       await clock.until(timer);
-      world.fireDue(clock.now());
+      world.fireDue(clock.now(), done);
     }
   }
 }

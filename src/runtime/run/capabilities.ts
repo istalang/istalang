@@ -119,9 +119,12 @@ function contextsOf(run: Run): NativeContexts {
   return {
     hostStore: (type) => ({ kind: 'extern', type, payload: 'host' }) as Value,
     open: (_store, type) => {
-      const runtime = run.world.open(run);
-      const close = () => run.world.close(runtime);
-      return new Resource(run.newId(), type, runtime, close) as unknown as Value;
+      const future = new Future(run.newId());
+      run.world.open(run, future, (opener, runtime) => {
+        const close = () => opener.world.close(runtime);
+        return new Resource(opener.newId(), type, runtime, close) as unknown as Value;
+      });
+      return future as unknown as Value;
     },
     call: (_runtime, call) => {
       const future = new Future(run.newId());

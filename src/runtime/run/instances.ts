@@ -22,10 +22,13 @@ export type InstanceEnd =
   | { readonly kind: 'finished'; readonly outcome: Value; readonly encoded?: Value }
   | { readonly kind: 'panicked'; readonly message: string; readonly trace: string };
 
-/** What waits on an instance's end, told how it ended; whether its panic is heard there (§9). */
+/**
+ * What waits on an instance's end, told how it ended; whether its panic is heard there (§9), which
+ * stops once its caller lets go of the call.
+ */
 export interface EndWatcher {
   readonly answer: (end: InvocationEnd) => void;
-  readonly hears: boolean;
+  readonly hears: () => boolean;
 }
 
 export class Instance {
@@ -61,7 +64,7 @@ export class Instance {
       return;
     }
     this.end = end;
-    this.heard = this.endWatchers.some(({ hears }) => hears);
+    this.heard = this.endWatchers.some((watcher) => watcher.hears());
     // A call still waiting as its instance finishes is answered by nothing it gave (§9).
     const told: InvocationEnd =
       end.kind === 'finished' ? { kind: 'unanswered', instance: this.name } : end;

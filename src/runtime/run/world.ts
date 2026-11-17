@@ -23,10 +23,12 @@ export interface World {
   /** Makes `call` into its context (§9), settling `future`, in `caller`, with how it ended. */
   readonly call: (caller: Run, call: ContextCall, future: Future) => void;
   /**
-   * Opens a runtime over the host's store for `opener`, a live run (§9); its number. Opening one
-   * while none is open resumes the instances stored there that haven't ended.
+   * Opens a runtime over the host's store for `opener`, a live run (§9), and settles `opened`, in
+   * `opener`, with the runtime `made` makes of its number, once the work it resumed ran what it had
+   * due by then. Opening one while none is open resumes the instances stored there that haven't
+   * ended, which run only while one is open.
    */
-  readonly open: (opener: Run) => number;
+  readonly open: (opener: Run, opened: Future, made: (run: Run, runtime: number) => Value) => void;
   /** Closes runtime `runtime`, disposed: it serves no instance's jobs any more. */
   readonly close: (runtime: number) => void;
   /**

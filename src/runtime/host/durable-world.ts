@@ -137,7 +137,12 @@ export class DurableWorld implements World {
   };
 
   readonly call = (caller: Run, { key, call, maker }: ContextCall, future: Future): void => {
-    const into = { closure: call, passed: [], hears: maker === 'program' };
+    let heard = maker === 'program';
+    // A call let go of unanswered hears no panic, which is then the host's to hear (§9).
+    future.cancels.push(() => {
+      heard = false;
+    });
+    const into = { closure: call, passed: [], hears: () => heard };
     this.invokeIn(caller, key, into, (end) =>
       caller.arrivals.arrive(future, (run, answered) => run.settle(answered, instanceEnding(end))),
     );
@@ -183,8 +188,14 @@ export class DurableWorld implements World {
     }
   };
 
-  readonly open = (opener: Run): number =>
-    this.#runtimes.open(this.#programOf(opener).hash, () => this.#resume());
+  readonly open = (
+    opener: Run,
+    opened: Future,
+    made: (run: Run, runtime: number) => Value,
+  ): void => {
+    const program = this.#programOf(opener).hash;
+    this.#runtimes.open(program, () => this.#resume(), { opener, opened, made });
+  };
 
   readonly close = (runtime: number): void => this.#runtimes.close(runtime);
 
@@ -234,7 +245,8 @@ export class DurableWorld implements World {
 
   /**
    * Runs every run's arrivals and ready work until none has any or `done` says the host's run is
-   * done, committing each resident whose segment ran, once it has nothing ready.
+   * done, committing each resident whose segment ran, once it has nothing ready; then lets the
+   * live runs that opened a runtime go on.
    */
   drain(done: () => boolean = () => false): void {
     for (let busy = true; busy && !done(); ) {
@@ -248,13 +260,46 @@ export class DurableWorld implements World {
         unvisited.delete(next);
         busy = this.#advanced(next) || busy;
       }
+      busy ||= this.#opened();
     }
   }
 
-  /** The earliest timer any run waits on. */
+  /**
+   * Lets the live runs that opened a runtime go on once the work it resumed ran what it had due
+   * by now, a timer that came due while none was open included (§9); whether anything moved.
+   */
+  #opened(): boolean {
+    if (!this.#runtimes.opening) {
+      return false;
+    }
+    if (!this.#wokeDue(this.seams.clock.now())) {
+      this.#runtimes.letOpenersGoOn();
+    }
+    return true;
+  }
+
+  /**
+   * Whether the work persisted in the store runs: while a runtime is open over it (§9), and always
+   * in a test's world, which drives its instances itself (§10).
+   */
+  get #storeWorkRuns(): boolean {
+    return this.testing !== undefined || this.#runtimes.anyOpen;
+  }
+
+  /** Starts a segment of each resident with a timer due by `now`; whether any had one. */
+  #wokeDue(now: bigint): boolean {
+    let woke = false;
+    for (const resident of this.residents.values()) {
+      woke = resident.wake(now) || woke;
+    }
+    return woke;
+  }
+
+  /** The earliest timer any run waits on, a resident's only while the store's work runs. */
   nextTimer(): bigint | undefined {
     let earliest: bigint | undefined;
-    for (const run of this.runs) {
+    const runs = this.#storeWorkRuns ? this.runs : [...this.#live.keys()];
+    for (const run of runs) {
       const next = run.timers.next();
       if (next !== undefined && (earliest === undefined || next < earliest)) {
         earliest = next;
@@ -263,13 +308,21 @@ export class DurableWorld implements World {
     return earliest;
   }
 
-  /** Fires every run's due timers: a live run's at once, a resident's as a segment of its own. */
-  fireDue(now: bigint): void {
+  /**
+   * Fires every run's due timers, a resident's as a segment of its own. The residents' go first and
+   * run until `done` or nothing is ready, so what a context answers because of them reaches a live
+   * run before its own timers due at the same instant decide what waited on both (§6).
+   */
+  fireDue(now: bigint, done: () => boolean = () => false): void {
+    if (this.#storeWorkRuns) {
+      this.#wokeDue(now);
+    }
+    this.drain(done);
+    if (done()) {
+      return;
+    }
     for (const run of this.#live.keys()) {
       run.fireDue(now);
-    }
-    for (const resident of this.residents.values()) {
-      resident.wake(now);
     }
   }
 
@@ -330,7 +383,7 @@ export class DurableWorld implements World {
     this.#restored(resident);
     resident.startedAt = this.seams.clock.now();
     const { run } = resident;
-    run.finish([]);
+    run.lifetimes.disposingPastPanics(() => run.finish([]));
     commitTerminated(resident, panic, this.#commits);
   }
 

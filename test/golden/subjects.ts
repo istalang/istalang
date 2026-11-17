@@ -19,7 +19,7 @@
  *   their results; their goldens hold what `ista test` prints of them.
  */
 
-import { readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { diagnose } from '../../src/compiler/compile.ts';
 import { moduleIdOf } from '../../src/compiler/program/program.ts';
@@ -86,8 +86,14 @@ function corpusSubjects(): ProgramSubject[] {
   }));
 }
 
-/** The programs under `directory`, each stating its outcome or panic on its first line. */
+/**
+ * The programs under `directory`, each stating its outcome or panic on its first line; none where
+ * it doesn't exist, as `defects` doesn't once every defect is fixed (git keeps no empty folder).
+ */
 function statingSubjects(directory: string): ProgramSubject[] {
+  if (!existsSync(directory)) {
+    return [];
+  }
   return readdirSync(directory, { recursive: true, encoding: 'utf8' })
     .filter((name) => name.endsWith('.ista'))
     .toSorted()

@@ -7,11 +7,17 @@
  * - A start taking another number of arguments than the host gives is refused before anything
  *   runs, as is a key the program lists nothing under.
  * - A host's JSON becomes the json module's `Json` here, the one place it enters; JSON a value
- *   can't hold is refused.
+ *   can't hold is refused. So is an outcome's `Json` that JSON can't hold, such as one nesting too
+ *   deep, as the start ends.
  */
 
 import type { Tables } from '../../definition/tables/index.ts';
-import { JsonError, jsonOfPlain, jsonTypeOf } from '../../definition/values/json-values.ts';
+import {
+  JsonError,
+  jsonOfPlain,
+  jsonTypeOf,
+  plainOfJson,
+} from '../../definition/values/json-values.ts';
 import type { Value } from '../../definition/values/values.ts';
 import { Refusal } from '../refusal.ts';
 
@@ -37,12 +43,22 @@ export function startOf(program: Startable, key: string | undefined, count: numb
 
 /** A host's JSON as a `Json` value; refused when it holds what JSON can't. */
 export function jsonIn(program: Pick<Tables, 'types'>, json: unknown): Value {
+  return refusingUnfit('unfitJson', () => jsonOfPlain(json, jsonTypeOf(program.types)));
+}
+
+/** Refuses `outcome`, a start's encoded `Json`, when JSON can't hold it. */
+export function checkJsonOut(program: Pick<Tables, 'types'>, outcome: Value): void {
+  refusingUnfit('noJsonForm', () => plainOfJson(outcome, jsonTypeOf(program.types)));
+}
+
+/** What `convert` gives; refused as `reason` when JSON can't hold what it converts. */
+function refusingUnfit<Result>(reason: 'unfitJson' | 'noJsonForm', convert: () => Result): Result {
   try {
-    return jsonOfPlain(json, jsonTypeOf(program.types));
+    return convert();
   } catch (error) {
     if (error instanceof JsonError) {
       // biome-ignore lint/style/useErrorCause: a Refusal takes its reason first, so the cause is third.
-      throw new Refusal('unfitJson', error.message, { cause: error });
+      throw new Refusal(reason, error.message, { cause: error });
     }
     throw error;
   }

@@ -12,16 +12,20 @@
  *   future it awaits, which the host fills through the resolver it takes, `call.resolver()`, when
  *   it can; or, taking none, gives back a promise of the JSON, which fills it as it settles. A resolver
  *   taken is the future's one producer: a promise given back as well, as an `async` extern's is,
- *   resolves nothing, though its rejection still panics. Anything else it gives back is its result.
- * - A live resolver is one-shot: a second `resolve` is a bug, which panics the run, and
- *   `tryResolve` says whether it took the value, for races. Its `onCancel` callbacks are called
- *   once its future is disposed unresolved, after which it takes nothing.
+ *   resolves nothing, though its rejection panics while nothing resolved the future. Anything else
+ *   it gives back is its result.
+ * - A live resolver is one-shot: a second `resolve` is a bug, which panics the run however it
+ *   stands, even in the step that finishes it, and `tryResolve` says whether it took the value, for
+ *   races. Its `onCancel` callbacks are called once its future is disposed unresolved, after which
+ *   it takes nothing; one registered later is called at once, and one that throws panics the run,
+ *   never the host, the others still called.
  * - A resolver the host lets go of unresolved panics its run, naming the extern. No deterministic
  *   disposal reaches a host's objects, so the runtime learns it as JavaScript collects the resolver
  *   (`FinalizationRegistry`): maybe late, never wrongly, since each of its functions holds it. A
  *   live extern that gives back no promise and takes no resolver dropped it at once.
  * - A result JSON can't hold, or a promise that rejects, is a bug in the host, so it panics the run
- *   (§3.12), as a result of the wrong type does in the wrapper.
+ *   (§3.12), as a result of the wrong type does in the wrapper. Every such panic carries the trace
+ *   of where the extern was called (runtime/natives.ts `HostFilling`).
  * - This is the one shape the runtime takes. `ista run --host` loads plain functions taking the
  *   arguments spread and returning promises (cli/host-module.ts), and adapts them to it.
  */
@@ -45,7 +49,7 @@ import {
 import { Refusal } from '../refusal.ts';
 
 /** What a host extern is told about the call it runs. */
-interface HostCall {
+export interface HostCall {
   /** The instance or live run calling, as the host named it in `start`. */
   readonly instance: string;
   /**
@@ -56,7 +60,7 @@ interface HostCall {
 }
 
 /** A live future's resolver, as a host resolves it with JSON (proposal 8, Rule 9). */
-interface HostResolver {
+export interface HostResolver {
   /** Resolves the future with `value`; a second time panics the run, after `onCancel` nothing. */
   readonly resolve: (value: unknown) => void;
   /** Resolves the future with `value` unless it resolved or was cancelled; whether it took it. */
@@ -189,7 +193,7 @@ class JsonResolver implements HostResolver {
 
   readonly resolve = (value: unknown): void => {
     if (this.#filled.state() === 'resolved') {
-      this.#filled.fail(new Panic(`The host's ${this.#name} resolved its future twice.`));
+      this.#filled.misused(new Panic(`The host's ${this.#name} resolved its future twice.`));
       return;
     }
     fillWith(this.#filled, value, this.#read);
@@ -208,9 +212,7 @@ class JsonResolver implements HostResolver {
  */
 function failWhenDropped(filled: HostFilling, name: string): () => void {
   return () => {
-    if (filled.state() === 'pending') {
-      filled.fail(new Panic(`The host's ${name} dropped its resolver unresolved.`));
-    }
+    filled.fail(new Panic(`The host's ${name} dropped its resolver unresolved.`));
   };
 }
 

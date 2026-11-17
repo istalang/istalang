@@ -87,20 +87,25 @@ interface NativeFutures {
   readonly filling: (future: Value) => HostFilling;
 }
 
-/** Whether a resolver waits for its value, took one or failed, or lost its future first. */
 /**
  * How a host fills the future its extern gives: once, with its value, which arrives as a turn of
- * its own; or by failing it, which panics where the run waits on it; unless the future was disposed
- * first, which cancels it and calls the host's `onCancel` callbacks.
+ * its own; or by failing it, which panics the run; unless the future was disposed first, which
+ * cancels it and calls the host's `onCancel` callbacks. Every panic it makes carries the trace of
+ * where the extern was called.
  */
 export interface HostFilling {
   /** Fills the future with `value`, unless it was filled or cancelled; whether it took it. */
   readonly fill: (value: Value) => boolean;
+  /** Fails the future with `panic` unless it was filled or cancelled: its run panics. */
   readonly fail: (panic: Panic) => void;
+  /** Panics its run with `panic` however the future stands: whoever fills it misused it. */
+  readonly misused: (panic: Panic) => void;
+  /** Has `callback` called once the future is cancelled, at once if it was; a throw is a misuse. */
   readonly onCancel: (callback: () => void) => void;
   readonly state: () => ResolverState;
 }
 
+/** Whether a resolver waits for its value, took one or failed, or lost its future first. */
 type ResolverState = 'pending' | 'resolved' | 'cancelled';
 
 /**
@@ -161,9 +166,10 @@ export interface NativeContexts {
   /** The host's store, a value of the extern type entry `type`. */
   readonly hostStore: (type: TypeId) => Value;
   /**
-   * A runtime over `store`, a resource of the extern type entry `type`: opening the first resumes
-   * the work persisted there, which runs while the live run does; disposing it closes it, so it
-   * serves no jobs any more.
+   * A live future resolving with a runtime over `store`, a resource of the extern type entry
+   * `type`: opening the first resumes the work persisted there, which runs while a runtime is open,
+   * and resolves once what it had due by then ran; disposing it closes it, so it serves no jobs any
+   * more.
    */
   readonly open: (store: Value, type: TypeId) => Value;
   /**
@@ -321,10 +327,18 @@ export class Panic extends Error {
  * innermost few in an `Error` by default, which would cut a deep trace short (§3.12).
  */
 export function wholeStack(heading: string): string | undefined {
+  return stackSite(heading).stack;
+}
+
+/**
+ * An `Error` keeping every frame of the stack where it is made, under `heading`, as a panic's
+ * cause names where it happened: the engine writes its `stack` only once something reads it.
+ */
+export function stackSite(heading: string): Error {
   const limit = Error.stackTraceLimit;
   Error.stackTraceLimit = Number.POSITIVE_INFINITY;
   try {
-    return new Error(heading).stack;
+    return new Error(heading);
   } finally {
     Error.stackTraceLimit = limit;
   }

@@ -58,6 +58,8 @@ export class Lifetimes {
   readonly #types: readonly TypeDefinition[];
   /** The objects that lost their last holder, waiting for the round collecting them. */
   #zeros: RunObject[] | undefined;
+  /** Whether a disposal's panic stops none of the others (`disposingPastPanics`). */
+  #passesPanics = false;
 
   constructor(dispose: Disposer, types: readonly TypeDefinition[]) {
     this.#dispose = dispose;
@@ -140,6 +142,24 @@ export class Lifetimes {
     } finally {
       this.#zeros = outer;
     }
+  }
+
+  /**
+   * Runs `release`, a disposal panicking within it stopping none of the others: terminating an
+   * instance disposes everything it holds (§3.12).
+   */
+  disposingPastPanics(release: () => void): void {
+    this.#passesPanics = true;
+    try {
+      release();
+    } finally {
+      this.#passesPanics = false;
+    }
+  }
+
+  /** Whether a disposal's panic is passed over now, its disposal going on (§3.12). */
+  get passesPanics(): boolean {
+    return this.#passesPanics;
   }
 
   /** Whether `node` has one holder: changing it in place changes no other's value. */

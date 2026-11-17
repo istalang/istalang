@@ -8,14 +8,17 @@
  *   runs in the contexts live code calls (§9), each an instance of the world, which a start's
  *   options (`crashEveryAwait`, §10) hold for.
  * - What crosses is JSON: arguments are decoded by the start entry, and the outcome encoded by
- *   the start's encoding entry, the moment the root call's outcome settles.
+ *   the start's encoding entry, the moment the root call's outcome settles; an outcome JSON can't
+ *   hold refuses the start, once the run finished.
+ * - A host's misuse of a resolver panics the run, even in the step its root returned in
+ *   (runtime/natives.ts `HostFilling`).
  */
 
 import { emitProgram } from '../../codegen/emit.ts';
 import type { Definition, KeyedDefinition } from '../../definition/definition.ts';
 import { jsonText, jsonTypeOf } from '../../definition/values/json-values.ts';
 import type { Value } from '../../definition/values/values.ts';
-import { jsonIn, startOf } from '../boundary/starts.ts';
+import { checkJsonOut, jsonIn, startOf } from '../boundary/starts.ts';
 import type { Advanced, Finished, LogRecord, StartOptions } from '../instance-state.ts';
 import { Refusal } from '../refusal.ts';
 import { Future } from '../run/objects/future.ts';
@@ -87,11 +90,14 @@ async function started(
     if (outcome === undefined) {
       return { state: { kind: 'waiting', until: undefined, watching: [] }, spawned: [], logs };
     }
+    // A host's misuse in the step its root returned in panics it all the same.
+    run.arrivals.raiseMisuse();
     const encoded = run.call(start.encode, [outcome]) as Value;
     run.finish([given as Value]);
     world.endLive(run);
     // The instances it reached go on as far as they can without waiting, as a host runs any other.
     world.drain();
+    checkJsonOut(definition, encoded);
     return { state: { kind: 'finished', outcome, encoded }, spawned: [], logs };
   } catch (error) {
     const { message, trace } = run.traces.panicOf(error);
@@ -124,7 +130,7 @@ async function settled(world: DurableWorld, given: unknown): Promise<Value | und
     } else {
       await clock.until(timer);
     }
-    world.fireDue(clock.now());
+    world.fireDue(clock.now(), done);
   }
 }
 

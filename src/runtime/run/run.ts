@@ -21,7 +21,7 @@ import { disposeOf } from '../../definition/tables/types.ts';
 import { mapOf, valuesEqual } from '../../definition/values/equality.ts';
 import type { Value } from '../../definition/values/values.ts';
 import { Unreachable } from '../../foundation/structures/unreachable.ts';
-import type { HostFilling } from '../natives.ts';
+import { type HostFilling, stackSite } from '../natives.ts';
 import { drawOf } from '../random-draws.ts';
 import { type Arrival, Arrivals } from './arrivals.ts';
 import { type DisposalSeams, disposerOf } from './disposal.ts';
@@ -152,6 +152,7 @@ export class Run {
       disposeOf: (type) => disposeOf(this.definition.types, type),
       runDispose: (index, disposed) =>
         this.lifetimes.apart(() => this.lifetimes.letGo(this.call(index, [disposed]) as Value)),
+      passesPanics: () => this.lifetimes.passesPanics,
       callValue: (closure) => this.callValue(closure, []),
       letGo: (...values) => this.lifetimes.letGo(...values),
       stop: (execution) => this.executions.stop(execution),
@@ -249,9 +250,9 @@ export class Run {
     }
   }
 
-  /** How a host fills `future`, its extern's pending future (§9). */
+  /** How a host fills `future`, the pending future of the extern being called here (§9). */
   filling(future: Future): HostFilling {
-    return this.arrivals.filling(this, future);
+    return this.arrivals.filling(this, future, stackSite("the host extern's call"));
   }
 
   /** A future settling with how the instance `name` ends (§9); a snapshot keeps the watch. */

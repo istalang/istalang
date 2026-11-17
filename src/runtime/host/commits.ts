@@ -38,8 +38,6 @@ export function commit(resident: Resident, seams: CommitSeams): void {
     rerun(resident, seams);
   }
   const { startedAt } = resident;
-  resident.inputs = [];
-  resident.unstarted = false;
   let status = statusOf(resident.run.instance.end, startedAt);
   let text: string;
   try {
@@ -53,6 +51,15 @@ export function commit(resident: Resident, seams: CommitSeams): void {
     status = { kind: 'panicked', message: error.message, trace, segmentStartedAt: startedAt };
     text = written(resident, status);
   }
+  try {
+    seams.store.writeSnapshot(resident.name, text);
+  } catch (error) {
+    // A write the store fails commits nothing: the instance stands as it last committed (§5).
+    backToLastCommit(resident, seams);
+    throw error;
+  }
+  resident.inputs = [];
+  resident.unstarted = false;
   resident.status = snapshotFormat.read(text).status;
   resident.text = text;
   resident.replay = undefined;
@@ -62,7 +69,6 @@ export function commit(resident: Resident, seams: CommitSeams): void {
       .persisted()
       .map(({ future, invocation }) => [future.object, invocation]),
   );
-  seams.store.writeSnapshot(resident.name, text);
   letOut(resident, seams.reports);
 }
 
@@ -72,12 +78,11 @@ export function commitTerminated(
   panic: { readonly message: string; readonly trace: string },
   seams: CommitSeams,
 ): void {
-  resident.status = { kind: 'terminated', ...panic };
-  resident.text = snapshotFormat.write({
-    ...emptySnapshot(resident),
-    ...header(resident, resident.status),
-  });
-  seams.store.writeSnapshot(resident.name, resident.text);
+  const status: PersistedStatus = { kind: 'terminated', ...panic };
+  const text = snapshotFormat.write({ ...emptySnapshot(resident), ...header(resident, status) });
+  seams.store.writeSnapshot(resident.name, text);
+  resident.status = status;
+  resident.text = text;
   letOut(resident, seams.reports);
 }
 

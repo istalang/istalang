@@ -39,7 +39,7 @@ export const runtimeNatives = (
   [keys.of('hostStore')]: (_arguments, context) =>
     context.contexts.hostStore(declaredResult(context)),
   [keys.ofStatic('_Runtime', 'open', keys.type('Store'))]: ([store], context) =>
-    context.futures.resolved(context.contexts.open(given(store), resultTypeArgument(context, 0))),
+    context.contexts.open(given(store), resultTypeArgument(context, 0)),
   [contextCallKey(keys, '_called')]: contextCall('program'),
   [contextCallKey(keys, '_jobCalled')]: contextCall('jobs'),
   [keys.of('_served', keys.type('_Runtime'), 'Int')]: ([runtime, known], context) =>

@@ -1,7 +1,8 @@
 /**
  * What a runtime refuses as it reads an instance back from its store (§5), before anything of it
  * resumes: a snapshot of a format version it doesn't know or of a shape no snapshot has, one naming
- * a Definition the store lacks or an object it doesn't hold, and an instance the store lacks.
+ * a Definition the store lacks or an object it doesn't hold, one whose execution's frame doesn't fit
+ * its Definition, and an instance the store lacks.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -10,7 +11,9 @@ import { lines } from '../../compiler/parser/parse.test-kit.ts';
 import { FormatError } from '../../definition/formats/format.ts';
 import { Refusal } from '../refusal.ts';
 import { startToEnd, testRuntime } from '../runtime.test-kit.ts';
-import { type Snapshot, snapshotFormat } from './format.ts';
+import { type PersistedObject, type Snapshot, snapshotFormat } from './format.ts';
+
+type PersistedExecution = Extract<PersistedObject, { readonly kind: 'execution' }>;
 
 /** A program whose spawned instance `p/1` commits waiting on a timer. */
 const waitingProgram = compiledEncoded(
@@ -82,6 +85,31 @@ describe('reading an instance back', () => {
     await expect(test.runtime.wake('p/1')).rejects.toThrow(
       expect.objectContaining({ reason: 'snapshotMismatch' }),
     );
+  });
+
+  it.each<[string, (execution: PersistedExecution) => PersistedExecution]>([
+    ['a frame standing where no call waits', (execution) => ({ ...execution, pc: 0 })],
+    ['a pc outside its function', (execution) => ({ ...execution, pc: 10_000 })],
+    [
+      'a register outside its frame',
+      (execution) => ({ ...execution, registers: [...execution.registers, null] }),
+    ],
+    ['a frame of a function that is not code', (execution) => ({ ...execution, function: 10_000 })],
+  ])('refuses a snapshot with %s, before resuming', async (_case, change) => {
+    const test = await readingBack((snapshot) =>
+      written({
+        ...snapshot,
+        objects: snapshot.objects.map((object) =>
+          object.kind === 'execution' ? change(object) : object,
+        ),
+      }),
+    );
+    test.clock.set(10n);
+    const commits = test.store.commits.length;
+    await expect(test.runtime.wake('p/1')).rejects.toThrow(
+      expect.objectContaining({ reason: 'snapshotMismatch' }),
+    );
+    expect(test.store.commits).toHaveLength(commits);
   });
 
   it('refuses an instance the store lacks', async () => {

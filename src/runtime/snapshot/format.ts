@@ -24,7 +24,7 @@ import {
   register as registerIndex,
   typeId,
 } from '../../definition/operands.ts';
-import { integer, value } from '../../definition/values/values.ts';
+import { externPayload, integer, value } from '../../definition/values/values.ts';
 
 const step = z.tuple([z.enum(['elements', 'fields']), count]);
 
@@ -87,7 +87,7 @@ const object = z.discriminatedUnion('kind', [
     kind: z.literal('resource'),
     id: objectId,
     type: typeId,
-    payload: z.json(),
+    payload: externPayload,
     disposed: z.boolean(),
   }),
   z.strictObject({

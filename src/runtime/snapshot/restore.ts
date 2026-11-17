@@ -3,12 +3,17 @@
  * committed (§5).
  *
  * - Objects are made first, each under its id, then filled, so a value may name any of them.
+ * - A snapshot that doesn't fit its Definition is refused before anything of it resumes: one naming
+ *   an object it doesn't hold, or an execution whose frame its entry couldn't have parked.
  * - Holders are counted again, as the run that wrote the snapshot counted them: what a counted
  *   register, a counted cell, a future, a call's arguments and a context constant hold each count
  *   once (`Lifetimes.adoptRestored`). A value comes back as a tree, so each composite has the one
  *   holder it is read under.
  */
 
+import { runsOnFrames } from '../../codegen/entry.ts';
+import { parkAt } from '../../codegen/instructions.ts';
+import type { Definition } from '../../definition/definition.ts';
 import { type CodeFunction, transientRegistersOf } from '../../definition/tables/functions.ts';
 import { lifetimeOf } from '../../definition/tables/types.ts';
 import { replacingParts } from '../../definition/values/replacing.ts';
@@ -17,7 +22,7 @@ import { type Handlers, handlerOf } from '../../foundation/structures/kind-table
 import { unreachable } from '../../foundation/structures/unreachable.ts';
 import { Refusal } from '../refusal.ts';
 import type { InstanceEnd } from '../run/instances.ts';
-import type { Invocation } from '../run/invocations.ts';
+import { hearsNothing, type Invocation } from '../run/invocations.ts';
 import { Cell } from '../run/objects/cell.ts';
 import { Execution, type Frame } from '../run/objects/execution.ts';
 import { closuresOf, Future } from '../run/objects/future.ts';
@@ -213,7 +218,7 @@ function filledExecution(
 ): void {
   const { object, restored } = reading;
   const execution = object(persisted.id) as Execution;
-  const entry = run.definition.functions[persisted.function] as CodeFunction;
+  const entry = fittingEntry(run.definition, persisted);
   execution.frame = {
     function: persisted.function,
     pc: persisted.pc,
@@ -248,6 +253,32 @@ function filledExecution(
       run.lifetimes.hold(cell);
     }
   }
+}
+
+/**
+ * The entry `persisted`'s frame runs; refused, before anything resumes, unless the frame fits it:
+ * an async code entry, standing where one of its `park`s resumes, with each of its registers.
+ */
+function fittingEntry(
+  definition: Definition,
+  persisted: Extract<PersistedObject, { readonly kind: 'execution' }>,
+): CodeFunction {
+  const { id, pc, registers } = persisted;
+  const entry = definition.functions[persisted.function];
+  const refused = (why: string) =>
+    new Refusal('snapshotMismatch', `The snapshot's execution ${id} ${why}.`);
+  if (entry?.kind !== 'code' || !runsOnFrames(entry)) {
+    throw refused(`runs ${persisted.function}, no async code entry`);
+  }
+  if (parkAt(entry, pc) === undefined) {
+    throw refused(`stands at ${pc}, where no call of ${entry.name} waits`);
+  }
+  if (registers.length !== entry.registers.length) {
+    throw refused(
+      `has ${registers.length} registers, where ${entry.name} has ${entry.registers.length}`,
+    );
+  }
+  return entry;
 }
 
 /**
@@ -298,7 +329,7 @@ export function rootInvocation(run: Run, encoder: number | undefined): Invocatio
       );
     },
     root: true,
-    hears: false,
+    hears: hearsNothing,
   };
 }
 

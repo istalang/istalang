@@ -20,8 +20,11 @@ import type { Future } from './objects/future.ts';
 export interface Invocation {
   readonly answer: (end: InvocationEnd) => void;
   readonly root: boolean;
-  readonly hears: boolean;
+  readonly hears: () => boolean;
 }
+
+/** The `hears` of an invocation whose caller never hears the instance's panic. */
+export const hearsNothing = (): boolean => false;
 
 /** An invocation still running, by the future of the call it started, as a snapshot keeps it. */
 export interface RunningInvocation {

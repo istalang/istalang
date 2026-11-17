@@ -10,11 +10,13 @@
  * - **In order.** Every run's arrivals are numbered as they come, so a world runs its runs in the
  *   order their turns arrived.
  * - **Host fillings.** A host filling is pending until filled, failed or cancelled (its future
- *   disposed first), and the run waits on the host only while one is pending.
+ *   disposed first), and the run waits on the host only while one is pending. A host misusing one
+ *   (filling it twice, an `onCancel` of its throwing) panics the run however it stands, even in the
+ *   step that finishes it: the first misuse is thrown before any turn is taken.
  */
 
 import { copied } from '../../definition/values/replacing.ts';
-import type { HostFilling } from '../natives.ts';
+import { type HostFilling, Panic } from '../natives.ts';
 import type { Future } from './objects/future.ts';
 import type { RunObject } from './objects/run-object.ts';
 import type { Run } from './run.ts';
@@ -39,6 +41,8 @@ export class Arrivals {
   #successor: Arrivals | undefined;
   /** The objects a snapshot read back made, by id, which a turn handed on acts on. */
   #restored: ReadonlyMap<number, RunObject> = new Map();
+  /** The first misuse of a host filling, which panics the run. */
+  #misuse: Panic | undefined;
 
   /** Readies `turn` on `object`, and wakes what waits for an arrival. */
   arrive<Target extends RunObject>(object: Target, turn: (run: Run, object: Target) => void): void {
@@ -57,6 +61,11 @@ export class Arrivals {
       return;
     }
     this.#turns.push(arrival);
+    this.#wakeWaiter();
+  }
+
+  /** Wakes what waits for the next arrival. */
+  #wakeWaiter(): void {
     const wake = this.#wake;
     this.#wake = undefined;
     wake?.();
@@ -83,8 +92,9 @@ export class Arrivals {
     return arrival.object ?? this.#restored.get(arrival.id);
   }
 
-  /** The turn that arrived first, taken out. */
+  /** The turn that arrived first, taken out; a host's first misuse thrown before anything. */
   next(): Arrival | undefined {
+    this.raiseMisuse();
     return this.#turns.shift();
   }
 
@@ -97,13 +107,20 @@ export class Arrivals {
     return this.#turns[0]?.order;
   }
 
-  /** Settles once something arrives, at once if something has. */
+  /** Settles once something arrives, at once if something has, a misuse included. */
   arrival(): Promise<void> {
-    return this.#turns.length > 0
+    return this.#turns.length > 0 || this.#misuse !== undefined
       ? Promise.resolve()
       : new Promise((resolve) => {
           this.#wake = resolve;
         });
+  }
+
+  /** Throws the first misuse of a host filling, if one came. */
+  raiseMisuse(): void {
+    if (this.#misuse !== undefined) {
+      throw this.#misuse;
+    }
   }
 
   /** Whether a host still owes the run something it waits on. */
@@ -112,31 +129,54 @@ export class Arrivals {
   }
 
   /**
-   * How a host fills `future`, an extern's pending future of the run `owner` arriving there: each
-   * fill a turn settling it, in whichever run of the instance it lands in, with a copy of its value.
+   * How a host fills `future`, an extern's pending future of the run `owner` arriving there, the
+   * extern called where `site` was made: each fill a turn settling it, in whichever run of the
+   * instance it lands in, with a copy of its value.
    */
-  filling(owner: Run, future: Future): HostFilling {
+  filling(owner: Run, future: Future, site: Error): HostFilling {
     let state: 'pending' | 'resolved' | 'cancelled' = 'pending';
+    const cancels: (() => void)[] = [];
     this.#hostWork += 1;
     const done = (run: Run) => {
       if (run === owner) {
         this.#hostWork -= 1;
       }
     };
+    const traced = (panic: Panic) => new Panic(panic.message, { cause: site });
+    const misused = (panic: Panic) => {
+      this.#misuse ??= traced(panic);
+      this.#wakeWaiter();
+    };
+    const cancelling = (callback: () => void) => {
+      try {
+        callback();
+      } catch (error) {
+        const why = error instanceof Error ? error.message : String(error);
+        misused(new Panic(`A host's onCancel threw: ${why}`, { cause: error }));
+      }
+    };
     future.cancels.push(() => {
       if (state === 'pending') {
         state = 'cancelled';
         this.#hostWork -= 1;
+        for (const callback of cancels.splice(0)) {
+          cancelling(callback);
+        }
       }
     });
+    const settle = (turn: (run: Run, filled: Future) => void) => {
+      state = 'resolved';
+      this.arrive(future, (run, filled) => {
+        done(run);
+        turn(run, filled);
+      });
+    };
     return {
       fill: (value) => {
         if (state !== 'pending') {
           return false;
         }
-        state = 'resolved';
-        this.arrive(future, (run, filled) => {
-          done(run);
+        settle((run, filled) => {
           const held = copied(value);
           run.lifetimes.hold(held);
           run.settle(filled, held);
@@ -144,14 +184,19 @@ export class Arrivals {
         return true;
       },
       fail: (panic) => {
-        state = 'resolved';
-        this.arrive(future, (run) => {
-          done(run);
-          throw panic;
-        });
+        if (state === 'pending') {
+          settle(() => {
+            throw traced(panic);
+          });
+        }
       },
+      misused,
       onCancel: (callback) => {
-        future.cancels.push(callback);
+        if (state === 'cancelled') {
+          cancelling(callback);
+        } else {
+          cancels.push(callback);
+        }
       },
       state: () => state,
     };

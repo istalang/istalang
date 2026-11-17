@@ -11,9 +11,12 @@
  *   disposal is the runtime's own, else by its host through its type's `dispose` (§7, §9).
  * - A **mock** no call reaches any more lets go of its replacement and the calls it recorded (§10).
  * - Its weak reference is cleared first, and its `disposed()` settles once it is gone.
+ * - A declared `dispose` that panics stops the other disposals, but while disposing past panics, as
+ *   terminating an instance does (§3.12): then its panic is passed over and what it held let go.
  */
 
 import type { Value } from '../../definition/values/values.ts';
+import { panicOf } from '../natives.ts';
 import type { Disposer } from './lifetimes.ts';
 import type { Mocks } from './mocks.ts';
 import { Cell } from './objects/cell.ts';
@@ -37,6 +40,8 @@ export interface DisposalSeams {
    * before going on.
    */
   readonly runDispose: (index: number, disposed: Value) => void;
+  /** Whether a dispose's panic is passed over now (`Lifetimes.disposingPastPanics`). */
+  readonly passesPanics: () => boolean;
   /** Calls the closure `closure` with nothing; what it gives. */
   readonly callValue: (closure: Value) => unknown;
   readonly letGo: (...values: (Value | undefined)[]) => void;
@@ -59,7 +64,7 @@ export function disposerOf(seams: DisposalSeams): Disposer {
 function releasedBy(object: RunObject, seams: DisposalSeams): readonly Value[] {
   if (object instanceof Cell) {
     if (object.dispose !== undefined) {
-      seams.runDispose(object.dispose, object as unknown as Value);
+      runDispose(seams, object.dispose, object as unknown as Value);
     }
     return object.counted ? [object.value] : [];
   }
@@ -72,7 +77,7 @@ function releasedBy(object: RunObject, seams: DisposalSeams): readonly Value[] {
     object.release?.();
     const dispose = seams.disposeOf(object.type);
     if (dispose !== undefined) {
-      seams.runDispose(dispose, object as unknown as Value);
+      runDispose(seams, dispose, object as unknown as Value);
     }
   }
   if (object instanceof MockObject) {
@@ -80,6 +85,17 @@ function releasedBy(object: RunObject, seams: DisposalSeams): readonly Value[] {
     return [object.replacement, ...object.calls];
   }
   return [];
+}
+
+/** Runs the declared `dispose` `index` on `disposed`, its panic passed over where `seams` say. */
+function runDispose(seams: DisposalSeams, index: number, disposed: Value): void {
+  try {
+    seams.runDispose(index, disposed);
+  } catch (error) {
+    if (!(seams.passesPanics() && panicOf(error) !== undefined)) {
+      throw error;
+    }
+  }
 }
 
 function releasedByFuture(future: Future, seams: DisposalSeams): readonly Value[] {

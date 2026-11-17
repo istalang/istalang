@@ -3,7 +3,9 @@
  * serve (runtime.ista `_served`, §5).
  *
  * - Opening one while none is open resumes the work persisted in the store (durable-world.ts): the
- *   instances there that haven't ended are read back, and the world runs them on.
+ *   instances there that haven't ended are read back, and the world runs them on while one is open.
+ *   The live run opening one goes on once the world ran what that work had due by then; one letting
+ *   go of its open first closes the runtime it was to get.
  * - **Lives.** What a runtime serves is the lives begun since then: each instance running then or
  *   made since, and each a retry runs again, whose panic ended the loop serving it, in the order
  *   they began. A loop serving one calls functions of its own program, so a runtime serves only the
@@ -14,8 +16,16 @@
  *   future; one let go of first is withdrawn.
  */
 
+import type { Value } from '../../definition/values/values.ts';
 import type { Future } from '../run/objects/future.ts';
 import type { Run } from '../run/run.ts';
+
+/** A live run opening a runtime: the future of its open, and how it makes the runtime it gets. */
+interface Opening {
+  readonly opener: Run;
+  readonly opened: Future;
+  readonly made: (run: Run, runtime: number) => Value;
+}
 
 /** A runtime's wait for the names of the instances it serves, once more than `known`. */
 interface ServedWait {
@@ -37,21 +47,54 @@ export class OpenRuntimes {
   #lives: Life[] = [];
   /** Each wait, with how it is answered. */
   readonly #waits = new Map<ServedWait, (names: readonly string[]) => void>();
+  /** What lets each live run that opened a runtime go on. */
+  readonly #opening: (() => void)[] = [];
 
   /**
-   * Opens a runtime for live code running the program `program`; its number. Opening the first,
-   * `resume` has the store's work begin.
+   * Opens a runtime for `opening`, live code running the program `program`, which goes on once
+   * `letOpenersGoOn` says. Opening the first, `resume` has the store's work begin.
    */
-  open(program: string, resume: () => void): number {
+  open(program: string, resume: () => void, { opener, opened, made }: Opening): void {
     const first = this.#open.size === 0;
     this.#opened += 1;
-    this.#open.set(this.#opened, program);
+    const runtime = this.#opened;
+    this.#open.set(runtime, program);
     if (first) {
       this.#lives = [];
       resume();
     }
     this.#answer();
-    return this.#opened;
+    let letGo = false;
+    opened.cancels.push(() => {
+      letGo = true;
+      this.close(runtime);
+    });
+    this.#opening.push(() =>
+      opener.arrivals.arrive(opened, (run, future) => {
+        if (!letGo) {
+          const value = made(run, runtime);
+          run.lifetimes.hold(value);
+          run.settle(future, value);
+        }
+      }),
+    );
+  }
+
+  /** Whether a live run that opened a runtime waits to go on. */
+  get opening(): boolean {
+    return this.#opening.length > 0;
+  }
+
+  /** Lets every live run that opened a runtime go on, its open settling with the runtime. */
+  letOpenersGoOn(): void {
+    for (const goOn of this.#opening.splice(0)) {
+      goOn();
+    }
+  }
+
+  /** Whether any runtime is open, so the work persisted in the store runs (§9). */
+  get anyOpen(): boolean {
+    return this.#open.size > 0;
   }
 
   /** Closes runtime `runtime`: its waits are dropped, and the next earliest serves. */

@@ -111,11 +111,17 @@ const closure = z.strictObject({
   },
 });
 
-/** A value of an extern type the runtime or host implements; its payload is plain JSON (`samePayload`). */
+/**
+ * What a value of an extern type keeps of the runtime or the host that made it: plain JSON, every
+ * integer a bigint, which the canonical codec writes exactly (`samePayload`).
+ */
+export const externPayload = z.unknown();
+
+/** A value of an extern type the runtime or host implements. */
 const external = z.strictObject({
   kind: z.literal('extern'),
   type: typeId,
-  payload: z.unknown(),
+  payload: externPayload,
 });
 
 /** A reference to a heap object of the running instance. */

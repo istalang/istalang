@@ -10,7 +10,7 @@ import { copied } from '../../definition/values/replacing.ts';
 import type { Value } from '../../definition/values/values.ts';
 import type { LogRecord } from '../instance-state.ts';
 import type { InstanceEnd, InvocationEnd } from '../run/instances.ts';
-import type { Invocation } from '../run/invocations.ts';
+import { hearsNothing, type Invocation } from '../run/invocations.ts';
 import type { Run } from '../run/run.ts';
 import type { PersistedStatus, Replay } from '../snapshot/format.ts';
 import { rootInvocation } from '../snapshot/restore.ts';
@@ -107,12 +107,14 @@ export class Resident {
     input(this.run);
   }
 
-  /** Starts a segment at `at` firing its timers due by then, if any are. */
-  wake(at: bigint): void {
+  /** Starts a segment at `at` firing its timers due by then, if any are; whether any were. */
+  wake(at: bigint): boolean {
     const due = this.run.timers.next();
-    if (due !== undefined && due <= at) {
-      this.feed((run) => run.fireDue(at), at);
+    if (due === undefined || due > at) {
+      return false;
     }
+    this.feed((run) => run.fireDue(at), at);
+    return true;
   }
 
   /** The input starting the call it was spawned to run, which its end is what that gives. */
@@ -131,7 +133,7 @@ export class Resident {
       return this.starting(replay.call);
     }
     const { call: closure, passed } = replay;
-    return invoking({ closure, passed, hears: false }, () => undefined);
+    return invoking({ closure, passed, hears: hearsNothing }, () => undefined);
   }
 
   /** How it ended, as what waits on its end is told; undefined while it runs. */
@@ -142,12 +144,13 @@ export class Resident {
 
 /**
  * A call into an instance: the closure it calls and what it passes, and whether its caller hears
- * the instance's panic, which the loop serving jobs leaves to the host (§9).
+ * the instance's panic: not once it let go of the call, and never the loop serving jobs, which
+ * leaves it to the host (§9).
  */
 export interface CallInto {
   readonly closure: Value;
   readonly passed: readonly Value[];
-  readonly hears: boolean;
+  readonly hears: () => boolean;
 }
 
 /** The input starting `call` in an instance, `answer` told how it ended. */
