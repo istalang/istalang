@@ -32,7 +32,7 @@ import type { Instance } from './instances.ts';
 import { type Invocation, Invocations, type RunningInvocation } from './invocations.ts';
 import { Lifetimes } from './lifetimes.ts';
 import { Mocking, NOT_MOCKED } from './mocking.ts';
-import { bindNatives, type NativeBinding } from './natives.ts';
+import { bindNatives, type RunSeams } from './natives.ts';
 import type { Execution, Frame } from './objects/execution.ts';
 import { Future } from './objects/future.ts';
 import type { WeakReference } from './objects/weak-reference.ts';
@@ -99,12 +99,12 @@ export class Run {
   readonly #guard: PanicGuard;
   #objects = 0;
 
-  constructor(definition: Definition, program: EmittedProgram, binding: NativeBinding) {
+  constructor(definition: Definition, program: EmittedProgram, seams: RunSeams) {
     this.definition = definition;
     this.constants = definition.constants;
-    this.instance = binding.instance;
-    this.world = binding.world;
-    this.seed = binding.seed;
+    this.instance = seams.instance;
+    this.world = seams.world;
+    this.seed = seams.seed;
     this.mocking = new Mocking(this);
     this.lifetimes = new Lifetimes(disposerOf(this.#disposal()), definition.types);
     for (const constant of this.constants) {
@@ -132,7 +132,7 @@ export class Run {
       startedTransients: () => this.transients.started(),
       guarded: (run) => this.#guard.guarded(run),
     });
-    this.#natives = bindNatives(this, binding);
+    this.#natives = bindNatives(this, seams);
     const made = new Function('rt', program.body) as (rt: Run) => {
       readonly site: Error;
       readonly entries: readonly Entry[];

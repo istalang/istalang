@@ -1,5 +1,5 @@
 /**
- * The runtime as a host uses it (§9): give it the seams, deploy a Definition, start what it may
+ * The runtime as a host uses it (§9): give it the host binding (binding.ts), deploy a Definition, start what it may
  * start, and wake, inspect, retry and terminate the instances its code reaches.
  *
  * - A Definition arrives encoded, with the bytes the store keeps (definition/definition.ts);
@@ -15,34 +15,22 @@
 import { type EncodedDefinition, readDefinition } from '../../definition/definition.ts';
 import { memo } from '../../foundation/structures/memo.ts';
 import { recordExternSignatures } from '../boundary/extern-signatures.ts';
-import { type HostExterns, withHost } from '../boundary/host-natives.ts';
-import type { Clock } from '../clock.ts';
-import type { Natives } from '../natives.ts';
 import { Refusal } from '../refusal.ts';
-import type { InstanceStore } from '../store.ts';
+import type { HostBinding } from './binding.ts';
 import { DurableWorld } from './durable-world.ts';
 import { type InstanceCalls, instanceCalls } from './instance-calls.ts';
-import { type DeployedProgram, deployed, type HostReports, worldProgram } from './programs.ts';
+import { type DeployedProgram, deployed, worldProgram } from './programs.ts';
 import type { WorldProgram } from './resident.ts';
-
-export interface RuntimeSeams {
-  readonly natives: Natives;
-  readonly store: InstanceStore;
-  readonly clock: Clock;
-  readonly seed: () => Uint8Array;
-  readonly host?: HostExterns;
-  readonly reports?: HostReports;
-}
 
 export interface Runtime extends InstanceCalls {
   readonly deploy: (encoded: EncodedDefinition) => DeployedProgram;
 }
 
-export function createRuntime(seams: RuntimeSeams): Runtime {
+export function createRuntime(binding: HostBinding): Runtime {
   const byHash = new Map<string, WorldProgram>();
   const bound = (encoded: EncodedDefinition): WorldProgram =>
     memo(byHash, encoded.hash, () => {
-      seams.store.writeDefinition(encoded.hash, encoded.bytes);
+      binding.store.writeDefinition(encoded.hash, encoded.bytes);
       return worldProgram(encoded);
     });
   const bind = (hash: string): WorldProgram => {
@@ -50,19 +38,16 @@ export function createRuntime(seams: RuntimeSeams): Runtime {
     if (known !== undefined) {
       return known;
     }
-    const bytes = seams.store.readDefinition(hash);
+    const bytes = binding.store.readDefinition(hash);
     if (bytes === undefined) {
       throw new Refusal('unknownDefinition', `The store holds no Definition ${hash}.`);
     }
     return bound(readDefinition(bytes));
   };
-  const world = new DurableWorld(
-    { ...seams, natives: withHost(seams.natives, seams.host ?? {}) },
-    bind,
-  );
+  const world = new DurableWorld(binding, bind);
   const deploy = (encoded: EncodedDefinition): DeployedProgram => {
     const program = bound(encoded);
-    recordExternSignatures(seams.store, program.definition);
+    recordExternSignatures(binding.store, program.definition);
     return deployed(world, program);
   };
   return { deploy, ...instanceCalls(world) };

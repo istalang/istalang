@@ -79,7 +79,7 @@ const purchase = running(
 describe('delegate', () => {
   it('runs the job once after the commit, its result in the future', async () => {
     const { host, calls } = countingHost();
-    expect(await startToEnd(testRuntime({ host }), purchase)).toEqual({
+    expect(await startToEnd(testRuntime({ externs: host }), purchase)).toEqual({
       kind: 'finished',
       outcome: '"receipt for o/1!"',
     });
@@ -88,7 +88,9 @@ describe('delegate', () => {
 
   it('runs it once when the context crashes at every await', async () => {
     const { host, calls } = countingHost();
-    const ended = await startToEnd(testRuntime({ host }), purchase, { crashEveryAwait: true });
+    const ended = await startToEnd(testRuntime({ externs: host }), purchase, {
+      crashEveryAwait: true,
+    });
     expect(ended).toEqual({ kind: 'finished', outcome: '"receipt for o/1!"' });
     expect(calls).toEqual(new Map([['o/1', 1]]));
   });
@@ -101,7 +103,9 @@ describe('delegate', () => {
       '  const second = await runtime.delegate charge(id + "/2")',
       '  (await first) + second',
     );
-    expect(await startToEnd(testRuntime({ host }), both, { crashEveryAwait: true })).toEqual({
+    expect(
+      await startToEnd(testRuntime({ externs: host }), both, { crashEveryAwait: true }),
+    ).toEqual({
       kind: 'finished',
       outcome: '"receipt for o/1receipt for o/1/2"',
     });
@@ -132,13 +136,16 @@ describe('delegate', () => {
       '  await receipt.read()',
     );
     const stopped = await startToEnd(
-      testRuntime({ host: failing, store: recordingStore(store) }),
+      testRuntime({ externs: failing, store: recordingStore(store) }),
       once,
     );
     expect(stopped).toMatchObject({ kind: 'panicked' });
     expect(calls).toEqual(new Map([['o/1', 1]]));
 
-    const resumed = await startToEnd(testRuntime({ host, store: recordingStore(store) }), once);
+    const resumed = await startToEnd(
+      testRuntime({ externs: host, store: recordingStore(store) }),
+      once,
+    );
     expect(resumed).toEqual({ kind: 'finished', outcome: '"receipt for o/1"' });
     expect(calls).toEqual(new Map([['o/1', 2]]));
   });
@@ -154,7 +161,9 @@ describe('delegate', () => {
         async (steps) => {
           const { host, calls } = countingHost();
           const { program, gives } = purchaseOf(steps);
-          const ended = await startToEnd(testRuntime({ host }), program, { crashEveryAwait: true });
+          const ended = await startToEnd(testRuntime({ externs: host }), program, {
+            crashEveryAwait: true,
+          });
           expect(ended).toEqual({ kind: 'finished', outcome: JSON.stringify(gives) });
           const jobs = steps.flatMap((step, position) =>
             step === 'awaited' || step === 'started' ? [`j${position}`] : [],
@@ -217,7 +226,7 @@ describe('delegate', () => {
       '      "else"',
       '  polled + ":" + (await runtime.delegate charge(id))',
     );
-    expect(await startToEnd(testRuntime({ host }), droppedBeforeCommit)).toEqual({
+    expect(await startToEnd(testRuntime({ externs: host }), droppedBeforeCommit)).toEqual({
       kind: 'finished',
       outcome: '"else:receipt for o/1"',
     });
@@ -253,7 +262,7 @@ describe('delegate', () => {
       ),
     );
     expect(
-      await startToEnd(testRuntime({ host: slowHost, store: recordingStore(store) }), raced),
+      await startToEnd(testRuntime({ externs: slowHost, store: recordingStore(store) }), raced),
     ).toEqual({
       kind: 'finished',
       outcome: '"timed-out:receipt for o/1"',
@@ -292,7 +301,7 @@ describe('delegate', () => {
         '  "disposed"',
       ),
     );
-    expect(await startToEnd(testRuntime({ host: pendingHost }), disposedMidJob)).toEqual({
+    expect(await startToEnd(testRuntime({ externs: pendingHost }), disposedMidJob)).toEqual({
       kind: 'finished',
       outcome: '"disposed"',
     });
@@ -335,7 +344,7 @@ describe('delegate', () => {
     );
     // The first run leaves its loop's take waiting in `o/1`, which the second's job may decide.
     expect(
-      await startToEnd(testRuntime({ host: phasedHost, store: recordingStore(store) }), program),
+      await startToEnd(testRuntime({ externs: phasedHost, store: recordingStore(store) }), program),
     ).toEqual({
       kind: 'finished',
       outcome: '"started"',
@@ -343,7 +352,7 @@ describe('delegate', () => {
 
     phase = 2;
     expect(
-      await startToEnd(testRuntime({ host: phasedHost, store: recordingStore(store) }), program),
+      await startToEnd(testRuntime({ externs: phasedHost, store: recordingStore(store) }), program),
     ).toEqual({
       kind: 'finished',
       outcome: '"done"',

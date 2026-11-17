@@ -26,6 +26,7 @@ import { jobWaypoint } from '../../foundation/language/well-known/jobs.ts';
 import type { Clock } from '../clock.ts';
 import { DurableWorld } from '../host/durable-world.ts';
 import { inspectionOf } from '../host/instance-calls.ts';
+import { runUntil } from '../host/world-driving.ts';
 import type { Inspection, LogRecord } from '../instance-state.ts';
 import type { Natives, TestWatch } from '../natives.ts';
 import { Future } from '../run/objects/future.ts';
@@ -50,8 +51,8 @@ export interface WorldCall {
   readonly arguments: readonly Value[];
 }
 
-/** What a world is given: the program, its natives, the clock, the seed and the deadline. */
-export interface WorldSeams {
+/** What a test's world is given: the program, its natives, the clock, the seed and the deadline. */
+export interface TestSeams {
   readonly definition: Definition;
   readonly program: EmittedProgram;
   readonly natives: Natives;
@@ -68,7 +69,7 @@ export interface WorldSeams {
 const testInstance = 'test';
 
 /** Runs `call` in a fresh world's `test` context, until it answers or something fails it. */
-export async function runInWorld(seams: WorldSeams, call: WorldCall): Promise<Ended> {
+export async function runInWorld(seams: TestSeams, call: WorldCall): Promise<Ended> {
   const { definition, program, natives, version, clock, seed, deadline } = seams;
   const logs: LogRecord[] = [];
   const host = new TestHost();
@@ -84,10 +85,10 @@ export async function runInWorld(seams: WorldSeams, call: WorldCall): Promise<En
       store: memoryStore(),
       clock,
       seed: () => seed,
-      testing: host,
       reports: { logs: (records) => logs.push(...records), panicked: failed },
     },
     () => tested,
+    host,
   );
   host.world = world;
   const root = world.liveRun(tested, 'host', (record) => logs.push(record));
@@ -104,26 +105,18 @@ export async function runInWorld(seams: WorldSeams, call: WorldCall): Promise<En
       }
     },
   );
-  const done = () => ended !== undefined;
-  for (;;) {
-    world.drain(done);
-    if (ended !== undefined) {
-      return ended;
-    }
-    if (!host.settleWatches()) {
-      const timer = world.nextTimer();
-      if (timer === undefined || timer > deadline) {
-        const why =
-          timer === undefined
-            ? 'The test waits on nothing that can wake it'
-            : 'The test waits past its timeout';
-        return stuck(world, why, logs);
-      }
-      // biome-ignore lint/performance/noAwaitInLoops: the world waits for its earliest timer.
-      await clock.until(timer);
-      world.fireDue(clock.now(), done);
-    }
+  const driven = await runUntil(world, () => ended !== undefined, {
+    progressed: () => host.settleWatches(),
+    deadline,
+  });
+  if (ended !== undefined) {
+    return ended;
   }
+  const why =
+    driven === 'idle'
+      ? 'The test waits on nothing that can wake it'
+      : 'The test waits past its timeout';
+  return stuck(world, why, logs);
 }
 
 /** A wait of a test's code on another instance (§10 `idle()`, `reaches(label)`). */

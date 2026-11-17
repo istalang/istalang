@@ -7,8 +7,8 @@
 import { readFileSync } from 'node:fs';
 import { type EncodedDefinition, encodeDefinition } from '../../../src/definition/definition.ts';
 import { ManualClock } from '../../../src/runtime/clock.ts';
+import type { HostReports } from '../../../src/runtime/host/binding.ts';
 import { createRuntime, type Runtime } from '../../../src/runtime/host/index.ts';
-import type { HostReports } from '../../../src/runtime/host/programs.ts';
 import type { Advanced, Inspection, InstanceState } from '../../../src/runtime/instance-state.ts';
 import { Refusal } from '../../../src/runtime/refusal.ts';
 import { type InstanceStore, memoryStore } from '../../../src/runtime/store.ts';
@@ -36,7 +36,7 @@ export async function observeScenario(scenario: Scenario): Promise<readonly unkn
       store,
       clock,
       seed: () => new Uint8Array(32),
-      host: host.externs,
+      externs: host.externs,
       reports: heard.reports,
     });
   let runtime = runtimeOver();

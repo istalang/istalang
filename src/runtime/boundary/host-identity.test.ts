@@ -36,7 +36,7 @@ async function shown({ declarations, key }: Showing, body: readonly string[]): P
       return null;
     },
   };
-  const outcome = await startToEnd(testRuntime({ host }), program, { instance: 'i' });
+  const outcome = await startToEnd(testRuntime({ externs: host }), program, { instance: 'i' });
   if (outcome.kind !== 'finished') {
     throw new Error(`The program didn't finish: ${JSON.stringify(outcome)}`);
   }
@@ -235,7 +235,7 @@ describe('a value given to a host again', () => {
       natives: stdNatives,
       externs: host,
       clock: new ManualClock(),
-      seed: testSeed,
+      seed: () => testSeed,
     };
     const { end } = await startLive(program, binding);
     if (end.kind !== 'finished') {
@@ -278,7 +278,7 @@ describe('a value given to a host again', () => {
         return null;
       },
     };
-    await startToEnd(testRuntime({ host }), program, { instance: 'i' });
+    await startToEnd(testRuntime({ externs: host }), program, { instance: 'i' });
     expect(at(seen[1], 0)).toBe(at(seen[0], 0));
     expect(at(seen[0], 1)).toBe(at(seen[0], 0, 0));
     expect(at(seen[1], 1)).toBe(at(seen[0], 1));
@@ -363,7 +363,7 @@ describe('a value two instances give a host', () => {
         return null;
       },
     };
-    const test = testRuntime({ host });
+    const test = testRuntime({ externs: host });
     await startToEnd(test, program, { instance: 'one' });
     await startToEnd(test, program, { instance: 'two' });
     expect(new Set(seen).size).toBe(2);

@@ -44,7 +44,7 @@ export function instanceCalls(world: DurableWorld): InstanceCalls {
         const resident = residentOf(instance);
         return resident.ended
           ? { state: stateOf(resident), spawned: [], logs: [] }
-          : advanced(world, resident, () => resident.wake(world.seams.clock.now()));
+          : advanced(world, resident, () => resident.wake(world.binding.clock.now()));
       }),
     retry: (instance) =>
       hostTurn(() => {

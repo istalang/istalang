@@ -26,15 +26,7 @@ import { Future } from '../run/objects/future.ts';
 import type { DurableWorld } from './durable-world.ts';
 import { hostTurn } from './host-turns.ts';
 import type { WorldProgram } from './resident.ts';
-
-/** What a host hears of the instances it doesn't advance itself: their log records and panics. */
-export interface HostReports {
-  readonly logs: (records: readonly LogRecord[]) => void;
-  readonly panicked: (
-    instance: string,
-    panic: { readonly message: string; readonly trace: string },
-  ) => void;
-}
+import { runUntil } from './world-driving.ts';
 
 /** What a host asks a start for: which function, with what JSON arguments, and how it runs. */
 interface StartRequest extends StartOptions {
@@ -113,26 +105,8 @@ async function settled(world: DurableWorld, given: unknown): Promise<Value | und
   if (!(given instanceof Future)) {
     return given as Value;
   }
-  const done = () => given.settled;
-  const { clock } = world.seams;
-  for (;;) {
-    world.drain(done);
-    if (given.settled) {
-      return given.value;
-    }
-    const timer = world.nextTimer();
-    if (world.awaitsHost) {
-      // biome-ignore lint/performance/noAwaitInLoops: each turn waits on what the last one left.
-      await (timer === undefined
-        ? world.arrival()
-        : Promise.race([world.arrival(), clock.until(timer)]));
-    } else if (timer === undefined) {
-      return undefined;
-    } else {
-      await clock.until(timer);
-    }
-    world.fireDue(clock.now(), done);
-  }
+  const driven = await runUntil(world, () => given.settled);
+  return driven === 'done' ? given.value : undefined;
 }
 
 /**

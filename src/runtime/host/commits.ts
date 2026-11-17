@@ -20,7 +20,7 @@ import { type PersistedStatus, type Snapshot, snapshotFormat } from '../snapshot
 import { restore } from '../snapshot/restore.ts';
 import { snapshotOf, TooDeep } from '../snapshot/write.ts';
 import type { InstanceStore } from '../store.ts';
-import type { HostReports } from './programs.ts';
+import type { HostReports } from './binding.ts';
 import type { Resident } from './resident.ts';
 import { parkedAt } from './waiting.ts';
 

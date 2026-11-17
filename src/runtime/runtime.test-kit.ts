@@ -10,12 +10,12 @@
 
 import type { EncodedDefinition } from '../definition/definition.ts';
 import { stdNatives } from '../stdlib/natives.ts';
-import type { HostExterns } from './boundary/host-natives.ts';
 import { ManualClock } from './clock.ts';
+import type { HostBinding } from './host/binding.ts';
 import { createRuntime, type Runtime } from './host/index.ts';
-import type { DeployedProgram, HostReports } from './host/programs.ts';
+import type { DeployedProgram } from './host/programs.ts';
 import type { InstanceState, StartOptions } from './instance-state.ts';
-import type { FullNativeContext, Natives } from './natives.ts';
+import type { FullNativeContext } from './natives.ts';
 import { seedBytes } from './random-draws.ts';
 import { type InstanceStore, memoryStore } from './store.ts';
 
@@ -46,14 +46,10 @@ export function recordingStore(inner: InstanceStore = memoryStore()): RecordingS
 /** The seed of every instance a test runtime starts, so its random values repeat (§3.8). */
 export const testSeed = new Uint8Array(seedBytes);
 
-interface TestRuntimeOptions {
-  readonly natives?: Natives;
+/** A test runtime's host binding, every part of it defaulted, its store recording, its clock manual. */
+interface TestRuntimeOptions extends Partial<Omit<HostBinding, 'store' | 'clock'>> {
   readonly store?: RecordingStore;
   readonly clock?: ManualClock;
-  readonly host?: HostExterns;
-  readonly seed?: () => Uint8Array;
-  /** Told what the contexts a live run drives report by themselves. */
-  readonly reports?: HostReports;
 }
 
 export interface TestRuntime {
@@ -72,7 +68,7 @@ export function testRuntime({
   natives = stdNatives,
   store = recordingStore(),
   clock = new ManualClock(),
-  host = {},
+  externs = {},
   seed = () => testSeed,
   reports,
 }: TestRuntimeOptions = {}): TestRuntime {
@@ -81,7 +77,7 @@ export function testRuntime({
     store,
     clock,
     seed,
-    host,
+    externs,
     ...(reports === undefined ? {} : { reports }),
   });
   const starters = new Map<string, DeployedProgram>();

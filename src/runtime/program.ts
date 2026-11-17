@@ -1,7 +1,7 @@
 /**
- * Starting a compiled program's live code, as a host does (§9; ir-first design, decision 10): one
- * binding of natives, the host's externs, a clock and a seed serves `ista run`, `ista test`, `ista
- * build`'s output and an embedding host alike.
+ * Starting a compiled program's live code, as a host does (§9; ir-first design, decision 10): the
+ * one host binding (host/binding.ts), with a store of the start's own, serves `ista build`'s output
+ * (`istalang/live`) and the goldens as a host's runtime serves `ista run`.
  *
  * - A program is compiled once per Definition (codegen), and each start is a run of its own; a
  *   built program brings its code, compiled when it was built (live/program.ts).
@@ -16,21 +16,14 @@ import type { KeyedDefinition } from '../definition/definition.ts';
 import type { Definition } from '../definition/tables/index.ts';
 import { jsonTypeOf, plainOfJson } from '../definition/values/json-values.ts';
 import { memo } from '../foundation/structures/memo.ts';
-import { type HostExterns, withHost } from './boundary/host-natives.ts';
-import type { Clock } from './clock.ts';
+import type { HostBinding } from './host/binding.ts';
 import { DurableWorld } from './host/durable-world.ts';
 import { deployed } from './host/programs.ts';
 import type { LogRecord } from './instance-state.ts';
-import type { Natives } from './natives.ts';
 import { memoryStore } from './store.ts';
 
-/** What every start of a program is bound to: the natives, the host's externs, a clock, a seed. */
-interface HostBinding {
-  readonly natives: Natives;
-  readonly externs?: HostExterns;
-  readonly clock: Clock;
-  readonly seed: Uint8Array;
-}
+/** What a start is bound to: a host binding but for the store and reports, its own (`startLive`). */
+type StartBinding = Omit<HostBinding, 'store' | 'reports'>;
 
 /** How a live start ended: its outcome as JSON, its panic, or waiting on nothing left to come. */
 export type LiveEnd =
@@ -71,7 +64,7 @@ const emitted = new WeakMap<Definition, EmittedProgram>();
  */
 export async function startLive(
   { definition, hash }: KeyedDefinition,
-  binding: HostBinding,
+  binding: StartBinding,
   start: Start = {},
   live: LiveCode = {},
 ): Promise<LiveRun> {
@@ -84,10 +77,8 @@ export async function startLive(
   const { readBack } = live;
   const world = new DurableWorld(
     {
-      natives: withHost(binding.natives, binding.externs ?? {}),
+      ...binding,
       store: memoryStore(),
-      clock: binding.clock,
-      seed: () => binding.seed,
       reports: { logs: (records) => logs.push(...records), panicked: () => undefined },
     },
     () => (readBack === undefined ? program : { ...program, emitted: readBack() }),

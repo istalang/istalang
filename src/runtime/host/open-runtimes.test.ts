@@ -48,12 +48,12 @@ describe('a runtime opened over a store', () => {
         return null;
       },
     };
-    const first = testRuntime({ host, store: recordingStore(store) });
+    const first = testRuntime({ externs: host, store: recordingStore(store) });
     expect(await startToEnd(first, resuming)).toEqual({ kind: 'finished', outcome: '0' });
     expect(notes).toEqual([]);
 
     phase = 2n;
-    const second = testRuntime({ host, store: recordingStore(store) });
+    const second = testRuntime({ externs: host, store: recordingStore(store) });
     expect(await startToEnd(second, resuming)).toEqual({ kind: 'finished', outcome: '1' });
     expect(notes).toEqual(['resumed']);
     expect(second.runtime.inspect('o/1/1').state).toMatchObject({ kind: 'finished' });

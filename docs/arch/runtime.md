@@ -32,8 +32,11 @@ interpreter; a live run is a run that never commits.
   At an instant timers come due, the instances' fire first and run to their commits, so what a
   context answers because of them reaches a live run before its own timers due then decide what
   waited on both (`DurableWorld.fireDue`).
-- The one `World` is `host/durable-world.ts`. `startLive` (`runtime/program.ts`) runs over it with a
-  memory store that ends with the start; the host runtime runs over the host's store.
+- The one `World` is `host/durable-world.ts`, made from the one host binding (`host/binding.ts`:
+  natives, externs, clock, seed, store, reports). `startLive` (`runtime/program.ts`) runs over it
+  with a memory store that ends with the start, a test's world (`testing/test-world.ts`) with its
+  own, answering what the test asks; the host runtime runs over the host's store. Every driver
+  drives it with the one loop, `runUntil` (`host/world-driving.ts`).
 
 ## What the run does and what the prelude does
 
@@ -194,7 +197,7 @@ In a Definition built to run tests (spec §10):
 
 ## The host runtime (`host/`)
 
-- `index.ts`: `createRuntime({natives, store, clock, seed, host?, reports?})` gives
+- `index.ts`: `createRuntime(binding)` gives
   `deploy(text)`, `wake`, `retry`, `terminate`, `inspect` and `programOf`. A Definition is read,
   validated and emitted once per hash and written to the store once, as it was given.
 - **Host turns** (`host-turns.ts`): the world's work runs synchronously to its end once begun, and a

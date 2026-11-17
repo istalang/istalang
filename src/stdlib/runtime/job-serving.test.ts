@@ -14,7 +14,7 @@ describe('the loop serving jobs', () => {
     const { host, calls } = countingHost();
     let ready = false;
     const test = testRuntime({
-      host: {
+      externs: {
         ...host,
         'main.ready()': () => ready,
         'main.retried()': async () => {

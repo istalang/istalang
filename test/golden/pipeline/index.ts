@@ -136,7 +136,7 @@ async function shownByRun(
     natives: stdNatives,
     externs: host.externs,
     clock: new ManualClock(),
-    seed: new Uint8Array(32),
+    seed: () => new Uint8Array(32),
   };
   const live = readBack === undefined ? {} : { readBack: () => readBack(definition) };
   const { end, logs } = await startLive(encodeDefinition(definition), binding, start, live);

@@ -34,8 +34,8 @@ import { deref } from './places.ts';
 import type { Run } from './run.ts';
 import type { World } from './world.ts';
 
-/** What binding natives takes: the natives table, the clock, the seed, and where logs go. */
-export interface NativeBinding {
+/** What a run is made with beside its program: its natives, clock, seed, instance, world and logs. */
+export interface RunSeams {
   readonly natives: Natives;
   readonly clock: Clock;
   readonly seed: Uint8Array;
@@ -51,7 +51,7 @@ export interface NativeBinding {
 type Entry = (...parameters: never[]) => unknown;
 
 /** The native of each extern of `run`'s program, by its index; refuses a missing one. */
-export function bindNatives(run: Run, binding: NativeBinding): (index: number) => Entry {
+export function bindNatives(run: Run, binding: RunSeams): (index: number) => Entry {
   const { functions } = run.definition;
   requireNatives(functions, binding.natives);
   const capabilities = capabilitiesOf(run, binding);
@@ -100,7 +100,7 @@ function contextOf(
     capabilities,
     passed,
   }: {
-    readonly binding: Pick<NativeBinding, 'clock' | 'version'>;
+    readonly binding: Pick<RunSeams, 'clock' | 'version'>;
     readonly capabilities: NativeCapabilities;
     readonly passed: () => readonly Value[];
   },

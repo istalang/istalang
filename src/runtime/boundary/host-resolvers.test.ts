@@ -44,7 +44,7 @@ const fetchKey = 'main.fetch(String)';
 
 /** Starts `entry` as a live run of the program, with `fetch` as the host's. */
 function startLive(fetch: HostExterns[string], entry = 'main.fetched()'): Promise<Advanced> {
-  const program = testRuntime({ host: { [fetchKey]: fetch } }).runtime.deploy(liveText);
+  const program = testRuntime({ externs: { [fetchKey]: fetch } }).runtime.deploy(liveText);
   return program.start('live', { function: entry });
 }
 

@@ -18,7 +18,7 @@ import { hexToBytes } from '@noble/hashes/utils.js';
 import { copied } from '../../definition/values/replacing.ts';
 import type { Value } from '../../definition/values/values.ts';
 import { unreachable } from '../../foundation/structures/unreachable.ts';
-import type { Clock } from '../clock.ts';
+import { withHost } from '../boundary/host-natives.ts';
 import type { LogRecord, StartOptions } from '../instance-state.ts';
 import type { ContextCall, Natives } from '../natives.ts';
 import { seedBytes } from '../random-draws.ts';
@@ -29,15 +29,15 @@ import {
   instanceEnding,
 } from '../run/instances.ts';
 import { type HeldMock, heldAbove } from '../run/mock-answers.ts';
+import type { RunSeams } from '../run/natives.ts';
 import type { Future } from '../run/objects/future.ts';
 import { Run } from '../run/run.ts';
 import type { Spawning, TestingWorld, World } from '../run/world.ts';
 import { type Snapshot, snapshotFormat } from '../snapshot/format.ts';
 import { restore } from '../snapshot/restore.ts';
-import type { InstanceStore } from '../store.ts';
+import type { HostBinding } from './binding.ts';
 import { atCommit, type CommitSeams, commit, commitTerminated } from './commits.ts';
 import { OpenRuntimes } from './open-runtimes.ts';
-import type { HostReports } from './programs.ts';
 import {
   type CallInto,
   firstArrived,
@@ -47,38 +47,40 @@ import {
   type WorldProgram,
 } from './resident.ts';
 
-export interface WorldSeams {
-  readonly natives: Natives;
-  readonly store: InstanceStore;
-  readonly clock: Clock;
-  readonly seed: () => Uint8Array;
-  readonly reports?: HostReports;
-  /** What a test's code asks of the world, when the world runs a test (§10). */
-  readonly testing?: TestingWorld;
+/** A live run a host's start is running: the program it runs, and its options. */
+interface LiveRun {
+  readonly program: WorldProgram;
+  readonly options: StartOptions;
 }
 
 export class DurableWorld implements World {
-  readonly seams: WorldSeams;
+  readonly binding: HostBinding;
   readonly residents = new Map<string, Resident>();
   readonly testing?: TestingWorld;
-  /** The live runs a host's starts are running now, the program each runs and its options. */
-  readonly #live = new Map<Run, WorldProgram>();
-  readonly #options = new Map<Run, StartOptions>();
+  /** The std's natives, with the host's externs bound to its extern declarations. */
+  readonly #natives: Natives;
+  /** The live runs a host's starts are running now. */
+  readonly #live = new Map<Run, LiveRun>();
   readonly #bind: (hash: string) => WorldProgram;
   /** What waits on the end of an instance spawned but not yet made, its parent's segment uncommitted. */
   readonly #awaitingSpawn = new Map<string, ((end: InstanceEnd) => void)[]>();
   readonly #commits: CommitSeams;
   readonly #runtimes = new OpenRuntimes();
 
-  constructor(seams: WorldSeams, bind: (hash: string) => WorldProgram) {
-    this.seams = seams;
+  /**
+   * A world bound by `binding`, reading a Definition by its hash through `bind`; `testing` answers
+   * what a test's code asks of it, when it runs a test (§10).
+   */
+  constructor(binding: HostBinding, bind: (hash: string) => WorldProgram, testing?: TestingWorld) {
+    this.binding = binding;
+    this.#natives = withHost(binding.natives, binding.externs ?? {});
     this.#bind = bind;
-    if (seams.testing !== undefined) {
-      this.testing = seams.testing;
+    if (testing !== undefined) {
+      this.testing = testing;
     }
     this.#commits = {
-      store: seams.store,
-      reports: seams.reports,
+      store: binding.store,
+      reports: binding.reports,
       freshRun: (resident) => this.#readBack(resident),
     };
   }
@@ -90,24 +92,16 @@ export class DurableWorld implements World {
     log: (record: LogRecord) => void,
     options: StartOptions = {},
   ): Run {
-    const run = new Run(program.definition, program.emitted, {
-      natives: this.seams.natives,
-      clock: this.seams.clock,
-      seed: this.seams.seed(),
-      log,
-      instance: new Instance(name, false),
-      world: this,
-      version: program.hash,
-    });
-    this.#live.set(run, program);
-    this.#options.set(run, options);
+    const { clock, seed } = this.binding;
+    const instance = new Instance(name, false);
+    const run = this.#run(program, { instance, clock, seed: seed(), log });
+    this.#live.set(run, { program, options });
     return run;
   }
 
   /** Lets go of a live run that ended. */
   endLive(run: Run): void {
     this.#live.delete(run);
-    this.#options.delete(run);
   }
 
   readonly spawn = (parent: Run, closure: Value, { options, encoder }: Spawning): string => {
@@ -126,7 +120,7 @@ export class DurableWorld implements World {
       child.terminatesOnPanic = options.terminatesOnPanic === true;
       child.unstarted = true;
       owner?.spawned.push(name);
-      child.feed(child.starting(sent), this.seams.clock.now(), { kind: 'start', call: sent });
+      child.feed(child.starting(sent), this.binding.clock.now(), { kind: 'start', call: sent });
     };
     if (owner === undefined) {
       started();
@@ -150,12 +144,12 @@ export class DurableWorld implements World {
 
   /** Makes `into` in the context `key` (§9); `answer` is told how it ended as the context commits. */
   invokeIn(caller: Run, key: string, into: CallInto, answer: (end: InvocationEnd) => void): void {
-    const crashEveryAwait = this.#options.get(caller)?.crashEveryAwait ?? false;
+    const crashEveryAwait = this.#live.get(caller)?.options.crashEveryAwait ?? false;
     const program = this.#programOf(caller);
     const context =
       this.residents.get(key) ??
       this.load(key) ??
-      this.#made({ name: key, program, seed: this.seams.seed() }, crashEveryAwait);
+      this.#made({ name: key, program, seed: this.binding.seed() }, crashEveryAwait);
     const sent = { ...into, closure: copied(into.closure), passed: into.passed.map(copied) };
     const answered = (end: InvocationEnd) => {
       if (end.kind === 'returned') {
@@ -166,7 +160,7 @@ export class DurableWorld implements World {
       }
     };
     const replay = { kind: 'invocation', call: sent.closure, passed: sent.passed } as const;
-    context.feed(invoking(sent, answered), this.seams.clock.now(), replay);
+    context.feed(invoking(sent, answered), this.binding.clock.now(), replay);
   }
 
   readonly heldMock = (caller: Run, index: number): HeldMock | undefined =>
@@ -210,7 +204,7 @@ export class DurableWorld implements World {
 
   /** The snapshot the store keeps of `name`, if any. */
   #stored(name: string): Snapshot | undefined {
-    const text = this.seams.store.readSnapshot(name);
+    const text = this.binding.store.readSnapshot(name);
     return text === undefined ? undefined : snapshotFormat.read(text);
   }
 
@@ -237,7 +231,7 @@ export class DurableWorld implements World {
         this.#runtimes.began(resident.name, resident.program.hash);
       }
     }
-    for (const name of this.seams.store.instances()) {
+    for (const name of this.binding.store.instances()) {
       const snapshot = this.residents.has(name) ? undefined : this.#stored(name);
       if (snapshot?.status.kind === 'active') {
         this.#loaded(name, snapshot);
@@ -279,7 +273,7 @@ export class DurableWorld implements World {
     if (!this.#runtimes.opening) {
       return false;
     }
-    if (!this.#wokeDue(this.seams.clock.now())) {
+    if (!this.#wokeDue(this.binding.clock.now())) {
       this.#runtimes.letOpenersGoOn();
     }
     return true;
@@ -348,7 +342,7 @@ export class DurableWorld implements World {
   #advanced(resident: Resident): boolean {
     const { run } = resident;
     if (!run.executions.parkedSinceCommit && resident.inputs.length === 0 && !run.idle) {
-      resident.startedAt = this.seams.clock.now();
+      resident.startedAt = this.binding.clock.now();
       resident.inputs.push(() => undefined);
     }
     const took = run.takeArrivals(undefined, true);
@@ -388,7 +382,7 @@ export class DurableWorld implements World {
    */
   terminate(resident: Resident, panic: { readonly message: string; readonly trace: string }): void {
     this.#restored(resident);
-    resident.startedAt = this.seams.clock.now();
+    resident.startedAt = this.binding.clock.now();
     const { run } = resident;
     run.lifetimes.disposingPastPanics(() => run.finish([]));
     commitTerminated(resident, panic, this.#commits);
@@ -414,19 +408,21 @@ export class DurableWorld implements World {
 
   /** A fresh run of `resident` over `program`, its clock reading its segment's start, its logs kept. */
   #runOf(resident: Resident, program = resident.program): Run {
-    const { name } = resident;
-    const run = new Run(program.definition, program.emitted, {
-      natives: this.seams.natives,
-      clock: { now: () => resident.startedAt, until: this.seams.clock.until },
+    const run = this.#run(program, {
+      instance: new Instance(resident.name, true),
+      clock: { now: () => resident.startedAt, until: this.binding.clock.until },
       seed: resident.seed,
       log: (record) => resident.logs.push(record),
-      instance: new Instance(name, true),
-      world: this,
-      version: program.hash,
     });
     // What arrives is an input of the segment taking it, which a segment run again applies again.
     run.onArrivalTaken = (input) => resident.inputs.push(input);
     return run;
+  }
+
+  /** A run of `program`, as the instance, on the clock, seed and log `made` gives, of this world. */
+  #run(program: WorldProgram, made: Pick<RunSeams, 'instance' | 'clock' | 'seed' | 'log'>): Run {
+    const seams = { ...made, natives: this.#natives, world: this, version: program.hash };
+    return new Run(program.definition, program.emitted, seams);
   }
 
   #residentOfRun(run: Run): Resident | undefined {
@@ -436,7 +432,7 @@ export class DurableWorld implements World {
   #programOf(run: Run): WorldProgram {
     return (
       this.#residentOfRun(run)?.program ??
-      this.#live.get(run) ??
+      this.#live.get(run)?.program ??
       unreachable(`The run of ${run.instance.name} belongs to no world.`)
     );
   }

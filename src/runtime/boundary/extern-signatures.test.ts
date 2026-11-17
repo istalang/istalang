@@ -14,9 +14,11 @@ describe('extern signatures across deploys', () => {
       compiledEncoded(lines(`extern limit: ${type}`, `live async fn main() -> ${type}: limit`));
     const host = { 'main.limit': () => 1 };
     const store = recordingStore();
-    testRuntime({ store, host }).runtime.deploy(declaring('Int'));
-    expect(() => testRuntime({ store, host }).runtime.deploy(declaring('Int'))).not.toThrow();
-    expect(() => testRuntime({ store, host }).runtime.deploy(declaring('String'))).toThrow(
+    testRuntime({ store, externs: host }).runtime.deploy(declaring('Int'));
+    expect(() =>
+      testRuntime({ store, externs: host }).runtime.deploy(declaring('Int')),
+    ).not.toThrow();
+    expect(() => testRuntime({ store, externs: host }).runtime.deploy(declaring('String'))).toThrow(
       expect.objectContaining({
         reason: 'externChanged',
         message: expect.stringContaining('main.limit: String'),

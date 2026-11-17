@@ -82,12 +82,12 @@ describe('a disposable host type', () => {
     const { host, released, releasedAtDescribe } = leasingHost();
     const store = recordingStore();
     const clock = new ManualClock();
-    expect(await startToEnd(testRuntime({ host, store, clock }), leasing)).toEqual({
+    expect(await startToEnd(testRuntime({ externs: host, store, clock }), leasing)).toEqual({
       kind: 'finished',
       outcome: '0',
     });
     expect(released).toEqual([]);
-    const restarted = testRuntime({ host, store, clock });
+    const restarted = testRuntime({ externs: host, store, clock });
     clock.set(1000n);
     expect((await restarted.runtime.wake('test/1')).state).toMatchObject({
       kind: 'finished',
@@ -106,7 +106,7 @@ describe('a disposable host type', () => {
         return (lease as { id: string }).id === 'refusing' ? 'not unit' : null;
       },
     };
-    const test = testRuntime({ host: refusing });
+    const test = testRuntime({ externs: refusing });
     expect(await startToEnd(test, terminated)).toMatchObject({ kind: 'panicked' });
     expect(released).toEqual([]);
     expect((await test.runtime.terminate('test')).state).toEqual({
@@ -138,7 +138,7 @@ describe('a disposable host type', () => {
         '  1',
       ),
     );
-    expect(await startToEnd(testRuntime({ host }), program)).toEqual({
+    expect(await startToEnd(testRuntime({ externs: host }), program)).toEqual({
       kind: 'finished',
       outcome: '1',
     });
@@ -178,7 +178,7 @@ describe('a disposable host type', () => {
         '  1',
       ),
     );
-    expect(await startToEnd(testRuntime({ host }), program)).toEqual({
+    expect(await startToEnd(testRuntime({ externs: host }), program)).toEqual({
       kind: 'finished',
       outcome: '1',
     });

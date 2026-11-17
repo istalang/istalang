@@ -28,7 +28,7 @@ async function endsAsStated(_: undefined, { subject }: { readonly subject: Progr
     store: memoryStore(),
     clock: realTime,
     seed: () => randomBytes(seedBytes),
-    host: await hostOf(subject),
+    externs: await hostOf(subject),
     reports: {
       logs: (records) => logs.push(...records.map(logLine)),
       panicked: (instance, { message }) => unheard.push(`${instance}: ${message}`),

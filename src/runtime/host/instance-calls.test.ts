@@ -37,7 +37,7 @@ describe("a host's calls on one instance", () => {
     const events: string[] = [];
     let inner: Promise<unknown> | undefined;
     const test: TestRuntime = testRuntime({
-      host: {
+      externs: {
         'main.ping()': () => {
           events.push('ping');
           inner ??= test.runtime

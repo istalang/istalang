@@ -51,13 +51,14 @@ export function program(text: string, code: EmittedProgram): LiveProgram {
   return {
     starts: keyed.definition.starts.map(({ key }) => key),
     start: async (start = {}) => {
+      const seed = start.seed ?? crypto.getRandomValues(new Uint8Array(seedBytes));
       const { end, logs } = await startLive(
         keyed,
         {
           natives: stdNatives,
           ...(start.externs === undefined ? {} : { externs: start.externs }),
           clock: start.clock ?? realTime,
-          seed: start.seed ?? crypto.getRandomValues(new Uint8Array(seedBytes)),
+          seed: () => seed,
         },
         {
           ...(start.function === undefined ? {} : { key: start.function }),

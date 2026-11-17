@@ -147,7 +147,7 @@ describe("an instance's context constants", () => {
     );
     let disposed = 0;
     const test = testRuntime({
-      host: {
+      externs: {
         'main.makeLease()': () => 'lease',
         'main.dispose(main.Lease)': () => {
           disposed += 1;
@@ -167,7 +167,7 @@ describe("an instance's context constants", () => {
     async (first, second, recorded, outcome) => {
       const records: string[] = [];
       const test = testRuntime({
-        host: {
+        externs: {
           'main.record(String)': ([recordText]) => {
             records.push(String(recordText));
             return null;
@@ -288,7 +288,7 @@ describe('a panic', () => {
     async (_, caller) => {
       const records: string[] = [];
       const test = testRuntime({
-        host: {
+        externs: {
           'main.record(String)': ([recordText]) => {
             records.push(String(recordText));
             return null;
@@ -317,7 +317,7 @@ describe('a terminated instance', () => {
   it("stops every call it holds though a call's cleanup panics, letting go of what each held (§3.12, §7)", async () => {
     const records: string[] = [];
     const test = testRuntime({
-      host: {
+      externs: {
         'main.makeLease(String)': ([name]) => name,
         'main.dispose(main.Lease)': ([name]) => {
           records.push(`disposed ${String(name)}`);

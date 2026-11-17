@@ -239,7 +239,7 @@ describe('proposal 8 behaviour table: kinds', () => {
       'main.get(String)': ([u]: readonly unknown[]) => Promise.resolve(`page ${String(u)}`),
       'main.charge(String)': () => 7n,
     };
-    expect(await startToEnd(testRuntime({ host }), delegated)).toEqual({
+    expect(await startToEnd(testRuntime({ externs: host }), delegated)).toEqual({
       kind: 'finished',
       outcome: '"page u 7"',
     });

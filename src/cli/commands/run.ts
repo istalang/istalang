@@ -23,8 +23,9 @@ import { randomBytes, randomUUID } from 'node:crypto';
 import { resolve } from 'node:path';
 import { FormatError } from '../../definition/formats/format.ts';
 import { realTime } from '../../runtime/clock.ts';
+import type { HostReports } from '../../runtime/host/binding.ts';
 import { createRuntime, type Runtime } from '../../runtime/host/index.ts';
-import type { DeployedProgram, HostReports } from '../../runtime/host/programs.ts';
+import type { DeployedProgram } from '../../runtime/host/programs.ts';
 import type { Advanced } from '../../runtime/instance-state.ts';
 import { seedBytes } from '../../runtime/random-draws.ts';
 import { Refusal } from '../../runtime/refusal.ts';
@@ -87,7 +88,7 @@ async function run(
     clock: realTime,
     seed: () => randomBytes(seedBytes),
     reports,
-    ...(host === undefined ? {} : { host }),
+    ...(host === undefined ? {} : { externs: host }),
   });
   return start({ runtime, store, reports, environment }, entry, options);
 }
