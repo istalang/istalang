@@ -59,7 +59,7 @@ export const exitWriters: {
     const { span } = site;
     const register =
       value === undefined ? context.constant(null, unitType, span) : writer.registerOf(value);
-    if (writer.end.kind === 'into' && site === writer.flow.root) {
+    if (writer.end.kind !== 'return' && site === writer.flow.root) {
       code.emit({ kind: 'move', span, dst: writer.end.into, src: code.take(register, span) });
       writer.leave(span);
     } else {

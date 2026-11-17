@@ -14,7 +14,8 @@
  *   function's scope and before its body, never waiting. A default is its flow, as the defaults
  *   were checked apart from the body (`inDefaults`), written inline: it sees the parameters before
  *   it. An array's rest parameter a function value of a shorter type leaves out is empty (§3.14).
- *   Each default's temporaries end with it, as a statement's do.
+ *   Once it has given its value it lets go of what it made, as a statement does, but what its
+ *   `hold`s keep for the function (flow/writer.ts).
  */
 
 import type { Register } from '../../../definition/operands.ts';
@@ -151,8 +152,7 @@ function enterParameters(
 
 /**
  * The register owning `parameter`'s value: a copy of `argument` where the call gave it, else what
- * its default's flow computes, its parameters those `before` it (flow/writer.ts), whose temporaries
- * are let go of then.
+ * its default's flow computes, its parameters those `before` it (flow/writer.ts).
  */
 function computeLeftOut(
   context: EntryContext,
@@ -166,20 +166,14 @@ function computeLeftOut(
   const given = code.newLabel();
   const done = code.newLabel();
   code.given(argument, given, span);
-  const { registers } = code.allocating(() => {
-    if (defaultValue === undefined) {
-      code.emit({ kind: 'array', span, dst: owned, elements: [] });
-      return;
-    }
+  if (defaultValue === undefined) {
+    code.emit({ kind: 'array', span, dst: owned, elements: [] });
+  } else {
     context.inDefaults(() => {
       const end = { kind: 'into', into: owned } as const;
       writeFlow(context, context.body.flowOf(defaultValue), { parameters: before, end });
     });
-  });
-  code.letGo(
-    registers.filter((each) => !context.variables.isVariable(each)),
-    span,
-  );
+  }
   code.jump(done, span);
   code.place(given);
   code.emit({ kind: 'copy', span, dst: owned, src: argument });

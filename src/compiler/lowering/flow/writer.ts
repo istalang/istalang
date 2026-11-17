@@ -13,7 +13,10 @@
  *   a variable lets go of what it held first. A value's release lets go of its register and of
  *   what its operation allocated beside it (`extras`), which nothing else took.
  * - **A flow returns** from the entry; a default's or an initializer's written inline gives its
- *   value instead (`FlowEnd`), where its root returns it, then goes on past it.
+ *   value instead (`FlowEnd`), where its root returns it, then goes on past it. As a return
+ *   releases everything, it then lets go of everything it made but what its `hold`s keep for the
+ *   function, which the entry's return lets go of: once it has given its value, so what that
+ *   disposes may read a context constant made of it (§3.4).
  * - **Each block is written inside the passes of the field loops it is in** (§4), so its calls
  *   close and its nested functions are keyed there.
  */
@@ -49,10 +52,20 @@ import {
   variableType,
 } from './variables.ts';
 
-/** How a flow's root gives its value: by returning from the entry, or into a register. */
+/**
+ * How a flow's root gives its value: by returning from the entry; or, written inline, into a
+ * register, made the instance's context constant `name` where it is that constant's initializer,
+ * at its declaration's `span`.
+ */
 export type FlowEnd =
   | { readonly kind: 'return' }
-  | { readonly kind: 'into'; readonly into: Register };
+  | { readonly kind: 'into'; readonly into: Register }
+  | {
+      readonly kind: 'contextConstant';
+      readonly into: Register;
+      readonly name: string;
+      readonly span: AnchoredSpan;
+    };
 
 /** Writes `flow`, its parameters in `parameters`, its root's value given as `end` says. */
 export function writeFlow(
@@ -103,6 +116,7 @@ export class FlowWriter {
   }
 
   write(): void {
+    const first = this.context.code.registerCount;
     const { order } = this.#layout;
     for (const [value, until] of this.#uses.kept) {
       this.listOf(until, this.typeOf(value));
@@ -117,10 +131,31 @@ export class FlowWriter {
       );
     }
     this.context.code.place(this.#after);
+    if (this.end.kind !== 'return') {
+      this.#given(this.end, first);
+    }
     const last = this.flow.blocks[order.at(-1) ?? 0]?.exit;
     if (this.end.kind === 'return' && last?.kind === 'stop') {
       this.context.code.emit({ kind: 'unreachable', span: this.flow.root.span });
     }
+  }
+
+  /**
+   * Where the root has given its value into `end`: the context constant made of it, then every
+   * register made since `first` let go of, but the lists what `hold`s keep for the function.
+   */
+  #given(end: Exclude<FlowEnd, { readonly kind: 'return' }>, first: number): void {
+    const { code } = this.context;
+    const { span } = this.flow.root;
+    if (end.kind === 'contextConstant') {
+      code.emit({ kind: 'makeContextConstant', span: end.span, name: end.name, value: end.into });
+    }
+    const kept = new Set(this.#lists.get('function')?.values());
+    const made = Array.from({ length: code.registerCount - first }, (_, at) => first + at);
+    code.letGo(
+      made.filter((register) => register !== end.into && !kept.has(register)),
+      span,
+    );
   }
 
   #writeBlock({ operations, exit }: FlowBlock): void {

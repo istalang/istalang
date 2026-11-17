@@ -1,5 +1,5 @@
-# When holders let go (spec §3.4, §3.15, §7): a `_` holds its part alone, and an exit releases the
-# temporaries of what it leaves.
+# When holders let go (spec §3.3, §3.4, §3.15, §7): a `_` holds its part alone, an exit releases
+# the temporaries of what it leaves, and a default's holds and temporaries end as its function's.
 # Each rule is its own function, and its test asserts the order things were disposed in.
 
 import Suite, Test, test, assertEq from 'testing'
@@ -46,8 +46,24 @@ fn exitsReleaseTemporaries() -> Array<String>:
   note(log, "after continue")
   log->value
 
+fn defaulted(
+  log: Shared<Array<String>>,
+  a: Int = { hold(defaulted) _ = defer note(log, "held by a"); note(log, "default a"); 1 },
+  b: Bool = (new Lease{name: "b's temporary", log} is Lease as lease) and lease->name != "",
+  c: Int = { note(log, "default c"); a + 1 },
+) -> Int:
+  note(log, "body")
+  if b: a + c else: 0
+
+fn defaultsLiveAsTheFunction() -> Array<String>:
+  const log = new Shared<Array<String>>{value: []}
+  _ = defaulted(log)
+  note(log, "returned")
+  log->value
+
 @Suite{"holders"}
 fn suite() -> Array<Test>: [
   test("a _ among a destructuring's targets holds its part alone, so dropping or reassigning a named part disposes it", fn(): assertEq(unnamedParts(), ["disposed a", "a dropped", "disposed b", "b assigned", "disposed kept2", "disposed b2", "disposed kept"]))
   test("break and continue release the temporaries of the statements and loops they leave", fn(): assertEq(exitsReleaseTemporaries(), ["disposed item", "after break outer", "disposed operand", "after break", "disposed turn 0", "disposed turn 1", "after continue"]))
+  test("a default's temporaries end with it, and what it holds for its function ends with the function", fn(): assertEq(defaultsLiveAsTheFunction(), ["default a", "disposed b's temporary", "default c", "body", "held by a", "returned"]))
 ]

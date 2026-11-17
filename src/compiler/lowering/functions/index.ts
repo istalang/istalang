@@ -263,8 +263,8 @@ class FunctionLowering implements EntryContext {
 
   /**
    * The code entry each read of a context constant calls (§3.4): the instance's value once made;
-   * while it isn't, the initializer's, made the instance's value then, its temporaries let go of as
-   * the entry returns. `name` keys it, as qualified.
+   * while it isn't, the initializer's, made the instance's value then, its temporaries let go of
+   * after that (flow/writer.ts). `name` keys it, as qualified.
    */
   lowerAccessor(declaration: ContextConstantDeclaration, name: string): CodeFunction {
     const { listed } = declareFrame(this, this.#slots());
@@ -273,8 +273,8 @@ class FunctionLowering implements EntryContext {
     const made = this.code.newLabel();
     this.code.contextConstant(value, name, made, span);
     const flow = this.body.flowOf(declaration.initializer);
-    writeFlow(this, flow, { parameters: [], end: { kind: 'into', into: value } });
-    this.code.emit({ kind: 'makeContextConstant', span, name, value });
+    const end = { kind: 'contextConstant', into: value, name, span } as const;
+    writeFlow(this, flow, { parameters: [], end });
     this.code.place(made);
     this.code.return(value, span);
     return this.#entry(listed);
