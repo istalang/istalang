@@ -1,5 +1,5 @@
 /**
- * The natives of the prelude's futures, resolvers and waits: each the run's primitive of its name
+ * The natives of the prelude's futures, resolvers and waits: each one call of a run primitive
  * (runtime/run/run-primitives.ts), which the run gives its natives as the `run` capability.
  */
 

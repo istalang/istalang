@@ -48,8 +48,9 @@ that in TypeScript until moving it is measured (tracker Q59), each a service a b
 the order a set of futures settles in (`run/settling.ts`), timers grouped by when they come due
 (`run/timers.ts`, `Run.fireDue`), the `disposed()` and `disposing()` watches (`Run.disposedOf`,
 `Executions.disposingOf`), the watches on an instance's end (`run/end-watches.ts`), giving up on a
-case nothing waits on any more (`Future.lost`, read through `_standing`), and the mock registry
-(`run/mocks.ts`). Everything else above the primitives is Istalang in the prelude:
+case nothing waits on any more (`Future.lost`, read through `_standing`), a widened call's future
+following the call's (`run/following.ts`, the `following` primitive `_converted` calls), and the
+mock registry (`run/mocks.ts`). Everything else above the primitives is Istalang in the prelude:
 
 - **Futures** are run objects; `onAwait` registers a callback with a rank, a `standing` probe
   (`_standing`: pending, lost, or withdrawn) and what cancels its resolver if the future is disposed
@@ -182,7 +183,8 @@ In a Definition built to run tests (spec §10):
 
 ## Snapshots (`snapshot/`)
 
-- `format.ts`: the persisted shape. Objects by id (cells, futures, executions, calls that ended,
+- `format.ts`: the persisted shape. Objects by id (cells, futures, each with the future it follows
+  and the converter, `follows`, where it follows one; executions, calls that ended,
   which a handle may outlive and which keep no frame, weak references, resources, mocks); values as trees with run objects as handles; frames as data (function, the
   label of the `park` it stands at, registers, where a register may hold a `&` reference), each
   execution with the transients' cells it kept where it started (its frame's own shares are its
