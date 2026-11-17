@@ -44,9 +44,8 @@ import { membersOf } from '../../../checker/types/type/index.ts';
 import { awaitedOf, wellKnownArguments } from '../../../checker/types/type/well-known.ts';
 import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import { emitCall } from '../../calls/emit-call.ts';
-import type { CodeContext } from '../../context.ts';
+import type { CodeContext, TypedValue } from '../../context.ts';
 import { rootInstance } from '../../tables/instances.ts';
-import type { TypedValue } from '../../values/holdings.ts';
 import { construct, tupleOf } from '../../values/struct-values.ts';
 import { eachMember } from '../../values/unions.ts';
 import { buildVariant } from '../../values/variant-values.ts';
@@ -157,15 +156,9 @@ export function rebuilt(
   return unreachable(`A ${from.kind} type converts part by part into a ${target.kind} one.`);
 }
 
-/** A typed value of one kind of type. */
-interface ValueOf<Kind extends Type> {
-  readonly register: Register;
-  readonly type: Kind;
-}
-
 function rebuiltTuple(
   context: CodeContext,
-  { register, type }: ValueOf<TupleType>,
+  { register, type }: TypedValue<TupleType>,
   to: TupleType,
   how: Rebuilding,
 ): Register {
@@ -214,7 +207,7 @@ function rebuiltStruct(
 
 function rebuiltNominal(
   context: CodeContext,
-  value: ValueOf<NominalType>,
+  value: TypedValue<NominalType>,
   to: NominalType,
   how: Rebuilding,
 ): Register {
@@ -243,7 +236,7 @@ function rebuiltNominal(
  */
 function mappedWith(
   context: CodeContext,
-  value: ValueOf<NominalType>,
+  value: TypedValue<NominalType>,
   { from, to: target }: { readonly from: readonly Type[]; readonly to: NominalType },
   how: Rebuilding,
 ): Register {
@@ -313,7 +306,7 @@ function preludeConversion(
 /** An enum's value as one of `to`, the same enum: each variant's fields converted (§3.11). */
 function rebuiltVariant(
   context: CodeContext,
-  { register, type }: ValueOf<NominalType>,
+  { register, type }: TypedValue<NominalType>,
   to: NominalType,
   how: Rebuilding,
 ): Register {

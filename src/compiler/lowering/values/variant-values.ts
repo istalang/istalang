@@ -18,7 +18,7 @@ import { substitute } from '../../checker/types/parts/substitution.ts';
 import type { NominalType } from '../../checker/types/type/index.ts';
 import { constructedVariant } from '../../syntax/declarations/field-defaults.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
-import type { CodeContext } from '../context.ts';
+import type { CodeContext, TypedValue } from '../context.ts';
 import type { Label } from '../functions/code-writer.ts';
 
 /** A value of an enum to build: its type, its variant's name, and the variant's fields. */
@@ -164,9 +164,7 @@ function variantTestOf(
 }
 
 /** A value of the enum `type` in `register`, tested for its variant `name`, which has one field. */
-interface VariantCase {
-  readonly register: Register;
-  readonly type: NominalType;
+interface VariantCase extends TypedValue<NominalType> {
   readonly name: string;
 }
 

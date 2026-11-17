@@ -23,7 +23,7 @@ import { isPrimitive, stringType } from '../../../checker/types/type/primitives.
 import { arrayElement, wellKnownArguments } from '../../../checker/types/type/well-known.ts';
 import { baseOf } from '../../../checker/types/unions/union-members.ts';
 import { closeCall } from '../../calls/closed-calls.ts';
-import type { TypedValue } from '../../values/holdings.ts';
+import type { TypedValue } from '../../context.ts';
 import { eachMember, intoUnion } from '../../values/unions.ts';
 import type { SynthesizedCode } from '../index.ts';
 import { codecCall } from './codec-calls.ts';

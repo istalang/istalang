@@ -19,9 +19,9 @@ import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { AnyType, Type, UnionType } from '../../checker/types/type/index.ts';
 import { isPrimitive, noneType } from '../../checker/types/type/primitives.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
-import type { CodeContext } from '../context.ts';
+import type { CodeContext, TypedValue } from '../context.ts';
 import type { Label } from '../functions/code-writer.ts';
-import { jumpIfHeld, laidOutAs, type TypedValue } from './holdings.ts';
+import { jumpIfHeld, laidOutAs } from './holdings.ts';
 import { oneValueIn, outOfUnion } from './unions.ts';
 
 /** `none` as a value of `type`: an optional, `None` itself, or an `any` type that took it whole. */

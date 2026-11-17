@@ -18,8 +18,7 @@ import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 import type { FieldDeclaration } from '../../syntax/types/index.ts';
 import { closeCall } from '../calls/closed-calls.ts';
 import { emitFunctionCall } from '../calls/emit-call.ts';
-import type { CodeContext } from '../context.ts';
-import type { TypedValue } from './holdings.ts';
+import type { CodeContext, TypedValue } from '../context.ts';
 
 /**
  * `field` read on `value`, as its type stores it or meets it with a getter among `witnesses`,

@@ -37,9 +37,8 @@ import type {
 import type { Type } from '../../checker/types/type/index.ts';
 import type { LabelledScope } from '../../syntax/statements/index.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
-import type { FunctionContext } from '../context.ts';
+import type { FunctionContext, TypedValue } from '../context.ts';
 import type { Label } from '../functions/code-writer.ts';
-import type { TypedValue } from '../values/holdings.ts';
 import { exitWriters } from './exits.ts';
 import { FlowWaits } from './flow-waits.ts';
 import { heldReads, readFactsOf } from './held-reads.ts';

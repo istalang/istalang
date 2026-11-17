@@ -38,6 +38,12 @@ export type CodeContext = Pick<
   'checker' | 'tables' | 'code' | 'constant' | 'waitingMode'
 >;
 
+/** A value in a register, with its type, of the kind `Of` narrows it to. */
+export interface TypedValue<Of extends Type = Type> {
+  readonly register: Register;
+  readonly type: Of;
+}
+
 /** What writing an entry takes beyond its code: the checker and the Definition's tables. */
 export type Lowering = Pick<FunctionContext, 'checker' | 'tables'>;
 

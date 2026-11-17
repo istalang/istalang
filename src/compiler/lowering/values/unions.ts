@@ -30,23 +30,9 @@ import { isPrimitive } from '../../checker/types/type/primitives.ts';
 import { baseOf } from '../../checker/types/unions/union-members.ts';
 import { hasOneValue } from '../../checker/types/unions/unions.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
-import type { CodeContext } from '../context.ts';
+import type { CodeContext, TypedValue } from '../context.ts';
 import { emitConstant } from '../tables/constants.ts';
-import {
-  branchOnHeld,
-  heldIn,
-  holdingOf,
-  laidOutAs,
-  memberValue,
-  readHeld,
-  type TypedValue,
-} from './holdings.ts';
-
-/** A value of a union in a register. */
-interface UnionValue {
-  readonly register: Register;
-  readonly type: UnionType;
-}
+import { branchOnHeld, heldIn, holdingOf, laidOutAs, memberValue, readHeld } from './holdings.ts';
 
 /** The value of `holder` that is the one value of `member`, a literal or `None`. */
 export function oneValueIn(
@@ -124,7 +110,7 @@ export function outOfUnion(
  */
 function outOfAny(
   context: CodeContext,
-  value: { readonly register: Register; readonly type: AnyType },
+  value: TypedValue<AnyType>,
   to: UnionType,
   span: AnchoredSpan,
 ): Register {
@@ -196,7 +182,7 @@ export function literalValue(type: LiteralType): Value {
  */
 function remapped(
   context: CodeContext,
-  value: UnionValue,
+  value: TypedValue<UnionType>,
   to: UnionType,
   span: AnchoredSpan,
 ): Register {
@@ -268,7 +254,7 @@ function literalIn(
  */
 export function eachMember(
   context: CodeContext,
-  value: UnionValue,
+  value: TypedValue<UnionType>,
   { result, span }: { readonly result: Type; readonly span: AnchoredSpan },
   each: (member: TypedValue) => Register,
 ): Register {
@@ -297,7 +283,7 @@ interface VariantCases {
  */
 function eachVariant(
   context: CodeContext,
-  value: UnionValue,
+  value: TypedValue<UnionType>,
   span: AnchoredSpan,
   { result: type, each, runs = () => true }: VariantCases,
 ): Register {
@@ -317,7 +303,7 @@ function eachVariant(
  */
 export function onEachMember(
   context: CodeContext,
-  value: UnionValue,
+  value: TypedValue<UnionType>,
   span: AnchoredSpan,
   { each, runs = () => true }: MemberCases,
 ): void {

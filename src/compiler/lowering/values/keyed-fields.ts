@@ -19,8 +19,8 @@ import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { FieldMember, Type } from '../../checker/types/type/index.ts';
 import type { Expression } from '../../syntax/expressions/index.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
-import type { FunctionContext } from '../context.ts';
-import { heldIn, type TypedValue } from './holdings.ts';
+import type { FunctionContext, TypedValue } from '../context.ts';
+import { heldIn } from './holdings.ts';
 import { onEachMember } from './unions.ts';
 
 /** A field reached by a key: the struct type `on`, and the key's value. */
