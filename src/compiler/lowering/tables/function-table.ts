@@ -6,7 +6,10 @@
  * - A **pending** entry is lowered once, the first asked for first unless the tables were given an
  *   order of their own (`PendingOrder`).
  * - A **closing** entry switches over every variant of an `any` type's enum so far (entries.ts): it
- *   is written once the worklist is empty, and again whenever lowering has since added a variant.
+ *   is first written once the worklist is empty.
+ * - An entry that read an `any` type's variants, a closing one or one naming a variant's index
+ *   (type-table/), is written again whenever the type has gained a variant since, which may have
+ *   moved the indexes it named, until no entry is stale: every index is the finished enum's.
  * - Entries lowered from one source function share the number of the one of least key as their
  *   `body`, which `==` reads their closures by (§3.14): chosen once every entry is numbered, so it
  *   never depends on which lowering reached first.
@@ -15,13 +18,11 @@
  * - What each entry's lowering asks of the tables is recorded as its own (requests.ts).
  */
 
-import type { FunctionId } from '../../../definition/operands.ts';
+import type { FunctionId, TypeId } from '../../../definition/operands.ts';
 import type { FunctionDefinition } from '../../../definition/tables/functions.ts';
 import { compareOrdered } from '../../../foundation/language/order.ts';
 import { memo } from '../../../foundation/structures/memo.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
-import type { Type } from '../../checker/types/type/index.ts';
-import { laidOutAs } from '../values/members/holdings.ts';
 import { type EntryIdentities, identityOf, type LoweredEntry } from './entries.ts';
 import type { EntryKeys } from './entry-keys.ts';
 import type { TableRequests } from './requests.ts';
@@ -38,7 +39,7 @@ type Pending =
   | Numbered
   | { readonly index: FunctionId; readonly adopted: () => FunctionDefinition };
 
-/** An entry this program lowered from its kind, not one it took over, nor a closing one. */
+/** An entry this program lowered from its kind, not one it took over. */
 export interface LoweredHere extends Numbered {
   readonly definition: FunctionDefinition;
   /** The key of the source function it runs (`EntryIdentity.body`); none for its own body. */
@@ -65,13 +66,16 @@ export class FunctionTable {
   readonly #definitions: (FunctionDefinition | undefined)[] = [];
   readonly #indexes = new Map<string, FunctionId>();
   readonly #pending: Pending[] = [];
+  /** Closing entries not written yet, written once nothing is pending. */
   readonly #closing: Numbered[] = [];
-  /** How many variants its `any` type had when each closing entry was last written. */
-  readonly #writtenFor = new Map<FunctionId, number>();
   /** The key of the source function each entry runs (`EntryIdentity.body`), where it runs one. */
   readonly #bodyKeys = new Map<FunctionId, string>();
-  /** Each entry lowered here from its kind, with its body key, by index. */
-  readonly #lowered = new Map<FunctionId, Pick<LoweredHere, 'entry' | 'body'>>();
+  /** Each entry lowered here from its kind, by index. */
+  readonly #lowered = new Map<FunctionId, LoweredEntry>();
+  /** The entry being written, which reads of an `any` type's variants are noted for. */
+  #writing: FunctionId | undefined;
+  /** How many variants each `any` type had when the entry last written read them, by entry. */
+  readonly #variantReads = new Map<FunctionId, Map<TypeId, number>>();
 
   constructor(seams: FunctionTableSeams) {
     this.#seams = seams;
@@ -80,16 +84,12 @@ export class FunctionTable {
   /** The index of `entry`, keyed `key`, numbered and queued the first time it is asked for. */
   index(key: string, entry: LoweredEntry): FunctionId {
     return this.#numbered(key, (index) => {
-      const { closedOver, body } = identityOf(this.#seams.identities, entry);
+      const { closing, body } = identityOf(this.#seams.identities, entry);
       const bodyKey =
         body === undefined ? undefined : `${entry.kind}:${body(this.#seams.keys, entry)}`;
       this.#numberBody(bodyKey, index);
-      if (closedOver === undefined) {
-        this.#lowered.set(index, { entry, body: bodyKey });
-        this.#pending.push({ index, entry });
-      } else {
-        this.#closing.push({ index, entry });
-      }
+      this.#lowered.set(index, entry);
+      (closing === true ? this.#closing : this.#pending).push({ index, entry });
     });
   }
 
@@ -135,16 +135,34 @@ export class FunctionTable {
   lowerReached(lowerEntry: (entry: LoweredEntry) => FunctionDefinition): void {
     for (let next = this.#nextPending(); next !== undefined; next = this.#nextPending()) {
       const pending = next;
-      this.#definitions[pending.index] = this.#seams.requests.during(
-        { kind: 'function', index: pending.index },
-        () => ('adopted' in pending ? pending.adopted() : lowerEntry(pending.entry)),
-      );
+      this.#variantReads.delete(pending.index);
+      this.#writing = pending.index;
+      try {
+        this.#definitions[pending.index] = this.#seams.requests.during(
+          { kind: 'function', index: pending.index },
+          () => ('adopted' in pending ? pending.adopted() : lowerEntry(pending.entry)),
+        );
+      } finally {
+        this.#writing = undefined;
+      }
     }
+  }
+
+  /** Notes that the entry being written read the variants of the `any` type `any`, `count` so far. */
+  variantsRead(any: TypeId, count: number): void {
+    const writing =
+      this.#writing ?? unreachable("Only an entry being written reads an any type's variants.");
+    memo(
+      memo(this.#variantReads, writing, () => new Map<TypeId, number>()),
+      any,
+      () => count,
+    );
   }
 
   /** Each entry lowered here from its kind, every pending one written. */
   *loweredHere(): Iterable<LoweredHere> {
-    for (const [index, { entry, body }] of this.#lowered) {
+    for (const [index, entry] of this.#lowered) {
+      const body = this.#bodyKeys.get(index);
       const definition = this.#definitions[index];
       if (definition === undefined) {
         unreachable(`Function ${String(index)} was referenced but never lowered.`);
@@ -155,31 +173,21 @@ export class FunctionTable {
 
   #nextPending(): Pending | undefined {
     const [next] = this.#pending.splice(this.#seams.order(this.#pending.length), 1);
-    return next ?? this.#nextStale();
+    return next ?? this.#closing.shift() ?? this.#nextStale();
   }
 
+  /** An entry that read an `any` type's variants since grown, to be written again. */
   #nextStale(): Numbered | undefined {
-    for (const closing of this.#closing) {
-      const { closedOver } = identityOf(this.#seams.identities, closing.entry);
-      const variants = this.#variantsOf(
-        closedOver?.(closing.entry) ?? unreachable('A closing entry closes over a type.'),
-      );
-      if (this.#writtenFor.get(closing.index) !== variants) {
-        this.#writtenFor.set(closing.index, variants);
-        return closing;
+    const { types } = this.#seams;
+    for (const [index, reads] of this.#variantReads) {
+      if ([...reads].some(([any, count]) => types.variantCount(any) !== count)) {
+        return {
+          index,
+          entry: this.#lowered.get(index) ?? unreachable(`${index} wasn't lowered.`),
+        };
       }
     }
     return undefined;
-  }
-
-  /** How many types a closing entry switches over: an `any` type's so far, a union's members. */
-  #variantsOf(given: Type): number {
-    const type = laidOutAs(given);
-    const { types } = this.#seams;
-    if (type.kind === 'any') {
-      return types.anyMembers(type).length;
-    }
-    return type.kind === 'union' ? types.unionMembers(type).length : 1;
   }
 
   /** Every entry, each with its `body`, and the keys they were numbered by, in index order. */

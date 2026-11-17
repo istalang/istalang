@@ -18,9 +18,11 @@
  *   one field, and a member with one value only, a literal type or `None`, is a variant without
  *   fields, its tag. A literal type on its own is its base: its one value needs no tag.
  * - An `any` type (§3.10) is an enum the program closes: one variant per type a value of it is
- *   converted from, each holding that value as its one field. A variant is added the first time
- *   lowering converts from its type, so a variant's index never changes once code names it;
- *   what switches over every variant is written once lowering has reached them all (tables.ts).
+ *   converted from, each holding that value as its one field, ordered and named by their table
+ *   keys as a union's are, so a Definition never shows which conversion lowering met first. A
+ *   variant is added the first time lowering asks for it, which can move the ones after it: an
+ *   entry that read an `any` type's variants is written again once they changed
+ *   (function-table.ts), so every index code names is the one the finished enum has.
  * - Every ask for an entry is recorded as the asking entry's (requests.ts), and each layout's own
  *   asks as its entry's.
  */
@@ -71,6 +73,13 @@ const placeholder: TypeDefinition = {
   heap: true,
 };
 
+/** Where the type table notes what the entry being written asks of it. */
+interface TypeTableNotes {
+  readonly requests: TableRequests;
+  /** That the entry read an `any` type's variants, `count` of them, numbered as they are now. */
+  readonly variantsRead: (any: TypeId, count: number) => void;
+}
+
 /** The variant of a union's or an `any` type's enum holding a value, and that value's type. */
 export interface HeldVariant {
   readonly variant: number;
@@ -90,13 +99,16 @@ export class TypeTable {
   /** The type each entry laid out here was made for; none for one taken over by key. */
   readonly #madeFor = new Map<TypeId, Type>();
   readonly #requests: TableRequests;
+  /** Notes that the entry being written read an `any` type's variants, so many as it has now. */
+  readonly #variantsRead: (any: TypeId, count: number) => void;
 
   readonly #layoutContext: LayoutContext;
 
   /** Tables for `checker`'s program, every ask for an entry recorded in `requests`. */
-  constructor(checker: Checker, seams: TypeTableSeams, requests: TableRequests) {
+  constructor(checker: Checker, seams: TypeTableSeams, { requests, variantsRead }: TypeTableNotes) {
     this.#checker = checker;
     this.#requests = requests;
+    this.#variantsRead = variantsRead;
     this.#layoutContext = {
       checker,
       seams,
@@ -209,25 +221,38 @@ export class TypeTable {
   anyVariant(type: AnyType, member: Type): HeldVariant {
     const held = baseOf(member);
     refuseStandIn(this.#layoutContext, held, type);
-    const { members } = this.#anyEntry(type);
-    const found = members.findIndex((each) => sameType(each.type, held));
+    const { index, entry } = this.#anyEntry(type);
+    const { members } = entry;
     const name = tableKey(this.#checker, held);
-    const variant =
-      found >= 0 ? found : members.push({ type: held, name, reference: this.reference(held) }) - 1;
+    const at = members.findIndex((each) => compareOrdered(each.name, name) >= 0);
+    const variant = at < 0 ? members.length : at;
+    if (members[variant]?.name !== name) {
+      members.splice(variant, 0, { type: held, name, reference: this.reference(held) });
+    }
+    this.#variantsRead(index, members.length);
     return { variant, held };
   }
 
   /** The types `type`'s variants hold so far, in variant order. */
   anyMembers(type: AnyType): readonly Type[] {
-    return this.#anyEntry(type).members.map((member) => member.type);
+    const { index, entry } = this.#anyEntry(type);
+    this.#variantsRead(index, entry.members.length);
+    return entry.members.map((member) => member.type);
   }
 
-  #anyEntry(type: AnyType): AnyEntry {
-    const entry = this.#entries[this.anyIndex(type)];
+  /** How many variants the `any` type of entry `index` has so far, read by no entry. */
+  variantCount(index: TypeId): number {
+    const entry = this.#entries[index];
+    return entry?.kind === 'any' ? entry.members.length : unreachable(`${index} is no any type.`);
+  }
+
+  #anyEntry(type: AnyType): { readonly index: TypeId; readonly entry: AnyEntry } {
+    const index = this.anyIndex(type);
+    const entry = this.#entries[index];
     if (entry?.kind !== 'any') {
       unreachable(`${tableKey(this.#checker, type)} has an entry of another kind.`);
     }
-    return entry;
+    return { index, entry };
   }
 
   #entryOf(type: Type, layout: () => TypeDefinition): TypeId {

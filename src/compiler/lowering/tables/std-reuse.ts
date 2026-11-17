@@ -7,8 +7,9 @@
  *   too: the std lowering keeps only what is closed under its requests, so a key missing here is a
  *   bug that throws.
  * - Only the std decides an entry lowered from a std module whose key spells nothing but the
- *   std's, unless lowering placed it where it first met it (`EntryIdentity.placedWhereMet`); a
- *   closing entry is never offered, as the function table never counts it lowered here.
+ *   std's, unless lowering placed it where it first met it (`EntryIdentity.placedWhereMet`). One
+ *   reading an `any` type's variants is never kept, as it asks for the `any` type, whose variants
+ *   its program's conversions make (`namesOnlyStd`).
  */
 
 import type { FunctionId } from '../../../definition/operands.ts';

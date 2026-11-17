@@ -115,17 +115,17 @@ export const entryKinds: { readonly [Kind in EntryKind]: EntryKindRow<Kind> } = 
       const target = `${keys.type(on)}:${keys.type(through)}.${constraint}.${member}`;
       return `${target}<${typeArguments.join(',')}>`;
     },
-    closedOver: ({ dispatch }) => dispatch.on,
+    closing: true,
     entry: (lowering, { dispatch }) => dispatchEntry(lowering, dispatch),
   },
   anyConversion: {
     identity: (keys, { from, to }) => `${keys.type(from)}->${keys.type(to)}`,
-    closedOver: ({ from }) => from,
+    closing: true,
     entry: (lowering, { from, to }) => anyConversionEntry(lowering, from, to),
   },
   anyField: {
     identity: (keys, { on, required }) => `${keys.type(on)}.${required.field.name.text}`,
-    closedOver: ({ on }) => on,
+    closing: true,
     entry: anyFieldEntry,
   },
 };

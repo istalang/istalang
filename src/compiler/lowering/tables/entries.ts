@@ -7,10 +7,11 @@
  * - A **pending** entry is lowered once, from the worklist, after it is first referenced.
  * - A **closing** entry switches over every variant of an `any` type's enum (§3.10): a dispatch on
  *   a value's own type, a conversion into another `any` type, or the read of a field a trait
- *   requires. It is written once the worklist is empty, when lowering has reached every type
- *   converted into its `any` type so far, and written again whenever a later entry converts
- *   another (`closedOver`). A dispatch on a union's members (§6) switches over a union's enum,
- *   whose variants are known, so it is written once.
+ *   requires. It is first written once the worklist is empty, when lowering has reached every
+ *   type converted into its `any` type so far (`closing`); like every entry reading an `any`
+ *   type's variants, it is written again whenever a later entry converts another
+ *   (function-table.ts). A dispatch on a union's members (§6) switches over a union's enum, whose
+ *   variants are known, so it is written once.
  */
 
 import type { RequiredField } from '../../checker/surface/checked-field.ts';
@@ -84,8 +85,8 @@ export interface EntryIdentity<Kind extends EntryKind> {
    * its own.
    */
   readonly body?: (keys: EntryKeys, entry: EntryOf<Kind>) => string;
-  /** The type whose variants a closing entry switches over; none for an entry lowered once. */
-  readonly closedOver?: (entry: EntryOf<Kind>) => Type;
+  /** Whether the entry is closing: written first once the worklist is empty (the banner). */
+  readonly closing?: true;
   /**
    * Whether the entry is placed where lowering first met it, which its key doesn't say: then it
    * depends on the order a program reached it in, and no other program's entry can stand for it.

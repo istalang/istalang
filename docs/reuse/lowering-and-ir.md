@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-11-13
-last_updated: 2026-11-17
+last_updated: 2026-11-18
 tags: [reuse, lowering, definition, ir, instructions]
 ---
 
@@ -74,6 +74,7 @@ tags: [reuse, lowering, definition, ir, instructions]
 - Lower every checked body through `instanceLowering`, `nestedLowering` or, for a context constant's initializer, `accessorLowering` (`functions/index.ts`), and syntaxless code through `SynthesizedCode`.
 - Lower std code a program needs only once it reaches a function, as the job server once it reaches `runtime.delegate`, from `lower` (`src/compiler/lowering/lower.ts`), naming it in the Definition as `main` is, never from code every program reaches.
 - Every ask of the tables for an entry (function, type, constant, module) goes through `DefinitionTables` / `TypeTable` / `FunctionTable`, which record it as the asking entry's (`TableRequests`); what the tables compute once and keep records its asks again on reuse (`TableRequests.captured`, `replayed`). A program taking a kept std entry over replays exactly those asks, so a table state no ask records makes its Definition differ from lowering alone.
+- An `any` type's variants are ordered by table key, so an index may move as lowering meets more of them: read it only through `TypeTable.anyVariant` or `anyMembers` while an entry is being written, which notes the read (`FunctionTable.variantsRead`) so the entry is written again once the type grows; never keep one anywhere else (a constant, a type entry, another entry's state).
 - An entry kind whose entry depends on where or in which order lowering first met it, beyond its key, sets `placedWhereMet` in the kind table (`entry-kinds.ts`), as conversions do: no program's kept entry can stand for it.
 - Never recognize a `Definition` type by name string at runtime; use `TypeDefinition.role` (`hasRole`, `isResourceType` in `src/definition/tables/types.ts`).
 - The lowering writes every point a register lets go its flow says, and the runtime never infers a scope (`src/definition/instructions/lifetimes.ts`): `letGo` at a block's end on every exit, a statement's or header's end and `drop`, an `append` into the hold scope's array for `hold`, and `return` letting go of every register.

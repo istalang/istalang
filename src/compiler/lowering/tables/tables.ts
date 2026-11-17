@@ -117,7 +117,7 @@ export class DefinitionTables {
         annotationValues: (annotations) => annotationValues(this, annotations),
         holdsStandIn: (type) => holdsStandIn(checker, type),
       },
-      requests,
+      { requests, variantsRead: (any, count) => this.#functions.variantsRead(any, count) },
     );
     this.#stencils = new Stencils(checker, this.types);
     this.#functions = new FunctionTable({

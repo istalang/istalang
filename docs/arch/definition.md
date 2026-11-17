@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-11-16
-last_updated: 2026-11-17
+last_updated: 2026-11-18
 tags: [definition, ir, lowering, avro]
 ---
 
@@ -159,7 +159,7 @@ Instruction names are in `code`. A call is always to a function-table entry; for
 | `extern struct`, `extern shared/sendable/live struct` (§3.6, §3.8) | an `extern` type entry per instantiation, with its declared `dispose` entry (§7) and, for `Array`, `Map`, `_Cell`, `WeakRef`, `Instance` and `_Call`, its `role`; which handle it is stays the checker's, since the runtime reads only its `dispose` and role |
 | `shared struct X` (§3.18) | a `shared` type entry per instantiation: `value`, the anonymous struct entry of its fields behind the handle, and its declared `dispose` entry |
 | Traits, `T is A & B`, `Sendable`, `Disposable` as constraints (§3.5, §3.10) | nothing at runtime: the checker resolves every constrained call per instantiation |
-| `any A & B` (§3.10) | an `enum` entry named after the type, one variant per type converted into it, each with the one field `value`; a conversion is `variant`, or, from another `any` type, a call to an entry converting variant by variant; a call through a trait, or a required field's read, is a call to an entry that `switch`es over every variant and calls that type's function or reads its field, passing a `&self` receiver on by `&` into the variant; a downcast pattern is a `switch` on the type's variant, with `otherwise` for the rest |
+| `any A & B` (§3.10) | an `enum` entry named after the type, one variant per type converted into it, ordered and named by their table keys as a union's are, each with the one field `value`; a conversion is `variant`, or, from another `any` type, a call to an entry converting variant by variant; a call through a trait, or a required field's read, is a call to an entry that `switch`es over every variant and calls that type's function or reads its field, passing a `&self` receiver on by `&` into the variant; a downcast pattern is a `switch` on the type's variant, with `otherwise` for the rest |
 | Value semantics and handle identity (§3.1) | `move` hands a value on and `copy` makes another holder of it; a write changes a value in place only where nothing else holds it, and copies it from there down where something does (Places); handles compare by object id in `equal` |
 | `@JsonName`, `@JsonSkip`, `@JsonBigInt` (§3.16, §9) | `annotations` on the field's type entry, for tools; derived codecs are compiled from the checker's derived forms, which read them |
 | Literals: int, float, string, bool, `none`, durations (§2) | `constant`; a duration is a `time.Duration` struct constant, `none` the `None` variant of the optional expected, or `null` where `None` itself is |
