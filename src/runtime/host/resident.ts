@@ -4,6 +4,7 @@
  * next commit (commits.ts).
  */
 
+import { hexToBytes } from '@noble/hashes/utils.js';
 import type { EmittedProgram } from '../../codegen/emit.ts';
 import type { KeyedDefinition } from '../../definition/definition.ts';
 import { copied } from '../../definition/values/replacing.ts';
@@ -20,17 +21,21 @@ export interface WorldProgram extends KeyedDefinition {
   readonly emitted: EmittedProgram;
 }
 
-/** What makes a resident: its name, its program, the seed of its random source, its status. */
-export interface ResidentMade {
-  readonly name: string;
-  readonly program: WorldProgram;
-  /** A host's for one it starts, a draw of its parent's for one spawned. */
-  readonly seed: Uint8Array;
-  /** The instances it was spawned from, nearest first; none for a context. */
-  readonly lineage?: readonly string[];
-  /** Where one read back from the store stands; a new one is active. */
-  readonly status?: PersistedStatus;
-}
+/**
+ * What makes a resident: a new one, active, of the seed of its random source (derived from the
+ * host's for a context, a draw of its parent's for one spawned), the instances it was spawned
+ * from, nearest first, and whether it crashes at every await (§10); or one read back from the
+ * store, as the snapshot it last committed says it all.
+ */
+export type ResidentMade =
+  | {
+      readonly name: string;
+      readonly program: WorldProgram;
+      readonly seed: Uint8Array;
+      readonly lineage?: readonly string[];
+      readonly crashEveryAwait: boolean;
+    }
+  | { readonly name: string; readonly program: WorldProgram; readonly committed: Snapshot };
 
 /** Something waking a segment, applied to the run; a rerun applies it again. */
 export type Input = (run: Run) => void;
@@ -81,18 +86,25 @@ export class Resident {
   /** The instances it spawned in the segment committing next. */
   spawned: string[] = [];
 
-  constructor(
-    { name, program, seed, lineage = [], status = { kind: 'active' } }: ResidentMade,
-    crashEveryAwait: boolean,
-    runOf: (resident: Resident) => Run,
-  ) {
-    this.name = name;
-    this.program = program;
-    this.seed = seed;
-    this.lineage = lineage;
-    this.status = status;
-    this.crashEveryAwait = crashEveryAwait;
-    this.encoder = undefined;
+  constructor(made: ResidentMade, runOf: (resident: Resident) => Run) {
+    this.name = made.name;
+    this.program = made.program;
+    if ('committed' in made) {
+      const { committed } = made;
+      this.seed = hexToBytes(committed.seed);
+      this.lineage = committed.lineage;
+      this.status = committed.status;
+      this.crashEveryAwait = committed.crashEveryAwait;
+      this.encoder = committed.encoder;
+      this.terminatesOnPanic = committed.terminatesOnPanic;
+      this.committed = committed;
+    } else {
+      this.seed = made.seed;
+      this.lineage = made.lineage ?? [];
+      this.status = { kind: 'active' };
+      this.crashEveryAwait = made.crashEveryAwait;
+      this.encoder = undefined;
+    }
     this.unstarted = false;
     this.run = runOf(this);
   }

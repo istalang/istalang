@@ -14,7 +14,6 @@
  *   settles first runs first, whichever instance waits on it (§6).
  */
 
-import { hexToBytes } from '@noble/hashes/utils.js';
 import { copied } from '../../definition/values/replacing.ts';
 import type { Value } from '../../definition/values/values.ts';
 import { unreachable } from '../../foundation/structures/unreachable.ts';
@@ -37,6 +36,7 @@ import { type Snapshot, snapshotFormat } from '../snapshot/format.ts';
 import { restore } from '../snapshot/restore.ts';
 import type { HostBinding } from './binding.ts';
 import { atCommit, type CommitSeams, commit, commitTerminated } from './commits.ts';
+import { LiveRuns } from './live-runs.ts';
 import { OpenRuntimes } from './open-runtimes.ts';
 import {
   type CallInto,
@@ -47,20 +47,13 @@ import {
   type WorldProgram,
 } from './resident.ts';
 
-/** A live run a host's start is running: the program it runs, and its options. */
-interface LiveRun {
-  readonly program: WorldProgram;
-  readonly options: StartOptions;
-}
-
 export class DurableWorld implements World {
   readonly binding: HostBinding;
   readonly residents = new Map<string, Resident>();
   readonly testing?: TestingWorld;
   /** The std's natives, with the host's externs bound to its extern declarations. */
   readonly #natives: Natives;
-  /** The live runs a host's starts are running now. */
-  readonly #live = new Map<Run, LiveRun>();
+  readonly #live = new LiveRuns();
   readonly #bind: (hash: string) => WorldProgram;
   /** What waits on the end of an instance spawned but not yet made, its parent's segment uncommitted. */
   readonly #awaitingSpawn = new Map<string, ((end: InstanceEnd) => void)[]>();
@@ -95,13 +88,13 @@ export class DurableWorld implements World {
     const { clock, seed } = this.binding;
     const instance = new Instance(name, false);
     const run = this.#run(program, { instance, clock, seed: instanceSeed(seed, name), log });
-    this.#live.set(run, { program, options });
+    this.#live.began(run, { program, options });
     return run;
   }
 
   /** Lets go of a live run that ended. */
   endLive(run: Run): void {
-    this.#live.delete(run);
+    this.#live.ended(run);
   }
 
   readonly spawn = (parent: Run, closure: Value, { options, encoder }: Spawning): string => {
@@ -114,8 +107,8 @@ export class DurableWorld implements World {
     const started = () => {
       const crashEveryAwait = options.crashEveryAwait ?? owner?.crashEveryAwait ?? false;
       const lineage = [parent.instance.name, ...parent.instance.lineage];
-      const made = { name, program: this.#programOf(parent), seed, lineage };
-      const child = this.#made(made, crashEveryAwait);
+      const made = { name, program: this.#programOf(parent), seed, lineage, crashEveryAwait };
+      const child = this.#made(made);
       child.endWatchers.push(...(this.#awaitingSpawn.get(name) ?? []));
       this.#awaitingSpawn.delete(name);
       child.encoder = encoder;
@@ -149,14 +142,16 @@ export class DurableWorld implements World {
     // Only a live run calls into a context, the call rule keeping ista code from its natives
     // (proposal 8, Rule 2), which it makes with the run's program and options (§9, §10).
     const { program, options } =
-      this.#live.get(caller) ?? unreachable('A context call of no live run.');
+      this.#live.of(caller) ?? unreachable('A context call of no live run.');
     const context =
       this.residents.get(key) ??
       this.load(key) ??
-      this.#made(
-        { name: key, program, seed: instanceSeed(this.binding.seed, key) },
-        options.crashEveryAwait ?? false,
-      );
+      this.#made({
+        name: key,
+        program,
+        seed: instanceSeed(this.binding.seed, key),
+        crashEveryAwait: options.crashEveryAwait ?? false,
+      });
     const sent = { ...into, closure: copied(into.closure), passed: into.passed.map(copied) };
     const answered = (end: InvocationEnd) => {
       if (end.kind === 'returned') {
@@ -218,12 +213,7 @@ export class DurableWorld implements World {
   /** The instance `name`, resident again as `snapshot`, the store's of it, says. */
   #loaded(name: string, snapshot: Snapshot): Resident {
     const program = this.#bind(snapshot.definition);
-    const seed = hexToBytes(snapshot.seed);
-    const made = { name, program, seed, lineage: snapshot.lineage, status: snapshot.status };
-    const resident = this.#made(made, snapshot.crashEveryAwait);
-    resident.committed = snapshot;
-    resident.encoder = snapshot.encoder;
-    resident.terminatesOnPanic = snapshot.terminatesOnPanic;
+    const resident = this.#made({ name, program, committed: snapshot });
     restore(resident.run, snapshot);
     return resident;
   }
@@ -248,7 +238,7 @@ export class DurableWorld implements World {
 
   /** Every run, live ones first, then each resident's in the order it was made. */
   get runs(): readonly Run[] {
-    return [...this.#live.keys(), ...[...this.residents.values()].map(({ run }) => run)];
+    return [...this.#live.runs, ...[...this.residents.values()].map(({ run }) => run)];
   }
 
   /**
@@ -259,7 +249,7 @@ export class DurableWorld implements World {
   drain(done: () => boolean = () => false): void {
     for (let busy = true; busy && !done(); ) {
       busy = false;
-      for (const run of this.#live.keys()) {
+      for (const run of this.#live.runs) {
         busy = run.takeArrivals(done) || busy;
         busy = run.drain(done) || busy;
       }
@@ -306,7 +296,7 @@ export class DurableWorld implements World {
   /** The earliest timer any run waits on, a resident's only while the store's work runs. */
   nextTimer(): bigint | undefined {
     let earliest: bigint | undefined;
-    const runs = this.#storeWorkRuns ? this.runs : [...this.#live.keys()];
+    const runs = this.#storeWorkRuns ? this.runs : this.#live.runs;
     for (const run of runs) {
       const next = run.timers.next();
       if (next !== undefined && (earliest === undefined || next < earliest)) {
@@ -329,17 +319,17 @@ export class DurableWorld implements World {
     if (done()) {
       return;
     }
-    for (const run of this.#live.keys()) {
+    for (const run of this.#live.runs) {
       run.fireDue(now);
     }
   }
 
   get awaitsHost(): boolean {
-    return [...this.#live.keys()].some((run) => run.arrivals.awaitsHost);
+    return this.#live.runs.some((run) => run.arrivals.awaitsHost);
   }
 
   arrival(): Promise<void> {
-    return Promise.race([...this.#live.keys()].map((run) => run.arrivals.arrival()));
+    return Promise.race(this.#live.runs.map((run) => run.arrivals.arrival()));
   }
 
   /**
@@ -396,8 +386,8 @@ export class DurableWorld implements World {
   }
 
   /** A resident `made`, which begins a life if it runs (open-runtimes.ts). */
-  #made(made: ResidentMade, crashEveryAwait: boolean): Resident {
-    const resident = new Resident(made, crashEveryAwait, (each) => this.#runOf(each));
+  #made(made: ResidentMade): Resident {
+    const resident = new Resident(made, (each) => this.#runOf(each));
     this.residents.set(made.name, resident);
     if (!resident.ended) {
       this.#runtimes.began(made.name, made.program.hash);
@@ -439,7 +429,7 @@ export class DurableWorld implements World {
   #programOf(run: Run): WorldProgram {
     return (
       this.#residentOfRun(run)?.program ??
-      this.#live.get(run)?.program ??
+      this.#live.of(run)?.program ??
       unreachable(`The run of ${run.instance.name} belongs to no world.`)
     );
   }
