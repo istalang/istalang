@@ -1,10 +1,11 @@
 /**
  * Which reads of a flow hold the value they read (§2: a value never changes once read;
  * docs/arch/definition.md, "Places"). A read of a variable at a name is the variable's register,
- * and a part read out of a value borrows it: both hold nothing, and stay what was read only while
- * what they were read out of does. A read something may change, in place or by replacing it,
- * before its last use holds its value instead, a holder of its own, so a write in place copies and
- * a replaced value outlives the read.
+ * and a part read out of a value borrows it, as a one-element tuple's element taken out where the
+ * element is expected does: both hold nothing, and stay what was read only while what they were
+ * read out of does. A read something may change, in place or by replacing it, before its last use
+ * holds its value instead, a holder of its own, so a write in place copies and a replaced value
+ * outlives the read.
  *
  * - **A read's root** is the variable it reads, at a name or through the reads it is a part of;
  *   one read out of a computed value has none, as nothing else reaches that value. Through a
@@ -205,11 +206,15 @@ function readsOf(flow: FlowFunction, facts: ReadFacts): ReadonlyMap<ValueId, Rea
   return reads;
 }
 
-/** What `operation` reads into a temporary without making a value of its own, if it does. */
+/**
+ * What `operation` reads into a temporary that may borrow it, if it does: a copy, fitted too (a
+ * one-element tuple's element is a part of it), or a part. Holding one a conversion made a value
+ * of its own of copies nothing (writer.ts).
+ */
 function readOf(
   operation: Operation,
 ): { readonly into: ValueId; readonly from: ValueId; readonly behind: boolean } | undefined {
-  if (operation.op === 'copy' && operation.fit === undefined) {
+  if (operation.op === 'copy' && operation.fit !== 'intoKeyedField') {
     return { into: operation.into, from: operation.from, behind: false };
   }
   if (operation.op === 'read' && operation.part.kind !== 'given') {

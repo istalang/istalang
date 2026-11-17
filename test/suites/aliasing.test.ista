@@ -138,6 +138,14 @@ fn readBehindComputedHandles() -> (Array<Int>, Array<Int>, Int):
   const boxes = [new Shared<Array<Int>>{value: [1]}]
   (boxes[0]->value, handleOf(boxes[0])->value, { boxes[0]->value.push(99); 0 })
 
+fn untupledReads() -> (Array<String>, (Int, Int)):
+  const log = new Shared<Array<String>>{value: []}
+  let single: (Res,) = (new Res{id: 1, log},)
+  const got = readId(single, { single = (new Res{id: 2, log},); 10 })
+  log->value.push("got " + got)
+  let pair: (Pair,) = (Pair{a: 1, b: 2},)
+  (log->value, takePair(pair, { pair.0.a = 99; 10 }))
+
 fn swapped() -> (Int, Int):
   let swap = (10, 20)
   swap.1, swap.0 = swap
@@ -191,6 +199,10 @@ fn suite() -> Array<Test>: [
   test(
     "a value read behind a computed handle holds it when a later operand changes it in place"
     fn(): assertEq(readBehindComputedHandles(), ([1], [1], 0))
+  )
+  test(
+    "a one-element tuple's element, read where its element is expected, holds it when a later argument changes the tuple"
+    fn(): assertEq(untupledReads(), (["read 1", "disposed 1", "got 11"], (1, 10)))
   )
   test(
     "a destructuring assignment takes its value apart as it was before writing any part"
