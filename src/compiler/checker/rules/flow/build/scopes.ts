@@ -3,7 +3,8 @@
  * leaving it early, what a `hold` keeps kept there first and released where the scope it names
  * ends, however it ends, `break` and `continue` going where the scope they name says; and a
  * construct's temporaries where it says, each once (`claim`): a statement's at its end, a header's
- * on each path out of it.
+ * on each path out of it. An exit leaves the constructs it is inside without ending them, so it
+ * releases what they computed so far and nothing released yet, with each scope it leaves.
  *
  * - A scope is a block, a loop's pass, a case or a guarded body, whose header (a condition, a
  *   pattern) binds into it; the variables `hold`s keep until a labelled scope ends are a scope of
@@ -23,6 +24,10 @@ interface Releasing {
   readonly prepend: (block: BlockId, operation: Operation) => void;
   /** Goes on in a new block, jumping to it from the current one; the block. */
   readonly goOn: () => BlockId;
+  /** How many values the flow has made so far. */
+  readonly made: () => number;
+  /** The temporaries made since value `first`. */
+  readonly temporariesSince: (first: number) => readonly ValueId[];
 }
 
 /** Where what a `hold` keeps lasts until: a labelled scope's end, or the function's (§7). */
@@ -30,6 +35,8 @@ type HeldUntil = LabelledScope | 'function';
 
 interface Scope {
   readonly node: SyntaxNode;
+  /** How many values the flow had made where it opened. */
+  readonly made: number;
   readonly holder?: LabelledScope;
   /** A holder's: the blocks exits leaving it go through, where what it holds is released. */
   readonly leaving?: BlockId[];
@@ -60,7 +67,7 @@ export class Scopes {
 
   /** Runs `build` in a scope of `node`'s, ending it where `build` ends. */
   inScope<Result>(node: SyntaxNode, build: () => Result): Result {
-    this.#scopes.push({ node, variables: [], kept: [] });
+    this.#scopes.push({ node, made: this.#flow.made(), variables: [], kept: [] });
     const result = build();
     const scope = this.#scopes.pop() as Scope;
     this.#end(scope, scope.node);
@@ -110,7 +117,14 @@ export class Scopes {
   ): Result {
     const depth = this.#scopes.length;
     const leaving: BlockId[] = [];
-    this.#scopes.push({ node: scope, holder: scope, leaving, variables: [], kept: [] });
+    this.#scopes.push({
+      node: scope,
+      made: this.#flow.made(),
+      holder: scope,
+      leaving,
+      variables: [],
+      kept: [],
+    });
     this.#exits.push({ scope, breakTo, continueTo, depth });
     const result = build();
     this.#exits.pop();
@@ -126,9 +140,9 @@ export class Scopes {
   /**
    * An exit from `scope`: ends every scope inside it that it leaves, then goes past it, where what
    * `hold`s keep until it ends is released, or to its next pass, which keeps them. Each scope it
-   * leaves ends innermost first; what a labelled scope inside it holds, which a `hold` built after
-   * the exit may add to, is released in a block of its own the exit goes on in, once that scope is
-   * built (`withExits`).
+   * leaves ends innermost first, after the temporaries computed in it and released by nothing yet;
+   * what a labelled scope inside it holds, which a `hold` built after the exit may add to, is
+   * released in a block of its own the exit goes on in, once that scope is built (`withExits`).
    */
   exit(scope: LabelledScope | undefined, kind: 'break' | 'continue', site: SyntaxNode): void {
     const target = this.#exits.findLast((each) => each.scope === scope);
@@ -137,10 +151,18 @@ export class Scopes {
       this.#flow.end({ kind: 'stop' });
       return;
     }
-    for (const left of this.#scopes.slice(target.depth + 1).toReversed()) {
+    const ended = new Set<ValueId>();
+    for (const left of this.#scopes.slice(target.depth).toReversed()) {
+      const pending = this.#flow
+        .temporariesSince(left.made)
+        .filter((value) => !(this.#owned.has(value) || ended.has(value)));
+      for (const value of pending) {
+        ended.add(value);
+      }
+      this.release(pending, site);
       if (left.leaving === undefined) {
         this.#end(left, site);
-      } else {
+      } else if (left.holder !== scope) {
         left.leaving.push(this.#flow.goOn());
       }
     }

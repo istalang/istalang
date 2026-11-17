@@ -1,4 +1,5 @@
-# When holders let go (spec §3.15, §7): a `_` holds its part alone.
+# When holders let go (spec §3.4, §3.15, §7): a `_` holds its part alone, and an exit releases the
+# temporaries of what it leaves.
 # Each rule is its own function, and its test asserts the order things were disposed in.
 
 import Suite, Test, test, assertEq from 'testing'
@@ -25,7 +26,28 @@ fn unnamedParts() -> Array<String>:
   }
   log->value
 
+fn exitsReleaseTemporaries() -> Array<String>:
+  const log = new Shared<Array<String>>{value: []}
+  outer: for _ in 0..1:
+    for lease in [new Lease{name: "item", log}]:
+      _ = lease
+      break outer
+  note(log, "after break outer")
+  for _ in 0..1:
+    const pair = (new Lease{name: "operand", log}, { break; 0 })
+    _ = pair
+  note(log, "after break")
+  for i in 0..2:
+    const pair = (new Lease{name: "turn " + i, log}, {
+      if i == 0: continue
+      0
+    })
+    _ = pair
+  note(log, "after continue")
+  log->value
+
 @Suite{"holders"}
 fn suite() -> Array<Test>: [
   test("a _ among a destructuring's targets holds its part alone, so dropping or reassigning a named part disposes it", fn(): assertEq(unnamedParts(), ["disposed a", "a dropped", "disposed b", "b assigned", "disposed kept2", "disposed b2", "disposed kept"]))
+  test("break and continue release the temporaries of the statements and loops they leave", fn(): assertEq(exitsReleaseTemporaries(), ["disposed item", "after break outer", "disposed operand", "after break", "disposed turn 0", "disposed turn 1", "after continue"]))
 ]

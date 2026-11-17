@@ -101,6 +101,8 @@ export class FlowBuilder {
     emit: (operation) => this.emit(operation),
     end: (exit) => this.end(exit),
     prepend: (block, operation) => this.#open(block).operations.unshift(operation),
+    made: () => this.#values.length,
+    temporariesSince: (first) => this.#temporariesSince(first),
     goOn: () => {
       const block = this.newBlock();
       this.continueIn(block);
@@ -254,12 +256,16 @@ export class FlowBuilder {
   } {
     const first = this.#values.length;
     const result = build();
-    const temporaries = this.#values
+    return { result, temporaries: this.#temporariesSince(first) };
+  }
+
+  /** The temporaries computed since value `first`, those reading a variable at a name left out. */
+  #temporariesSince(first: number): readonly ValueId[] {
+    return this.#values
       .slice(first)
       .flatMap((value, offset) =>
         value.kind === 'temporary' && !this.#reads.has(first + offset) ? [first + offset] : [],
       );
-    return { result, temporaries };
   }
 
   /** The variable a name of the body declares, one value wherever it is named. */
