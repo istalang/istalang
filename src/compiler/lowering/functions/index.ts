@@ -303,7 +303,7 @@ class FunctionLowering implements EntryContext {
   }
 
   fitted(value: Register, type: Type, fit: Fit, site: NodeOf<string>): Register {
-    return fittedValue(this, { register: value, type }, fit, { owner: this.owner, site });
+    return fittedValue(this, { register: value, type }, fit, site);
   }
 
   nestedIndex(node: Lambda | FunctionDeclaration): FunctionId {

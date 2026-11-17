@@ -82,7 +82,6 @@ export function dispatchEntry(lowering: Lowering, dispatch: Dispatch): FunctionD
   if (receiver === undefined) {
     unreachable(`'${required.name.text}' is called through any without its receiver.`);
   }
-  const at = { module: checker.moduleOf(required), span: required.name.span };
   // A receiver by `&` is switched on by the value it refers to.
   const switched = references[0] === true ? loaded(code, receiver, on) : receiver;
   switchOverMembers(code, on, switched, (type, variant) => {
@@ -96,14 +95,16 @@ export function dispatchEntry(lowering: Lowering, dispatch: Dispatch): FunctionD
     const passed = fittedArguments(
       code,
       { called: signatures?.called, met: signatures?.met },
-      at,
+      code.span,
       1,
     );
     const self = memberReceiver(code, switched, { on, type, variant, references });
     const closed = closeWitness(witness, dispatch, checker);
     const call = code.call(closed, [self, ...passed]);
     const given = givesFuture ? code.await(call, resultOfCall(checker, closed)) : call;
-    code.return(signatures === undefined ? given : fittedResult(code, given, signatures, at));
+    code.return(
+      signatures === undefined ? given : fittedResult(code, given, signatures, code.span),
+    );
   });
   const generic = dispatch.typeArguments.map((type) => tableKey(checker, type));
   const name = `${tableKey(checker, on)}.${required.name.text}${generic.length === 0 ? '' : `<${generic.join(', ')}>`}`;
@@ -165,7 +166,6 @@ export function anyFieldEntry(
     unreachable('A field read takes the value it reads.');
   }
   const constraint = on.constraints.findIndex((each) => each.trait === trait);
-  const at = { module: checker.moduleOf(trait), span: field.name.span };
   switchOverMembers(code, on, value, (type, variant) => {
     const member = {
       register: heldAt(code, value, { variant, held: type }, code.span),
@@ -178,7 +178,7 @@ export function anyFieldEntry(
     code.return(
       types === undefined
         ? held
-        : fittedIn(code, { register: held, type: types.met }, types.called, at),
+        : fittedIn(code, { register: held, type: types.met }, types.called, code.span),
     );
   });
   const name = `${tableKey(checker, on)}.${field.name.text}`;

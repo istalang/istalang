@@ -27,7 +27,6 @@ import {
   simpleMark,
 } from '../../checker/types/type/function-kinds.ts';
 import type { FunctionType, Type } from '../../checker/types/type/index.ts';
-import type { ModuleId } from '../../program/program.ts';
 import {
   type ContextConstantDeclaration,
   type FunctionDeclaration,
@@ -35,7 +34,6 @@ import {
 } from '../../syntax/declarations/index.ts';
 import type { FieldLoopHeader, Lambda } from '../../syntax/expressions/index.ts';
 import type { VariableDeclaration } from '../../syntax/statements/index.ts';
-import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 import type { EntryKeys } from './entry-keys.ts';
 import { qualifiedNameOf, tableKey } from './names.ts';
 import { isStandIn } from './stencils.ts';
@@ -100,27 +98,11 @@ export function rootInstance(
  * A conversion of parts lowering writes an entry for (§3.5), one per pair of types, wherever the
  * pair is met: a value of `from` made to fit `to` as the checker fits them (`converting`), or a
  * function of type `from` wrapped as one of `to`, converting what it takes and gives (`wrapping`).
- * Where the pair was first met (`at`) names and places it, so a trace through it points there.
+ * Its pair alone names and places it (functions/fits/), so no site it was met at shows.
  */
 export type ConversionEntry =
-  | {
-      readonly kind: 'converting';
-      readonly from: Type;
-      readonly to: Type;
-      readonly at: ConversionSite;
-    }
-  | {
-      readonly kind: 'wrapping';
-      readonly from: FunctionType;
-      readonly to: FunctionType;
-      readonly at: ConversionSite;
-    };
-
-/** Where a conversion stands: its module, and the span its code points at. */
-export interface ConversionSite {
-  readonly module: ModuleId;
-  readonly span: AnchoredSpan;
-}
+  | { readonly kind: 'converting'; readonly from: Type; readonly to: Type }
+  | { readonly kind: 'wrapping'; readonly from: FunctionType; readonly to: FunctionType };
 
 /** A conversion's name: both types' table keys. */
 export function conversionName(checker: Checker, entry: ConversionEntry): string {

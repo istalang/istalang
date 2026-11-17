@@ -23,18 +23,13 @@ import { unfolded } from '../../../checker/types/type/computed-types.ts';
 import type { FunctionType, StructValueType, Type } from '../../../checker/types/type/index.ts';
 import { membersOf } from '../../../checker/types/type/index.ts';
 import { baseOf } from '../../../checker/types/unions/union-members.ts';
+import { type ModuleId, programModule } from '../../../program/program.ts';
 import type { NodeOf } from '../../../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import { emitCall } from '../../calls/emit-call.ts';
 import type { CodeContext, FunctionContext, Lowering, TypedValue } from '../../context.ts';
 import { SynthesizedCode } from '../../synthesized/index.ts';
-import {
-  type BodyOwner,
-  type ConversionEntry,
-  type ConversionSite,
-  conversionName,
-  ownerDeclaration,
-} from '../../tables/instances.ts';
+import { type ConversionEntry, conversionName } from '../../tables/instances.ts';
 import { tableKey } from '../../tables/names.ts';
 import { parameterTypeOf } from '../../tables/parameter-types.ts';
 import { convertedIntoAny } from '../../values/into-any.ts';
@@ -43,42 +38,31 @@ import { rebuiltAs, tupleOf } from '../../values/struct-values.ts';
 import { builtKindOf, codeModeOf } from '../modes.ts';
 import { changesLayout, convertedFuture, type Rebuilding, rebuilt } from './parts.ts';
 
-/** Where a value is fitted: the site the checker recorded the fit at, in a body of `owner`. */
-interface FittingSite {
-  readonly owner: BodyOwner;
-  readonly site: NodeOf<string>;
-}
-
-/**
- * How a fit is made where it is: the span its code points at, and where an entry a conversion of
- * parts needs is named.
- */
-interface Applying {
-  readonly span: AnchoredSpan;
-  readonly at: ConversionSite;
-}
-
-/** `typed`, as the checker fitted it at `where`: converted, then put into a union. */
+/** `typed`, as the checker fitted it at `site`: converted, then put into a union. */
 export function fittedValue(
   context: FunctionContext,
   typed: TypedValue,
   fit: Fit,
-  { owner, site }: FittingSite,
+  site: NodeOf<string>,
 ): Register {
-  const module = context.checker.moduleOf(ownerDeclaration(owner));
-  return appliedFit(context, typed, fit, { span: site.span, at: { module, span: site.span } });
+  return appliedFit(context, typed, fit, site.span);
 }
 
 /** `typed`, made to fit as `fit` says: converted, then put into a union. */
-function appliedFit(context: CodeContext, typed: TypedValue, fit: Fit, how: Applying): Register {
-  const converted = convertedValue(context, typed, fit.conversion, how);
+function appliedFit(
+  context: CodeContext,
+  typed: TypedValue,
+  fit: Fit,
+  span: AnchoredSpan,
+): Register {
+  const converted = convertedValue(context, typed, fit.conversion, span);
   return fit.into === undefined
     ? converted.register
     : intoUnion(
         context,
         { register: converted.register, type: fit.into.member ?? converted.type },
         fit.into.union,
-        how.span,
+        span,
       );
 }
 
@@ -86,9 +70,8 @@ function convertedValue(
   context: CodeContext,
   typed: TypedValue,
   conversion: Fit['conversion'],
-  how: Applying,
+  span: AnchoredSpan,
 ): TypedValue {
-  const { span } = how;
   switch (conversion.kind) {
     case 'none':
       return typed;
@@ -104,7 +87,7 @@ function convertedValue(
     case 'async': {
       const { to } = conversion;
       const from = functionTypeOf(typed.type);
-      return { register: wrappedClosure(context, typed.register, { from, to }, how), type: to };
+      return { register: wrappedClosure(context, typed.register, { from, to }, span), type: to };
     }
     case 'shape': {
       const { to } = conversion;
@@ -132,7 +115,7 @@ function convertedValue(
     }
     case 'parts': {
       const { to } = conversion;
-      return { register: partsConverted(context, typed, to, how), type: to };
+      return { register: partsConverted(context, typed, to, span), type: to };
     }
     default: {
       const unhandled: never = conversion;
@@ -149,7 +132,7 @@ function partsConverted(
   context: CodeContext,
   typed: TypedValue,
   to: Type,
-  how: Applying,
+  span: AnchoredSpan,
 ): Register {
   const { checker, tables } = context;
   if (!changesLayout(checker, typed.type, to)) {
@@ -158,12 +141,12 @@ function partsConverted(
   const from = unfolded(typed.type);
   const target = unfolded(to);
   if (from.kind === 'function' && target.kind === 'function') {
-    return wrappedClosure(context, typed.register, { from, to: target }, how);
+    return wrappedClosure(context, typed.register, { from, to: target }, span);
   }
-  const entry = tables.index({ kind: 'converting', from: typed.type, to, at: how.at });
+  const entry = tables.index({ kind: 'converting', from: typed.type, to });
   return emitCall(
     context,
-    { span: how.span, callee: entry, arguments: [typed.register] },
+    { span, callee: entry, arguments: [typed.register] },
     tables.types.reference(to),
   );
 }
@@ -173,9 +156,9 @@ function wrappedClosure(
   context: CodeContext,
   value: Register,
   { from, to }: { readonly from: FunctionType; readonly to: FunctionType },
-  { at, span }: Applying,
+  span: AnchoredSpan,
 ): Register {
-  const entry = context.tables.index({ kind: 'wrapping', from, to, at });
+  const entry = context.tables.index({ kind: 'wrapping', from, to });
   return closureOf(context, { entry, captures: [value] }, context.tables.types.reference(to), span);
 }
 
@@ -193,35 +176,29 @@ function closureOf(
   return dst;
 }
 
-/** How fits are made inside a conversion's entry: where its pair was first met. */
-function applyingIn(at: ConversionSite): Applying {
-  return { span: at.span, at };
-}
-
 /**
- * `typed` made to fit `to` inside a synthesized entry, as the checker fits the two types; an entry
- * a conversion needs is named for `at`, the first site its pair was met at.
+ * `typed` made to fit `to` inside a synthesized entry, as the checker fits the two types, its code
+ * pointing at `span`.
  */
 export function fittedIn(
   code: SynthesizedCode,
   typed: TypedValue,
   to: Type,
-  at: ConversionSite,
+  span: AnchoredSpan,
 ): Register {
-  return appliedFit(code, typed, fitBetween(code, typed.type, to), applyingIn(at));
+  return appliedFit(code, typed, fitBetween(code, typed.type, to), span);
 }
 
 /** How a value is rebuilt inside a conversion's entry, each part fitted as the checker fits it. */
-function rebuildingIn(code: SynthesizedCode, how: Applying): Rebuilding {
+function rebuildingIn(code: SynthesizedCode, span: AnchoredSpan): Rebuilding {
   const { tables } = code;
-  const { at, span } = how;
   return {
     span,
-    converted: (part, to) => appliedFit(code, part, fitBetween(code, part.type, to), how),
+    converted: (part, to) => appliedFit(code, part, fitBetween(code, part.type, to), span),
     converter: (from, to) =>
       closureOf(
         code,
-        { entry: tables.index({ kind: 'converting', from, to, at }), captures: [] },
+        { entry: tables.index({ kind: 'converting', from, to }), captures: [] },
         {
           kind: 'function',
           parameters: [tables.types.reference(from)],
@@ -229,7 +206,7 @@ function rebuildingIn(code: SynthesizedCode, how: Applying): Rebuilding {
         },
         span,
       ),
-    wrapped: (value, from, to) => wrappedClosure(code, value, { from, to }, how),
+    wrapped: (value, from, to) => wrappedClosure(code, value, { from, to }, span),
   };
 }
 
@@ -242,6 +219,21 @@ function fitBetween(context: Pick<CodeContext, 'checker'>, from: Type, to: Type)
 }
 
 /**
+ * Where every conversion's entry stands: the prelude as a whole, the language's own code. A
+ * conversion is one entry per pair of types wherever it is met (instances.ts), so no site it was
+ * met at may name it, or which site lowering reached first would show in the Definition.
+ */
+function conversionSite(lowering: Lowering): {
+  readonly module: ModuleId;
+  readonly span: AnchoredSpan;
+} {
+  const { program } = lowering.checker;
+  const prelude =
+    program.roles.prelude ?? unreachable('A program converting a value has a prelude.');
+  return { module: prelude, span: programModule(program, prelude).tree.root.span };
+}
+
+/**
  * The entry making a value of `entry.from` fit `entry.to` as the checker fits them; its own pair
  * converting part by part is rebuilt here, as converting it by this entry would call itself.
  */
@@ -250,7 +242,8 @@ export function convertingEntry(
   entry: Extract<ConversionEntry, { readonly kind: 'converting' }>,
 ): CodeFunction {
   const { checker, tables } = lowering;
-  const { from, to, at } = entry;
+  const { from, to } = entry;
+  const at = conversionSite(lowering);
   const code = new SynthesizedCode(lowering, at.span, {
     parameters: [tables.types.reference(from)],
     result: tables.types.reference(to),
@@ -260,13 +253,12 @@ export function convertingEntry(
   if (value === undefined) {
     unreachable('A conversion takes the value it converts.');
   }
-  const how = applyingIn(at);
   const fit = fitBetween(code, from, to);
   const typed = { register: value, type: from };
   const result =
     fit.conversion.kind === 'parts' && fit.into === undefined
-      ? rebuilt(code, typed, to, rebuildingIn(code, how))
-      : appliedFit(code, typed, fit, how);
+      ? rebuilt(code, typed, to, rebuildingIn(code, at.span))
+      : appliedFit(code, typed, fit, at.span);
   code.return(result);
   return code.entry(tables.headerAt(conversionName(checker, entry), at.module, at.span));
 }
@@ -285,7 +277,8 @@ export function wrappingEntry(
   entry: Extract<ConversionEntry, { readonly kind: 'wrapping' }>,
 ): CodeFunction {
   const { checker, tables } = lowering;
-  const { from, to, at } = entry;
+  const { from, to } = entry;
+  const at = conversionSite(lowering);
   const resultFit = resultFitBetween(checker, from, to);
   const async = resultFit.kind === 'resolved';
   const code = new SynthesizedCode(lowering, at.span, {
@@ -298,13 +291,13 @@ export function wrappingEntry(
   if (original === undefined) {
     unreachable('A wrapped function captures the function it calls.');
   }
-  const passed = fittedArguments(code, { called: to, met: from }, at);
+  const passed = fittedArguments(code, { called: to, met: from }, at.span);
   const called = emitCall(
     code,
     { span: at.span, callee: { kind: 'value', register: original }, arguments: passed },
     tables.types.reference(from.result),
   );
-  code.return(returnedAs(code, called, entry, at));
+  code.return(returnedAs(code, called, entry, at.span));
   const header = tables.headerAt(conversionName(checker, entry), at.module, at.span);
   return { ...code.entry(header), wrapping: true };
 }
@@ -318,13 +311,13 @@ function returnedAs(
   code: SynthesizedCode,
   called: Register,
   { from, to }: { readonly from: FunctionType; readonly to: FunctionType },
-  at: ConversionSite,
+  span: AnchoredSpan,
 ): Register {
   const result = resultFitBetween(code.checker, from, to);
   if (result.kind !== 'awaited') {
-    return fittedResult(code, called, { met: from, called: to }, at);
+    return fittedResult(code, called, { met: from, called: to }, span);
   }
-  const how = rebuildingIn(code, applyingIn(at));
+  const how = rebuildingIn(code, span);
   const { value, into } = result;
   return convertedFuture(code, called, { value, into, type: to.result }, how);
 }
@@ -337,7 +330,7 @@ function returnedAs(
 export function fittedArguments(
   code: SynthesizedCode,
   { called, met }: MemberConversion<FunctionType | undefined>,
-  at: ConversionSite,
+  span: AnchoredSpan,
   skipped = 0,
 ): Argument[] {
   return code.parameters.slice(skipped).map((value, offset) => {
@@ -349,7 +342,7 @@ export function fittedArguments(
     }
     return {
       kind: 'value',
-      register: fittedIn(code, { register: value, type: given.type }, taken.type, at),
+      register: fittedIn(code, { register: value, type: given.type }, taken.type, span),
     };
   });
 }
@@ -362,12 +355,12 @@ export function fittedResult(
   code: SynthesizedCode,
   result: Register,
   { met, called }: MemberConversion<FunctionType>,
-  at: ConversionSite,
+  span: AnchoredSpan,
 ): Register {
   const fit = resultFitBetween(code.checker, met, called);
   return fit.kind === 'value'
-    ? fittedIn(code, { register: result, type: met.result }, called.result, at)
-    : fittedIn(code, { register: result, type: fit.value }, fit.into, at);
+    ? fittedIn(code, { register: result, type: met.result }, called.result, span)
+    : fittedIn(code, { register: result, type: fit.value }, fit.into, span);
 }
 
 /** `type`, whose value the checker converted into a shape, so a nominal struct. */

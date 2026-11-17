@@ -7,9 +7,9 @@
  *   too: the std lowering keeps only what is closed under its requests, so a key missing here is a
  *   bug that throws.
  * - Only the std decides an entry lowered from a std module whose key spells nothing but the
- *   std's, unless lowering placed it where it first met it (`EntryIdentity.placedWhereMet`). One
- *   reading an `any` type's variants is never kept, as it asks for the `any` type, whose variants
- *   its program's conversions make (`namesOnlyStd`).
+ *   std's, a conversion's included, which stands in the prelude whoever met it. One reading an
+ *   `any` type's variants is never kept, as it asks for the `any` type, whose variants its
+ *   program's conversions make (`namesOnlyStd`).
  */
 
 import type { FunctionId } from '../../../definition/operands.ts';
@@ -126,7 +126,6 @@ export class StdReuse {
     const { entry, definition } = here;
     const identity = identityOf(this.#seams.identities, entry);
     return (
-      identity.placedWhereMet !== true &&
       isStdModule(definition.module) &&
       spellsOnlyStd(this.#seams.checker, (keys) => identity.identity(keys, entry))
     );
