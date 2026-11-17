@@ -74,19 +74,22 @@ export function lowerTests(checker: Checker, suites: readonly Suite[]): Definiti
 
 /**
  * Lowers every entry referenced so far, and every entry those reference; the index of the job
- * server, lowered with them once one is an instance of `delegate`.
+ * server, which lowering asks for as it reaches an instance of `delegate`.
  */
 function lowerReached(checker: Checker, tables: DefinitionTables): FunctionId | undefined {
   const jobs = jobDeclarationsOf(checker);
-  let jobServer: FunctionId | undefined;
-  for (let next = tables.nextPending(); next !== undefined; next = tables.nextPending()) {
-    const delegates = next.kind === 'instance' && next.instance.declaration === jobs?.delegate;
-    if (delegates && jobs !== undefined && jobServer === undefined) {
-      jobServer = tables.index({ kind: 'instance', instance: rootInstance(checker, jobs.server) });
+  const server =
+    jobs === undefined
+      ? undefined
+      : ({ kind: 'instance', instance: rootInstance(checker, jobs.server) } as const);
+  tables.lowerReached((entry) => {
+    const delegates = entry.kind === 'instance' && entry.instance.declaration === jobs?.delegate;
+    if (delegates && server !== undefined) {
+      tables.index(server);
     }
-    tables.define(next.index, loweredEntry({ checker, tables }, next));
-  }
-  return jobServer;
+    return loweredEntry({ checker, tables }, entry);
+  });
+  return server === undefined ? undefined : tables.numbered(server);
 }
 
 /** The runtime module's `delegate` and the job server serving what it queues; none without it. */

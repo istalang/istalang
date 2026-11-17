@@ -2,10 +2,9 @@
  * The tables a Definition is assembled from, each entry made once (docs/arch/definition.md).
  *
  * - Function instances (instances.ts) are numbered when first referenced and lowered afterwards
- *   from a worklist, so a call can name one that isn't lowered yet, including itself. Only what
- *   `main` reaches is lowered: generics are compiled per instantiation (§3.5), which only
- *   reachability can enumerate.
- * - An entry is numbered by its kind and its identity within it, which the kind table gives
+ *   (function-table.ts). Only what `main` reaches is lowered: generics are compiled per
+ *   instantiation (§3.5), which only reachability can enumerate.
+ * - An entry is keyed by its kind and its identity within it, which the kind table gives
  *   (entries.ts), so one asked for twice is one entry.
  * - Types and constants are interned: one entry per distinct type (type-table.ts) or value, a
  *   value keyed by its persisted text.
@@ -24,14 +23,12 @@ import type { Checker } from '../../checker/check.ts';
 import { functionPlace } from '../../checker/surface/checked-annotation.ts';
 import { passesAll } from '../../checker/surface/resolved-call.ts';
 import type { FunctionInstance } from '../../checker/surface/witness-closing.ts';
-import type { Type } from '../../checker/types/type/index.ts';
 import { type ModuleId, programModule } from '../../program/program.ts';
 import type { ContextConstantDeclaration } from '../../syntax/declarations/index.ts';
 import type { SyntaxTree } from '../../syntax/tree/index.ts';
 import { type AnchoredSpan, spanIn } from '../../syntax/tree/positions.ts';
 import { type ClosedCall, leavesOut } from '../calls/closed-calls.ts';
 import { nestedSpanOf } from '../functions/bodies.ts';
-import { laidOutAs } from '../values/members/holdings.ts';
 import { annotationValues } from './constants.ts';
 import {
   type EntryIdentities,
@@ -41,6 +38,7 @@ import {
   type StartTarget,
 } from './entries.ts';
 import { type EntryKeys, entryKeysOf } from './entry-keys.ts';
+import { FunctionTable } from './function-table.ts';
 import {
   type BodyOwner,
   instanceName,
@@ -57,9 +55,6 @@ import { TypeTable } from './type-table.ts';
 /** What every function-table entry starts with: its name, and where it is declared. */
 export type EntryHeader = Pick<FunctionDefinition, 'name' | 'module' | 'span' | 'annotations'>;
 
-/** An entry with the index it was numbered. */
-type Numbered = LoweredEntry & { readonly index: FunctionId };
-
 export class DefinitionTables {
   readonly #checker: Checker;
   readonly types: TypeTable;
@@ -67,22 +62,14 @@ export class DefinitionTables {
   readonly #moduleIndexes = new Map<ModuleId, number>();
   readonly #constants: Value[] = [];
   readonly #constantIndexes = new Map<string, number>();
-  readonly #functions: (FunctionDefinition | undefined)[] = [];
-  readonly #functionIndexes = new Map<string, FunctionId>();
+  readonly #functions: FunctionTable;
   readonly #identities: EntryIdentities;
   readonly #keys: EntryKeys;
-  readonly #pending: Numbered[] = [];
-  readonly #closing: Numbered[] = [];
-  /** How many variants its `any` type had when each closing entry was last written. */
-  readonly #writtenFor = new Map<FunctionId, number>();
   readonly #starts: Definition['starts'][number][] = [];
   /** How instances are shared (stencils.ts). */
   readonly #stencils: Stencils;
   /** Each instance entry as shared, by its own key. */
   readonly #sharedEntries = new Map<string, LoweredEntry>();
-  /** The first entry of each source function, by its body key, and each later one's first. */
-  readonly #bodyEntries = new Map<string, FunctionId>();
-  readonly #bodies = new Map<FunctionId, FunctionId>();
 
   /** Whether the Definition runs tests, whose functions a mock may replace (§10). */
   readonly mocking: boolean;
@@ -104,6 +91,7 @@ export class DefinitionTables {
       holdsStandIn: (type) => holdsStandIn(checker, type),
     });
     this.#stencils = new Stencils(checker, this.types);
+    this.#functions = new FunctionTable({ identities, keys: this.#keys, types: this.types });
   }
 
   /** The index of `module` in the module table, with its line starts for spans. */
@@ -217,24 +205,12 @@ export class DefinitionTables {
   index(given: LoweredEntry): FunctionId {
     this.#refuseStandInConversion(given);
     const entry = this.#shared(given);
-    const { closedOver } = identityOf(this.#identities, entry);
-    const queue = closedOver === undefined ? this.#pending : this.#closing;
-    return this.#numbered(this.#keyOf(entry), (index) => {
-      this.#numberBody(entry, index);
-      queue.push({ ...entry, index });
-    });
+    return this.#functions.index(this.#keyOf(entry), entry);
   }
 
-  /** Notes which entry first ran `entry`'s source function, numbered `index` (`EntryIdentity.body`). */
-  #numberBody(entry: LoweredEntry, index: FunctionId): void {
-    const { body } = identityOf(this.#identities, entry);
-    if (body === undefined) {
-      return;
-    }
-    const first = memo(this.#bodyEntries, `${entry.kind}:${body(this.#keys, entry)}`, () => index);
-    if (first !== index) {
-      this.#bodies.set(index, first);
-    }
+  /** The index of `entry`; undefined while nothing asked for it. */
+  numbered(entry: LoweredEntry): FunctionId | undefined {
+    return this.#functions.numbered(this.#keyOf(this.#shared(entry)));
   }
 
   /** What tells `entry` apart from every other: its kind, then its identity within it. */
@@ -289,60 +265,14 @@ export class DefinitionTables {
     return index;
   }
 
-  /**
-   * The next referenced entry still to be lowered, with its index: one lowering reached, then,
-   * once none is left, a closing entry not yet written for every variant its `any` type has.
-   */
-  nextPending(): Numbered | undefined {
-    return this.#pending.shift() ?? this.#nextStale();
-  }
-
-  #nextStale(): Numbered | undefined {
-    for (const entry of this.#closing) {
-      const { closedOver } = identityOf(this.#identities, entry);
-      const variants = this.#variantsOf(
-        closedOver?.(entry) ?? unreachable('A closing entry closes over a type.'),
-      );
-      if (this.#writtenFor.get(entry.index) !== variants) {
-        this.#writtenFor.set(entry.index, variants);
-        return entry;
-      }
-    }
-    return undefined;
-  }
-
-  /** How many types a closing entry switches over: an `any` type's so far, a union's members. */
-  #variantsOf(given: Type): number {
-    const type = laidOutAs(given);
-    if (type.kind === 'any') {
-      return this.types.anyMembers(type).length;
-    }
-    return type.kind === 'union' ? this.types.unionMembers(type).length : 1;
-  }
-
-  /** The index of the entry `key` names, numbered and queued by `queue` the first time. */
-  #numbered(key: string, queue: (index: FunctionId) => void): FunctionId {
-    return memo(this.#functionIndexes, key, () => {
-      const index = this.#functions.push(undefined) - 1;
-      queue(index);
-      return index;
-    });
-  }
-
-  define(index: FunctionId, entry: FunctionDefinition): void {
-    this.#functions[index] = entry;
+  /** Lowers, by `lowerEntry`, every entry asked for so far and every entry those ask for. */
+  lowerReached(lowerEntry: (entry: LoweredEntry) => FunctionDefinition): void {
+    this.#functions.lowerReached(lowerEntry);
   }
 
   /** The finished tables, every referenced function lowered, for `purpose`, numbered by key. */
   finish(purpose: Purpose): Definition {
-    const functions = this.#functions.map((entry, index) => {
-      if (entry === undefined) {
-        unreachable(`Function ${index} was referenced but never lowered.`);
-      }
-      const body = this.#bodies.get(index);
-      return body === undefined ? entry : { ...entry, body };
-    });
-    const spelled = [...this.#functionIndexes].sort(([, a], [, b]) => a - b).map(([key]) => key);
+    const { functions, keys } = this.#functions.finished();
     return orderedByKeys(
       {
         modules: this.#modules,
@@ -352,7 +282,7 @@ export class DefinitionTables {
         starts: this.#starts,
         purpose,
       },
-      { functions: spelled, types: this.types.keys },
+      { functions: keys, types: this.types.keys },
     );
   }
 }

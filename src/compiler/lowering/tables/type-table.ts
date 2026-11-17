@@ -1,7 +1,8 @@
 /**
- * The type table of a Definition (docs/arch/definition.md): one entry per distinct type, keyed as
- * the checker keys it (types/identity/type-keys.ts). A declared type's entry is named by its
- * declaration, any other by its table key (names.ts), which names nothing by an alias.
+ * The type table of a Definition (docs/arch/definition.md): one entry per distinct type, keyed by
+ * its table key (names.ts), which is the same in every program, so an entry made for one program is
+ * found by it in another. A declared type's entry is named by its declaration, any other by its
+ * table key, which names nothing by an alias.
  *
  * - An entry is numbered before its layout is computed, so a recursive type refers to itself
  *   through the table (§3.1).
@@ -116,7 +117,10 @@ export class TypeTable {
   readonly #seams: TypeTableSeams;
   /** Each entry, an `any` type's as the members its enum is built from. */
   readonly #entries: (TypeDefinition | AnyEntry)[] = [];
-  /** Each entry's table key (names.ts), which the Definition is numbered by (key-order.ts). */
+  /**
+   * Each entry's table key (names.ts), which finds it and which the Definition is numbered by
+   * (key-order.ts).
+   */
   readonly #keys: string[] = [];
   readonly #indexes = new Map<string, TypeId>();
 
@@ -204,8 +208,8 @@ export class TypeTable {
   /** The index of the enum standing for the `any` type `type`, with the variants it has so far. */
   anyIndex(type: AnyType): TypeId {
     const checker = this.#checker;
-    return memo(this.#indexes, checker.typeKeys.typeKey(type), () => {
-      const name = tableKey(checker, type);
+    const name = tableKey(checker, type);
+    return memo(this.#indexes, name, () => {
       const disposable = checker.reachesDisposable(type);
       const entry: AnyEntry = { kind: 'any', name, disposable, members: [] };
       this.#keys.push(name);
@@ -247,14 +251,14 @@ export class TypeTable {
    * the layout is computed, because a recursive type's layout refers to the type itself.
    */
   #entryOf(type: Type, layout: () => TypeDefinition): TypeId {
-    const key = this.#checker.typeKeys.typeKey(type);
+    const key = tableKey(this.#checker, type);
     const known = this.#indexes.get(key);
     if (known !== undefined) {
       return known;
     }
     const index = this.#entries.length;
     this.#indexes.set(key, index);
-    this.#keys.push(tableKey(this.#checker, type));
+    this.#keys.push(key);
     this.#entries.push(placeholder);
     this.#entries[index] = layout();
     return index;
