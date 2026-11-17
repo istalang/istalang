@@ -1,6 +1,10 @@
 /**
  * Renaming through the server across the corpus: a rename keeps every diagnostic and every renamed
  * name denoting what it did.
+ *
+ * It runs in slices, one per `rename-<n>.sweep.test.ts` beside this module (test/slices.ts), each
+ * with a server of its own: every name of the computed programs is dealt round them, and so are
+ * the two sampled properties.
  */
 
 import fc from 'fast-check';
@@ -11,6 +15,7 @@ import {
   type WorkspaceEdit,
 } from 'vscode-languageserver/node';
 import { corpusDirectory } from '../../../../../test/corpus/programs.ts';
+import { sliceOf } from '../../../../../test/slices.ts';
 import { checkProgram } from '../../../../compiler/checker/check.ts';
 import { diagnoseModule } from '../../../../compiler/compile.ts';
 import {
@@ -37,12 +42,6 @@ import { moduleIdOfUri, rangeOf } from '../../locations.ts';
 import { projectProgramLoader } from '../../project-loader.ts';
 import type { TestClient } from '../../server.test-kit.ts';
 import { namesOf, positionOf } from './navigation.test-kit.ts';
-
-let client: TestClient;
-
-beforeAll(async () => {
-  client = await corpusClient();
-});
 
 /**
  * The names keyed reads spell (§3.9), by module: `d.city` denotes the `index` it calls alone, so
@@ -150,7 +149,10 @@ function applied(edit: WorkspaceEdit, newName: string) {
  * diagnostic changed, or a renamed name no longer denoting it. Nothing, when the program means what
  * it meant.
  */
-async function renamingProblems(declaring: NamePlace): Promise<readonly string[]> {
+async function renamingProblems(
+  client: TestClient,
+  declaring: NamePlace,
+): Promise<readonly string[]> {
   const uri = declaring.module;
   const { tree } = programModule(corpusProgram, declaring.module);
   const { source } = tree;
@@ -192,32 +194,68 @@ async function renamingProblems(declaring: NamePlace): Promise<readonly string[]
   ];
 }
 
-describe('renaming across the corpus', () => {
-  it('keeps every diagnostic, and every renamed name denoting what it did', async () => {
-    await fc.assert(
-      fc.asyncProperty(fc.constantFrom(...renamable), async (declaring) => {
-        expect(await renamingProblems(declaring)).toEqual([]);
-      }),
-      { numRuns: 40 },
-    );
-  }, 120_000);
+/** A sampled property: renaming `numRuns` of `names` keeps what each meant. */
+interface Sampled {
+  readonly name: string;
+  readonly names: () => readonly NamePlace[];
+  readonly numRuns: number;
+}
 
-  it('keeps what a program of computed types means, renaming each name it may', async () => {
-    const keyed = renamable.filter(({ module }) => module.includes('/computed/'));
-    expect(keyed.length).toBeGreaterThan(0);
-    const problems = await Promise.all(keyed.map(renamingProblems));
-    expect(problems.flat()).toEqual([]);
-    // Every name of every computed program, not a sample: about 110s alone, more beside the suite.
-  }, 240_000);
+/** The sampled properties, each one slice's. */
+const sampled: readonly Sampled[] = [
+  {
+    name: 'keeps every diagnostic, and every renamed name denoting what it did',
+    names: () => renamable,
+    numRuns: 40,
+  },
+  {
+    name: 'spells shorthands out, keeping what they mean',
+    names: () => renamable.filter(hasShorthand),
+    numRuns: 20,
+  },
+];
 
-  it('spells shorthands out, keeping what they mean', async () => {
-    const shorthands = renamable.filter(hasShorthand);
-    expect(shorthands.length).toBeGreaterThan(0);
+/** A slice's longest wait: every rename re-diagnoses the whole corpus, a tenth of a second each. */
+const sliceTimeout = 240_000;
+
+/** Registers the sampled property as a test, each rename sent to the server `client()` answers with. */
+function sampledTest({ name, names, numRuns }: Sampled, client: () => TestClient): void {
+  it(name, { timeout: sliceTimeout }, async () => {
+    const sample = names();
+    expect(sample.length).toBeGreaterThan(0);
     await fc.assert(
-      fc.asyncProperty(fc.constantFrom(...shorthands), async (declaring) => {
-        expect(await renamingProblems(declaring)).toEqual([]);
+      fc.asyncProperty(fc.constantFrom(...sample), async (declaring) => {
+        expect(await renamingProblems(client(), declaring)).toEqual([]);
       }),
-      { numRuns: 20 },
+      { numRuns },
     );
-  }, 120_000);
-});
+  });
+}
+
+/** Registers the renames of the slice `file` (its `import.meta.url`), against a server of its own. */
+export function renameSlice(file: string): void {
+  const slice = sliceOf(file);
+  let client: TestClient;
+
+  beforeAll(async () => {
+    client = await corpusClient();
+  });
+
+  const server = () => client;
+
+  describe('renaming across the corpus', () => {
+    for (const property of slice.of(sampled)) {
+      sampledTest(property, server);
+    }
+
+    it('keeps what a program of computed types means, renaming each name it may', {
+      timeout: sliceTimeout,
+    }, async () => {
+      const keyed = slice.of(renamable.filter(({ module }) => module.includes('/computed/')));
+      expect(keyed.length).toBeGreaterThan(0);
+      const problems = await Promise.all(keyed.map((each) => renamingProblems(client, each)));
+      expect(problems.flat()).toEqual([]);
+      // Every name of every computed program, not a sample, dealt round the slices.
+    });
+  });
+}
