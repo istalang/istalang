@@ -12,7 +12,7 @@
  *   else the program declares (§3.17), so it is persisted. A union orders its variants by their
  *   members' table keys and names each by one, and an entry a declaration doesn't name is named by
  *   its own (type-table.ts).
- * - Extern keys spell types their own way, frozen (extern-keys.ts).
+ * - Extern keys spell types their own way, stored (extern-keys.ts).
  */
 
 import { qualifiedName } from '../../../foundation/language/well-known/index.ts';

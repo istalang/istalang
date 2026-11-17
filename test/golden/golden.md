@@ -13,8 +13,11 @@ tags: [goldens, testing, scenarios, ir-first]
 What programs show when run, recorded from the interpreter before the IR-first rewrite deleted it
 (`docs/work/ir-first/contracts.md`, "Goldens"), so every later pipeline is held to it.
 The corpus sweep runs them (`test/sweep`, its `golden` check), each subject compiled once beside
-its other checks; `GOLDEN=update` records instead of checking, in one process, and freezes the
-extern keys the programs spell (`src/compiler/lowering/tables/extern-keys.txt`) too.
+its other checks; `GOLDEN=update` records instead of checking, in one process.
+
+`extern-keys.txt` holds the std's extern keys, which stores and hosts keep across deploys: before
+1.0 its test (`extern-keys.test.ts`) writes them as the std spells them, so a diff shows a change;
+from 1.0 on it fails on any difference.
 
 ## One home per result
 

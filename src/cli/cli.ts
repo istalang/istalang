@@ -8,7 +8,6 @@
  * toolchain and propagates with its stack.
  */
 
-import { readFileSync } from 'node:fs';
 import { Command, CommanderError } from 'commander';
 import { isSystemError } from '../project/errno.ts';
 import {
@@ -23,6 +22,7 @@ import { defineFmtCommand } from './commands/fmt.ts';
 import { defineLspCommand } from './commands/lsp.ts';
 import { defineRunCommand } from './commands/run.ts';
 import { defineTestCommand } from './commands/test.ts';
+import { packageVersion } from './package-version.ts';
 
 const commands: readonly CommandDefinition[] = [
   defineBuildCommand,
@@ -69,9 +69,4 @@ export async function runCli(
     return exitCodes.couldNotRun;
   }
   return exitCode;
-}
-
-/** The package's own manifest sits two levels up from this module, in `src` and in `dist` alike. */
-function packageVersion(): string {
-  return JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8')).version;
 }

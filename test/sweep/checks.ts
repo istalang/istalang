@@ -4,7 +4,6 @@
  */
 
 import { crashEveryAwait } from './checks/crash-every-await.ts';
-import { externKeys } from './checks/extern-keys.ts';
 import { formatting } from './checks/formatting.ts';
 import { golden } from './checks/golden.ts';
 import { numbering } from './checks/numbering.ts';
@@ -18,8 +17,7 @@ type CheckKind =
   | 'realTime'
   | 'formatting'
   | 'numbering'
-  | 'ownership'
-  | 'externKeys';
+  | 'ownership';
 
 export const checks = {
   golden,
@@ -28,5 +26,4 @@ export const checks = {
   formatting,
   numbering,
   ownership,
-  externKeys,
 } satisfies Record<CheckKind, Check>;
