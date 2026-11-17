@@ -424,6 +424,8 @@
       "✓ aliasing › a one-element tuple's element, read where its element is expected, holds it when a later argument changes the tuple",
       "✓ aliasing › a part of a temporary a block, if or match ends with outlives the temporary, which its end disposes",
       "✓ aliasing › a part read out of a value a branching expression gives holds it when the value ends or its source changes first",
+      "✓ aliasing › a read holds its value when a call running on with a & to its variable changes it before the read's last use",
+      "✓ aliasing › a read holds its value past a native a test mocks with code that changes it",
       "✓ aliasing › a destructuring assignment takes its value apart as it was before writing any part",
       "✓ awaitables › an awaitable starts its work only once it is awaited",
       "✓ awaitables › an awaitable waits on a future through that future's onAwait",
@@ -492,7 +494,7 @@
       "✓ waits › a wait decides at its first case in order when several disposal watches resolve together",
       "✓ waits › waiters readied together by their timers run in execution creation order",
       "✓ waits › a waiting put's value is held by its put alone: let go of with it, or as it loses a select",
-      "81 passed, 0 failed, 0 skipped."
+      "83 passed, 0 failed, 0 skipped."
     ]
   }
 }

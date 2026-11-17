@@ -122,9 +122,7 @@ export class FlowWriter {
   write(): void {
     const first = this.context.code.registerCount;
     const { order } = this.#layout;
-    const inPasses = (block: BlockId, read: () => void) =>
-      this.context.inFieldPasses(this.#layout.passesOf(block), read);
-    this.#held = heldReads(this.flow, readFactsOf(this, inPasses));
+    this.#held = heldReads(this.flow, readFactsOf(this));
     for (const [value, until] of this.#uses.kept) {
       this.listOf(until, this.typeOf(value));
     }

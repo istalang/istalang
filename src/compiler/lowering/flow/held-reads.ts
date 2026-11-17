@@ -9,13 +9,15 @@
  *
  * - **A read's root** is the value it is read out of, at a name or through the reads it is a part
  *   of: a variable, or a computed value, which nothing else reaches, so only its release (a block
- *   ending before the part it gives is taken) changes it; a value several paths give is one. Through a handle (`behind`), a computed
- *   one too, what it reaches is the handle's state, others' as well.
+ *   ending before the part it gives is taken) changes it; a value several paths give is one.
+ *   Through a handle (`behind`), a computed one too, what it reaches is the handle's state, others'
+ *   as well.
  * - **What may change a root:** a write into its variable, whole or in part, a `&` argument rooted
  *   at it, or its release; and, where code other than the flow's own reaches it (a cell a closure
- *   or a nested call shares, the place a `&` parameter refers to, a handle's state), anything that
- *   runs code: a call but a native's reading only the values it is given, a conversion, a getter,
- *   a wait, a write or a release, whose disposals run code.
+ *   or a nested call shares, the place a `&` parameter refers to or a `&` lent to an execution
+ *   running on, a handle's state), anything that runs code: a call, a native's too (a test may mock
+ *   it, and some run callbacks or disposals), a conversion, a getter, a wait, a write or a
+ *   release, whose disposals run code.
  * - **Before its last use:** on some path from the read to a use of it, or of a part read out of
  *   it that holds nothing itself, not through the read again. A call reading it while it may change
  *   it is such a path: the call runs on with the value it was given.
@@ -23,6 +25,7 @@
 
 import { memo } from '../../../foundation/structures/memo.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
+import type { Checker } from '../../checker/check.ts';
 import {
   type BlockId,
   type Exit,
@@ -31,7 +34,8 @@ import {
   transientsOf,
   type ValueId,
 } from '../../checker/surface/flow-ir.ts';
-import { ownEntryOf } from '../tables/own-entries.ts';
+import type { Type } from '../../checker/types/type/index.ts';
+import { awaitedOf } from '../../checker/types/type/well-known.ts';
 import { type FlowPosition, usesOf } from './uses.ts';
 import type { FlowWriter } from './writer.ts';
 
@@ -39,39 +43,32 @@ import type { FlowWriter } from './writer.ts';
 export interface ReadFacts {
   /** Whether code other than the flow's own reaches what variable `value` holds. */
   readonly reachable: (value: ValueId) => boolean;
-  /** Whether `operation`, a call, runs only a native reading the values it is given. */
-  readonly readsOnly: (operation: Operation) => boolean;
 }
 
 /**
- * What `heldReads` needs to know of the flow `writer` writes: the variables other code reaches (a
- * cell this flow shares with a closure, the function enclosing it or the calls nested in it, a
- * transient's; a `&` parameter's place), and the calls of a native taking values alone, each
- * closed in its block's passes (`inPasses`).
+ * What `heldReads` needs to know of the flow `writer` writes: the variables other code reaches. A
+ * cell this flow shares with a closure, the function enclosing it or the calls nested in it (a
+ * transient's), the place a `&` parameter refers to, and one this flow passes by `&` to a call
+ * giving a future, whose execution runs on with it.
  */
-export function readFactsOf(
-  writer: FlowWriter,
-  inPasses: (block: BlockId, read: () => void) => void,
-): ReadFacts {
+export function readFactsOf(writer: FlowWriter): ReadFacts {
   const { flow, context } = writer;
-  const shared = new Set([...flow.captures, ...transientsOf(flow)]);
-  const readingOnly = new Set<Operation>();
-  for (const [block, { operations }] of flow.blocks.entries()) {
-    for (const operation of operations) {
-      if (operation.op === 'make' && operation.made.kind === 'closure') {
-        for (const part of operation.parts) {
-          shared.add(part);
-        }
-      }
-    }
-    inPasses(block, () => {
-      for (const operation of operations) {
-        if (operation.op === 'call' && callsNativeOnValues(writer, operation)) {
-          readingOnly.add(operation);
-        }
-      }
-    });
-  }
+  const operations = flow.blocks.flatMap((block) => block.operations);
+  const shared = new Set([
+    ...flow.captures,
+    ...transientsOf(flow),
+    ...operations.flatMap((operation) =>
+      operation.op === 'make' && operation.made.kind === 'closure' ? operation.parts : [],
+    ),
+  ]);
+  const lent = new Set(
+    operations.flatMap((operation) =>
+      (operation.op === 'call' || operation.op === 'callValue') &&
+      givesFuture(context.checker, flow.values[operation.into]?.type)
+        ? operation.arguments.flatMap((each) => (each.kind === 'place' ? [each.place.root] : []))
+        : [],
+    ),
+  );
   const reachable = (value: ValueId) => {
     const variable = writer.valueOf(value);
     if (variable.kind !== 'variable') {
@@ -80,24 +77,13 @@ export function readFactsOf(
     const referred =
       flow.parameters.includes(value) &&
       context.code.typeOf(writer.registerOf(value)).kind === 'reference';
-    return referred || (variable.inCell && shared.has(value));
+    return referred || lent.has(value) || (variable.inCell && shared.has(value));
   };
-  return { reachable, readsOnly: (operation) => readingOnly.has(operation) };
+  return { reachable };
 }
 
-/** Whether `operation` calls a native, giving it values alone, none a function to call back. */
-function callsNativeOnValues(
-  writer: FlowWriter,
-  operation: Extract<Operation, { readonly op: 'call' }>,
-): boolean {
-  const closed = writer.context.closed(operation.call);
-  return (
-    closed.kind !== 'dispatch' &&
-    ownEntryOf(writer.context.checker, closed.instance).kind === 'native' &&
-    operation.arguments.every(
-      (argument) => argument.kind === 'value' && writer.typeOf(argument.value).kind !== 'function',
-    )
-  );
+function givesFuture(checker: Pick<Checker, 'wellKnownType'>, type: Type | undefined): boolean {
+  return type !== undefined && awaitedOf(checker, type) !== undefined;
 }
 
 /**
@@ -114,7 +100,7 @@ export function heldReads(flow: FlowFunction, facts: ReadFacts): ReadonlySet<Val
   const reads = readsOf(flow, facts);
   const uses = usesOf(flow).reads;
   const graph = graphOf(flow);
-  const judging = { ...facts, isVariable: (value: ValueId) => isVariableOf(flow, value) };
+  const isVariable = (value: ValueId) => isVariableOf(flow, value);
   const held = new Set<ValueId>();
   /** Where each read is used, itself or through a part of it holding nothing. */
   const lasting = new Map<ValueId, readonly FlowPosition[]>();
@@ -128,7 +114,7 @@ export function heldReads(flow: FlowFunction, facts: ReadFacts): ReadonlySet<Val
           return held.has(part) ? [] : partUsed;
         }),
       ];
-      const changing = (operation: Operation) => changes(operation, read.root, judging);
+      const changing = (operation: Operation) => changes(operation, read.root, isVariable);
       if (changedBeforeUse(graph, { at: read.at, used }, changing)) {
         held.add(value);
       }
@@ -313,14 +299,14 @@ function targetsOf(exit: Exit | undefined): readonly BlockId[] {
 function changes(
   operation: Operation,
   root: Root,
-  facts: ReadFacts & { readonly isVariable: (value: ValueId) => boolean },
+  isVariable: (value: ValueId) => boolean,
 ): boolean {
   const written = writes(operation);
   if (written.includes(root.value)) {
     return true;
   }
   // Writing a variable ends what it held, whose disposal runs code.
-  return root.reachable && (runsCode(operation, facts) || written.some(facts.isVariable));
+  return root.reachable && (runsCode(operation) || written.some(isVariable));
 }
 
 /** The variables `operation` writes, whole or in part, by `&` or by ending them. */
@@ -342,15 +328,14 @@ function writes(operation: Operation): readonly ValueId[] {
 }
 
 /** Whether `operation` may run code that reaches what a cell, reference or handle holds. */
-function runsCode(operation: Operation, facts: ReadFacts): boolean {
+function runsCode(operation: Operation): boolean {
   switch (operation.op) {
-    case 'call':
-    case 'callValue':
-      return !facts.readsOnly(operation);
     case 'copy':
       return operation.fit !== undefined;
     case 'read':
       return operation.part.kind === 'required';
+    case 'call':
+    case 'callValue':
     case 'write':
     case 'suspend':
     case 'release':

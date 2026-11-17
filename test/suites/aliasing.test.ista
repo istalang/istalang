@@ -2,11 +2,13 @@
 # instances' arguments and the JSON written of a value never see a later change to another holder.
 # Each rule is its own function, and its test asserts what the old runtime's unit test did.
 
-import Suite, Test, test, assertEq from 'testing'
+import Suite, Test, test, assertEq, mock from 'testing'
 import * as json from 'json'
 import Json from 'json'
 import * as runtime from 'runtime'
 import Inbox from 'inbox'
+import * as time from 'time'
+import Time from 'time'
 
 struct Inner:
   items: Array<Int>
@@ -175,6 +177,42 @@ fn mergedReads(pick: Bool) -> Array<String>:
   log->value.push("got " + got)
   log->value
 
+ista async fn changeLater(pair: &Pair, res: &Res) -> Int:
+  await time.delay(1ms)
+  pair.a = 99
+  res = new Res{id: 2, log: res->log}
+  10
+
+ista async fn readsPastAsyncReferences() -> (Array<String>, (Int, Int)):
+  const log = new Shared<Array<String>>{value: []}
+  let pair = Pair{a: 1, b: 2}
+  let res = new Res{id: 1, log}
+  const changing = changeLater(&pair, &res)
+  const got = readId(res, await changing)
+  log->value.push("got " + got)
+  let otherPair = Pair{a: 1, b: 2}
+  let otherRes = new Res{id: 3, log}
+  const changingOther = changeLater(&otherPair, &otherRes)
+  (log->value, takePair(otherPair, await changingOther))
+
+fn readsPastMockedNatives() -> (Int, Int, Int):
+  const log = new Shared<Array<String>>{value: []}
+  const held = new Shared<Res>{value: new Res{id: 1, log}}
+  const pairs = new Shared<Pair>{value: Pair{a: 1, b: 2}}
+  let captured = Pair{a: 10, b: 20}
+  hold _ = mock(time.now, fn() -> Time: {
+    held->value = new Res{id: 2, log}
+    pairs->value.a = 99
+    captured.a = 99
+    Time{value: 5}
+  })
+  const first = (held->value, time.now())
+  pairs->value = Pair{a: 1, b: 2}
+  const second = (pairs->value, time.now())
+  captured = Pair{a: 10, b: 20}
+  const third = (captured, time.now())
+  (first.0->id, second.0.a, third.0.a)
+
 fn swapped() -> (Int, Int):
   let swap = (10, 20)
   swap.1, swap.0 = swap
@@ -244,6 +282,14 @@ fn suite() -> Array<Test>: [
   test(
     "a part read out of a value a branching expression gives holds it when the value ends or its source changes first"
     fn(): assertEq(mergedReads(true), ["if gave 2", "?? gave 3", "read 4", "disposed 4", "got 14"])
+  )
+  test(
+    "a read holds its value when a call running on with a & to its variable changes it before the read's last use"
+    async fn(): assertEq(await readsPastAsyncReferences(), (["read 1", "got 11"], (1, 10)))
+  )
+  test(
+    "a read holds its value past a native a test mocks with code that changes it"
+    fn(): assertEq(readsPastMockedNatives(), (1, 1, 10))
   )
   test(
     "a destructuring assignment takes its value apart as it was before writing any part"
