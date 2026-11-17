@@ -42,7 +42,7 @@ target. Migrating that shape costs more than writing the right one.
 | Layer | Holds | Written |
 |---|---|---|
 | Lowering | Every decision: holds and let-gos, in place, copies at crossings, start wrappers, mock checks, collect points, stop landings, derived JSON codecs (one module) | TS, once |
-| IR (the Definition) | Typed registers; reach facts on every type; explicit cells and references; tuple, struct and variant fields apart; flavors as variants; lifetime instructions; spill sets per suspension; extern capabilities, keeps and holds | the contract |
+| IR (the Definition) | Typed registers; reach facts on every type; explicit cells and references; tuple, struct and variant fields apart; flavors as variants; lifetime instructions; spill sets per suspension | the contract |
 | Std in Istalang | Futures, resolvers, waits, slots, timer grouping, `disposed()`/`disposing()` watches, settle order, the mock registry, about 95 former natives | Istalang |
 | Run | One: ready queue, park and unpark of executions, segments and commits, snapshots (root walk, object ids), contexts, instances, jobs, effects (clock, random draws, logs), counts and the collector, one host binding | TS for JS; ported once for LLVM |
 | Codegen | One ES module per program. Simple entries are plain functions; async entries are resumable functions over frame records. Primitive operations are inline JS | TS |
@@ -82,7 +82,7 @@ target. Migrating that shape costs more than writing the right one.
 5. **Lifetimes are instructions.**
    - **Holds and let-gos:** parameters are borrowed and a last use is a move, so most pairs never
      appear.
-   - **Calls:** each await carries its stop landing; each extern carries its keeps and holds.
+   - **Calls:** each await carries its stop landing; a native holds what it keeps itself, so externs carry no lifetime facts.
    - **In place:** "in place if unique" for write paths and the six collection changes, with
      derived-data forgets inside.
    - **Verification:** an ownership verifier in IR validation.
@@ -104,7 +104,7 @@ target. Migrating that shape costs more than writing the right one.
    - collect points.
 8. **Natives speak primitives.**
    - **Results:** built in Istalang wrappers.
-   - **Capabilities:** declared per extern in the IR and checked when natives are bound.
+   - **Capabilities:** the natives table's type refuses a table needing one the run lacks, at compile time; the IR declares none, since natives are per backend.
    - **Primitive operations** (`Int` `+`, comparisons, …) compile to inline JS, so they run as fast
      as hand-written JS over the same representation.
 9. **Derived JSON codecs are synthesized IR.** Writing them in Istalang needs tuple loops,
