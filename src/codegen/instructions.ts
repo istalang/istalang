@@ -310,10 +310,10 @@ const emitters: Handlers<EntryScope, Instruction, [], string> = {
   currentCall: (scope, i) =>
     `${register(i.dst)} = ${startsExecution(scope.entry) ? 'frame.execution' : 'currentExecution()'};`,
   given: (_, i) => `if (${register(i.parameter)} !== undefined) { ${goTo(i.target)} }`,
-  mocked: (scope, i) => {
+  rebound: (scope, i) => {
     const passed = i.arguments.map(register).join(', ');
-    // The register holds an answer only where a mock gives one, never the marker of none.
-    return `if (!started) { const answer = mocked(${scope.index}, [${passed}]); if (answer !== NOT_MOCKED) { ${register(i.dst)} = answer; ${goTo(i.landing)} } }`;
+    // The register holds an answer only where a bound function gives one, never the marker of none.
+    return `if (!started) { const answer = rebound(${scope.index}, [${passed}]); if (answer !== NOT_REBOUND) { ${register(i.dst)} = answer; ${goTo(i.landing)} } }`;
   },
   park: (scope, i) => {
     const saved = scope.entry.registers.map((_, index) => register(index)).join(', ');

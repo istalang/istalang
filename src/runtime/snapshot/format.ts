@@ -93,13 +93,6 @@ const object = z.discriminatedUnion('kind', [
     type: typeId,
     payload: externPayload,
   }),
-  z.strictObject({
-    kind: z.literal('mock'),
-    ...identity,
-    target: functionId,
-    replacement: value,
-    calls: z.array(value),
-  }),
 ]);
 
 export type PersistedObject = z.output<typeof object>;
@@ -164,8 +157,10 @@ const body = z.strictObject({
   /** The calls into it still running, by their futures: its spawned call, `root`, among them. */
   invocations: z.array(z.strictObject({ future: objectId, root: z.boolean() })),
   contextConstants: z.array(z.tuple([z.string(), value])),
+  /** The functions bound to entries' slots in a test (§10, run/slots.ts), oldest first. */
+  bindings: z.array(z.strictObject({ id: objectId, target: functionId, bound: value })),
 });
 
 export type Snapshot = z.output<typeof body>;
 
-export const snapshotFormat = defineFormat('istalang-snapshot', 1, body);
+export const snapshotFormat = defineFormat('istalang-snapshot', 2, body);

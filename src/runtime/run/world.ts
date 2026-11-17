@@ -12,7 +12,6 @@ import type { TypeId } from '../../definition/operands.ts';
 import type { Value } from '../../definition/values/values.ts';
 import type { Inspection, SpawnOptions } from '../instance-state.ts';
 import type { ContextCall, TestWatch } from '../natives.ts';
-import type { HeldMock } from './mock-answers.ts';
 import type { Future } from './objects/future.ts';
 import type { Run } from './run.ts';
 
@@ -38,11 +37,8 @@ export interface World {
   readonly served: (waiter: Run, runtime: number, known: number, future: Future) => void;
   /** Settles `future`, in `watcher`, a watch on the instance `name`, once it has ended. */
   readonly watchEnd: (watcher: Run, name: string, future: Future) => void;
-  /**
-   * The newest mock of entry `index` held by an instance `caller` was spawned from, the nearest
-   * holding one (§10); undefined where none does.
-   */
-  readonly heldMock?: (caller: Run, index: number) => HeldMock | undefined;
+  /** The run of the instance `name` while it is resident here; undefined where it isn't. */
+  readonly runOf: (name: string) => Run | undefined;
   /** What a test asks of the instances beside it (§10); a world running no test has none. */
   readonly testing?: TestingWorld;
 }

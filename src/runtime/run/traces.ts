@@ -10,8 +10,8 @@
  *   skips (functions/frame-variables.ts), so a default's trace starts at its caller.
  * - A frame on a frame record shows only from where it last resumed: the stack holds nothing of
  *   what awaited it.
- * - A frame standing at its `mocked` handed its call over to a mock (§10), whose frames stand for
- *   it: it runs none of its own code, so it shows none.
+ * - A frame standing at its `rebound` handed its call over to the function bound to its slot
+ *   (§10), whose frames stand for it: it runs none of its own code, so it shows none.
  * - A panic is a thrown `Panic`, or a host limit `panicOf` names (a stack overflow is the recursion
  *   panic); anything else thrown is a bug.
  * - The recursion panic's trace starts at the call that nested too deep, the innermost frame
@@ -102,7 +102,7 @@ export class Traces {
       return undefined;
     }
     const instruction = entry.instructions[pc];
-    if (instruction?.kind === 'mocked') {
+    if (instruction?.kind === 'rebound') {
       return undefined;
     }
     const frame = {

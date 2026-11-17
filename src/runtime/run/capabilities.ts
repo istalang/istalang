@@ -9,7 +9,8 @@
  * - A call into a context settles a live future with how it ended (`instanceEnding`), which the
  *   std's Istalang makes the `Result` code reads. A runtime opened is a resource holding its number,
  *   whose disposal closes it (host/open-runtimes.ts).
- * - The test world (inspection, watches) is the world's, in a test only; mocks are the run's own.
+ * - The test world (inspection, watches) is the world's, in a test only; function slots are the
+ *   run's own.
  * - What `json.encode` wrote values as is the run's (lifetimes.ts `written`), but a test world's,
  *   which keeps none (§10).
  */
@@ -30,7 +31,6 @@ import type {
 } from '../natives.ts';
 import { Execution } from './objects/execution.ts';
 import { Future } from './objects/future.ts';
-import type { MockObject } from './objects/mock-object.ts';
 import { Resource } from './objects/resource.ts';
 import type { RunObject } from './objects/run-object.ts';
 import type { WeakReference } from './objects/weak-reference.ts';
@@ -81,8 +81,8 @@ function testingOf(run: Run): WithTesting['testing'] {
   const testWorld = (): TestingWorld =>
     run.world.testing ?? unreachable('A native asked for the test world, which only a test has.');
   return {
-    mock: (target, replacement) => run.mocking.mock(target, replacement) as unknown as Value,
-    calls: (mock) => (mock as unknown as MockObject).calls,
+    bind: (target, bound) => run.slots.bind(target, bound),
+    unbind: (binding) => run.slots.unbind(binding),
     inspect: (instance) => run.world.testing?.inspect(instance),
     watch: (instance, until) => testWorld().watch(run, instance, until),
     handle: (type) => testWorld().handle(type),

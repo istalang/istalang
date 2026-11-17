@@ -5,7 +5,7 @@
  * - **Parts.** The run composes what it owns: holders (lifetimes.ts), places (places.ts), value
  *   builders, transients, async calls (executions.ts), the ready queue, timers, arrivals from
  *   outside, calls into the instance (invocations.ts), watches on other instances' ends, weak
- *   references, host values (resources.ts) and mocks (mocking.ts). Compiled code takes its helpers
+ *   references, host values (resources.ts) and rebindable function slots (slots.ts). Compiled code takes its helpers
  *   from the part owning them.
  * - **Calls.** A simple entry is a JavaScript function; an async one runs as an execution of its
  *   own, its caller getting its future.
@@ -33,7 +33,6 @@ import type { Instance } from './instances.ts';
 import { instantiatorOf } from './instantiation.ts';
 import { type Invocation, Invocations, type RunningInvocation } from './invocations.ts';
 import { Lifetimes } from './lifetimes.ts';
-import { Mocking, NOT_MOCKED } from './mocking.ts';
 import { bindNatives, type RunSeams } from './natives.ts';
 import type { Execution, Frame } from './objects/execution.ts';
 import { Future, watchFuture } from './objects/future.ts';
@@ -44,6 +43,7 @@ import { calledPrimitives } from './primitives.ts';
 import { type PersistedReady, type Ready, ReadyQueue } from './ready-queue.ts';
 import { Resources } from './resources.ts';
 import { Settler, type Settling } from './settling.ts';
+import { type Binding, NOT_REBOUND, Slots } from './slots.ts';
 import { type Timer, Timers } from './timers.ts';
 import { Traces } from './traces.ts';
 import { Transients } from './transients.ts';
@@ -61,6 +61,7 @@ interface PersistedRun {
   readonly watches: readonly PendingWatch[];
   readonly invocations: readonly RunningInvocation[];
   readonly ready: readonly PersistedReady[];
+  readonly bindings: readonly Binding[];
 }
 
 export class Run {
@@ -86,14 +87,14 @@ export class Run {
   readonly invocations: Invocations;
   readonly endWatches: EndWatches;
   readonly executions: Executions;
-  readonly mocking: Mocking;
+  readonly slots: Slots;
   readonly traces: Traces;
   /** The calls compiled code makes through a function value of a few arguments. */
   readonly closureCalls: ClosureCalls;
   /** The primitive operations compiled code calls rather than writes inline. */
   readonly primitives = calledPrimitives;
   /** The markers compiled code compares a frame's result and decision with. */
-  readonly signals = { parked: PARKED, stopped: STOPPED, stop: STOP, notMocked: NOT_MOCKED };
+  readonly signals = { parked: PARKED, stopped: STOPPED, stop: STOP, notRebound: NOT_REBOUND };
   /**
    * Told of each turn the run takes as an input its world can apply again, to a run of the same
    * instance read back from a snapshot (a segment run again, §5).
@@ -113,7 +114,7 @@ export class Run {
     this.instance = seams.instance;
     this.world = seams.world;
     this.seed = seams.seed;
-    this.mocking = new Mocking(this);
+    this.slots = new Slots(this);
     this.values = valueSemanticsOf(definition.functions);
     this.lifetimes = new Lifetimes(disposerOf(this.#disposal()), definition.types, this.values);
     for (const constant of this.constants) {
@@ -155,7 +156,6 @@ export class Run {
     return {
       weakReferences: this.weakReferences,
       resources: this.resources,
-      mocks: this.mocking.held,
       disposeOf: (type) => disposeOf(this.definition.types, type),
       runDispose: (index, disposed) =>
         this.lifetimes.apart(() => this.lifetimes.letGo(this.call(index, [disposed]) as Value)),
@@ -383,7 +383,7 @@ export class Run {
       return;
     }
     this.invocations.waitOnEnd(invocation);
-    const given = this.#guard.guarded(() => this.mocking.started(closure, passed));
+    const given = this.#guard.guarded(() => this.slots.started(closure, passed));
     if (given instanceof Future) {
       this.invocations.attach(given, invocation);
     } else if (instance.end === undefined) {
@@ -403,6 +403,7 @@ export class Run {
       watches: this.endWatches.persisted(),
       invocations: this.invocations.persisted(),
       ready: this.queue.persisted(),
+      bindings: this.slots.bindings,
     };
   }
 
@@ -421,6 +422,7 @@ export class Run {
       this.invocations.attach(future, invocation);
     }
     this.queue.restore(state.ready);
+    this.slots.restored(state.bindings);
   }
 }
 

@@ -69,8 +69,8 @@ the instance frozen as it stood.
   (`run/closure-calls.ts`), and any other through `callValue`; an async callee starts an execution
   and gives its future (`Run.start`).
 - `currentCall` is the frame's execution in async code and `currentExecution()` in simple code.
-- `mocked` asks the run (`Mocking.mocked`), and writes its register only with an answer, never with
-  the run's marker of none (`NOT_MOCKED`); a call that is a start asks nothing, which it learns as
+- `rebound` asks the run (`Slots.rebound`), and writes its register only with an answer, never with
+  the run's marker of none (`NOT_REBOUND`); a call that is a start asks nothing, which it learns as
   it enters (`startsHere`), before its prologue may call the function again.
 - A transient's cell is shared by function and register in the running execution's scope
   (`run/transients.ts`): a call finding one shares it on (`sharedTransient`), one making it shares

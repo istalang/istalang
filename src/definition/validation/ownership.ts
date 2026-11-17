@@ -16,7 +16,7 @@
  *   apart, as a pattern's binding is read where it matched.
  * - `return` and `stopped` end the call: nothing may still own anything there but what `return`
  *   moves out, which it can't let go of too.
- * - A write that jumps when it finds a value (`contextConstant`, `mocked`) owns it only where it
+ * - A write that jumps when it finds a value (`contextConstant`, `rebound`) owns it only where it
  *   jumps to; going on, it found none, and the register stays as it was.
  */
 
@@ -55,7 +55,7 @@ const moved = stateOf(['moved']);
  * What an instruction does to ownership: what it moves out of (`operandsOf`), and what it writes
  * owning. A
  * conditional write (`taken`) owns only on the jump to its label, as a context constant found or a
- * mock that holds: going on past it, its register stays empty.
+ * function bound to a slot: going on past it, its register stays empty.
  */
 interface Effect {
   readonly moved: readonly Register[];
@@ -103,7 +103,7 @@ const effects: Handlers<CodeFunction, Instruction, [], Partial<Omit<Effect, 'mov
   call: (_, i) => ({ owned: [i.dst] }),
   currentCall: (_, i) => ({ borrowed: [i.dst] }),
   given: () => ({}),
-  mocked: (_, i) => ({ taken: { owned: [i.dst], to: i.landing } }),
+  rebound: (_, i) => ({ taken: { owned: [i.dst], to: i.landing } }),
   park: (_, i) => ({ owned: [i.dst] }),
   stopped: () => ({}),
   letGo: (_, i) => ({ letGo: i.registers }),

@@ -75,15 +75,15 @@ export function structEntry(lowering: Lowering, instance: FunctionInstance): Cod
 }
 
 /**
- * The entry of `instance`, a host extern: its wrapper, calling the host's native. A test's mock
- * replaces the wrapper, so its replacement takes and gives the extern's own types (§10).
+ * The entry of `instance`, a host extern: its wrapper, calling the host's native. A test rebinds
+ * the wrapper, so the function bound to it takes and gives the extern's own types (§10).
  */
 export function hostExternEntry(lowering: Lowering, instance: FunctionInstance): CodeFunction {
   const { span } = instance.declaration.name;
   const call = hostCallOf(lowering, instance);
   return builtLowering(lowering, instance, call.awaited?.value).lowerBuilt(
     (context, parameters) => writeHostCall(context, call, parameters, span),
-    { mockable: true },
+    { rebindable: true },
   );
 }
 

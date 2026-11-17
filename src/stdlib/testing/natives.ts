@@ -1,5 +1,5 @@
 /**
- * The `testing` module's natives (testing.ista, §10): mocks, waits on and reads of spawned
+ * The `testing` module's natives (testing.ista, §10): function slots, waits on and reads of spawned
  * instances, and host handles, each a thin reading of the runtime's capabilities
  * (runtime/natives.ts), which own what they mean.
  *
@@ -25,7 +25,7 @@ import {
   type WithTesting,
 } from '../../runtime/natives.ts';
 import { futureKey, knownTypeKey } from '../std-module.ts';
-import { arrayOf, given, text } from '../values/arguments.ts';
+import { arrayOf, given, int, text } from '../values/arguments.ts';
 import { declaredResult } from '../values/results.ts';
 
 type Context = NativeContext & WithInstances & WithTesting;
@@ -34,10 +34,12 @@ export const testingNatives = (keys: NativeKeys): Natives<Context> => {
   const ofInstance = (name: string, ...rest: readonly NativeParameter[]) =>
     keys.of(name, knownTypeKey(wellKnown.instance, parameterKey('R')), ...rest);
   return {
-    [keys.of('_mock', parameterKey('F'), parameterKey('F'))]: ([target, replacement], context) =>
-      context.testing.mock(namedFunction(target), given(replacement)),
-    [keys.of('_calls', keys.type('Mock', parameterKey('F')))]: ([mock], context) =>
-      arrayOf(context.testing.calls(given(mock))),
+    [keys.of('_bind', parameterKey('F'), parameterKey('F'))]: ([target, bound], context) =>
+      BigInt(context.testing.bind(namedFunction(target), given(bound))),
+    [keys.of('_unbind', 'Int')]: ([binding], context) => {
+      context.testing.unbind(Number(int(binding)));
+      return null;
+    },
     [keys.of(
       'spawnCrashingEveryAwait',
       functionKey([], futureKey(parameterKey('T'), 'ista'), 'ista'),

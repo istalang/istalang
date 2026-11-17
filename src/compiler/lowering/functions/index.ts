@@ -223,29 +223,29 @@ class FunctionLowering implements EntryContext {
   /** The code entry for a function instance, whose body is `block`. */
   lower(block: Block): CodeFunction {
     const { listed, values } = declareFrame(this, this.#slots());
-    if (this.tables.mocking) {
-      this.#mockable(block.span, values);
+    if (this.tables.rebindable) {
+      this.#rebindable(block.span, values);
     }
     this.#write(block, values);
     return this.#entry(listed);
   }
 
   /**
-   * Hands a call to the mock held for the function, past its prologue, so its replacement takes
-   * every parameter (§10): an async function's replacement gives a future, awaited for the value.
+   * Hands a call to the function bound to the function's slot, past its prologue, so it takes
+   * every parameter (§10): an async function's gives a future, awaited for the value.
    */
-  #mockable(span: AnchoredSpan, passed: readonly Register[]): void {
+  #rebindable(span: AnchoredSpan, passed: readonly Register[]): void {
     const { mode, result } = this.frame;
     if (mode === 'simple') {
       const given = this.tables.types.reference(result);
-      this.code.mocked(span, { passed, given }, (answer) => answer);
+      this.code.rebound(span, { passed, given }, (answer) => answer);
       return;
     }
     const future =
       this.checker.wellKnownType(wellKnown.future, [result, literalType(mode)]) ??
       unreachable('The prelude has futures.');
     const given = this.tables.types.reference(future);
-    this.code.mocked(span, { passed, given }, (answer) =>
+    this.code.rebound(span, { passed, given }, (answer) =>
       awaitFuture(this, { future: answer, type: future, mode }, span),
     );
   }
@@ -256,11 +256,11 @@ class FunctionLowering implements EntryContext {
    */
   lowerBuilt(
     build: (context: FunctionContext, parameters: readonly Register[]) => Register,
-    { mockable }: { readonly mockable: boolean } = { mockable: false },
+    { rebindable }: { readonly rebindable: boolean } = { rebindable: false },
   ): CodeFunction {
     const { listed, values } = declareFrame(this, this.#slots());
-    if (mockable && this.tables.mocking) {
-      this.#mockable(this.frame.function.span, values);
+    if (rebindable && this.tables.rebindable) {
+      this.#rebindable(this.frame.function.span, values);
     }
     const value = build(this, values);
     this.code.return(value, this.frame.function.span);

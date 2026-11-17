@@ -261,11 +261,11 @@ export class CodeWriter {
   }
 
   /**
-   * Where a mock is held for the entry (§10): what its replacement gives for the parameters, of
+   * Where a function is bound to the entry's slot (§10): what it gives for the parameters, of
    * `given`, in a fresh register, which `answered` makes the entry's result, returned through the
    * epilogue; else on to the body.
    */
-  mocked(
+  rebound(
     span: AnchoredSpan,
     { passed, given }: { readonly passed: readonly Register[]; readonly given: TypeReference },
     answered: (dst: Register) => Register,
@@ -273,8 +273,8 @@ export class CodeWriter {
     const dst = this.allocate(given);
     const landing = this.newLabel();
     const body = this.newLabel();
-    const instruction: Extract<WrittenInstruction, { kind: 'mocked' }> = {
-      kind: 'mocked',
+    const instruction: Extract<WrittenInstruction, { kind: 'rebound' }> = {
+      kind: 'rebound',
       span,
       dst,
       arguments: [...passed],

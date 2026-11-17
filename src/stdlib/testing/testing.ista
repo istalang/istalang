@@ -2,11 +2,15 @@
 # the test library over them.
 #
 # Only test modules may import it (§10), so production code can never install a mock. The runtime
-# provides mocks, the inspection of spawned instances and handles through externs; the rest is
-# written here.
+# provides function slots, the inspection of spawned instances and handles through externs; the
+# rest is written here.
 #
-# `mock` and `calls` take a pack (§3.5), one declaration for plain functions and one for async
-# ones. Setups map each of their types (each test's function takes the setups' environments), which
+# A mock binds a replacement recording its calls to its target's slot (run/slots.ts), which the
+# runtime calls in its place, here and in the instances spawned from here, and unbinds it as the
+# mock is let go of. `mock` and `calls` take a pack (§3.5), one declaration for every function, an
+# async one's result being its future. A struct takes no pack, so `Mock<F>` can't name its calls'
+# type: each mock keeps an offer of its calls, untyped, which `calls` meets in the transient of
+# `_metCalls` at its own signature (§3.4), the offer of any other signature meeting none. Setups map each of their types (each test's function takes the setups' environments), which
 # a pack can't say, so `setups` stays one overload per arity, up to six, over one function.
 #
 # `ista test` lists and runs a suite's tests through `_list` and `_run`, the one place a suite's
@@ -21,6 +25,7 @@ import Encodable from 'json'
 import Inbox, Revertible from 'inbox'
 import * as time from 'time'
 import Time, Duration from 'time'
+import Keeps from 'lifetimes'
 
 # Marks a function returning a suite's tests: `@Suite{"purchase approval"}`.
 struct Suite:
@@ -81,20 +86,49 @@ fn _entries(title: String, tests: Array<Test>, skipping: Bool, focusing: Bool) -
   entries
 
 # A mock's handle (§10): while it is held, calls to its target run its replacement, and the
-# arguments of each are recorded. The runtime disposes it.
-extern shared struct Mock<F>
-extern fn dispose<F>(self: Mock<F>)
+# arguments of each are recorded.
+shared struct Mock<F>:
+  _binding: Int
+  _offer: fn() -> Unit
 
-extern fn _mock<F>(target: F, replacement: F) -> Mock<F>
-extern fn _calls<F, A>(self: Mock<F>) -> Array<A>
+# Unbinds the mock's replacement: its target's calls reach the binding before it, or the target.
+fn dispose<F>(self: Mock<F>): _unbind(self->_binding)
+
+# Binds `bound` to the slot of the function `target` names, its calls running `bound` until it is
+# unbound; the binding's id.
+extern fn _bind<F>(target: F, bound: F) -> Int
+extern fn _unbind(binding: Int)
 
 # Holding them calls neither, so code of every mark mocks a function of any (proposal 8, Rule 3).
+# It keeps neither: the run's binding holds the replacement until the mock is let go of. The calls
+# the replacement records are kept apart from both, so they hold what they recorded with no cycle
+# through them, which the analysis of lifetimes can't tell from its body (§7).
+@Keeps{[:]}
 fn mock<...A, R, M in Mark = "simple">(target: Fn<A, R, M>, replacement: Fn<A, R, M>) -> Mock<Fn<A, R, M>>:
-  _mock(target, replacement)
+  const recorded = new Shared<Array<A>>{value: []}
+  M fn answer(...arguments: A) -> R:
+    recorded->value.push(arguments)
+    replacement(...arguments)
+  fn fill(met: Shared<Array<A>?>):
+    met->value = recorded->value
+  fn offer(): _metCalls<A, R, M>(fill)
+  new Mock<Fn<A, R, M>>{_binding: _bind(target, answer), _offer: offer}
 
 # The arguments of every call so far, oldest first, a tuple per call: `(x,)` for a function of one
 # parameter, and `()`, the unit, for one of none.
-fn calls<...A, R, M in Mark = "simple">(self: Mock<Fn<A, R, M>>) -> Array<A>: _calls(self)
+fn calls<...A, R, M in Mark = "simple">(self: Mock<Fn<A, R, M>>) -> Array<A>:
+  let found: Array<A> = []
+  fn met(cell: Shared<Array<A>?>):
+    (self->_offer)()
+    found = cell->value ?? []
+  _metCalls<A, R, M>(met)
+  found
+
+# Where `calls` meets a mock's offer of its calls: the outermost call makes the cell, an offer of the
+# same signature, nested in it, fills it, and one of another signature fills a cell of its own.
+fn _metCalls<...A, R, M in Mark>(within: fn(Shared<Array<A>?>) -> Unit):
+  transient let met = new Shared<Array<A>?>{value: none}
+  within(met)
 
 # Where an instance stands, as its last commit says (§10).
 enum InstanceState:

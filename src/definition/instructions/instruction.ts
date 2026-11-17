@@ -115,7 +115,7 @@ const operandTable: Handlers<undefined, Instruction, [], Partial<Operands>> = {
   }),
   currentCall: (_, i) => ({ written: [i.dst] }),
   given: (_, i) => ({ read: [i.parameter], labels: [i.target] }),
-  mocked: (_, i) => ({ read: i.arguments, written: [i.dst], labels: [i.landing] }),
+  rebound: (_, i) => ({ read: i.arguments, written: [i.dst], labels: [i.landing] }),
   park: (_, i) => ({ written: [i.dst], labels: [i.stop] }),
   stopped: () => ({}),
   letGo: (_, i) => ({ read: i.registers }),

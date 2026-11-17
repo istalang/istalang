@@ -7,7 +7,7 @@
  *   over other std sources (a test laying its own over the shipped ones) never meets another's
  *   entries.
  * - **Per build:** by the options a program's tables are made with that change what lowering
- *   writes, as a test build's does (`DefinitionTables.mocking`).
+ *   writes, as a test build's does (`DefinitionTables.rebindable`).
  */
 
 import { utf8ToBytes } from '@noble/hashes/utils.js';

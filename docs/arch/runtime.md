@@ -1,5 +1,5 @@
 ---
-description: how the run executes compiled code — one Run per instance, the World they meet through, arrivals, segments and commits, seeds, outcome encoders, mocks, snapshots, the host runtime (start, wake, retry, terminate, inspect), holders and disposal; read before changing src/runtime, the snapshot format, or the prelude's futures, resolvers, waits and slots
+description: how the run executes compiled code — one Run per instance, the World they meet through, arrivals, segments and commits, seeds, outcome encoders, function slots (mocks), snapshots, the host runtime (start, wake, retry, terminate, inspect), holders and disposal; read before changing src/runtime, the snapshot format, or the prelude's futures, resolvers, waits and slots
 owner: toolchain
 status: active
 applies_to: src/runtime, src/stdlib/prelude (async section)
@@ -48,8 +48,8 @@ timer's (`time.at`; the timers due at one instant settle as one event, in the or
 (`disposing()`, `Executions.disposingOf`, with its priority resume) or on another instance's end
 (`run/end-watches.ts`). Futures one event settles call what waits on them in its order
 (`run/settling.ts`). The other primitives are park and unpark of an execution, `_later` (enqueue a
-closure call), weak references, cells and stopping a disposed call. The mock registry
-(`run/mocks.ts`) is still the run's; tracker B115 moves mocking into the testing library.
+closure call), weak references, cells, stopping a disposed call and, in a test build, function
+slots, which the testing library makes its mocks of.
 Everything above them is Istalang in the prelude:
 
 - **Futures** are run objects carrying what waits on them as the prelude keeps it, a `_Waiters`
@@ -178,19 +178,22 @@ it as a native, with exactly the summary its extern predecessor had (spec §3.16
   await that would commit it, named by the call that parked last.
 - Extern constants are read once per instance and kept as its context constants (spec §3.6).
 
-## Mocks (`run/mocks.ts`, `run/mock-answers.ts`)
+## Function slots (`run/slots.ts`, `run/remote-calls.ts`)
 
-In a Definition built to run tests (spec §10):
+In a Definition built to run tests (spec §10), the run's one mocking primitive: a function value
+bound to a function-table entry's slot runs in place of the entry's calls. The testing library
+makes its mocks of it (testing.ista): `mock` binds a replacement recording its calls, a `Mock`'s
+`dispose` unbinds it, and `calls()` reads what it recorded, all Istalang.
 
-- A mock is a run object (`MockObject`: target entry, replacement, the calls it took) its instance
-  holds while anything holds its handle (`Mocking.held`, `run/mocking.ts`); the newest held for a target wins, and letting
-  one go brings back the one before.
-- A call reaches the mock its instance holds, else the nearest one an instance it was spawned from
-  holds (`World.heldMock`). A code entry asks at its `mocked` instruction, past its prologue, with
+- An instance's bindings (`Slots`) stack per entry: the newest wins, and unbinding one, in any
+  order, brings back the one before. The snapshot keeps them (`bindings`), each function held by
+  its binding.
+- A call reaches the binding its instance holds, else the nearest one an instance it was spawned
+  from holds (`World.runOf`). A code entry asks at its `rebound` instruction, past its prologue, with
   every parameter's value; a native is asked as its extern is called. The function an invocation
-  starts with is never mocked; a widened one is the function its `wrapping` entry wraps.
-- The holder records the call and runs the replacement, as a call of its own when it holds the mock
-  for another instance (`Executions.asCall`). A host value crosses as its host's JSON and arrives as the
+  starts with is never rebound; a widened one is the function its `wrapping` entry wraps.
+- The holder runs the bound function, as a call of its own when another instance asks
+  (`calledIn`, `Executions.asCall`). A host value crosses as its host's JSON and arrives as the
   caller's resource, which the caller alone disposes; other values pass as they are within one
   instance, and only sendable ones cross between two, copied. An async replacement's future is
   followed by one of the caller's, which the holder lets go of once it settles or once the caller

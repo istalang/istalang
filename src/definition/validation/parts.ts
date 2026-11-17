@@ -80,7 +80,7 @@ const partSteps: Handlers<PartScope, Instruction, [], Reached | undefined> = {
   call: noPart,
   currentCall: noPart,
   given: noPart,
-  mocked: noPart,
+  rebound: noPart,
   park: noPart,
   stopped: noPart,
   letGo: noPart,

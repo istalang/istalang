@@ -29,7 +29,6 @@ import { hearsNothing, type Invocation } from '../run/invocations.ts';
 import { Cell } from '../run/objects/cell.ts';
 import { Execution, type Frame } from '../run/objects/execution.ts';
 import { Future, waitingValues } from '../run/objects/future.ts';
-import { MockObject } from '../run/objects/mock-object.ts';
 import { Reference, type Step } from '../run/objects/reference.ts';
 import { Resource } from '../run/objects/resource.ts';
 import type { RunObject } from '../run/objects/run-object.ts';
@@ -82,6 +81,11 @@ export function restore(
       future: object(future) as Future,
       ...watched,
     })),
+    bindings: snapshot.bindings.map(({ bound, ...binding }) => {
+      const function_ = restored(bound);
+      lifetimes.adoptRestored(function_);
+      return { ...binding, bound: function_ };
+    }),
     ready: snapshot.ready.map((ready) => {
       if ('execution' in ready) {
         return {
@@ -161,9 +165,6 @@ const makers: Handlers<
   resource: ({ objects }, persisted) => {
     objects.set(persisted.id, new Resource(persisted.id, persisted.type, persisted.payload));
   },
-  mock: ({ objects }, persisted) => {
-    objects.set(persisted.id, new MockObject(persisted.id, persisted.target, null));
-  },
 };
 
 interface Reading {
@@ -231,18 +232,6 @@ const fillers: Handlers<Filling, PersistedObject, [], void> = {
   },
   resource: ({ run, object }, persisted) => {
     run.resources.restored(object(persisted.id) as Resource);
-  },
-  mock: ({ run, object, restored, holds }, persisted) => {
-    const mock = object(persisted.id) as MockObject;
-    mock.replacement = restored(persisted.replacement);
-    mock.calls.push(...persisted.calls.map(restored));
-    for (const held of [mock.replacement, ...mock.calls]) {
-      holds(held);
-    }
-    // A disposed mock replaces nothing any more (§10).
-    if (!mock.disposed) {
-      run.mocking.held.hold(mock);
-    }
   },
 };
 

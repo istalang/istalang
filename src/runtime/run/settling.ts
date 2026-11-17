@@ -3,8 +3,8 @@
  * `waiting`, as the prelude keeps it) at once, future by future in the event's order: a future
  * widened follows its call's from the prelude (`_converted`), settling within that call's event.
  * Then the run's own listeners hear each value, such as a call into a context waiting on its
- * invocation's future; what they settle meanwhile settles together after them, as a mock's answer
- * does (mock-answers.ts).
+ * invocation's future; what they settle meanwhile settles together after them, as the answer of a
+ * function another instance holds does (remote-calls.ts).
  */
 
 import type { Value } from '../../definition/values/values.ts';

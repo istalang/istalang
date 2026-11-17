@@ -26,9 +26,9 @@ import { rootInstance } from './tables/instances.ts';
 import { type StdLowering, stdLoweringOf } from './tables/std-lowering.ts';
 import { DefinitionTables } from './tables/tables.ts';
 
-/** How a build lowers: a test build's functions may be replaced by mocks (§10). */
+/** How a build lowers: a test build's functions' slots may be rebound (§10). */
 interface Build {
-  readonly mocking: boolean;
+  readonly rebindable: boolean;
 }
 
 /** The tables of a `build` of `checker`'s program, taking over the entries `std` kept for it. */
@@ -45,7 +45,7 @@ function tablesOf(
  * started through its start entry, as a host starts any of the others.
  */
 export function lower(checker: Checker, main: FunctionDeclaration, std?: StdLowering): Definition {
-  const tables = tablesOf(checker, { mocking: false }, std);
+  const tables = tablesOf(checker, { rebindable: false }, std);
   const started = startableOf(checker, main);
   if (started === undefined) {
     unreachable("'main' can't be started; the checker should have said why.");
@@ -78,7 +78,7 @@ export function lowerTests(
   suites: readonly Suite[],
   std?: StdLowering,
 ): Definition {
-  const tables = tablesOf(checker, { mocking: true }, std);
+  const tables = tablesOf(checker, { rebindable: true }, std);
   const indexOf = (declaration: FunctionDeclaration) =>
     tables.index({ kind: 'instance', instance: rootInstance(checker, declaration) });
   const runner = (name: string) =>

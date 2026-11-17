@@ -33,7 +33,7 @@ tags: [reuse, stdlib, natives, ranges, positions, time, decimal]
 - wrap a disposable host resource as a `Revertible<T>` in `.ista` → `Revertible.holding` (`src/stdlib/inbox/inbox.ista`)
 - declare `.ista` test suites, cases, groups or setups → `@Suite`, `test`, `group`, `skip`, `only`, `setups` (`src/stdlib/testing/testing.ista`)
 - assert conditions, equality or panics in `.ista` tests → `assert`, `assertEq`, `expectPanic` (`src/stdlib/testing/testing.ista`)
-- mock functions or inspect spawned instances in `.ista` tests → `mock`, `calls`, `handle`, `spawnCrashingEveryAwait` (`src/stdlib/testing/testing.ista`)
+- mock functions or inspect spawned instances in `.ista` tests → `mock`, `calls`, `handle`, `spawnCrashingEveryAwait` (`src/stdlib/testing/testing.ista`); a value typed by a generic function's signature handed through untyped code, recovered without a cast → a per-signature transient the offer enters nested (`_metCalls`, `src/stdlib/testing/testing.ista`)
 - use deterministic fake clocks or fake queues in `.ista` tests → `withClock`, `FakeClock`, `FakeQueue` (`src/stdlib/testing/testing.ista`)
 
 ## One-way rules

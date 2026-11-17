@@ -78,11 +78,11 @@ export function bindNatives(run: Run, binding: RunSeams): (index: number) => Ent
     const references = entry.parameters.flatMap((parameter, at) =>
       parameter.type.kind === 'reference' ? [at] : [],
     );
-    const mocking = run.definition.purpose.kind === 'tests';
+    const rebindable = run.definition.purpose.kind === 'tests';
     return ((...given: Value[]) => {
-      if (mocking && !run.mocking.startsHere(index)) {
-        const answer = run.mocking.mocked(index, given);
-        if (answer !== run.signals.notMocked) {
+      if (rebindable && !run.slots.startsHere(index)) {
+        const answer = run.slots.rebound(index, given);
+        if (answer !== run.signals.notRebound) {
           return answer;
         }
       }

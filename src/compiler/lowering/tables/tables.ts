@@ -83,8 +83,8 @@ export class DefinitionTables {
   /** Entries taken over from programs over the same std, and offered to them (std-reuse.ts). */
   readonly #std: StdReuse;
 
-  /** Whether the Definition runs tests, whose functions a mock may replace (§10). */
-  readonly mocking: boolean;
+  /** Whether the Definition runs tests, whose functions' slots may be rebound (§10). */
+  readonly rebindable: boolean;
 
   /**
    * Tables for `checker`'s program, telling entries apart by the kind table's `identities`, taking
@@ -93,17 +93,17 @@ export class DefinitionTables {
   constructor(
     checker: Checker,
     {
-      mocking,
+      rebindable,
       identities,
       kept,
     }: {
-      readonly mocking: boolean;
+      readonly rebindable: boolean;
       readonly identities: EntryIdentities;
       readonly kept: KeptEntries;
     },
   ) {
     this.#checker = checker;
-    this.mocking = mocking;
+    this.rebindable = rebindable;
     this.#identities = identities;
     this.#keys = entryKeysOf(checker);
     const requests = this.#requests;

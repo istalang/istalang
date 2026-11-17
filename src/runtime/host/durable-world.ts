@@ -27,7 +27,6 @@ import {
   type InvocationEnd,
   instanceEnding,
 } from '../run/instances.ts';
-import { type HeldMock, heldAbove } from '../run/mock-answers.ts';
 import type { RunSeams } from '../run/natives.ts';
 import type { Future } from '../run/objects/future.ts';
 import { Run } from '../run/run.ts';
@@ -165,8 +164,7 @@ export class DurableWorld implements World {
     context.feed(invoking(sent, answered), this.binding.clock.now(), replay);
   }
 
-  readonly heldMock = (caller: Run, index: number): HeldMock | undefined =>
-    heldAbove(caller, index, (name) => this.residents.get(name)?.run);
+  readonly runOf = (name: string): Run | undefined => this.residents.get(name)?.run;
 
   readonly watchEnd = (watcher: Run, name: string, future: Future): void => {
     const watched = this.residents.get(name) ?? this.load(name);

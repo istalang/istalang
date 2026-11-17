@@ -18,7 +18,6 @@ import type { Instance } from '../run/instances.ts';
 import { Cell } from '../run/objects/cell.ts';
 import { Execution } from '../run/objects/execution.ts';
 import { Future } from '../run/objects/future.ts';
-import { MockObject } from '../run/objects/mock-object.ts';
 import { Reference } from '../run/objects/reference.ts';
 import { Resource } from '../run/objects/resource.ts';
 import { RunObject } from '../run/objects/run-object.ts';
@@ -91,6 +90,10 @@ export function snapshotOf(run: Run, written: Written): Snapshot {
     contextConstants: instance.contextConstants
       .entries()
       .map(([name, value]) => [name, persisted(value)] as [string, Value]),
+    bindings: state.bindings.map(({ bound, ...binding }) => ({
+      ...binding,
+      bound: persisted(bound),
+    })),
   };
   for (let object = pending.pop(); object !== undefined; object = pending.pop()) {
     objects.set(object.object, objectOf(object, { named, persisted }));
@@ -158,15 +161,6 @@ function fieldsOf(object: RunObject, { named, persisted }: Naming): PersistedObj
       id,
       type: object.type,
       payload: object.payload as never,
-    };
-  }
-  if (object instanceof MockObject) {
-    return {
-      kind: 'mock',
-      id,
-      target: object.target,
-      replacement: persisted(object.replacement),
-      calls: object.calls.map(persisted),
     };
   }
   throw new Error(`A run object of no kind a snapshot knows, ${id}, is written.`);

@@ -222,5 +222,6 @@ function emptySnapshot({ name, lineage, seed }: Resident): Snapshot {
     ready: [],
     invocations: [],
     contextConstants: [],
+    bindings: [],
   };
 }

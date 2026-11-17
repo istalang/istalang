@@ -10,7 +10,6 @@
  *   it and of its value.
  * - A **resource** is forgotten, and released: by the runtime, where its
  *   disposal is the runtime's own, else by its host through its type's `dispose` (§7, §9).
- * - A **mock** no call reaches any more lets go of its replacement and the calls it recorded (§10).
  * - Its weak reference is cleared first, and its `disposed()` settles once it is gone.
  * - A declared `dispose` that panics stops the other disposals, but while disposing past panics, as
  *   terminating an instance does (§3.12): then its panic is passed over and what it held let go.
@@ -19,11 +18,9 @@
 import type { Value } from '../../definition/values/values.ts';
 import { panicOf } from '../natives.ts';
 import type { Disposer } from './lifetimes.ts';
-import type { Mocks } from './mocks.ts';
 import { Cell } from './objects/cell.ts';
 import type { Execution } from './objects/execution.ts';
 import { Future, waitingValues } from './objects/future.ts';
-import { MockObject } from './objects/mock-object.ts';
 import { Resource } from './objects/resource.ts';
 import type { RunObject } from './objects/run-object.ts';
 import type { Resources } from './resources.ts';
@@ -33,7 +30,6 @@ import type { WeakReferences } from './weak-references.ts';
 export interface DisposalSeams {
   readonly weakReferences: WeakReferences;
   readonly resources: Resources;
-  readonly mocks: Mocks;
   /** The entry of the `dispose` of extern type entry `type`, if it declares one. */
   readonly disposeOf: (type: number) => number | undefined;
   /**
@@ -79,10 +75,6 @@ function releasedBy(object: RunObject, seams: DisposalSeams): readonly Value[] {
     if (dispose !== undefined) {
       runDispose(seams, dispose, object as unknown as Value);
     }
-  }
-  if (object instanceof MockObject) {
-    seams.mocks.release(object);
-    return [object.replacement, ...object.calls];
   }
   return [];
 }

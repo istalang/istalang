@@ -69,9 +69,10 @@ refused at load, never midway through an instance. It refuses:
   the frame holds and ends with `stopped`. Lowering emits `_parking(wait)` before it and the cases'
   landings after it (docs/arch/runtime.md, waits).
 - `currentCall`, `given`, `transient`, `contextConstant`/`makeContextConstant` and, in test builds,
-  `mocked` are the other control instructions a frame needs. `mocked {dst, arguments, landing}`
-  stands past the prologue: where a mock answers the call with `arguments`, every parameter's value,
-  its answer lands in `dst` and the entry returns it from `landing` (docs/arch/runtime.md, mocks).
+  `rebound` are the other control instructions a frame needs. `rebound {dst, arguments, landing}`
+  stands past the prologue: where a function bound to the entry's slot answers the call with
+  `arguments`, every parameter's value, its answer lands in `dst` and the entry returns it from
+  `landing` (docs/arch/runtime.md, function slots).
 
 ## Holders
 

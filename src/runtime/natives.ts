@@ -43,7 +43,7 @@ export interface NativeContext {
   readonly name: string;
   /**
    * The type entry the extern's declared result names (a struct, an enum, `Shared` or `Future`);
-   * undefined for any other result, and for a code entry a mock replaced.
+   * undefined for any other result, and for a code entry a function bound in its slot replaced.
    */
   readonly resultType: TypeId | undefined;
   /**
@@ -192,16 +192,16 @@ export interface NativeContexts {
 }
 
 /**
- * What a test reaches through the `testing` module (§10): mocks, which its calls and those of the
- * instances it spawns reach, waits on those instances, and host values equal to no other. A read
- * of another instance's last commit that only the runtime running a test can answer
- * (runtime/testing/) panics anywhere else.
+ * What a test reaches through the `testing` module (§10): the run's function slots, which the
+ * testing library makes its mocks of, waits on the instances a test spawns, and host values equal
+ * to no other. A read of another instance's last commit that only the runtime running a test can
+ * answer (runtime/testing/) panics anywhere else.
  */
 interface NativeTesting {
-  /** A mock replacing `target` with `replacement` while it is held; its handle. */
-  readonly mock: (target: FunctionId, replacement: Value) => Value;
-  /** The calls the mock `mock` names recorded, oldest first. */
-  readonly calls: (mock: Value) => readonly Value[];
+  /** Binds `bound` to entry `target`, whose calls run it until unbound (run/slots.ts); its id. */
+  readonly bind: (target: FunctionId, bound: Value) => number;
+  /** Unbinds the binding `binding`. */
+  readonly unbind: (binding: number) => void;
   /** Where `instance` stands and waits, as its last commit says; undefined before its first. */
   readonly inspect: (instance: string) => Inspection | undefined;
   /** A future that resolves once `instance` is idle, or waits at a waypoint. */
