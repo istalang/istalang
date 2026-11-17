@@ -160,7 +160,7 @@ function callExpression(scope: EntryScope, index: number, passed: string): strin
 
 const emitters: Handlers<EntryScope, Instruction, [], string> = {
   constant: (scope, i) => assigned(i.dst, constantExpression(scope, i.constant), ''),
-  move: (_, i) => `${register(i.dst)} = ${register(i.src)}; ${register(i.src)} = undefined;`,
+  move: (scope, i) => assigned(i.dst, register(i.src), movedOut(scope, i)),
   copy: (scope, i) => assigned(i.dst, register(i.src), held(scope, i.dst)),
   tuple: (scope, i) =>
     assigned(
