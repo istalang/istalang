@@ -96,6 +96,10 @@ target. Migrating that shape costs more than writing the right one.
    - weak references and cells;
    - stopping a suspended call, and the `disposing()` priority resume.
 
+   For now the run also keeps in TS settle order, timer grouping, the `disposed()`/`disposing()`
+   and end watches, and resolver pruning. Moving them to Istalang waits on measuring what it
+   costs (tracker Q59), after the merge.
+
    Object ids come from the instance's serial from the first slice on. Heap kinds: cell, resource, weakRef, execution, contextConstant.
 7. **Protocols are lowered:**
    - a start wrapper awaits the root and encodes its outcome;
