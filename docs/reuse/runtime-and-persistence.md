@@ -49,6 +49,6 @@ How the run works: docs/arch/runtime.md.
 - Nothing outside `src/definition/definition.ts` encodes, decodes or embeds a Definition; only `src/definition/formats/avro/` imports avsc, through its types-only entry, and only its `avsc-buffers.ts` touches a Buffer (Node's `buffer` module, as avsc does). What a browser bundle of `istalang/live` needs of Node is pinned by `src/live/browser-bundle.test.ts`: `buffer` and `util`, avsc's.
 - Snapshots store only what can't be derived: never holders or counts; `restore` counts them again from what holds them.
 - Runs meet only through the `World`; what crosses is copied, and an answer arrives in its run as a turn of its own (`Arrivals.arrive`), naming the object it acts on rather than capturing the run.
-- Whatever is random in an instance draws from its own seed (`Run.draw`), kept in its snapshot, so a segment run again draws alike.
+- Whatever is random in an instance draws from its own seed (`Run.draw`), kept in its snapshot, so a segment run again draws alike; a seed a host's instance starts with derives from the host's by what the instance is → `instanceSeed`, `SeededInstance` (`src/runtime/random-draws.ts`), a live run's by its start → `LiveRuns` (`src/runtime/host/live-runs.ts`).
 - An instance's effects on others (answers, spawns, ends, log records) leave it only at its commit.
 - Natives speak primitives: an optional, a `Result` or an enum is built by the std's Istalang wrapping the native, never by the native.

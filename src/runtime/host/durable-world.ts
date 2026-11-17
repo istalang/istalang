@@ -87,7 +87,7 @@ export class DurableWorld implements World {
   ): Run {
     const { clock, seed } = this.binding;
     const instance = new Instance(name, false);
-    const run = this.#run(program, { instance, clock, seed: instanceSeed(seed, name), log });
+    const run = this.#run(program, { instance, clock, seed: this.#live.nextSeed(seed, name), log });
     this.#live.began(run, { program, options });
     return run;
   }
@@ -149,7 +149,7 @@ export class DurableWorld implements World {
       this.#made({
         name: key,
         program,
-        seed: instanceSeed(this.binding.seed, key),
+        seed: instanceSeed(this.binding.seed, { kind: 'context', key }),
         crashEveryAwait: options.crashEveryAwait ?? false,
       });
     const sent = { ...into, closure: copied(into.closure), passed: into.passed.map(copied) };
