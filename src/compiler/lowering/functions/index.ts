@@ -19,9 +19,6 @@
  *   or variant's fields are parameters of a function of their own
  *   (syntax/declarations/field-defaults.ts), whose entry, with no body, builds the value from them
  *   (`lowerBuilt`, built-entries.ts), as an extern's computing its defaults calls the extern.
- * - A start entry (synthesized/boundary/starts.ts) is a function's own body compiled once more with
- *   its arguments arriving as `Json`, each decoded into its parameter, so a host-started instance
- *   runs as one execution of the function.
  * - Which body an entry reads, and its frame, are frames.ts's; an entry is lowered only through
  *   `instanceLowering` and `nestedLowering`, which put the two together.
  */
@@ -62,7 +59,7 @@ import {
   type NestedInstance,
   ownerDeclaration,
 } from '../tables/instances.ts';
-import type { DefinitionTables, EntryHeader } from '../tables/tables.ts';
+import type { DefinitionTables } from '../tables/tables.ts';
 import { CodeWriter } from './code-writer.ts';
 import { fittedValue } from './fits/index.ts';
 import {
@@ -90,12 +87,11 @@ import {
 export function instanceLowering(
   lowering: Lowering,
   instance: FunctionInstance,
-  startHeader?: EntryHeader,
 ): FunctionLowering | undefined {
   const lowered = loweredInstance(lowering, instance);
   return lowered === undefined
     ? undefined
-    : new FunctionLowering(lowered, instanceFrame(lowered, instance, startHeader));
+    : new FunctionLowering(lowered, instanceFrame(lowered, instance));
 }
 
 /**
@@ -128,13 +124,9 @@ export function accessorLowering(
 }
 
 /** The lowering of a nested function's entry, read through its owner's body (§3.14). */
-export function nestedLowering(
-  lowering: Lowering,
-  nested: NestedInstance,
-  startHeader?: EntryHeader,
-): FunctionLowering {
+export function nestedLowering(lowering: Lowering, nested: NestedInstance): FunctionLowering {
   const lowered = loweredNested(lowering, nested.owner);
-  return new FunctionLowering(lowered, nestedFrame(lowered, nested, startHeader));
+  return new FunctionLowering(lowered, nestedFrame(lowered, nested));
 }
 
 class FunctionLowering implements EntryContext {

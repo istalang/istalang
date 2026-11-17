@@ -11,8 +11,6 @@
  *   extern called with defaults left out, has an entry built from its parameters once its prologue
  *   has computed them (built-entries.ts): giving what its function gives, a host extern's wrapper
  *   awaiting it first when its host fills a future.
- * - A start entry is one of these, entered by the host's name for it
- *   (synthesized/boundary/starts.ts), which its frame's header says from the start.
  */
 
 import type { CodeMode } from '../../../definition/tables/functions.ts';
@@ -153,15 +151,11 @@ function defaultsBodyOf(checker: Checker, instance: FunctionInstance): CheckedBo
 }
 
 /** The frame of a top-level function's instance, whose body `lowered` reads: every parameter. */
-export function instanceFrame(
-  lowered: LoweredFunction,
-  instance: FunctionInstance,
-  startHeader?: EntryHeader,
-): Frame {
+export function instanceFrame(lowered: LoweredFunction, instance: FunctionInstance): Frame {
   const { checker, tables, body } = lowered;
   const { declaration } = instance;
   return {
-    header: startHeader ?? tables.entryHeader(instance),
+    header: tables.entryHeader(instance),
     mode: codeModeOf(awaits(declaration.qualifiers), instanceKind(checker, instance)),
     parameters: checker.parametersOf(declaration),
     captures: [],
@@ -212,11 +206,7 @@ export function accessorFrame(
 }
 
 /** The frame of a nested function, as `lowered`'s body, its owner's, checked it. */
-export function nestedFrame(
-  lowered: LoweredFunction,
-  nested: NestedInstance,
-  startHeader?: EntryHeader,
-): Frame {
+export function nestedFrame(lowered: LoweredFunction, nested: NestedInstance): Frame {
   const { node } = nested;
   const checked = lowered.body.functionOf(node);
   if (checked === undefined) {
@@ -224,7 +214,7 @@ export function nestedFrame(
   }
   const { result, parameters, captures, type } = checked;
   return {
-    header: startHeader ?? lowered.tables.nestedHeader(nested),
+    header: lowered.tables.nestedHeader(nested),
     mode: codeModeOf(awaits(node.qualifiers), type.mark),
     parameters,
     captures,
