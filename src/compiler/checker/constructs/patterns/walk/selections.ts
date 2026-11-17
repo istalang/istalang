@@ -150,7 +150,7 @@ function literalThroughAny(
 ): Selection | undefined {
   const literal = literalTypeOf(node.value);
   const [member] =
-    literal === undefined ? [] : literalMembers([part.type], literal, context.checker.typeRules);
+    literal === undefined ? [] : literalMembers([part.type], literal, context.checker);
   return member === undefined
     ? undefined
     : {

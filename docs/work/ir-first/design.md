@@ -132,6 +132,9 @@ target. Migrating that shape costs more than writing the right one.
 - **Widened async calls (§3.14):** a widened call's future follows the call's own and settles with
   its value converted, so the call is the function's own call and the future it gives is unchanged.
 - **Context keys (§9):** a key holds no `/`, the separator of spawned instances' names.
+- **Type tests through `any` (§3.10, §3.11):** a type test sees variance wherever the `any` type
+  stands, a union's member too, by one rule (`TraitObjects.mayHold`); absorption, the union's normal
+  form, still meets exactly.
 
 ## Invariants
 

@@ -304,10 +304,16 @@ export interface TraitObjects {
     constraint: Constraint,
   ) => readonly ResolvedCall[] | undefined;
   /**
-   * Whether a value of `type` may be inside `target`: it converts into it, or meets its traits at
-   * instantiations none closer, as a value another `any` type took may.
+   * Whether a value of `type` may be inside `target`, which every type test through an `any` type
+   * asks, alone or as a union's member: it converts into it, through variance too, or meets its
+   * traits at instantiations none closer, as a value another `any` type took may.
    */
   readonly mayHold: (type: Type, target: AnyType) => boolean;
+  /**
+   * The `any` member of `members` a value of `type` is inside: the one that took it whole (§2),
+   * where its values land, else the first that may hold it (`mayHold`).
+   */
+  readonly holdingMember: (members: readonly Type[], type: Type) => AnyType | undefined;
 }
 
 /** What a call or read through an `any` type is made at (`called`), and what it reaches (`met`). */

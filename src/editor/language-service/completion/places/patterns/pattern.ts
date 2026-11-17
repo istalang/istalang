@@ -100,9 +100,7 @@ function patternStarts(
       ),
   );
   const words = Object.entries(startWordLiterals).flatMap(([name, literal]) =>
-    !known ||
-    literal === undefined ||
-    literalMembers(members, literal, checker.typeRules).length > 0
+    !known || literal === undefined || literalMembers(members, literal, checker).length > 0
       ? [name]
       : [],
   );

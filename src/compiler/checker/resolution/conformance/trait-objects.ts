@@ -15,6 +15,10 @@
  * decided by meeting exactly: types are normalized while they are resolved, and a trait's variance
  * is derived from the types it resolves. A member meeting it only through variance stays beside it,
  * and a value of it goes in as its own type.
+ *
+ * A type test through an `any` type, alone or as a union's member, asks one rule, `mayHold`, which
+ * sees variance: a value converted into an `any` type through variance is found by its own type
+ * wherever that `any` type stands.
  */
 
 import { unreachable } from '../../../../foundation/structures/unreachable.ts';
@@ -37,6 +41,7 @@ import {
 } from '../../types/traits/constraints.ts';
 import type { AnyType, Constraint, FunctionType, Type } from '../../types/type/index.ts';
 import { constraintText, typeText } from '../../types/type/type-text.ts';
+import { absorbingMember, baseOf } from '../../types/unions/union-members.ts';
 import { meets, witnessesFor } from './conformance.ts';
 import { memberConstraint } from './met-instantiations/index.ts';
 
@@ -130,13 +135,27 @@ export function traitObjectsOf(checker: CheckerContext): TraitObjects {
       converting(memberConstraints(checker, { type, constraint, member }), (each) =>
         requiredFieldType(checker, each, field, member),
       ),
-    mayHold: (type, target) =>
-      meetsEach(
-        checker,
-        { found: type, target },
-        (found, constraint) => checker.fitting.metInstantiation(found, constraint).kind !== 'none',
+    mayHold: (type, target) => mayHold(checker, type, target),
+    holdingMember: (members, type) =>
+      absorbingMember(members, type, checker.typeRules) ??
+      members.find(
+        (member): member is AnyType => member.kind === 'any' && mayHold(checker, type, member),
       ),
   };
+}
+
+/**
+ * Whether a value of `type` may be inside `target` (`TraitObjects.mayHold`): a literal's as its
+ * base's; never an `any` type's, which converts into another entry by entry.
+ */
+function mayHold(checker: CheckerContext, type: Type, target: AnyType): boolean {
+  const holds = (found: Type) =>
+    meetsEach(
+      checker,
+      { found, target },
+      (each, constraint) => checker.fitting.metInstantiation(each, constraint).kind !== 'none',
+    );
+  return type.kind !== 'any' && (holds(type) || holds(baseOf(type)));
 }
 
 /**

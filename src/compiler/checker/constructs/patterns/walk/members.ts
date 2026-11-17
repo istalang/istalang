@@ -301,7 +301,7 @@ function literalSelected(
   value: Expression,
 ): readonly Type[] {
   const type = literalTypeOf(value);
-  return type === undefined ? [] : literalMembers(members, type, context.checker.typeRules);
+  return type === undefined ? [] : literalMembers(members, type, context.checker);
 }
 
 /**

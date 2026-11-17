@@ -30,9 +30,8 @@ import { sameType } from '../identity/identity.ts';
 import { unfolded, unfoldRecursive } from '../type/computed-types.ts';
 import type { AnyType, NominalDeclaration, Type } from '../type/index.ts';
 import { isPrimitive, tupleElements } from '../type/primitives.ts';
-import type { TypeRules } from '../type/type-rules.ts';
 import { arrayElement } from '../type/well-known.ts';
-import { absorbingMember, baseOf } from '../unions/union-members.ts';
+import { baseOf } from '../unions/union-members.ts';
 import { hasMember } from '../unions/unions.ts';
 import { type Aliases, entityType } from './named-types.ts';
 
@@ -125,7 +124,10 @@ export function namesOwnType(checker: Aliases, entity: Entity, type: Type): bool
 }
 
 /** What a pattern naming a type selects of a union's members reads of the program. */
-type MemberNaming = Pick<Checker, 'aliasedType' | 'typeRules' | 'variantsOf' | 'wellKnownEntity'>;
+type MemberNaming = Pick<
+  Checker,
+  'aliasedType' | 'traitObjects' | 'typeRules' | 'variantsOf' | 'wellKnownEntity'
+>;
 
 /**
  * The members of a union a pattern naming `entity` selects (§3.11): the enums declaring a variant
@@ -167,7 +169,11 @@ export function variantOwners(
   );
 }
 
-function typeMembers(checker: Aliases, entity: Entity, members: readonly Type[]): readonly Type[] {
+function typeMembers(
+  checker: MemberNaming,
+  entity: Entity,
+  members: readonly Type[],
+): readonly Type[] {
   const named = patternTypeOf(checker, entity);
   switch (named.kind) {
     case 'type':
@@ -185,7 +191,7 @@ function typeMembers(checker: Aliases, entity: Entity, members: readonly Type[])
  * base, else `type` itself where an `any` member took it whole.
  */
 export function membersOfType(
-  checker: Pick<Checker, 'typeRules'>,
+  checker: Pick<Checker, 'traitObjects'>,
   type: Type,
   members: readonly Type[],
 ): readonly Type[] {
@@ -204,7 +210,7 @@ export function membersOfType(
   if (literals.length > 0) {
     return literals;
   }
-  return takenWhole(members, type, checker.typeRules) ? [type] : [];
+  return takenWhole(members, type, checker) ? [type] : [];
 }
 
 /**
@@ -289,7 +295,7 @@ function instanceOf(type: Type, declaration: GenericDeclaration): readonly Type[
 export function literalMembers(
   members: readonly Type[],
   literal: Type,
-  rules: TypeRules,
+  checker: Pick<Checker, 'traitObjects'>,
 ): readonly Type[] {
   const own = members.find((member) => sameType(member, literal));
   if (own !== undefined) {
@@ -297,12 +303,19 @@ export function literalMembers(
   }
   const base = baseOf(literal);
   const based = members.filter((member) => sameType(member, base));
-  return based.length === 0 && takenWhole(members, literal, rules) ? [literal] : based;
+  return based.length === 0 && takenWhole(members, literal, checker) ? [literal] : based;
 }
 
-/** Whether an `any` member among `members` took `type` whole (§2), so a value of it sits inside. */
-function takenWhole(members: readonly Type[], type: Type, rules: TypeRules): boolean {
-  return absorbingMember(members, type, rules) !== undefined;
+/**
+ * Whether an `any` member among `members` may hold a value of `type`, one that took it whole (§2)
+ * or one it converted into, so a test of it looks inside.
+ */
+function takenWhole(
+  members: readonly Type[],
+  type: Type,
+  checker: Pick<Checker, 'traitObjects'>,
+): boolean {
+  return checker.traitObjects.holdingMember(members, type) !== undefined;
 }
 
 /**

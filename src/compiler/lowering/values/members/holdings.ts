@@ -4,12 +4,11 @@
  * tests.ts) derives it here, so a layout an instantiation changed is never patched afterwards.
  *
  * - A union's value is the variant of its enum holding a member (tables/type-table.ts): the
- *   member's own, its literal's base, whose value a literal is, or the `any` member that took it
- *   whole.
+ *   member's own, its literal's base, whose value a literal is, or the `any` member it is inside.
  * - An `any` type's value is the variant of its enum holding a concrete type's value, its base's
- *   for a literal: any type the checker let convert into it (§3.10), through variance too. Only a
- *   union's layout asks which `any` member took a member whole (§2: `T | any Stringable` with
- *   `T = Int`), its value sitting in the union's variant of that `any` member.
+ *   for a literal. Whether an `any` type, alone or a union's member, holds a type is the checker's
+ *   one rule (`TraitObjects.mayHold`, variance included, §3.10), which a type test asks too, so a
+ *   test never names a variant for a type the `any` type can't hold: it jumps past it.
  * - A member's variant holds its value as its one field; a member with one value, a literal or
  *   `none`, holds nothing there.
  * - A recursive type is laid out as what it unfolds to (§3.17), one type, and a recursive union in
@@ -22,7 +21,7 @@ import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import { sameType } from '../../../checker/types/identity/identity.ts';
 import { unfoldRecursive } from '../../../checker/types/type/computed-types.ts';
 import type { AnyType, Type, UnionType } from '../../../checker/types/type/index.ts';
-import { absorbingMember, baseOf } from '../../../checker/types/unions/union-members.ts';
+import { baseOf } from '../../../checker/types/unions/union-members.ts';
 import { hasMember, hasOneValue } from '../../../checker/types/unions/unions.ts';
 import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import type { CodeContext, TypedValue } from '../../context.ts';
@@ -31,9 +30,9 @@ import { variantAt } from '../variant-values.ts';
 
 /**
  * Where a value sits in a value of a holder, both as an instantiation made them (§2, §3.5): the
- * holder itself, of the value's type or its literal's base; inside the `any` holder it converted
- * into; in the variant of the holder `union`'s member `variant`, its own or its literal's base; or
- * inside the `any` member `variant` of `union` that took it whole.
+ * holder itself, of the value's type or its literal's base; inside the `any` holder that may hold
+ * it; in the variant of the holder `union`'s member `variant`, its own or its literal's base; or
+ * inside the `any` member `variant` of `union` that may hold it.
  */
 export type Holding =
   | { readonly kind: 'itself' }
@@ -48,13 +47,13 @@ export function laidOutAs(type: Type): Type {
 
 /** Where `holder` holds a value of `member` (`Holding`); undefined when it holds none. */
 export function holdingOf(context: CodeContext, given: Type, member: Type): Holding | undefined {
-  const rules = context.checker.typeRules;
+  const { traitObjects } = context.checker;
   const holder = laidOutAs(given);
   if (holder.kind !== 'union') {
     if (sameType(holder, member) || sameType(holder, baseOf(member))) {
       return { kind: 'itself' };
     }
-    return holder.kind === 'any' && member.kind !== 'any' && member.kind !== 'union'
+    return holder.kind === 'any' && traitObjects.mayHold(member, holder)
       ? { kind: 'inAny', any: holder }
       : undefined;
   }
@@ -64,10 +63,10 @@ export function holdingOf(context: CodeContext, given: Type, member: Type): Hold
   if (member.kind === 'literal' && hasMember(holder, baseOf(member))) {
     return { kind: 'variant', union: holder, variant: baseOf(member) };
   }
-  const absorbing = absorbingMember(holder.members, member, rules);
-  return absorbing === undefined
+  const inside = traitObjects.holdingMember(holder.members, member);
+  return inside === undefined
     ? undefined
-    : { kind: 'variantInAny', union: holder, variant: absorbing };
+    : { kind: 'variantInAny', union: holder, variant: inside };
 }
 
 /** Borrows the value of `held` the `variant`-th variant of the union or `any` value holds. */

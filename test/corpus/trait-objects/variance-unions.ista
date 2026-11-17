@@ -1,0 +1,31 @@
+# outcome: [4,0,0,true,false]
+# A value converted into an `any` type through its trait's variance (§3.10) is found by its own type
+# wherever that `any` type stands, a union's member too: a type test through an `any` type asks
+# whether the value may be inside it, variance included, whether it stands alone or in a union.
+
+trait Source<T>:
+  fn next(self: Self) -> T
+
+struct Counter { n: Int }
+struct Other { k: Int }
+
+fn next(self: Counter) -> Int: self.n
+fn next(self: Other) -> Int: self.k
+
+fn found(source: any Source<Int?> | None) -> Int:
+  match source:
+    case Counter as counter: counter.n
+    case _: 0
+
+fn isCounter(source: any Source<Int?>) -> Bool: source is Counter
+
+import * as runtime from 'runtime'
+live async fn main(): await runtime.run(runtime.id()) _main()
+ista async fn _main():
+  (
+    found(Counter{n: 4}),
+    found(Other{k: 5}),
+    found(none),
+    isCounter(Counter{n: 1}),
+    isCounter(Other{k: 1}),
+  )
