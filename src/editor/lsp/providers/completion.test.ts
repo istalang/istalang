@@ -30,7 +30,7 @@ import {
   sharedCorpusClient,
 } from '../corpus-client.test-kit.ts';
 import { rangeOf } from '../locations.ts';
-import { connectedClient, type TestClient } from '../server.test-kit.ts';
+import { connectedClient } from '../server.test-kit.ts';
 
 const checker = checkProgram(program);
 

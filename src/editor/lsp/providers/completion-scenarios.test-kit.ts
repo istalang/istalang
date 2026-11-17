@@ -15,7 +15,7 @@
  */
 
 import { pathToFileURL } from 'node:url';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   type CompletionItem,
   type CompletionOptions,
