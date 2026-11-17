@@ -14,8 +14,6 @@ import { primitiveOfExtern } from '../definition/instructions/primitive-ops.ts';
 import { derivedCodecs } from '../foundation/language/well-known/codecs.ts';
 import { disposeFunction } from '../foundation/language/well-known/implicit-calls.ts';
 import { languageModules, runtimeModule } from '../foundation/language/well-known/index.ts';
-import type { Run } from '../runtime/run/run.ts';
-import { runNatives } from '../runtime/run/run-natives.ts';
 import { stdNatives } from './natives.ts';
 import { stdExterns } from './std-externs.test-kit.ts';
 
@@ -73,9 +71,7 @@ describe('std natives', () => {
         ? []
         : [key],
     );
-    // The run's own primitives, which the prelude's futures stand on, are the run's to implement.
-    const primitives = Object.keys(runNatives({} as Run));
-    expect(new Set([...Object.keys(stdNatives), ...primitives])).toEqual(new Set(callable));
+    expect(new Set(Object.keys(stdNatives))).toEqual(new Set(callable));
   });
 
   it('bind each extern declaration by a key of its own', () => {

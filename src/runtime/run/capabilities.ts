@@ -1,7 +1,7 @@
 /**
  * What a run gives every native besides its own call (runtime/natives.ts `NativeCapabilities`),
- * built once per run: futures, the weak side, resources, random draws, logs, instances and
- * contexts (§9).
+ * built once per run: futures, the weak side, resources, random draws, logs, instances, contexts
+ * (§9) and the run's own primitives (run-primitives.ts).
  *
  * - Random draws are the instance's, numbered from its seed, so a segment run again draws the same
  *   (§3.8); a log record is stamped with the instance and the time its segment started.
@@ -34,6 +34,7 @@ import { Resource } from './objects/resource.ts';
 import type { RunObject } from './objects/run-object.ts';
 import type { WeakReference } from './objects/weak-reference.ts';
 import type { Run } from './run.ts';
+import { runPrimitivesOf } from './run-primitives.ts';
 import { referentOf } from './weak-references.ts';
 import type { TestingWorld } from './world.ts';
 
@@ -68,6 +69,7 @@ export function capabilitiesOf(run: Run, seams: CapabilitySeams): NativeCapabili
     testing: testingOf(run),
     contexts: contextsOf(run),
     encodings: run.world.testing === undefined ? run.lifetimes.written : keepingNone,
+    run: runPrimitivesOf(run),
   };
 }
 

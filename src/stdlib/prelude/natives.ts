@@ -16,6 +16,7 @@ import {
   type Natives,
   Panic,
   type WithInstances,
+  type WithRun,
   type WithWeakSide,
 } from '../../runtime/natives.ts';
 import { text } from '../values/arguments.ts';
@@ -23,17 +24,19 @@ import { arrayNatives } from './arrays.ts';
 import { instanceNatives } from './instance-natives.ts';
 import { mapNatives } from './maps.ts';
 import { rangeNatives } from './range-natives.ts';
+import { runNatives } from './run-natives.ts';
 import { stringNatives } from './strings.ts';
 import { textFormNatives } from './text-forms.ts';
 import { weakNatives } from './weak-natives.ts';
 
 export const preludeNatives = (
   keys: NativeKeys,
-): Natives<NativeContext & WithWeakSide & WithInstances> => ({
+): Natives<NativeContext & WithWeakSide & WithInstances & WithRun> => ({
   ...arrayNatives(keys),
   ...instanceNatives(keys),
   ...mapNatives(keys),
   ...rangeNatives(keys),
+  ...runNatives(keys),
   ...stringNatives(keys),
   ...weakNatives(keys),
   ...textFormNatives(keys),

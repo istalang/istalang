@@ -41,7 +41,6 @@ import { Places } from './places.ts';
 import { calledPrimitives } from './primitives.ts';
 import { type PersistedReady, type Ready, ReadyQueue } from './ready-queue.ts';
 import { Resources } from './resources.ts';
-import { runNatives } from './run-natives.ts';
 import { Settler, type Settling } from './settling.ts';
 import { type Timer, Timers } from './timers.ts';
 import { Traces } from './traces.ts';
@@ -133,10 +132,7 @@ export class Run {
       startedTransients: () => this.transients.started(),
       guarded: (run) => this.#guard.guarded(run),
     });
-    this.#natives = bindNatives(this, {
-      ...binding,
-      natives: { ...binding.natives, ...runNatives(this) },
-    });
+    this.#natives = bindNatives(this, binding);
     const made = new Function('rt', program.body) as (rt: Run) => {
       readonly site: Error;
       readonly entries: readonly Entry[];

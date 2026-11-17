@@ -15,7 +15,8 @@
  * capabilities, one per part of the instance a native reaches: the futures the runtime creates
  * for an extern that returns one (§3.6), its waits and language resolvers and its slots (§6), its
  * weak references and its resources (§7), its random source and its log (§3.8), its instances and
- * a live run's contexts (§9), what a test reaches (§10), and the JSON it wrote values as (§9). Every capability has
+ * a live run's contexts (§9), what a test reaches (§10), the JSON it wrote values as (§9), and the
+ * run's own primitives the prelude's futures, resolvers and waits stand on. Every capability has
  * one shape, a member of the context, and the runtime builds them once per segment. A native
  * states the capabilities it uses and never holds the context beyond its call.
  */
@@ -25,6 +26,7 @@ import type { TypeDefinition, TypeReference } from '../definition/tables/types.t
 import type { Value } from '../definition/values/values.ts';
 import type { Inspection, LogRecord, SpawnOptions } from './instance-state.ts';
 import { Refusal } from './refusal.ts';
+import type { RunPrimitives } from './run/run-primitives.ts';
 
 /** Whose code a context call runs: the program's own, or the job server's (§5). */
 export type CallMaker = 'program' | 'jobs';
@@ -256,6 +258,9 @@ export interface WithTesting {
 export interface WithContexts {
   readonly contexts: NativeContexts;
 }
+export interface WithRun {
+  readonly run: RunPrimitives;
+}
 export interface WithEncodings {
   readonly encodings: NativeEncodings;
 }
@@ -269,7 +274,8 @@ export type NativeCapabilities = WithFutures &
   WithInstances &
   WithTesting &
   WithContexts &
-  WithEncodings;
+  WithEncodings &
+  WithRun;
 
 export type FullNativeContext = NativeContext & NativeCapabilities;
 

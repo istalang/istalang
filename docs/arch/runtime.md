@@ -37,10 +37,11 @@ interpreter; a live run is a run that never commits.
 
 ## What the run does and what the prelude does
 
-The run implements primitives only (ir-first design, decision 6; `run/run-natives.ts`): futures that
-settle once and call their callbacks in rank order, park and unpark of an execution, `_later`
-(enqueue a closure call), timers, weak references, cells, stopping a disposed call and the
-`disposing()` priority resume. Everything above them is Istalang in the prelude:
+The run implements primitives only (ir-first design, decision 6; `run/run-primitives.ts`, the `run`
+capability the prelude's natives call): futures that settle once and call their callbacks in rank
+order, park and unpark of an execution, `_later` (enqueue a closure call), timers, weak references,
+cells, stopping a disposed call and the `disposing()` priority resume. Everything above them is
+Istalang in the prelude:
 
 - **Futures** are run objects; `onAwait` registers a callback with a rank, a `standing` probe
   (`_standing`: pending, lost, or withdrawn) and what cancels its resolver if the future is disposed
