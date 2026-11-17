@@ -17,18 +17,16 @@
  */
 
 import { wellKnown } from '../../../../foundation/language/well-known/index.ts';
-import type {
-  ExternStructDeclaration,
-  FunctionDeclaration,
-} from '../../../syntax/declarations/index.ts';
+import type { FunctionDeclaration } from '../../../syntax/declarations/index.ts';
 import { nodesUnder } from '../../../syntax/tree/index.ts';
 import type { Kept } from '../../check.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
-import { type CheckedAnnotation, functionPlace } from '../../surface/checked-annotation.ts';
+import type { CheckedAnnotation } from '../../surface/checked-annotation.ts';
 import { substitute, substitutionFor } from '../../types/parts/substitution.ts';
 import type { NominalType, Type } from '../../types/type/index.ts';
 import { tupleElements } from '../../types/type/primitives.ts';
+import { annotationNamed } from '../annotations/named.ts';
 
 type Reader = Pick<
   CheckerContext,
@@ -50,7 +48,7 @@ export function externHeldOf(checker: Reader, type: NominalType): readonly Type[
   if (declaration.kind !== 'ExternStructDeclaration') {
     return type.arguments;
   }
-  const holds = annotationNamed(checker, declaration, 'holds')?.type.arguments[0];
+  const holds = annotationNamed(checker, declaration, wellKnown.holds)?.type.arguments[0];
   if (holds === undefined) {
     return type.arguments;
   }
@@ -66,7 +64,7 @@ export function externHeldOf(checker: Reader, type: NominalType): readonly Type[
  * every other.
  */
 export function keepsOf(checker: Reader, declaration: FunctionDeclaration): readonly Kept[] {
-  const keeps = annotationNamed(checker, declaration, 'keeps');
+  const keeps = annotationNamed(checker, declaration, wellKnown.keeps);
   if (keeps === undefined) {
     const parameters = checker.parametersOf(declaration);
     const others = (position: number) =>
@@ -89,7 +87,7 @@ export function keepsOf(checker: Reader, declaration: FunctionDeclaration): read
  * constants.
  */
 export function checkKeeps(checker: Reader, declaration: FunctionDeclaration): void {
-  const keeps = annotationNamed(checker, declaration, 'keeps');
+  const keeps = annotationNamed(checker, declaration, wellKnown.keeps);
   if (keeps === undefined) {
     return;
   }
@@ -115,7 +113,9 @@ export function summarizedByDeclaration(
   checker: Reader,
   declaration: FunctionDeclaration,
 ): boolean {
-  return declaration.isExtern || annotationNamed(checker, declaration, 'keeps') !== undefined;
+  return (
+    declaration.isExtern || annotationNamed(checker, declaration, wellKnown.keeps) !== undefined
+  );
 }
 
 /** The position of each of `declaration`'s parameters, by its name. */
@@ -126,29 +126,6 @@ function positionsOf(checker: Reader, declaration: FunctionDeclaration): Map<str
       node.name === undefined ? [] : [[node.name.text, position] as const],
     ),
   );
-}
-
-/**
- * The `@Holds` or `@Keeps` among `declaration`'s annotations, if it has it; one written with none,
- * as most are, reads no checked annotation, since what a value holds is asked at every step of
- * walks over types.
- */
-function annotationNamed(
-  checker: Reader,
-  declaration: ExternStructDeclaration | FunctionDeclaration,
-  name: 'holds' | 'keeps',
-): CheckedAnnotation | undefined {
-  if (declaration.annotations === undefined) {
-    return undefined;
-  }
-  const entity = checker.wellKnownEntity(wellKnown[name]);
-  const module = checker.moduleOf(declaration);
-  const place =
-    declaration.kind === 'FunctionDeclaration'
-      ? functionPlace(declaration)
-      : { kind: 'struct' as const, isExtern: true };
-  const annotations = checker.annotations.of(module, declaration, place);
-  return annotations.find((annotation) => annotation.type.entity === entity);
 }
 
 /** The names a `@Keeps` lists: each holder's, with the names of what it keeps. */
