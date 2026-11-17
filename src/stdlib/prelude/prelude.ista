@@ -52,8 +52,7 @@ K fn onAwait<T, K in Persistence>(self: Future<T, K>, done: Resolver<T, K>):
   if _registered(_decidedBy(resolution)) is _Call as waiting: _awaiting(waiting, holding)
   if _settled(self): drop _decides(done, _valueOf(self))
   else:
-    const waiters = _registeredOn(self, done)
-    for awaited in waiters->awaited: awaited()
+    _awaitedBy(_registeredOn(self, done))
 
 # Registers `done` on `future`, dropping those registered before it that can't decide any more;
 # what waits on `future`. `done` itself is never dropped as it comes: a case on its call's
@@ -147,7 +146,7 @@ K fn _keeps<T, K in Persistence>(future: Future<T, K>, kept: Fn<(), Unit, K>):
 # resolver on `future` is registered as no wait is (`_registeredOn`): it reaches the follower
 # weakly and stands as the follower does, dropped once that is gone and idle while it is given up
 # on, so `future` is given up on with it (§8). Each wait on the follower is one on `future`, which
-# a slot serves where it stands (`_awaitedAgain`); what runs it keeps `future` until the follower
+# a slot serves where it stands (`_awaitedNow`); what runs it keeps `future` until the follower
 # settles, as an unwidened caller holds its call's future, and lets go of it at once as the
 # follower is disposed first, so the call stops as an unwidened one does (§7).
 K fn _converted<T, U, K in Persistence>(future: Future<T, K>, convert: fn(T) -> U) -> Future<U, K>:
@@ -168,16 +167,20 @@ K fn _converted<T, U, K in Persistence>(future: Future<T, K>, convert: fn(T) -> 
     decide: arrived
     resolution: new _Resolution<K>{decides: Follows(standing)}
   })
-  K fn awaitedAgain(): _awaitedAgain(future)
-  _whenAwaited(follower, awaitedAgain)
+  K fn awaited(): _awaitedNow(future)
+  _whenAwaited(follower, awaited)
   follower
 
-# Runs what runs as something comes to wait on `future`, pending (`_whenAwaited`): a follower of it
-# is awaited (`_converted`).
-K fn _awaitedAgain<T, K in Persistence>(future: Future<T, K>):
+# Runs what runs as something comes to wait on `waiters`' future (`_whenAwaited`): a resolver is
+# registered on it (`onAwait`), or a follower of it is awaited (`_awaitedNow`).
+K fn _awaitedBy<T, K in Persistence>(waiters: _Waiters<T, K>):
+  for awaited in waiters->awaited: awaited()
+
+# Runs what runs as something comes to wait on `future`, pending, as a follower of it is awaited
+# (`_converted`).
+K fn _awaitedNow<T, K in Persistence>(future: Future<T, K>):
   const found = _waitersOf(future)
-  if found.length() == 1:
-    for awaited in found[0]->awaited: awaited()
+  if found.length() == 1: _awaitedBy(found[0])
 
 # One wait's one-shot resolver (Rule 5). A second `resolve` panics, and `tryResolve` says whether it
 # decided the wait, for races; once another case decided it, neither decides anything, and it is

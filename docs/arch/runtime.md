@@ -72,7 +72,7 @@ Everything above them is Istalang in the prelude:
   follower weakly, settles it within the call's event, its value converted. It stands as the
   follower does (`Follows`): dropped once the follower is gone, idle while it is given up on, so
   the call's future is given up on with it. Each wait on the follower runs the call's future's
-  `_whenAwaited` hooks (`_awaitedAgain`), so a slot serves it where it stands; what runs them keeps
+  `_whenAwaited` hooks (`_awaitedNow`), so a slot serves it where it stands; what runs them keeps
   the call's future until the follower settles, and lets go of it at once as the follower is
   disposed first, so the call stops as an unwidened one does. The call's future stays as it is
   for whatever else reaches it, with no execution between.
