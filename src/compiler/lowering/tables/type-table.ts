@@ -50,7 +50,9 @@ import type {
   AnonymousStructType,
   AnyType,
   FieldMember,
+  FunctionType,
   NominalType,
+  TupleType,
   Type,
   UnionType,
 } from '../../checker/types/type/index.ts';
@@ -116,9 +118,9 @@ export class TypeTable {
 
   /** How the Definition refers to `type`. */
   reference(type: Type): TypeReference {
-    const recursive = type.kind === 'tuple' || type.kind === 'function' ? folded(type) : type;
-    if (recursive.kind === 'recursive' && recursive !== type) {
-      return this.reference(recursive);
+    if (type.kind === 'tuple' || type.kind === 'function') {
+      const recursive = folded(type);
+      return recursive.kind === 'recursive' ? this.reference(recursive) : this.#structural(type);
     }
     switch (type.kind) {
       case 'primitive':
@@ -132,17 +134,6 @@ export class TypeTable {
           ? { kind: 'named', type: this.#aliasEntry(type, unfolded) }
           : this.reference(unfolded);
       }
-      case 'tuple':
-        return {
-          kind: 'tuple',
-          elements: type.elements.map((element) => this.reference(element)),
-        };
-      case 'function':
-        return {
-          kind: 'function',
-          parameters: type.parameters.map((parameter) => this.reference(parameter.type)),
-          result: this.reference(type.result),
-        };
       case 'parameter':
       case 'associated':
       case 'field':
@@ -237,8 +228,22 @@ export class TypeTable {
     return index;
   }
 
+  /**
+   * The tuple or function `type` is, part by part: not folded, so a recursive alias's body is the
+   * structure it unfolds to, never the alias again.
+   */
+  #structural(type: TupleType | FunctionType): TypeReference {
+    return type.kind === 'tuple'
+      ? { kind: 'tuple', elements: type.elements.map((element) => this.reference(element)) }
+      : {
+          kind: 'function',
+          parameters: type.parameters.map((parameter) => this.reference(parameter.type)),
+          result: this.reference(type.result),
+        };
+  }
+
   /** The alias entry of the recursive type `type`, standing for `unfolded`, numbered first. */
-  #aliasEntry(type: RecursiveType, unfolded: Type): TypeId {
+  #aliasEntry(type: RecursiveType, unfolded: TupleType | FunctionType): TypeId {
     const key = this.#checker.typeKeys.typeKey(type);
     const known = this.#indexes.get(key);
     if (known !== undefined) {
@@ -251,7 +256,7 @@ export class TypeTable {
       kind: 'alias',
       name: tableKey(this.#checker, type),
       arguments: [],
-      type: this.reference(unfolded),
+      type: this.#structural(unfolded),
       ...this.#facts(type),
     };
     return index;
