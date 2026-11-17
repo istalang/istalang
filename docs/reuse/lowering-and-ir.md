@@ -76,6 +76,6 @@ tags: [reuse, lowering, definition, ir, instructions]
 ### Add a Definition instruction kind
 
 1. Define the schema with `defineInstruction` in `src/definition/instructions/` (`data.ts`, `calls.ts`, `control.ts`, `places.ts`, `suspension.ts`, or `lifetimes.ts`).
-2. Add its handler to `operandsOf` (`instruction.ts`) and the verifier's `effects` (`src/definition/validation/ownership.ts`).
+2. Add its handler to `operandsOf` (`instruction.ts`), the verifier's `effects` (`src/definition/validation/ownership.ts`) and validation's `partSteps` (`src/definition/validation/parts.ts`): the part it steps into, checked against its type, or `noPart`.
 3. Give the verifier a broken mutant of it where it holds or lets go (`brokenMutants`, `src/definition/validation/ownership.test-kit.ts`).
 4. Add its emitter to `src/codegen/instructions.ts` (docs/arch/codegen.md), and snapshot rules if it waits or holds registers (`src/runtime/snapshot/`).

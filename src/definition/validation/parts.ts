@@ -9,6 +9,7 @@
  *   that); nothing else changes a type's parts.
  */
 
+import { type Handlers, handlerOf } from '../../foundation/structures/kind-table.ts';
 import type { Instruction } from '../instructions/instruction.ts';
 import type { Place, PlaceStep } from '../instructions/places.ts';
 import type { Register } from '../operands.ts';
@@ -33,34 +34,57 @@ export function partIssues(
 ): readonly string[] {
   const scope = { entry, types };
   return entry.instructions.flatMap((instruction, pc) =>
-    instructionIssues(scope, instruction).map((issue) => `${at(pc, instruction)}: ${issue}`),
+    issuesOf(handlerOf(partSteps, instruction)(scope, instruction)).map(
+      (issue) => `${at(pc, instruction)}: ${issue}`,
+    ),
   );
 }
 
-function instructionIssues(scope: PartScope, i: Instruction): readonly string[] {
-  switch (i.kind) {
-    case 'struct':
-      return issuesOf(builtStruct(scope, i.type, i.fields.length));
-    case 'variant':
-      return issuesOf(builtVariant(scope, i.type, i.variant, i.fields.length));
-    case 'switch':
-      return issuesOf(switched(scope, i.value, i.targets.length, i.otherwise !== undefined));
-    case 'tupleItem':
-      return issuesOf(placeType(scope, partOf(i.src, { kind: 'tuple', index: i.index })));
-    case 'structField':
-      return issuesOf(placeType(scope, partOf(i.src, { kind: 'field', field: i.field })));
-    case 'variantField':
-      return issuesOf(
-        placeType(scope, partOf(i.src, { kind: 'variant', variant: i.variant, field: i.field })),
-      );
-    case 'load':
-    case 'store':
-    case 'reference':
-      return issuesOf(placeType(scope, i.place));
-    default:
-      return [];
-  }
-}
+/** An instruction stepping into no part. */
+const noPart = (): undefined => undefined;
+
+/** What each instruction steps into, checked; exhaustive, so a new kind says whether it does. */
+const partSteps: Handlers<PartScope, Instruction, [], Reached | undefined> = {
+  struct: (scope, i) => builtStruct(scope, i.type, i.fields.length),
+  variant: (scope, i) => builtVariant(scope, i.type, i.variant, i.fields.length),
+  switch: (scope, i) => switched(scope, i.value, i.targets.length, i.otherwise !== undefined),
+  tupleItem: (scope, i) => placeType(scope, partOf(i.src, { kind: 'tuple', index: i.index })),
+  structField: (scope, i) => placeType(scope, partOf(i.src, { kind: 'field', field: i.field })),
+  variantField: (scope, i) =>
+    placeType(scope, partOf(i.src, { kind: 'variant', variant: i.variant, field: i.field })),
+  load: (scope, i) => placeType(scope, i.place),
+  store: (scope, i) => placeType(scope, i.place),
+  reference: (scope, i) => placeType(scope, i.place),
+  constant: noPart,
+  move: noPart,
+  copy: noPart,
+  tuple: noPart,
+  array: noPart,
+  map: noPart,
+  append: noPart,
+  appendEntry: noPart,
+  closure: noPart,
+  currentClosure: noPart,
+  equal: noPart,
+  not: noPart,
+  order: noPart,
+  primitive: noPart,
+  newCell: noPart,
+  transient: noPart,
+  contextConstant: noPart,
+  makeContextConstant: noPart,
+  jump: noPart,
+  branch: noPart,
+  return: noPart,
+  unreachable: noPart,
+  call: noPart,
+  currentCall: noPart,
+  given: noPart,
+  mocked: noPart,
+  park: noPart,
+  stopped: noPart,
+  letGo: noPart,
+};
 
 /** A part read of the value in `register` as the place it is: one step from that register. */
 function partOf(register: Register, step: PlaceStep): Place {
