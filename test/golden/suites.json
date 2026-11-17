@@ -438,6 +438,8 @@
       "✓ callbacks › a callback is cancelled once every Resolver.at future holding its chain is let go of, and resolves through nested chains",
       "✓ callbacks › the losing futures.first and select cases are disposed when the winner resolves across commits",
       "✓ callbacks › a callback let go of unresolved, registered on nothing, is cancelled",
+      "✓ callbacks › callbacks settled together run in the order their resolvers were made, across commits",
+      "✓ callbacks › callbacks settled together run in creation order with every segment re-run",
       "✓ disposal › the current round finishes before what a disposal in that round held is disposed",
       "✓ functions › a default left out is computed in the function, after the call's arguments, each seeing the parameters before it",
       "✓ functions › a default left out of a deferred call is computed when it runs, reading what it reads then",
@@ -465,7 +467,7 @@
       "✓ waits › a wait decides at its first case in order when several disposal watches resolve together",
       "✓ waits › waiters readied together by their timers run in execution creation order",
       "✓ waits › a waiting put's value is held by its put alone: let go of with it, or as it loses a select",
-      "56 passed, 0 failed, 0 skipped."
+      "58 passed, 0 failed, 0 skipped."
     ]
   }
 }

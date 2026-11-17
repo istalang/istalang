@@ -2,7 +2,7 @@
 # cancelled instead. Each rule is its own function, and its test asserts what the old runtime's unit
 # test did.
 
-import Suite, Test, test, assertEq from 'testing'
+import Suite, Test, test, assertEq, spawnCrashingEveryAwait from 'testing'
 import * as futures from 'futures'
 import * as runtime from 'runtime'
 import * as time from 'time'
@@ -128,6 +128,22 @@ ista async fn unregistered() -> Int:
   await runtime.commit()
   seen->value
 
+ista async fn rankedAcrossCommits() -> Array<String>:
+  const order = new Shared<Array<String>>{value: []}
+  const s = Slot.create<Int>()
+  drop Resolver.of(fn(value: Int): order->value.push("dropped"))
+  const before = Resolver.of(fn(value: Int): order->value.push("before"))
+  const readBefore = s.read()
+  readBefore.onAwait(before)
+  await runtime.commit()
+  const after = Resolver.of(fn(value: Int): order->value.push("after"))
+  const readAfter = s.read()
+  readAfter.onAwait(after)
+  await s.put(1)
+  await runtime.commit()
+  _ = (readBefore, readAfter)
+  order->value
+
 @Suite{"callbacks"}
 fn suite() -> Array<Test>: [
   test("a callback is called once resolved, after the code resolving it waits", async fn(): assertEq(await afterResolverWaits(), 3))
@@ -137,4 +153,6 @@ fn suite() -> Array<Test>: [
   test("a callback is cancelled once every Resolver.at future holding its chain is let go of, and resolves through nested chains", async fn(): assertEq(await nestedPositions(), 248))
   test("the losing futures.first and select cases are disposed when the winner resolves across commits", async fn(): assertEq(await losersDisposed(), 4930))
   test("a callback let go of unresolved, registered on nothing, is cancelled", async fn(): assertEq(await unregistered(), -1))
+  test("callbacks settled together run in the order their resolvers were made, across commits", async fn(): assertEq(await rankedAcrossCommits(), ["before", "after"]))
+  test("callbacks settled together run in creation order with every segment re-run", async fn(): assertEq(await spawnCrashingEveryAwait(rankedAcrossCommits).result(), Ok(["before", "after"])))
 ]

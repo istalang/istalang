@@ -359,6 +359,7 @@ extern fn _stayRunning(call: _Call)
 # Whether `call` is being disposed, its `disposing()` future settling (§7).
 extern fn _disposingWins(call: _Call) -> Bool
 extern fn _idOf(call: _Call) -> Int
+# A number above any this instance drew before, across its commits: a callback's rank by creation.
 extern fn _made() -> Int
 
 # What a function's values may capture (§3.14): only sendable values, only inert ones, which reach

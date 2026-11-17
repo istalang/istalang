@@ -94,7 +94,6 @@ function futureNatives(run: Run): Natives {
 
 /** What calls readied, parked and unparked stand on. */
 function callNatives(run: Run): Natives {
-  let made = 0;
   const call = (value: Value | undefined) => value as unknown as Execution;
   return {
     'prelude._later(fn() -> Unit)': ([callback]) => {
@@ -121,9 +120,6 @@ function callNatives(run: Run): Natives {
     },
     'prelude._disposingWins(prelude._Call)': ([given]) => run.executions.disposingWins(call(given)),
     'prelude._idOf(prelude._Call)': ([given]) => BigInt(call(given).object),
-    'prelude._made()': () => {
-      made += 1;
-      return BigInt(made);
-    },
+    'prelude._made()': () => BigInt(run.newId()),
   };
 }
