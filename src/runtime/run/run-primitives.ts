@@ -1,7 +1,8 @@
 /**
  * The run's own primitives (ir-first design, decision 6): what the prelude's futures, resolvers and
  * waits, written in Istalang, stand on, given to its natives as a capability (runtime/natives.ts
- * `WithRun`). Every backend implements these; nothing else of the run is reachable from Istalang.
+ * `WithRun`). Every backend implements these; the std's other natives reach the run only through
+ * the other capabilities they are given (capabilities.ts).
  *
  * - A future keeps the callbacks waiting on it with their rank (prelude.ista `Resolver`), and the
  *   run calls them in rank order as it settles (`Run.settle`). Each comes with what says what its

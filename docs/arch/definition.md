@@ -25,16 +25,6 @@ imported through its types-only entry; a browser bundle shims the `buffer` and `
 carries one carries an `EncodedDefinition` (value, bytes, hash) or the text a built module embeds
 (hash and base64 bytes), both made and read by `definition.ts` alone, so a change of encoding stays
 there. The toolchain's own output is trusted: encoded once, never read back or validated again.
-Validation runs where bytes come from outside it, a store or a file (`readDefinition`), and as an
-assertion in the compile test kit. Validation checks every index lands in its table, in code and
-in the tables alike (`validation/references.ts`), and every part code steps into, a field, a
-variant, a tuple's element or a `switch`'s targets, among its type's (`validation/parts.ts`);
-it refuses a start key shared by two starts or a `main` naming none, a handle in a constant or annotation,
-holds the entries a purpose names to the call rule (a test's runner and suites ista code calls,
-the job server live code calls), and runs
-the ownership verifier (`validation/ownership.ts`), which judges each instruction on its last visit
-of a dataflow fixpoint. A function type carries no mark, so the run holds every async call it starts
-to the rule: an instance starts code of its own kind alone.
 
 ## Decisions
 
@@ -49,6 +39,24 @@ to the rule: an instance starts code of its own kind alone.
 | Defaults | **Computed by the callee's prologue**: a parameter left out arrives absent (`given`). | Caller-computed defaults or a sentinel value. |
 | Starts | **`starts[{key, function, encode}]`**: `function` decodes the arguments from `Json` and calls the root, giving an async one's future unawaited; `encode` writes the outcome as `Json`, called the moment it settles, so a run ends when its root returns (spec §10). | A start awaiting the root then encoding: readied work would run between. |
 | Encoding | **avsc binary, its type derived from the zod schema's in-memory side**: records in shape order, literals in no bytes, unions by JS type then literal tag, an `Int` its two's complement as bytes (any size), a float a double, an extern payload its canonical JSON. One Definition gives one byte string. | Canonical JSON (lossless-json): larger, and reading it ran zod and a parser over every value; a hand-written Avro schema beside the zod one. |
+
+## Validation
+
+Validation (`src/definition/validation/`) runs where bytes come from outside the toolchain, a store
+or a file (`readDefinition`), and as an assertion in the compile test kit, so a bad Definition is
+refused at load, never midway through an instance. It refuses:
+
+- an index outside its table, in code and in the tables alike (`references.ts`);
+- a part code steps into that its type lacks: a field, a variant, a tuple's element, a `struct` or
+  `variant` built of the wrong number of fields, a `switch` whose targets miss a variant with no
+  `otherwise` or pass the last (`parts.ts`);
+- two starts of one key, or a `main` naming no start;
+- a handle in a constant or an annotation, which only a running instance holds;
+- an entry a purpose names that its caller may not call (a test's runner and suites ista code
+  calls, the job server live code calls). A function type carries no mark, so the run holds every
+  async call it starts to the rule: an instance starts code of its own kind alone;
+- code the ownership verifier fails (`ownership.ts`), which judges each instruction on its last
+  visit of a dataflow fixpoint.
 
 ## Frames
 
@@ -141,12 +149,12 @@ Instruction names are in `code`. A call is always to a function-table entry; for
 | Anonymous struct type, a shape: `struct { … }`, an indented field block (§3.1) | a nameless `struct` type entry, one per shape: every place writing equal fields shares it, its fields in name order |
 | Recursive types (§3.1) | type references by index, so a type can name itself through the table |
 | `enum` declaration, `Result`, `Error` (§3.11, §3.12) | an `enum` type entry per instantiation, with, for `json.Json`, its `role`; `Error` is a `struct` entry |
-| Union `A \| B`, `T?`, literal types (§2) | an `enum` type entry per union, named by its table key, one variant per member, ordered and named by the member's table key, so no two variants share a name (validation rejects it) and the runtime finds a member's variant by it: a member with values holds the field `value`, a literal or `None` member nothing (lowering/values/unions.ts); a lone literal type is its base's value |
+| Union `A \| B`, `T?`, literal types (§2) | an `enum` type entry per union, named by its table key, one variant per member, ordered and named by the member's table key, so no two variants share a name and the runtime finds a member's variant by it: a member with values holds the field `value`, a literal or `None` member nothing (lowering/values/unions.ts); a lone literal type is its base's value |
 | `extern struct`, `extern shared/sendable/live struct` (§3.6, §3.8) | an `extern` type entry per instantiation, with its declared `dispose` entry (§7) and, for `Array`, `Map`, `_Cell`, `WeakRef`, `Instance` and `_Call`, its `role`; which handle it is stays the checker's, since the runtime reads only its `dispose` and role |
 | `shared struct X` (§3.18) | a `shared` type entry per instantiation: `value`, the anonymous struct entry of its fields behind the handle, and its declared `dispose` entry |
 | Traits, `T is A & B`, `Sendable`, `Disposable` as constraints (§3.5, §3.10) | nothing at runtime: the checker resolves every constrained call per instantiation |
 | `any A & B` (§3.10) | an `enum` entry named after the type, one variant per type converted into it, each with the one field `value`; a conversion is `variant`, or, from another `any` type, a call to an entry converting variant by variant; a call through a trait, or a required field's read, is a call to an entry that `switch`es over every variant and calls that type's function or reads its field, passing a `&self` receiver on by `&` into the variant; a downcast pattern is a `switch` on the type's variant, with `otherwise` for the rest |
-| Value semantics and handle identity (§3.1) | `move` copies values; handles compare by object id in `equal` |
+| Value semantics and handle identity (§3.1) | `move` hands a value on and `copy` makes another holder of it; a write changes a value in place only where nothing else holds it, and copies it from there down where something does (Places); handles compare by object id in `equal` |
 | `@JsonName`, `@JsonSkip`, `@JsonBigInt` (§3.16, §9) | `annotations` on the field's type entry, for tools; derived codecs are compiled from the checker's derived forms, which read them |
 | Literals: int, float, string, bool, `none`, durations (§2) | `constant`; a duration is a `time.Duration` struct constant, `none` the `None` variant of the optional expected, or `null` where `None` itself is |
 | Template (§2) | without values, its text's `constant`; otherwise each value's `toString` call, in order, an `array` of the non-empty texts and those, and a call to the prelude's `join` with `""`; a tagged template is the call it stands for, its texts an `array` of constants |

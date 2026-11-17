@@ -11,7 +11,7 @@
  *   gives (§3.3); the instruction is the same, the callee's entry saying which it is.
  * - **Mocks** (§10) are asked only in a Definition built to run tests: `mocked` stands where a
  *   mockable function's body begins, past its prologue, and hands the call over to the newest mock
- *   held for it, if any (docs/arch/definition.md, "Mocks").
+ *   held for it, if any (docs/arch/definition.md, "Frames").
  */
 
 import { z } from 'zod';

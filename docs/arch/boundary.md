@@ -202,7 +202,8 @@ answer at once. How the instances run is docs/arch/runtime.md's.
 
 ## Packages
 
-`istalang/runtime` (the host API) and `istalang/stdlib` (the std natives) are subpath exports, each a
-tsdown entry. Their declarations come from TypeScript itself (`tsconfig.declarations.json`):
+`istalang/runtime` (the host API), `istalang/stdlib` (the std natives), `istalang/live` (a built
+program's start, over the std's natives, with no Node built-in so it bundles for a browser) and
+`istalang/formatter` are subpath exports, each a tsdown entry. Their declarations come from TypeScript itself (`tsconfig.declarations.json`):
 tsdown's declaration plugin needs TypeScript's JS API, which TypeScript 7 lacks, or isolated
 declarations, which the definition layer's schemas aren't.

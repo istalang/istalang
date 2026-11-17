@@ -21,7 +21,7 @@ How the run works: docs/arch/runtime.md.
 - bytes as base64 and back, in Node and a browser → `base64Of`, `bytesOfBase64` (`src/foundation/text/base64.ts`)
 - read or write an instance's snapshot → `snapshotFormat`, `Snapshot` (`src/runtime/snapshot/format.ts`); write one from a run → `snapshotOf`, `TooDeep` (`snapshot/write.ts`); read one back into a fresh run → `restore`, `rootInvocation` (`snapshot/restore.ts`)
 - a run of one instance: calls, starts, parks, the ready queue, settling futures, timers, host fillings, its random draws → `Run` (`src/runtime/run/run.ts`); what a snapshot keeps of it beside its objects → `Run.persisted`, `Run.restored`
-- act on a run's object from outside it, in whichever run of its instance the turn lands in, the turn kept as an input a segment run again applies again → `Run.arrive`, `Run.onArrivalTaken`, `Run.succeededBy`
+- act on a run's object from outside it, in whichever run of its instance the turn lands in, the turn kept as an input a segment run again applies again → `Arrivals.arrive`, `Arrivals.succeededBy` (`src/runtime/run/arrivals.ts`), `Run.onArrivalTaken`
 - the run's objects: cells, resources, futures, executions with frame records, weak references, mocks, references → `src/runtime/run/objects/`
 - run code so an ista instance's panic ends it at the outermost guarded call, whatever calls it started → `PanicGuard` (`src/runtime/run/panic-guard.ts`)
 - the mocks an instance holds, newest winning → `Mocks` (`src/runtime/run/mocks.ts`); answer a call with a mock held by the caller or an instance it was spawned from → `answerOfMock`, `HeldMock`; find the nearest one held up the spawn chain → `heldAbove` (`src/runtime/run/mock-answers.ts`)
@@ -47,7 +47,7 @@ How the run works: docs/arch/runtime.md.
 - Persisted formats use `defineFormat` and `encodeJson`/`decodeJson`, or `defineBinaryFormat`, never `JSON.parse`/`JSON.stringify`.
 - Nothing outside `src/definition/definition.ts` encodes, decodes or embeds a Definition; only `src/definition/formats/avro/` imports avsc, through its types-only entry, and only its `avsc-buffers.ts` touches a Buffer (Node's `buffer` module, as avsc does). What a browser bundle of `istalang/live` needs of Node is pinned by `src/live/browser-bundle.test.ts`: `buffer` and `util`, avsc's.
 - Snapshots store only what can't be derived: never holders or counts; `restore` counts them again from what holds them.
-- Runs meet only through the `World`; what crosses is copied, and an answer arrives in its run as a turn of its own (`Run.arrive`), naming the object it acts on rather than capturing the run.
+- Runs meet only through the `World`; what crosses is copied, and an answer arrives in its run as a turn of its own (`Arrivals.arrive`), naming the object it acts on rather than capturing the run.
 - Whatever is random in an instance draws from its own seed (`Run.draw`), kept in its snapshot, so a segment run again draws alike.
 - An instance's effects on others (answers, spawns, ends, log records) leave it only at its commit.
 - Natives speak primitives: an optional, a `Result` or an enum is built by the std's Istalang wrapping the native, never by the native.

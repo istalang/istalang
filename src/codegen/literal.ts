@@ -1,16 +1,16 @@
 /**
- * JavaScript source for the data a program carries: its constants and the tables its runtime reads
- * (docs/arch/codegen.md).
+ * JavaScript source for the data an instruction carries inline: a primitive constant, a place's
+ * path, a switch's targets, a name (docs/arch/codegen.md). A composite constant is never spelled:
+ * code reads it from the run's constants (`K`, emit.ts), built once from the Definition.
  *
  * - Values as they are in memory (definition/values/values.ts): an `Int` a bigint literal, a
- *   `Float` a number, NaN, the infinities and -0 included, which JSON can't spell. Composites and
- *   the tables are object and array literals, so loading a program runs no decoder.
+ *   `Float` a number, NaN, the infinities and -0 included, which JSON can't spell.
  * - Strings and keys are quoted as JSON quotes them, so no key needs to be an identifier, with the
  *   line and paragraph separators escaped too: JavaScript counts them as line breaks, which would
  *   move every line after and so the instruction each line names (entry.ts).
  */
 
-/** `data`, a value or a table built of JSON, bigints and numbers, as a JavaScript expression. */
+/** `data`, built of JSON, bigints and numbers, as a JavaScript expression. */
 export function literal(data: unknown): string {
   switch (typeof data) {
     case 'bigint':

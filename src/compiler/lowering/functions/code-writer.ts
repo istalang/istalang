@@ -1,5 +1,5 @@
 /**
- * Writing one code entry (docs/arch/definition.md, "Functions"): its typed registers, its
+ * Writing one code entry (docs/arch/definition.md, "Frames"): its typed registers, its
  * instructions, the labels its jumps name, and where it ends.
  *
  * - **Every register is typed when allocated,** owning or borrowed, and never reused, so a

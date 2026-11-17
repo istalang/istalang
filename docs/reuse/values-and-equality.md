@@ -22,7 +22,7 @@ tags: [reuse, values, equality, maps, json, natives, runtime]
 - read an optional by its declared variant → `optionalValueOf` (`src/definition/values/declared-values.ts`); an optional `Int` native argument → `optionalInt`, or map an enum argument by variant name → `variantEntry` (`src/stdlib/values/arguments.ts`)
 - build array, struct or extern results, or the struct or extern items of an array result → `arrayOf` (`src/stdlib/values/arguments.ts`), `resultStruct`, `resultExtern`, `itemStruct`, `itemExtern` (`src/stdlib/values/results.ts`); optionals, `Result`s and enums are built by the extern's Istalang wrapper, never by a native
 - the type entry a native's declared result names → `declaredResult` (`src/stdlib/values/results.ts`)
-- read an `Instance<T>` handle (the instance's name) → `instanceNameOf` (`src/definition/values/instance-handles.ts`)
+- make or read an `Instance<T>` handle (the instance's name) → `instanceHandle`, `instanceNameOf` (`src/definition/values/instance-handles.ts`)
 - read a result's type argument → `resultTypeArgument` (`src/stdlib/values/results.ts`)
 - read or build `time.Time` and `time.Duration` millisecond values → `millisecondsOf`, `resultMilliseconds` (`src/stdlib/time/fields.ts`)
 - write a part of a value in place where nothing else holds it, every value from its root down → `Lifetimes.withPart`, `Lifetimes.opened` (`src/runtime/run/lifetimes.ts`); change an array or map a native takes by `&` → the `ValueChanges` its `context.changes` gives (`src/runtime/run/natives.ts`), which keeps what it stores by type (`Lifetimes.keepItems`); copy a value for a holder no count sees → `copied` (`src/definition/values/replacing.ts`)

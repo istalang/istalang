@@ -6,8 +6,10 @@
  * the host wakes it now. A finished instance has its outcome, the value its function returned, and
  * that outcome as `Json` when its type has a codec writing it, which is what a host reads (§9).
  *
- * It is derived from the committed snapshot alone (host/instance-calls.ts `stateOf`), so what a host
- * is told is always what a restarted runtime would tell it. Advancing an instance also says what a
+ * It is derived from the instance as it stood at its last commit (host/instance-calls.ts `stateOf`):
+ * its committed status, and the timers and end watches of its resident run, read between segments,
+ * when the run holds what that commit wrote; so what a host is told is what a restarted runtime
+ * would tell it. Advancing an instance also says what a
  * snapshot doesn't tell (`Advanced`): which instances it spawned, which the host runs too, and the
  * log records its committed segments wrote (§3.8 `log`), which no snapshot keeps.
  */

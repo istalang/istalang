@@ -1,5 +1,5 @@
 /**
- * The variables of one entry (§3.4, §3.15; docs/arch/definition.md, "Functions"): each name it
+ * The variables of one entry (§3.4, §3.15; docs/arch/definition.md, "Frames"): each name it
  * declares lives in a register of its own, whichever flow of the entry writes it, its frame's
  * parameters and captures first. What a variable holds is released where its flow says
  * (writer.ts).

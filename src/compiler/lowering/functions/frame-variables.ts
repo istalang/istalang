@@ -1,6 +1,6 @@
 /**
  * The variables an entry declares before its body runs, in its frame's layout order (frames.ts;
- * docs/arch/definition.md, "Functions"): the parameters, each in a register of its own and a
+ * docs/arch/definition.md, "Frames"): the parameters, each in a register of its own and a
  * pack's elements in one each (packs.ts), then the captures; then, in order, each parameter the
  * call may leave out, computed from its default (§3.3) where it did, then a nested function's own
  * name and an async function's own call, then each pack's tuple. A pattern's names are its flow's

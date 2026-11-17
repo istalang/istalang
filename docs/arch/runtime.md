@@ -3,7 +3,7 @@ description: how the run executes compiled code — one Run per instance, the Wo
 owner: toolchain
 status: active
 applies_to: src/runtime, src/stdlib/prelude (async section)
-last_verified: 2026-11-16
+last_verified: 2026-11-17
 last_updated: 2026-11-17
 tags: [runtime, run, snapshot, durability, lifetimes, futures]
 ---
@@ -24,11 +24,11 @@ interpreter; a live run is a run that never commits.
   instance's end, each given the future it settles. What crosses is a sendable value, deep-copied
   (`copied`), so no composite is counted by two runs.
 - **Arrivals.** Whatever reaches a run from outside (an answer, an end, a host's filling, a mock's
-  answer from another instance) arrives as a turn of its own (`Run.arrive(object, turn)`), never
+  answer from another instance) arrives as a turn of its own (`Arrivals.arrive(object, turn)`, `run/arrivals.ts`), never
   inside another run's step. The turn names the object it acts on, and acts on it in whichever run
-  of the instance it lands in: once a rerun replaced the run (below, `Run.succeededBy`), on the object
+  of the instance it lands in: once a rerun replaced the run (below, `Arrivals.succeededBy`), on the object
   of the same id its snapshot read back. The world advances instances in the order their oldest
-  waiting turns arrived across runs (`Run.firstArrival`), so what settles first runs first (spec §6).
+  waiting turns arrived across runs (`Arrivals.first`), so what settles first runs first (spec §6).
   At an instant timers come due, the instances' fire first and run to their commits, so what a
   context answers because of them reaches a live run before its own timers due then decide what
   waited on both (`DurableWorld.fireDue`).
@@ -37,11 +37,16 @@ interpreter; a live run is a run that never commits.
 
 ## What the run does and what the prelude does
 
-The run implements primitives only (ir-first design, decision 6; `run/run-primitives.ts`, the `run`
+Decision 6 of the ir-first design gives the run primitives only (`run/run-primitives.ts`, the `run`
 capability the prelude's natives call): futures that settle once and call their callbacks in rank
 order, park and unpark of an execution, `_later` (enqueue a closure call), timers, weak references,
-cells, stopping a disposed call and the `disposing()` priority resume. Everything above them is
-Istalang in the prelude:
+cells, stopping a disposed call and the `disposing()` priority resume. The run still keeps more than
+that in TypeScript until moving it is measured (tracker Q59), each a service a backend ports too:
+the order a set of futures settles in (`run/settling.ts`), timers grouped by when they come due
+(`run/timers.ts`, `Run.fireDue`), the `disposed()` and `disposing()` watches (`Run.disposedOf`,
+`Executions.disposingOf`), the watches on an instance's end (`run/end-watches.ts`), giving up on a
+case nothing waits on any more (`Future.lost`, read through `_standing`), and the mock registry
+(`run/mocks.ts`). Everything else above the primitives is Istalang in the prelude:
 
 - **Futures** are run objects; `onAwait` registers a callback with a rank, a `standing` probe
   (`_standing`: pending, lost, or withdrawn) and what cancels its resolver if the future is disposed
@@ -124,7 +129,7 @@ it as a native, with exactly the summary its extern predecessor had (spec §3.16
   spawns nothing), its end told to watchers, its log records (to the host's reports, or to the
   `Advanced` of a host call advancing it). A panicked segment never happened (spec §5): it commits
   the instance as it stood before, and its end alone leaves it, the calls still waiting hearing
-  its panic. A panic unwinds to the run's outermost guarded call (`Run.#guarded`), even from an
+  its panic. A panic unwinds to the run's outermost guarded call (`run/panic-guard.ts`), even from an
   async call started within another, so no code of the instance runs past it, a host extern call
   included.
 - **Inputs.** What starts a segment and every turn it takes as it runs is an input of it
@@ -134,7 +139,7 @@ it as a native, with exactly the summary its extern predecessor had (spec §3.16
 - **Crash at every await** (spec §10): before committing, the segment runs again from the same
   inputs on the instance as it last committed, read back, as a restart's is, into a fresh run of
   the program bound to its Definition's hash (a test binds a second build), which takes the instance
-  over (`Run.succeededBy`: what arrives later lands there), and stops at its first park, as the first
+  over (`Arrivals.succeededBy`: what arrives later lands there), and stops at its first park, as the first
   run did; that run commits and the first run's effects never leave. Answers of calls running across
   the rerun come from the last commit (`Resident.answers`).
 - **Random source** (spec §3.8 `random`): each instance has a seed of its own, the host's `seed`
@@ -154,14 +159,14 @@ it as a native, with exactly the summary its extern predecessor had (spec §3.16
 In a Definition built to run tests (spec §10):
 
 - A mock is a run object (`MockObject`: target entry, replacement, the calls it took) its instance
-  holds while anything holds its handle (`Run.mocks`); the newest held for a target wins, and letting
+  holds while anything holds its handle (`Mocking.held`, `run/mocking.ts`); the newest held for a target wins, and letting
   one go brings back the one before.
 - A call reaches the mock its instance holds, else the nearest one an instance it was spawned from
   holds (`World.heldMock`). A code entry asks at its `mocked` instruction, past its prologue, with
   every parameter's value; a native is asked as its extern is called. The function an invocation
   starts with is never mocked; a widened one is the function its `wrapping` entry wraps.
 - The holder records the call and runs the replacement, as a call of its own when it holds the mock
-  for another instance (`Run.asCall`). A host value crosses as its host's JSON and arrives as the
+  for another instance (`Executions.asCall`). A host value crosses as its host's JSON and arrives as the
   caller's resource, which the caller alone disposes; other values pass as they are within one
   instance, and only sendable ones cross between two, copied. An async replacement's future is
   followed by one of the caller's, which the holder lets go of once it settles or once the caller

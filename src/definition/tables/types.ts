@@ -1,5 +1,5 @@
 /**
- * The type table, and the types every register states (docs/arch/definition.md, "Types").
+ * The type table, and the types every register states (docs/arch/definition.md, "Types and locations").
  *
  * - **Typed code.** Every register has a type (../tables/functions.ts), so a backend lays values out
  *   and counts holders from the code alone; generics are compiled once per concrete set of type

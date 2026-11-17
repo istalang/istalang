@@ -1,5 +1,5 @@
 /**
- * The one place lowering writes a `call` instruction (docs/arch/definition.md, "Calls"): to a
+ * The one place lowering writes a `call` instruction (docs/arch/definition.md, "Decisions"): to a
  * function-table entry or a function value, with each argument a value or a place passed by `&`.
  *
  * A resolved call (`emitFunctionCall`) runs its function's entry with every parameter in order:
