@@ -38,21 +38,25 @@ export function commit(resident: Resident, seams: CommitSeams): void {
     rerun(resident, seams);
   }
   const { startedAt } = resident;
-  let status = statusOf(resident.run.instance.end, startedAt);
-  let text: string;
+  let snapshot: Snapshot;
   try {
-    text = written(resident, status);
+    snapshot = written(resident, statusOf(resident.run.instance.end, startedAt));
   } catch (error) {
     if (!(error instanceof TooDeep)) {
       throw error;
     }
     const trace = tooDeepTrace(resident);
     resident.run.instance.ended({ kind: 'panicked', message: error.message, trace });
-    status = { kind: 'panicked', message: error.message, trace, segmentStartedAt: startedAt };
-    text = written(resident, status);
+    const status: PersistedStatus = {
+      kind: 'panicked',
+      message: error.message,
+      trace,
+      segmentStartedAt: startedAt,
+    };
+    snapshot = written(resident, status);
   }
   try {
-    seams.store.writeSnapshot(resident.name, text);
+    seams.store.writeSnapshot(resident.name, snapshotFormat.write(snapshot));
   } catch (error) {
     // A write the store fails commits nothing: the instance stands as it last committed (§5).
     backToLastCommit(resident, seams);
@@ -60,8 +64,8 @@ export function commit(resident: Resident, seams: CommitSeams): void {
   }
   resident.inputs = [];
   resident.unstarted = false;
-  resident.status = snapshotFormat.read(text).status;
-  resident.text = text;
+  resident.status = snapshot.status;
+  resident.committed = snapshot;
   resident.replay = undefined;
   resident.run.executions.parkedSinceCommit = false;
   resident.answers = new Map(
@@ -79,10 +83,10 @@ export function commitTerminated(
   seams: CommitSeams,
 ): void {
   const status: PersistedStatus = { kind: 'terminated', ...panic };
-  const text = snapshotFormat.write({ ...emptySnapshot(resident), ...header(resident, status) });
-  seams.store.writeSnapshot(resident.name, text);
+  const snapshot = { ...emptySnapshot(resident), ...header(resident, status) };
+  seams.store.writeSnapshot(resident.name, snapshotFormat.write(snapshot));
   resident.status = status;
-  resident.text = text;
+  resident.committed = snapshot;
   letOut(resident, seams.reports);
 }
 
@@ -117,17 +121,16 @@ function header(resident: Resident, status: PersistedStatus) {
   };
 }
 
-/** The text committing `resident` with `status`: a panicked one as it stood before the segment. */
-function written(resident: Resident, status: PersistedStatus): string {
+/** The snapshot committing `resident` with `status`: a panicked one as it stood before the segment. */
+function written(resident: Resident, status: PersistedStatus): Snapshot {
   if (status.kind !== 'panicked') {
-    return snapshotFormat.write(snapshotOf(resident.run, header(resident, status)));
+    return snapshotOf(resident.run, header(resident, status));
   }
-  const before =
-    resident.text === undefined ? emptySnapshot(resident) : snapshotFormat.read(resident.text);
+  const before = resident.committed ?? emptySnapshot(resident);
   // A failed segment keeps the call that started it, which a retry runs again.
   const { replay } = resident;
   const panicked = replay === undefined ? status : { ...status, replay };
-  return snapshotFormat.write({ ...before, ...header(resident, panicked) } as Snapshot);
+  return { ...before, ...header(resident, panicked) };
 }
 
 /**
@@ -185,8 +188,8 @@ function backToLastCommit(resident: Resident, seams: CommitSeams): void {
   resident.spawned = [];
   const replaced = resident.run;
   resident.run = seams.freshRun(resident);
-  if (resident.text !== undefined) {
-    restore(resident.run, snapshotFormat.read(resident.text), resident.answers);
+  if (resident.committed !== undefined) {
+    restore(resident.run, resident.committed, resident.answers);
   }
   replaced.arrivals.succeededBy(resident.run.arrivals);
 }

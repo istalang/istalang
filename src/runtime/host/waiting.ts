@@ -8,7 +8,6 @@ import { parkAt } from '../../codegen/instructions.ts';
 import type { Definition } from '../../definition/definition.ts';
 import { locationOf } from '../../definition/traces.ts';
 import type { WaitingPoint } from '../instance-state.ts';
-import { snapshotFormat } from '../snapshot/format.ts';
 import type { Resident } from './resident.ts';
 
 /** Where a frame parked at `pc` waits; undefined when it isn't parked at a `park`. */
@@ -34,11 +33,11 @@ export function parkedAt(
 
 /** Where each of `resident`'s parked executions waits, as it last committed. */
 export function waitingAt(resident: Resident): readonly WaitingPoint[] {
-  if (resident.text === undefined) {
+  if (resident.committed === undefined) {
     return [];
   }
   const { definition } = resident.program;
-  const { objects, live } = snapshotFormat.read(resident.text);
+  const { objects, live } = resident.committed;
   const executions = new Map(
     objects.flatMap((object) => (object.kind === 'execution' ? [[object.id, object]] : [])),
   );

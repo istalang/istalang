@@ -32,7 +32,7 @@ import { type HeldMock, heldAbove } from '../run/mock-answers.ts';
 import type { Future } from '../run/objects/future.ts';
 import { Run } from '../run/run.ts';
 import type { Spawning, TestingWorld, World } from '../run/world.ts';
-import { snapshotFormat } from '../snapshot/format.ts';
+import { type Snapshot, snapshotFormat } from '../snapshot/format.ts';
 import { restore } from '../snapshot/restore.ts';
 import type { InstanceStore } from '../store.ts';
 import { atCommit, type CommitSeams, commit, commitTerminated } from './commits.ts';
@@ -204,16 +204,23 @@ export class DurableWorld implements World {
 
   /** The instance `name`, read from the store, or undefined when the store lacks it. */
   load(name: string): Resident | undefined {
+    const snapshot = this.#stored(name);
+    return snapshot === undefined ? undefined : this.#loaded(name, snapshot);
+  }
+
+  /** The snapshot the store keeps of `name`, if any. */
+  #stored(name: string): Snapshot | undefined {
     const text = this.seams.store.readSnapshot(name);
-    if (text === undefined) {
-      return undefined;
-    }
-    const snapshot = snapshotFormat.read(text);
+    return text === undefined ? undefined : snapshotFormat.read(text);
+  }
+
+  /** The instance `name`, resident again as `snapshot`, the store's of it, says. */
+  #loaded(name: string, snapshot: Snapshot): Resident {
     const program = this.#bind(snapshot.definition);
     const seed = hexToBytes(snapshot.seed);
     const made = { name, program, seed, status: snapshot.status };
     const resident = this.#made(made, snapshot.crashEveryAwait);
-    resident.text = text;
+    resident.committed = snapshot;
     resident.encoder = snapshot.encoder;
     resident.terminatesOnPanic = snapshot.terminatesOnPanic;
     restore(resident.run, snapshot);
@@ -231,9 +238,9 @@ export class DurableWorld implements World {
       }
     }
     for (const name of this.seams.store.instances()) {
-      const text = this.residents.has(name) ? undefined : this.seams.store.readSnapshot(name);
-      if (text !== undefined && snapshotFormat.read(text).status.kind === 'active') {
-        this.load(name);
+      const snapshot = this.residents.has(name) ? undefined : this.#stored(name);
+      if (snapshot?.status.kind === 'active') {
+        this.#loaded(name, snapshot);
       }
     }
   }
@@ -368,7 +375,7 @@ export class DurableWorld implements World {
 
   /** `resident`, panicked, as it stood before its failed segment. */
   #restored(resident: Resident): void {
-    const snapshot = snapshotFormat.read(resident.text ?? '');
+    const snapshot = resident.committed ?? unreachable('A panicked instance has committed.');
     resident.run = this.#readBack(resident);
     restore(resident.run, snapshot);
     resident.status = { kind: 'active' };

@@ -12,7 +12,7 @@ import type { LogRecord } from '../instance-state.ts';
 import type { InstanceEnd, InvocationEnd } from '../run/instances.ts';
 import { hearsNothing, type Invocation } from '../run/invocations.ts';
 import type { Run } from '../run/run.ts';
-import type { PersistedStatus, Replay } from '../snapshot/format.ts';
+import type { PersistedStatus, Replay, Snapshot } from '../snapshot/format.ts';
 import { rootInvocation } from '../snapshot/restore.ts';
 
 /** The program a world runs: its Definition, the hash the store keys it by, its emitted code. */
@@ -44,8 +44,11 @@ export class Resident {
   terminatesOnPanic = false;
   status: PersistedStatus;
   run: Run;
-  /** The snapshot it last committed, if it ever did. */
-  text: string | undefined;
+  /**
+   * The snapshot it last committed, if it ever did, as read: the store's text is written once, and
+   * never read back while it is resident.
+   */
+  committed: Snapshot | undefined;
   /** Whether it was spawned and hasn't run yet. */
   unstarted: boolean;
   /** What woke its segment, since its last commit. */
