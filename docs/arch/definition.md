@@ -30,7 +30,7 @@ there. The toolchain's own output is trusted: encoded once, never read back or v
 
 | Decision | Chosen | Rejected, and why |
 | --- | --- | --- |
-| How code is shaped | **Linear register code**: each function a list of instructions over numbered registers; a frame is `(function, pc, registers)`, the snapshot's own shape. | A tree with an explicit continuation stack, whose shape would have to be persisted. |
+| How code is shaped | **Linear register code**: each function a list of instructions over numbered registers; a frame is `(function, parkedAt, registers)`, the label of the `park` it stands at, the snapshot's own shape. | A tree with an explicit continuation stack, whose shape would have to be persisted. |
 | Types in the code | **Typed registers** (IR v4): every register has a `TypeReference`; every type entry states `disposable` (it may reach a disposable) and `heap`; registers of a field loop's variable are one per pass's type. A backend reads lifetimes off types (`lifetimeOf`: counted, heap or plain). | Untyped instructions with a second runtime type system: a backend couldn't tell what to count. |
 | Lifetimes | **Instructions**: parameters are borrowed and a last use is a move, so most holds never appear; `copy` holds, `letGo` lets go, places write in place where unique. The verifier fails a dropped or doubled hold. | A runtime that discovers holders by walking: it costs as much as the heap is large. |
 | Generics | **Compiled per instantiation** (spec §3.5): every call has one target, every type entry is concrete. | Runtime type descriptors and dispatch. |
@@ -138,7 +138,7 @@ Each module carries its line starts. The runtime has neither source text nor the
 ## Snapshot
 
 The snapshot is the run's format, not the Definition's: see docs/arch/runtime.md (snapshots). It
-names its Definition by hash; frames hold function indexes and pcs into it.
+names its Definition by hash; frames hold function indexes and the labels of the `park`s they stand at.
 
 ## How each construct lowers
 

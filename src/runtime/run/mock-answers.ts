@@ -4,11 +4,11 @@
  *
  * - **Host values cross as their host's JSON.** The replacement takes, records and gives a host
  *   value as JSON and never disposes it; what it gives arrives as the caller's resource for that
- *   JSON (`Run.resource`), which the caller alone disposes (§7). `testing.handle` makes such JSON.
+ *   JSON (`Resources.of`), which the caller alone disposes (§7). `testing.handle` makes such JSON.
  * - **Other values** pass as they are within one instance; between two, only sendable ones cross,
  *   copied, so neither shares a composite with the other (§9).
  * - **An async replacement's future** is followed by one of the caller's, settled as it settles
- *   within one instance, else in a turn of its own (`Run.arrive`), in whichever run of the
+ *   within one instance, else in a turn of its own (`Arrivals.arrive`), in whichever run of the
  *   caller's instance it lands in. The holder lets go of its
  *   future once it settles, or once the caller lets go of its own first, as a host frees what a
  *   disposed future waited on: a receive losing a `select` takes nothing.

@@ -4,7 +4,7 @@
  * They meet only through a `World` (host/durable-world.ts): a call into a context, a spawn, a wait
  * on an instance's end, and the runtimes live code opens over the host's store. What crosses is a sendable value, copied, so no composite is shared
  * by two runs' counts; and each answer arrives in the waiting run as a turn of its own
- * (`Run.arrive`), never inside another run's step, acting on the future it settles in whichever run
+ * (`Arrivals.arrive`), never inside another run's step, acting on the future it settles in whichever run
  * of its instance it lands in.
  */
 
