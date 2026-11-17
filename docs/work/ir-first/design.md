@@ -57,7 +57,7 @@ target. Migrating that shape costs more than writing the right one.
      visible disposal effects, observed independently of the snapshot's shape.
    - **One home each:** an outcome a corpus header (`# outcome:`/`# panic:`) or a `.test.ista`
      assertion already states stays there; goldens hold only what nothing states yet.
-   - **Changing one:** a golden changes only with a named spec amendment.
+   - **Changing one:** a golden changes only in a commit whose change it shows, a named spec amendment or a named fix of spec-stated behaviour, with every moved line explained by it.
 2. **One run.**
    - **Object model:** `src/live`'s, with object ids from the instance's serial. A commit finds
      what to persist by walking from the roots.
