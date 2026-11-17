@@ -122,10 +122,12 @@ describe('a recursive use and what it unfolds to', () => {
           `fn asAlias() -> R: ${literal}`,
           `fn asBody() -> ${kind.body}: ${literal}`,
         );
-        const alias = await mainGives('Int', 'return measure(asAlias())', declarations);
-        const body = await mainGives('Int', 'return measure(asBody())', declarations);
-        expect(alias).toBe(depth + 1);
-        expect(body).toBe(alias);
+        const measured = await mainGives(
+          '(Int, Int)',
+          'return (measure(asAlias()), measure(asBody()))',
+          declarations,
+        );
+        expect(measured).toEqual([depth + 1, depth + 1]);
       }),
       { numRuns: 24 },
     );
@@ -157,12 +159,13 @@ describe('a recursive use and what it unfolds to', () => {
           `  const r: R = ${literal.text}`,
           '  return r',
         );
-        const weights = await Promise.all(
-          ['asAlias()', 'asBody()', 'asArgument()', 'asConstant()'].map((built) =>
-            mainGives('Int', `return weight(${built})`, declarations),
-          ),
+        const built = ['asAlias()', 'asBody()', 'asArgument()', 'asConstant()'];
+        const weights = await mainGives(
+          `(${built.map(() => 'Int').join(', ')})`,
+          `return (${built.map((each) => `weight(${each})`).join(', ')})`,
+          declarations,
         );
-        expect(weights).toEqual(weights.map(() => literal.weight));
+        expect(weights).toEqual(built.map(() => literal.weight));
       }),
       { numRuns: 24 },
     );
