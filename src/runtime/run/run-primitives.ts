@@ -72,17 +72,24 @@ export function runPrimitivesOf(run: Run): RunPrimitives {
   return { ...futurePrimitives(run), ...conversionPrimitives(run), ...callPrimitives(run) };
 }
 
+/**
+ * Where a callback's resolver stands, as its `standing` gives it (prelude.ista `_standingOf`): it
+ * may still decide, it lost, or it was withdrawn by a `select` that didn't wait (§8).
+ */
+const standingCodes = { mayDecide: 0n, lost: 1n, withdrawn: 2n } as const;
+
 /** What futures, their callbacks and their settling stand on. */
 function futurePrimitives(run: Run) {
   /** `waited`'s callbacks whose resolvers may still decide, letting go of the others. */
   const live = (waited: Future): Waiting[] =>
     waited.callbacks.filter((waiting) => {
       const standing = run.callValue(waiting.standing, []);
-      if (standing !== 0n) {
-        waited.lost ||= standing === 1n;
+      const mayDecide = standing === standingCodes.mayDecide;
+      if (!mayDecide) {
+        waited.lost ||= standing === standingCodes.lost;
         run.lifetimes.letGo(...closuresOf(waiting));
       }
-      return standing === 0n;
+      return mayDecide;
     });
   return {
     settled: (given: Value) => futureOf(given).settled,
