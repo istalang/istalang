@@ -340,7 +340,7 @@ function placesOverlap(first: PlaceIdentity, second: PlaceIdentity): boolean {
 /** Reports a place written twice, or written whole and in part, by one assignment (§3.15). */
 export function checkDistinctPlaces(context: BodyContext, parts: readonly AssignedPart[]): void {
   const written: PlaceIdentity[] = [];
-  for (const { target } of parts) {
+  for (const { target } of parts.filter((part) => part.kind === 'place')) {
     const place = placeIdentity(context, target);
     const earlier =
       place === undefined ? undefined : written.find((other) => placesOverlap(other, place));

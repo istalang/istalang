@@ -92,11 +92,6 @@ export function isUnnamedTarget(target: Expression): boolean {
   return bare.kind === 'Identifier' && isUnnamed(bare.text);
 }
 
-/** Whether an assignment's target is `_` or takes a value apart into one. */
-export function hasUnnamedTarget(target: Expression): boolean {
-  return isUnnamedTarget(target) || targetParts(target).some(hasUnnamedTarget);
-}
-
 /**
  * The targets a destructuring target is made of, each without its parentheses: a tuple's
  * elements, or the values of a struct literal's items; none for a place.

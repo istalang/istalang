@@ -8,7 +8,8 @@
  *   reaches (parts.ts). A tuple or struct is taken apart
  *   as an assignment's target is (taking.ts). What could fail to match (a literal, a comparison,
  *   a referring name, a variant, an array's length, a range) is checked by its own kind (kinds/)
- *   in a `match` case or `is`, and refused in a target, which must always match.
+ *   in a `match` case or `is`, and refused in a target, which must always match (refusals.ts).
+ * - A target's `_` holds its part (§3.15, §7): a binding with no name. A case's binds nothing.
  * - A bare name binds when the binder made it a variable, as it does for every bare name of a
  *   target and for a camelCase one in a case (§3.11); otherwise it refers.
  * - Tests come out in the order lowering runs them: a variant is tested before its fields are read.
@@ -36,8 +37,9 @@ import type {
   Pattern,
   PatternPart,
   StructPattern,
+  WildcardPattern,
 } from '../../../../syntax/patterns.ts';
-import { targetNames, unparenthesizedPattern } from '../../../../syntax/patterns.ts';
+import { unparenthesizedPattern } from '../../../../syntax/patterns.ts';
 import { type Identifier, isMissingName, lastName } from '../../../../syntax/tree/node.ts';
 import { type AnchoredSpan, spanAcross } from '../../../../syntax/tree/positions.ts';
 import type { BodyContext } from '../../../contexts/body-context.ts';
@@ -51,7 +53,6 @@ import {
 } from '../../../surface/checked-pattern.ts';
 import type { FieldMember, Type } from '../../../types/type/index.ts';
 import { errorType, isPrimitive, neverType } from '../../../types/type/primitives.ts';
-import { namesOwnType } from '../../../types/written/pattern-types.ts';
 import { anyShape, nothingShape, type Shape } from '../exhaustiveness/exhaustiveness.ts';
 import { partSelected, sameNames } from './kinds/alternatives.ts';
 import { takeArray } from './kinds/arrays.ts';
@@ -59,16 +60,12 @@ import { comparison, literal } from './kinds/comparisons.ts';
 import { rangeLeaf } from './kinds/ranges.ts';
 import { reference } from './kinds/references.ts';
 import { isStructNotKnown, restBinding, takeFieldsByName } from './kinds/struct-fields.ts';
-import {
-  calledVariant,
-  takeVariantBraces,
-  takeVariantCall,
-  variantBraced,
-} from './kinds/variant-calls.ts';
+import { takeVariantCall } from './kinds/variant-calls.ts';
 import { structParts, type ValuePart } from './parts.ts';
 import type { Leaf, Selection } from './pattern-tests.ts';
+import { bindAt, type Refusing, refused, refusedBraces, refusedCall } from './refusals.ts';
 import { literalPart, refuseTypeArguments, selectionOf } from './selections.ts';
-import { type Taking, takeApart, takeStructFields, takeTargets } from './taking.ts';
+import { takeApart, takeStructFields, takeTargets } from './taking.ts';
 
 /** A pattern as walked. */
 export interface WalkedPattern {
@@ -102,7 +99,7 @@ export function walkTargets(
 ): readonly TargetBinding[] {
   const walk = newWalk(context, false, typed);
   takeTargets(walk, targets, { type, path: [] }, spanOf(targets));
-  return walk.bindings.map(({ path, ...binding }) => ({
+  return [...walk.bindings, ...walk.unnamed].map(({ path, ...binding }) => ({
     ...binding,
     path: path.map((step) =>
       typeof step === 'number' || step.kind === 'field' || step.kind === 'fieldRest'
@@ -113,13 +110,13 @@ export function walkTargets(
 }
 
 /** A pattern's walk: what it found so far. */
-interface Walk extends Taking<Pattern | PatternPart> {
-  /** Whether the pattern may fail to match: a case's or an `is`'s, never a target's. */
-  readonly refutable: boolean;
+interface Walk extends Refusing {
   /** The struct pattern whose written type arguments are its value's type's (`walkTargets`). */
   readonly typed: StructPattern | undefined;
   readonly found: PatternTest[];
   readonly bindings: PartBinding[];
+  /** A target's `_`s, each holding its part (§3.15); a pattern that may fail holds none. */
+  readonly unnamed: (Omit<PartBinding, 'name'> & { readonly name: WildcardPattern })[];
 }
 
 /**
@@ -139,6 +136,7 @@ function newWalk(context: BodyContext, refutable: boolean, typed?: StructPattern
     typed,
     found: [],
     bindings: [],
+    unnamed: [],
     take: (node, part) => takeMatched(walk, node, part).shape,
   };
   return walk;
@@ -146,7 +144,12 @@ function newWalk(context: BodyContext, refutable: boolean, typed?: StructPattern
 
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
 const patternHandlers: Handlers<Walk, Pattern | PatternPart, [ValuePart], Shape | undefined> = {
-  WildcardPattern: () => anyShape,
+  WildcardPattern: (walk, node, part) => {
+    if (!walk.refutable) {
+      walk.unnamed.push({ name: node, ...part });
+    }
+    return anyShape;
+  },
   Missing: () => anyShape,
   Invalid: () => anyShape,
   OrPattern: (walk, node, part) => takeAlternatives(walk, node, part).shape,
@@ -216,54 +219,6 @@ function takeMatched(walk: Walk, written: Pattern | PatternPart, part: ValuePart
     refusedBraces(walk, node, part) ??
     takeSelecting(walk, node, part)
   );
-}
-
-/**
- * `node`, a call pattern naming no variant, reported (`calledVariant`); undefined for any other
- * pattern. Its arguments are each taken over the error type, so their names bind and what they
- * compare with is checked, in a target only bound, which must always match. Naming its value's own
- * type, it meant the value whole, so it covers it and nothing more is reported of its `match`;
- * naming any other, it covers nothing.
- */
-function refusedCall(
-  walk: Walk,
-  node: Pattern | PatternPart,
-  part: ValuePart,
-): Matched | undefined {
-  if (node.kind !== 'VariantCallPattern' || calledVariant(walk.context, node) !== undefined) {
-    return undefined;
-  }
-  if (walk.refutable) {
-    for (const argument of node.arguments) {
-      walk.take(argument, { type: errorType, path: part.path });
-    }
-  } else {
-    bindAt(walk, node, part, errorType);
-  }
-  const entity = walk.context.entityOf(lastName(node.callee.path));
-  const covers = entity !== undefined && namesOwnType(walk.context.checker, entity, part.type);
-  return { shape: covers ? anyShape : undefined, part };
-}
-
-/**
- * `node`, braces after a variant's name, reported (§3.11), nothing selected of its part first;
- * undefined for any other pattern. A target's binds at the error type (kinds/variant-calls.ts).
- */
-function refusedBraces(
-  walk: Walk,
-  node: Pattern | PatternPart,
-  part: ValuePart,
-): Matched | undefined {
-  const braced = variantBraced(walk.context, node);
-  if (braced === undefined) {
-    return undefined;
-  }
-  walk.context.report(checkerDiagnostics.variantInBracesPattern(node.span, braced.name));
-  if (!walk.refutable) {
-    bindAt(walk, node, part, errorType);
-    return { shape: anyShape, part };
-  }
-  return { shape: takeVariantBraces(walk, braced, part), part };
 }
 
 /**
@@ -432,39 +387,6 @@ function tested(
   const leaf = check();
   walk.found.push(...leaf.tests);
   return leaf.shape;
-}
-
-/**
- * A construct that could fail to match, standing in a target, which must always match: reported
- * once, its names bound at the error type (`bindAt`). Nothing inside it is taken apart, so a
- * target's parts are fields and tuple elements only.
- */
-function refused(walk: Walk, node: Pattern | PatternPart, part: ValuePart): Shape {
-  walk.context.report(checkerDiagnostics.refutableTarget(node.span));
-  bindAt(walk, node, part, errorType);
-  return anyShape;
-}
-
-/**
- * Binds each name `node` binds at `type`, the error type or `Never`, to the part it stands at: what
- * a pattern that isn't taken apart, refused where it stands, naming nothing or never running,
- * binds, so each use of its names resolves with nothing more to report, and an or-pattern's
- * alternatives still agree on them. In a case, a bare name the binder didn't make a variable refers
- * to something, so it binds nothing.
- */
-function bindAt(walk: Walk, node: Pattern | PatternPart, part: ValuePart, type: Type): void {
-  const names = new Set(
-    targetNames(node).flatMap((name) => {
-      const entity = walk.context.entityOf(name);
-      if (entity?.kind === 'variable') {
-        return [entity.name];
-      }
-      return walk.refutable ? [] : [name];
-    }),
-  );
-  for (const name of names) {
-    walk.bindings.push({ name, type, path: part.path });
-  }
 }
 
 /** From the first of `targets` to the last; the parser reads at least one. */

@@ -285,7 +285,7 @@ function patternValueOf(builder: FlowBuilder, value: PatternValue, site: NodeOf<
 
 /**
  * Each of `bindings`' names, its part of `value`, narrowed to the name's type where the pattern
- * narrows it, copied into its variable at its name.
+ * narrows it, copied into its variable at its name; a target's `_`, its part kept (`keep`).
  */
 function bind(
   builder: FlowBuilder,
@@ -295,14 +295,28 @@ function bind(
 ): void {
   for (const binding of bindings) {
     const { name, path } = binding;
-    const entity = builder.entityOf(name);
-    if (entity !== undefined) {
+    const entity = name.kind === 'Identifier' ? builder.entityOf(name) : undefined;
+    if (name.kind === 'WildcardPattern') {
+      keep(builder, name, readAlong(builder, value, path, name), lifetime);
+    } else if (entity !== undefined) {
       const variable = builder.variable(entity);
       const part = readAlong(builder, value, [...path, ...narrowing(binding)], name);
       builder.emit({ op: 'copy', site: name, into: variable, from: part, fit: undefined });
       builder.scopes.declare(variable, lifetime);
     }
   }
+}
+
+/** `value`, kept at `site` as a variable with no name keeps it (§7), until `lifetime` ends. */
+export function keep(
+  builder: FlowBuilder,
+  site: NodeOf<string>,
+  value: ValueId,
+  lifetime: Lifetime,
+): void {
+  const kept = builder.temporary(site, builder.valueOf(value).type);
+  builder.emit({ op: 'copy', site, into: kept, from: value, fit: undefined });
+  builder.scopes.declare(kept, lifetime);
 }
 
 /**

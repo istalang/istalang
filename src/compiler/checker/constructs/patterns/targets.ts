@@ -28,7 +28,9 @@ export function declareTargets(
   const typed = owner.kind === 'Parameter' ? typingPattern(owner) : undefined;
   const bindings = walkTargets(context, declaredTargets(owner), type, typed);
   for (const { name, type: part } of bindings) {
-    context.variables.declare(name, part);
+    if (name.kind === 'Identifier') {
+      context.variables.declare(name, part);
+    }
   }
   context.variables.recordTargets(owner, bindings);
 }

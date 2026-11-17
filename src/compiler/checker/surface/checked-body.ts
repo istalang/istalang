@@ -169,16 +169,24 @@ export interface ChainLink {
 export type WrittenFit = Fit | 'intoKeyedField';
 
 /**
- * A place an assignment writes, and the part of the assigned value it gets (§3.15): the steps to
- * it in the value (tuple positions and struct fields), its type, and how it is converted to fit
- * the place.
+ * A part of an assigned value and where it goes (§3.15): the steps to it in the value (tuple
+ * positions and struct fields) and its type; written to the place its target names, converted to
+ * fit it, or held by `_`, a variable with no name, until the assignment's block ends (§7).
  */
-export interface AssignedPart {
-  readonly target: Expression;
-  readonly path: readonly TargetStep[];
-  readonly type: Type;
-  readonly fit: WrittenFit;
-}
+export type AssignedPart =
+  | {
+      readonly kind: 'place';
+      readonly target: Expression;
+      readonly path: readonly TargetStep[];
+      readonly type: Type;
+      readonly fit: WrittenFit;
+    }
+  | {
+      readonly kind: 'unnamed';
+      readonly target: Expression;
+      readonly path: readonly TargetStep[];
+      readonly type: Type;
+    };
 
 /**
  * A node giving a value where one is expected (§2): an expression, the `Unit` a bare `return`, or

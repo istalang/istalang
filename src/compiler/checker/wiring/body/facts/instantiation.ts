@@ -167,11 +167,17 @@ function instantiatedPart(
   substitution: Substitution,
   rules: TypeRules,
 ): AssignedPart {
+  const path = instantiatedTargetPath(part.path, substitution, rules);
+  const type = substitute(part.type, substitution, rules);
+  if (part.kind === 'unnamed') {
+    return { ...part, path, type };
+  }
+  const { fit } = part;
   return {
     ...part,
-    path: instantiatedTargetPath(part.path, substitution, rules),
-    type: substitute(part.type, substitution, rules),
-    fit: part.fit === 'intoKeyedField' ? part.fit : substitutedFit(part.fit, substitution, rules),
+    path,
+    type,
+    fit: fit === 'intoKeyedField' ? fit : substitutedFit(fit, substitution, rules),
   };
 }
 

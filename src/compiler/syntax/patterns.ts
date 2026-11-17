@@ -231,8 +231,3 @@ export function unparenthesizedPattern(node: Pattern): Pattern {
 export function targetNames(node: Pattern | PatternPart | Invalid): readonly Identifier[] {
   return targetLeaves(node).filter((leaf): leaf is Identifier => leaf.kind === 'Identifier');
 }
-
-/** Whether a declaration's or loop's target has a `_` part, which binds nothing yet holds (§7). */
-export function hasUnnamedPart(node: Pattern | PatternPart | Invalid): boolean {
-  return targetLeaves(node).some((leaf) => leaf.kind === 'WildcardPattern');
-}

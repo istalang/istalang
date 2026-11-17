@@ -455,6 +455,7 @@
       "✓ functions › an async function widened gives its value converted across commits",
       "✓ functions › an async function widened gives its value converted with every segment re-run",
       "✓ functions › a future something else holds, widened, is awaited and stays as it was for its holder",
+      "✓ holders › a _ among a destructuring's targets holds its part alone, so dropping or reassigning a named part disposes it",
       "✓ instances › a spawn carries a sendable closure's captures into the child",
       "✓ instances › a child started through a shorter function value computes what it left out",
       "✓ instances › an instance ends with the value of the future its function gives, an async or a plain callee",
@@ -474,7 +475,7 @@
       "✓ waits › a wait decides at its first case in order when several disposal watches resolve together",
       "✓ waits › waiters readied together by their timers run in execution creation order",
       "✓ waits › a waiting put's value is held by its put alone: let go of with it, or as it loses a select",
-      "64 passed, 0 failed, 0 skipped."
+      "65 passed, 0 failed, 0 skipped."
     ]
   }
 }

@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-11-13
-last_updated: 2026-11-15
+last_updated: 2026-11-17
 tags: [reuse, syntax, ast, scanner, parser, operators]
 ---
 
@@ -68,10 +68,10 @@ tags: [reuse, syntax, ast, scanner, parser, operators]
 - get the function a struct's fields with defaults read as, or a variant's constructor (§3.11) → `fieldsFunctionOf`, `fieldsFunctionsOf`; the variant a constructor builds → `constructedVariant` (`src/compiler/syntax/declarations/field-defaults.ts`)
 - list all functions in a module or test for a fields function → `functionsOf`, `isFieldsFunction`; a function's name as messages and tables spell it, a static's or constructor's with its owner (`Shape.Circle`) → `declaredFunctionName` (`src/compiler/syntax/declarations/field-defaults.ts`)
 - tell whether calls give a function's parameters in order, so its defaults trail (any function's but a struct's fields') → `takesArgumentsInOrder` (`src/compiler/syntax/declarations/field-defaults.ts`)
-- list identifiers bound by a target pattern or check whether it contains `_` → `targetNames`, `hasUnnamedPart` (`src/compiler/syntax/patterns.ts`)
+- list identifiers bound by a target pattern → `targetNames` (`src/compiler/syntax/patterns.ts`)
 - read a parameter (§3.3): it binds a `name` (the whole argument's, a plain parameter's or a pattern's `as` name), a `pattern` taking the argument apart, or both, never a one-name pattern (`Parameter`, `src/compiler/syntax/expressions/index.ts`); what a diagnostic about it points at, the names it binds, the type its pattern names, whether it writes its type at all, the struct pattern heading it, whether it is written by reference, a function's default values in order → `parameterSite`, `parameterNames`, `patternNamedType`, `writesType`, `typingPattern`, `writtenByReference`, `defaultValuesOf` (`src/compiler/syntax/expressions/parameters.ts`); its pattern's targets beside a declaration's, and whether a node declares targets at all → `declaredTargets`, `ownsTargets`, `TargetOwner` (`src/compiler/syntax/statements/targets.ts`); parse a parameter's pattern, where `{…}` is short for `struct{…}` at any depth → `parser.parameterPattern()` (`parseParameterPattern`, a `patternGrammar` over one more start, `src/compiler/parser/grammar/patterns.ts`), the short form kept as `StructPattern.isShort` for the formatter
 - decompose or validate an assignment target → `destructuringOf`, `destructures`, `targetParts`, `isTarget` (`src/compiler/syntax/statements/targets.ts`)
-- check whether an assignment target is or contains `_` → `isUnnamedTarget`, `hasUnnamedTarget` (`src/compiler/syntax/statements/targets.ts`)
+- check whether an assignment target is `_` → `isUnnamedTarget` (`src/compiler/syntax/statements/targets.ts`)
 - get the identifier inside `drop x` or a `Block`'s tail expression/node, or ask whether a transient declaration leads its function's body (§3.4) → `droppedName`, `tailExpressionOf`, `tailNodeOf`, `leadsFunctionBody` (`src/compiler/syntax/statements/readings.ts`)
 
 ## One-way rules

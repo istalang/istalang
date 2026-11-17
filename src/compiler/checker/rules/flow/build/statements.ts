@@ -3,12 +3,13 @@
  * statement's annotations never run.
  *
  * - A declaration runs its initializer, then binds its targets; a `hold`'s variables end with the
- *   scope it names (§7). A target with no name (`_`, a part of one) keeps the whole value as a
- *   variable with no name would, until its scope or `hold` ends. A local `fn` is a closure made
+ *   scope it names (§7). A `_` among them keeps its part as a variable with no name would, until
+ *   its scope or `hold` ends. A local `fn` is a closure made
  *   where it is declared. A transient (§3.4) runs its initializer only where no call it is nested
  *   in shares it, releasing the initializer's temporaries there.
  * - An assignment runs its value, then, for each part of it, enters its place and writes it there,
- *   left to right (§3.15), converted as checking fitted it; `_ = v` keeps `v` until its block ends.
+ *   left to right (§3.15), converted as checking fitted it; a `_` keeps its part until its block
+ *   ends.
  *   A compound one reads its place first and writes what its operator's call gives.
  * - `drop x` uses `x`, then releases it; `drop e` leaves `e`'s value to its statement's end.
  * - A loop's pass is a scope of its own, its header's bindings in it; `break` goes past the loop
@@ -16,7 +17,6 @@
  */
 
 import type { Handlers } from '../../../../../foundation/structures/kind-table.ts';
-import { hasUnnamedPart } from '../../../../syntax/patterns.ts';
 import type {
   Assignment,
   Block,
@@ -25,16 +25,19 @@ import type {
   While,
 } from '../../../../syntax/statements/index.ts';
 import { droppedName } from '../../../../syntax/statements/readings.ts';
-import { hasUnnamedTarget } from '../../../../syntax/statements/targets.ts';
 import type { AssignedPart } from '../../../surface/checked-body.ts';
+
 import type { BlockId, ValueId } from '../../../surface/flow-ir.ts';
 import { guarded } from './control.ts';
 import { closureOf, unitAt } from './expressions.ts';
 import type { FlowBuilder } from './flow-builder.ts';
 import { resolvedCall } from './implicit-calls.ts';
 import { fieldLoop, targetsLoop } from './loops.ts';
-import { bindTargets, type Lifetime, readAlong } from './parts.ts';
+import { bindTargets, keep, type Lifetime, readAlong } from './parts.ts';
 import { enterAssigned } from './places.ts';
+
+/** A part of an assigned value written to a place. */
+type PlacePart = Extract<AssignedPart, { readonly kind: 'place' }>;
 
 function declaration(builder: FlowBuilder, node: VariableDeclaration): void {
   const variable = node.isTransient ? transientVariable(builder, node) : undefined;
@@ -45,9 +48,6 @@ function declaration(builder: FlowBuilder, node: VariableDeclaration): void {
   const value = builder.expression(node.initializer);
   const lifetime: Lifetime =
     node.hold === undefined ? undefined : (builder.body.labels.heldUntil(node.hold) ?? 'function');
-  if (node.targets.some(hasUnnamedPart)) {
-    keep(builder, node, value, lifetime);
-  }
   bindTargets(builder, node, value, lifetime);
 }
 
@@ -55,7 +55,9 @@ function declaration(builder: FlowBuilder, node: VariableDeclaration): void {
 function transientVariable(builder: FlowBuilder, node: VariableDeclaration): ValueId | undefined {
   const [binding, ...rest] = builder.body.targetsOf(node);
   const entity =
-    binding === undefined || rest.length > 0 ? undefined : builder.entityOf(binding.name);
+    binding === undefined || rest.length > 0 || binding.name.kind !== 'Identifier'
+      ? undefined
+      : builder.entityOf(binding.name);
   return entity === undefined ? undefined : builder.variable(entity);
 }
 
@@ -70,13 +72,6 @@ function transient(builder: FlowBuilder, node: VariableDeclaration, variable: Va
   builder.continueIn(shared);
 }
 
-/** `value`, kept as a variable with no name keeps it (§7), until `lifetime` ends. */
-function keep(builder: FlowBuilder, node: Statement, value: ValueId, lifetime: Lifetime): void {
-  const kept = builder.temporary(node, builder.valueOf(value).type);
-  builder.emit({ op: 'copy', site: node, into: kept, from: value, fit: undefined });
-  builder.scopes.declare(kept, lifetime);
-}
-
 function assignment(builder: FlowBuilder, node: Assignment): void {
   const stops = builder.body.stopsAt(node);
   if (stops !== undefined) {
@@ -88,18 +83,19 @@ function assignment(builder: FlowBuilder, node: Assignment): void {
   }
   const parts = builder.body.assignedOf(node);
   const [only] = parts;
-  if (node.operator !== '=' && only !== undefined) {
+  if (node.operator !== '=' && only?.kind === 'place') {
     compound(builder, node, only);
     return;
   }
   const value = builder.expression(node.value);
-  if (node.targets.some(hasUnnamedTarget)) {
-    keep(builder, node, value, undefined);
-  }
   for (const part of parts) {
-    const place = enterAssigned(builder, part.target);
-    const given = readAlong(builder, value, part.path, part.target);
-    place.write(fitted(builder, part, given));
+    if (part.kind === 'unnamed') {
+      keep(builder, part.target, readAlong(builder, value, part.path, part.target), undefined);
+    } else {
+      const place = enterAssigned(builder, part.target);
+      const given = readAlong(builder, value, part.path, part.target);
+      place.write(fitted(builder, part, given));
+    }
   }
 }
 
@@ -107,7 +103,7 @@ function assignment(builder: FlowBuilder, node: Assignment): void {
  * `x op= v` at its one place: read before `v` is computed, the operator's function called on the
  * two, its result written back as checking fitted it.
  */
-function compound(builder: FlowBuilder, node: Assignment, only: AssignedPart): void {
+function compound(builder: FlowBuilder, node: Assignment, only: PlacePart): void {
   const place = enterAssigned(builder, only.target);
   const current = place.read();
   const value = builder.expression(node.value);
@@ -122,7 +118,7 @@ function compound(builder: FlowBuilder, node: Assignment, only: AssignedPart): v
  * field a key naming several gives, of the type of the place the key names, which is what the
  * fits are read against; a target inside a destructuring pattern has no type of its own.
  */
-function fitted(builder: FlowBuilder, part: AssignedPart, value: ValueId): ValueId {
+function fitted(builder: FlowBuilder, part: PlacePart, value: ValueId): ValueId {
   const type = part.fit === 'intoKeyedField' ? builder.body.typeOf(part.target) : part.type;
   return builder.fitted(part.target, value, { type, fit: part.fit });
 }

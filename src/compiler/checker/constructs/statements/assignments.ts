@@ -83,7 +83,7 @@ export function checkAssignment(context: BodyContext, node: Assignment): void {
  */
 type PreparedTarget =
   | { readonly kind: 'place'; readonly node: Expression; readonly type: Type }
-  | { readonly kind: 'unnamed' }
+  | { readonly kind: 'unnamed'; readonly node: Expression }
   | { readonly kind: 'destructuring'; readonly destructuring: Destructuring<PreparedTarget> };
 
 function prepareTarget(context: BodyContext, target: Expression): PreparedTarget {
@@ -101,7 +101,7 @@ function prepareTarget(context: BodyContext, target: Expression): PreparedTarget
   }
   const bare = unparenthesized(target);
   return isUnnamedTarget(bare)
-    ? { kind: 'unnamed' }
+    ? { kind: 'unnamed', node: bare }
     : { kind: 'place', node: bare, type: assignedPlace(context, bare) };
 }
 
@@ -152,7 +152,7 @@ function checkCompound(
       operands,
     });
   const fit = writtenFit(context, target, { type: result, place, at: node.value.span });
-  context.variables.recordAssigned(node, [{ target, path: [], type: result, fit }]);
+  context.variables.recordAssigned(node, [{ kind: 'place', target, path: [], type: result, fit }]);
 }
 
 /**
@@ -221,11 +221,23 @@ function assignPart(
     case 'destructuring':
       return takeApart(assigning, target.destructuring, part);
     case 'unnamed':
+      assigning.parts.push({
+        kind: 'unnamed',
+        target: target.node,
+        path: part.path,
+        type: part.type,
+      });
       return anyShape;
     case 'place': {
       const at = part.path.length === 0 ? assigning.valueSpan : target.node.span;
       const fit = writtenFit(context, target.node, { type: part.type, place: target.type, at });
-      assigning.parts.push({ target: target.node, path: part.path, type: part.type, fit });
+      assigning.parts.push({
+        kind: 'place',
+        target: target.node,
+        path: part.path,
+        type: part.type,
+        fit,
+      });
       return anyShape;
     }
     default: {

@@ -18,6 +18,7 @@ import type {
   LiteralPattern,
   StructPattern,
   VariantCallPattern,
+  WildcardPattern,
 } from '../../syntax/patterns.ts';
 import type { For, VariableDeclaration } from '../../syntax/statements/index.ts';
 import type { Identifier } from '../../syntax/tree/node.ts';
@@ -106,9 +107,12 @@ export type ArrayStep =
       readonly after: number;
     };
 
-/** A name a target binds: its part's type, and the steps to it from the whole value (§3.15). */
+/**
+ * A name a target binds, or a `_` in it, a variable with no name that holds its part all the same
+ * (§3.15, §7): its part's type, and the steps to it from the whole value.
+ */
 export interface TargetBinding {
-  readonly name: Identifier;
+  readonly name: Identifier | WildcardPattern;
   readonly type: Type;
   /** Tuple element positions and struct steps from the whole value, outermost first. */
   readonly path: readonly TargetStep[];

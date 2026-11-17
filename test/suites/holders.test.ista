@@ -1,0 +1,31 @@
+# When holders let go (spec §3.15, §7): a `_` holds its part alone.
+# Each rule is its own function, and its test asserts the order things were disposed in.
+
+import Suite, Test, test, assertEq from 'testing'
+
+shared struct Lease:
+  name: String
+  log: Shared<Array<String>>
+
+fn dispose(self: Lease):
+  self->log->value.push("disposed " + self->name)
+
+fn note(log: Shared<Array<String>>, text: String):
+  log->value.push(text)
+
+fn unnamedParts() -> Array<String>:
+  const log = new Shared<Array<String>>{value: []}
+  {
+    const a, _ = (new Lease{name: "a", log}, new Lease{name: "kept", log})
+    drop a
+    note(log, "a dropped")
+    let b = new Lease{name: "b", log}
+    b, _ = (new Lease{name: "b2", log}, new Lease{name: "kept2", log})
+    note(log, "b assigned")
+  }
+  log->value
+
+@Suite{"holders"}
+fn suite() -> Array<Test>: [
+  test("a _ among a destructuring's targets holds its part alone, so dropping or reassigning a named part disposes it", fn(): assertEq(unnamedParts(), ["disposed a", "a dropped", "disposed b", "b assigned", "disposed kept2", "disposed b2", "disposed kept"]))
+]
