@@ -114,7 +114,7 @@ export class Run {
       (callback, value) => this.callValue(callback, [value]),
       this.lifetimes,
     );
-    this.invocations = new Invocations(this.instance);
+    this.invocations = new Invocations(this.instance, this.lifetimes);
     this.endWatches = new EndWatches(
       ({ future, instance }) => this.world.watchEnd(this, instance, future),
       (future, value) => this.settle(future, value),

@@ -97,7 +97,8 @@ export function instanceEnding(end: InvocationEnd): Value {
 
 /**
  * How an invocation in an instance ended: what it gave, with what holds it (its call's future, or
- * the value itself where a plain call gave it at once); unanswered, its instance `instance` having
+ * the value itself where a plain call gave it at once), held only while it is answered but by the
+ * root's answer (invocations.ts); unanswered, its instance `instance` having
  * finished first; or how its instance ended otherwise.
  */
 export type InvocationEnd =

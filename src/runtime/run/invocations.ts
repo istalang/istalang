@@ -6,10 +6,15 @@
  *   snapshot keeps, so it never waits on the instance's end besides.
  * - Any other waits on the instance's end until its call returns, then stops waiting: a context's
  *   panic answers every call still running in it, and no call that already returned.
+ * - **Holding.** A call's result is held by its invocation until answered: the root's answer lets
+ *   go of it as the instance finishes; any other's is let go of here, once told, its answer having
+ *   taken what it needs (a context's copies the value out, §9). Not in the answer itself, since an
+ *   invocation outlives the run it started in when a segment runs again.
  */
 
 import type { Value } from '../../definition/values/values.ts';
 import type { Instance, InvocationEnd } from './instances.ts';
+import type { Lifetimes } from './lifetimes.ts';
 import type { Future } from './objects/future.ts';
 
 /**
@@ -34,10 +39,12 @@ export interface RunningInvocation {
 
 export class Invocations {
   readonly #instance: Instance;
+  readonly #lifetimes: Lifetimes;
   readonly #running = new Map<Future, Invocation>();
 
-  constructor(instance: Instance) {
+  constructor(instance: Instance, lifetimes: Lifetimes) {
     this.#instance = instance;
+    this.#lifetimes = lifetimes;
   }
 
   /** Has `invocation` hear the instance's end until its call returns. */
@@ -65,7 +72,7 @@ export class Invocations {
 
   /**
    * Tells `invocation` its call returned `value`, which `holder` holds, no longer waiting on the
-   * instance's end.
+   * instance's end; then lets go of `holder`, unless the root's answer finishes the instance with it.
    */
   answer(invocation: Invocation, value: Value, holder: Value = value): void {
     const { endWatchers } = this.#instance;
@@ -74,6 +81,9 @@ export class Invocations {
       endWatchers.splice(at, 1);
     }
     invocation.answer({ kind: 'returned', value, holder });
+    if (!invocation.root) {
+      this.#lifetimes.letGo(holder);
+    }
   }
 
   persisted(): RunningInvocation[] {
