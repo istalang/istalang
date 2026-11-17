@@ -43,6 +43,15 @@ export class Future extends RunObject {
   }
 }
 
+/**
+ * The future a watch gives (`disposed()`, `disposing()`): `kept`, or one `made` anew where there is
+ * none or it was disposed. Nothing holds a watch's future between two waits on it, and a disposed
+ * future is never given out again (§7).
+ */
+export function watchFuture(kept: Future | undefined, made: () => Future): Future {
+  return kept === undefined || kept.disposed ? made() : kept;
+}
+
 /** A closure waiting on a future, called with its value as it settles. */
 export interface Waiting {
   readonly callback: Value;

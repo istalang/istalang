@@ -24,7 +24,7 @@ import { unreachable } from '../../foundation/structures/unreachable.ts';
 import type { Instance } from './instances.ts';
 import type { Lifetimes } from './lifetimes.ts';
 import { Execution, type Frame } from './objects/execution.ts';
-import { Future } from './objects/future.ts';
+import { Future, watchFuture } from './objects/future.ts';
 import type { ReadyQueue } from './ready-queue.ts';
 import type { TransientScope } from './transient-scope.ts';
 
@@ -187,7 +187,7 @@ export class Executions {
 
   /** The future `execution`'s `disposing()` gives (§7): settled once its call is disposed. */
   disposingOf(execution: Execution): Future {
-    execution.disposing ??= new Future(this.#seams.newId());
+    execution.disposing = watchFuture(execution.disposing, () => new Future(this.#seams.newId()));
     if (execution.frame.stopping && !execution.disposing.settled) {
       this.#seams.settle(execution.disposing, null);
     }

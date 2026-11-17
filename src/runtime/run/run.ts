@@ -34,7 +34,7 @@ import { Lifetimes } from './lifetimes.ts';
 import { Mocking, NOT_MOCKED } from './mocking.ts';
 import { bindNatives, type RunSeams } from './natives.ts';
 import type { Execution, Frame } from './objects/execution.ts';
-import { Future } from './objects/future.ts';
+import { Future, watchFuture } from './objects/future.ts';
 import type { WeakReference } from './objects/weak-reference.ts';
 import { PanicGuard } from './panic-guard.ts';
 import { Places } from './places.ts';
@@ -269,7 +269,7 @@ export class Run {
 
   /** The future `weak`'s `disposed()` gives (§7): settled once its referent is disposed. */
   disposedOf(weak: WeakReference): Future {
-    weak.whenDisposed ??= new Future(this.newId());
+    weak.whenDisposed = watchFuture(weak.whenDisposed, () => new Future(this.newId()));
     if (weak.target === undefined && !weak.whenDisposed.settled) {
       this.settle(weak.whenDisposed, null);
     }

@@ -2,8 +2,9 @@
 # each holder before what it holds. Each rule is its own function, and its test asserts what the old
 # runtime's unit test did.
 
-import Suite, Test, test, assertEq from 'testing'
+import Suite, Test, test, assertEq, spawnCrashingEveryAwait from 'testing'
 import * as runtime from 'runtime'
+import Inbox from 'inbox'
 
 shared struct Lease:
   name: String
@@ -22,10 +23,65 @@ ista async fn disposalRounds() -> String:
   await runtime.commit()
   log->value.join(", ")
 
+ista async fn answersUntilGone(owner: WeakRef<Inbox<String>>, asked: Inbox<Int>) -> String:
+  while true:
+    await select:
+      case asked.receive() as n: owner.deref()?.send("answer " + String(n))
+      case owner.disposed(): return "gone"
+  "never"
+
+ista async fn disposedWatchedInALoop() -> String:
+  const asked = Inbox.create<Int>()
+  let answers = ""
+  const answering = {
+    const answered = Inbox.create<String>()
+    const started = answersUntilGone(WeakRef(answered), asked)
+    asked.send(1)
+    const first = await answered.receive()
+    asked.send(2)
+    answers = first + ", " + await answered.receive()
+    started
+  }
+  answers + ", " + await answering
+
+ista async fn ticksUntilDisposed(ticks: Inbox<Int>, replies: Inbox<String>) -> String:
+  while true:
+    await select:
+      case ticks.receive() as n: replies.send("tick " + String(n))
+      case ticksUntilDisposed.disposing():
+        replies.send("disposing")
+        return "stopped"
+  "never"
+
+ista async fn disposingWatchedInALoop() -> Array<String>:
+  const ticks = Inbox.create<Int>()
+  const replies = Inbox.create<String>()
+  if true:
+    const ticking = ticksUntilDisposed(ticks, replies)
+    ticks.send(1)
+    _ = await replies.receive()
+    ticks.send(2)
+    _ = await replies.receive()
+  [await replies.receive()]
+
 @Suite{"disposal"}
 fn suite() -> Array<Test>: [
   test(
     "the current round finishes before what a disposal in that round held is disposed"
     async fn(): assertEq(await disposalRounds(), "disposed 2, disposed 1, disposed 0")
+  )
+  test(
+    "a disposed() watch awaited again after nothing held it between waits still resolves, with every segment re-run"
+    async fn(): assertEq(
+      await spawnCrashingEveryAwait(disposedWatchedInALoop).result()
+      Ok("answer 1, answer 2, gone")
+    )
+  )
+  test(
+    "a disposing() watch awaited again after nothing held it between waits still resolves, with every segment re-run"
+    async fn(): assertEq(
+      await spawnCrashingEveryAwait(disposingWatchedInALoop).result()
+      Ok(["disposing"])
+    )
   )
 ]
