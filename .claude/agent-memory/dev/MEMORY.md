@@ -16,3 +16,5 @@
 - [Few big phases](feedback_few-big-phases.md) — rewrites: one late-tested phase over many small ones keeping deleted code green
 - [Vitest projects](project_vitest-projects.md) — golden/sweeps run only under `--project slow`; mixed paths silently skip them
 - [Suites over corpus](feedback_suites-over-corpus.md) — ported rules as .test.ista cases by area; corpus program only for whole-program rules
+- [Agents merge themselves](feedback_agents-merge-themselves.md) — partitions rebase and ff the integration branch; no idle integrator
+- [Expert for tasks](feedback_expert-for-tasks.md) — cold agents doing work are `--agent expert`; `dev` only plans big tasks
