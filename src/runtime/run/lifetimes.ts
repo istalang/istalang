@@ -31,7 +31,7 @@ import {
   type TypeDefinition,
   type TypeReference,
 } from '../../definition/tables/types.ts';
-import { copiedMap, forgetDerived } from '../../definition/values/equality.ts';
+import type { RuntimeValues } from '../../definition/values/equality.ts';
 import { forgetPlainOf } from '../../definition/values/json-values.ts';
 import {
   type CompositeValue,
@@ -62,14 +62,16 @@ export class Lifetimes {
   readonly written = new WrittenJson((json) => this.share(json));
   readonly #dispose: Disposer;
   readonly #types: readonly TypeDefinition[];
+  readonly #values: RuntimeValues;
   /** The objects that lost their last holder, waiting for the round collecting them. */
   #zeros: RunObject[] | undefined;
   /** Whether a disposal's panic stops none of the others (`disposingPastPanics`). */
   #passesPanics = false;
 
-  constructor(dispose: Disposer, types: readonly TypeDefinition[]) {
+  constructor(dispose: Disposer, types: readonly TypeDefinition[], values: RuntimeValues) {
     this.#dispose = dispose;
     this.#types = types;
+    this.#values = values;
   }
 
   /** Another holder of `value`; none of a disposed object, which nothing brings back (§7). */
@@ -212,13 +214,13 @@ export class Lifetimes {
    */
   owned(node: CompositeValue): CompositeValue {
     if (this.isUnique(node)) {
-      forgetDerived(node);
+      this.#values.forget(node);
       forgetDepth(node);
       forgetPlainOf(node);
       this.written.forget(node);
       return node;
     }
-    const copy = copiedNode(node);
+    const copy = copiedNode(node, this.#values);
     for (const child of childValues(copy)) {
       if (isNode(child) && this.#counts.has(child)) {
         this.hold(child);
@@ -397,7 +399,7 @@ function itemTypeOf(
 }
 
 /** A shallow copy of `node`, its parts in a list of their own. */
-function copiedNode(node: CompositeValue): CompositeValue {
+function copiedNode(node: CompositeValue, values: RuntimeValues): CompositeValue {
   switch (node.kind) {
     case 'tuple':
     case 'array':
@@ -406,7 +408,7 @@ function copiedNode(node: CompositeValue): CompositeValue {
     case 'variant':
       return { ...node, fields: [...node.fields] };
     case 'map':
-      return copiedMap(node);
+      return values.copiedMap(node);
     case 'closure':
       return { ...node, captures: [...node.captures] };
     default:

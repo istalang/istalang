@@ -14,7 +14,6 @@
 
 import type { ExternFunction } from '../../definition/tables/functions.ts';
 import { lifetimeOf, type TypeReference } from '../../definition/tables/types.ts';
-import { deleteEntryInPlace, setEntryInPlace } from '../../definition/values/equality.ts';
 import type { CompositeValue, Value } from '../../definition/values/values.ts';
 import { unreachable } from '../../foundation/structures/unreachable.ts';
 import type { Clock } from '../clock.ts';
@@ -114,6 +113,7 @@ function contextOf(
       result: entry.result,
     },
     types: run.definition.types,
+    values: run.values,
     get instance() {
       return run.instance.name;
     },
@@ -172,11 +172,11 @@ function changesOf(run: Run, reference: Reference, type: TypeReference): ValueCh
     },
     setEntry: (key, value) => {
       kept([key, value]);
-      const replaced = setEntryInPlace(unique() as never, key, value);
+      const replaced = run.values.setEntryInPlace(unique() as never, key, value);
       released(replaced === undefined ? [] : [replaced[0], replaced[1]]);
     },
     deleteEntry: (key) => {
-      const removed = deleteEntryInPlace(unique() as never, key);
+      const removed = run.values.deleteEntryInPlace(unique() as never, key);
       released(removed === undefined ? [] : [removed[0], removed[1]]);
       return removed !== undefined;
     },

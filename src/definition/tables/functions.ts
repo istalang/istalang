@@ -24,7 +24,14 @@
 import { z } from 'zod';
 import { memo } from '../../foundation/structures/memo.ts';
 import { type InstructionOf, instruction } from '../instructions/instruction.ts';
-import { type Label, moduleId, type Register, span } from '../operands.ts';
+import {
+  type FunctionId,
+  functionId,
+  type Label,
+  moduleId,
+  type Register,
+  span,
+} from '../operands.ts';
 import { value } from '../values/values.ts';
 import { typeReference } from './types.ts';
 
@@ -35,6 +42,11 @@ const common = {
   span,
   /** Annotation values in source order, such as `@Suite`. */
   annotations: z.array(value),
+  /**
+   * The entry first lowered from the same declaration, lambda or local function, whose closures
+   * `==` reads as this one's (§3.14, `bodyOf`); absent on that first one.
+   */
+  body: functionId.optional(),
 };
 
 const codeMode = z.enum(['simple', 'live', 'ista']);
@@ -119,4 +131,12 @@ export function transientRegistersOf(entry: CodeFunction): readonly Register[] {
   return memo(transientRegisters, entry, () =>
     entry.instructions.flatMap((each) => (each.kind === 'transient' ? [each.dst] : [])),
   );
+}
+
+/**
+ * Which body entry `index` of `functions` runs, as `==` tells closures apart (§3.14): one per
+ * declaration, lambda or local function, however many instances lowering made of it.
+ */
+export function bodyOf(functions: readonly FunctionDefinition[], index: FunctionId): FunctionId {
+  return functions[index]?.body ?? index;
 }

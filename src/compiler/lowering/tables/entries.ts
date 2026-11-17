@@ -78,6 +78,12 @@ export type EntryOf<Kind extends EntryKind> = Extract<LoweredEntry, { readonly k
 export interface EntryIdentity<Kind extends EntryKind> {
   /** What tells the entry apart within its kind: equal for two entries that are one. */
   readonly identity: (keys: TypeKeys, entry: EntryOf<Kind>) => string;
+  /**
+   * The source function the entry runs, as `==` reads its closures (§3.14): equal for two entries
+   * lowered from one declaration, lambda or local function; none for an entry that is a body of
+   * its own.
+   */
+  readonly body?: (keys: TypeKeys, entry: EntryOf<Kind>) => string;
   /** The type whose variants a closing entry switches over; none for an entry lowered once. */
   readonly closedOver?: (entry: EntryOf<Kind>) => Type;
 }

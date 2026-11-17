@@ -4,6 +4,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import { valueSemanticsOf } from '../../definition/values/equality.ts';
 import { Instance } from './instances.ts';
 import { Lifetimes } from './lifetimes.ts';
 import { Cell } from './objects/cell.ts';
@@ -13,7 +14,7 @@ import { WeakReference } from './objects/weak-reference.ts';
 
 /** `object` held, let go of and held again, under lifetimes disposing nothing of its own. */
 function heldAgain(object: RunObject): RunObject {
-  const lifetimes = new Lifetimes(() => [], []);
+  const lifetimes = new Lifetimes(() => [], [], valueSemanticsOf([]));
   lifetimes.hold(object);
   lifetimes.letGo(object);
   lifetimes.hold(object);

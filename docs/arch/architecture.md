@@ -231,7 +231,8 @@ src/
                                                                  (stencils.ts): each type argument the function's code uses only opaquely
                                                                  keyed as the prelude's stand-in for its lifetime class (the
                                                                  class `TypeTable.lifetimeOf` reads), none in a test build, where a mock
-                                                                 replaces one entry
+                                                                 replaces one entry; each entry's source body (`body`, from the kind table),
+                                                                 which closure `==` reads (§3.14)
       calls/                                                     what a call closed inside one instance targets (closed-calls.ts: its
                                                                  entry, or a dispatch); the one place a `call` is
                                                                  written (emit-call.ts), and a wait's parts: a resolver per case handed to its

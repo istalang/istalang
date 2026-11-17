@@ -4,6 +4,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import { valueSemanticsOf } from '../../definition/values/equality.ts';
 import type { Value } from '../../definition/values/values.ts';
 import { Instance } from './instances.ts';
 import { type Invocation, Invocations } from './invocations.ts';
@@ -14,10 +15,14 @@ import type { RunObject } from './objects/run-object.ts';
 /** Invocations of a context, a settled call's future held once, and what its lifetimes disposed. */
 function answering(root: boolean) {
   const disposed: RunObject[] = [];
-  const lifetimes = new Lifetimes((object) => {
-    disposed.push(object);
-    return [];
-  }, []);
+  const lifetimes = new Lifetimes(
+    (object) => {
+      disposed.push(object);
+      return [];
+    },
+    [],
+    valueSemanticsOf([]),
+  );
   const invocations = new Invocations(new Instance('c', true), lifetimes);
   const future = new Future(1);
   future.count = 1;

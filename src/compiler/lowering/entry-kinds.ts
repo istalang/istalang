@@ -54,6 +54,7 @@ interface EntryKindRow<Kind extends EntryKind> extends EntryIdentity<Kind> {
 export const entryKinds: { readonly [Kind in EntryKind]: EntryKindRow<Kind> } = {
   instance: {
     identity: (keys, { instance }) => instanceKey(keys, instance),
+    body: (keys, { instance }) => String(keys.identityOf(instance.declaration)),
     entry: (lowering, { instance }) => {
       const own = ownEntryOf(lowering.checker, instance);
       return handlerOf(ownEntries, own)(lowering, own, instance);
@@ -61,10 +62,12 @@ export const entryKinds: { readonly [Kind in EntryKind]: EntryKindRow<Kind> } = 
   },
   externDefaults: {
     identity: (keys, { instance }) => instanceKey(keys, instance),
+    body: (keys, { instance }) => String(keys.identityOf(instance.declaration)),
     entry: (lowering, { instance }) => externDefaultsEntry(lowering, instance),
   },
   nested: {
     identity: (keys, { nested }) => nestedKey(keys, nested),
+    body: (keys, { nested }) => String(keys.identityOf(nested.node)),
     entry: (lowering, { nested }) => nestedLowering(lowering, nested).lowerNested(nested.node),
   },
   hostNative: {

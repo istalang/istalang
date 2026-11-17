@@ -23,6 +23,7 @@
 
 import type { FunctionId, TypeId } from '../definition/operands.ts';
 import type { TypeDefinition, TypeReference } from '../definition/tables/types.ts';
+import type { RuntimeValues } from '../definition/values/equality.ts';
 import type { Value } from '../definition/values/values.ts';
 import type { Inspection, LogRecord, SpawnOptions } from './instance-state.ts';
 import { Refusal } from './refusal.ts';
@@ -55,6 +56,8 @@ export interface NativeContext {
   };
   /** The Definition's types, which the extern's types index, for building values of them. */
   readonly types: readonly TypeDefinition[];
+  /** `==` and map keys over the program's values (§3.8, §3.9), its maps' tables kept. */
+  readonly values: Pick<RuntimeValues, 'entryPosition' | 'entryValue'>;
   /** The instance whose code called the native, as its host names it (§9). */
   readonly instance: string;
   /** The content hash of the Definition the instance runs, fixed for its life (§5). */

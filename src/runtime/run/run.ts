@@ -19,7 +19,7 @@ import type { EmittedProgram } from '../../codegen/emit.ts';
 import { startsExecution } from '../../definition/tables/functions.ts';
 import type { Definition } from '../../definition/tables/index.ts';
 import { disposeOf } from '../../definition/tables/types.ts';
-import { mapOf, valuesEqual } from '../../definition/values/equality.ts';
+import { type RuntimeValues, valueSemanticsOf } from '../../definition/values/equality.ts';
 import type { Value } from '../../definition/values/values.ts';
 import { Unreachable } from '../../foundation/structures/unreachable.ts';
 import { type HostFilling, stackSite } from '../natives.ts';
@@ -70,6 +70,8 @@ export class Run {
   readonly world: World;
   /** The secret seed of the instance's random source (§3.8 `random`), which its snapshot keeps. */
   readonly seed: Uint8Array;
+  /** `==` and maps over the program's values (§3.8, §3.9). */
+  readonly values: RuntimeValues;
   readonly lifetimes: Lifetimes;
   readonly places: Places;
   readonly builders: ValueBuilders;
@@ -106,12 +108,13 @@ export class Run {
     this.world = seams.world;
     this.seed = seams.seed;
     this.mocking = new Mocking(this);
-    this.lifetimes = new Lifetimes(disposerOf(this.#disposal()), definition.types);
+    this.values = valueSemanticsOf(definition.functions);
+    this.lifetimes = new Lifetimes(disposerOf(this.#disposal()), definition.types, this.values);
     for (const constant of this.constants) {
       this.lifetimes.share(constant);
     }
     this.places = new Places(this.lifetimes);
-    this.builders = new ValueBuilders(this.lifetimes, () => this.newId());
+    this.builders = new ValueBuilders(this.lifetimes, this.values, () => this.newId());
     this.#settler = new Settler(
       (callback, value) => this.callValue(callback, [value]),
       this.lifetimes,
@@ -163,8 +166,9 @@ export class Run {
 
   // What compiled code calls besides its parts' helpers.
 
-  readonly equal = valuesEqual;
-  readonly mapOf = mapOf;
+  readonly equal = (first: Value, second: Value): boolean => this.values.equal(first, second);
+  readonly mapOf = (entries: readonly (readonly [Value, Value])[]): Value =>
+    this.values.mapOf(entries);
 
   /** A new object's identity: newer objects have greater ones. */
   newId(): number {

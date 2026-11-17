@@ -7,10 +7,13 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { entryPosition, mapOf, valuesEqual } from '../../../definition/values/equality.ts';
+import { valueSemanticsOf } from '../../../definition/values/equality.ts';
 import type { Value } from '../../../definition/values/values.ts';
 import type { Primitive } from '../../../foundation/language/values.ts';
 import { type ConstantForm, formSemantics } from './constant-form.ts';
+
+/** The runtime's `==` and maps, over values holding no closures. */
+const { entryPosition, mapOf, equal: valuesEqual } = valueSemanticsOf([]);
 
 /** A value both representations can hold, built into each by `asForm` and `asValue`. */
 type Shape =

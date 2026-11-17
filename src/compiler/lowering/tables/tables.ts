@@ -77,6 +77,9 @@ export class DefinitionTables {
   readonly #stencils: Stencils | undefined;
   /** Each instance entry as shared, by its own key. */
   readonly #sharedEntries = new Map<string, LoweredEntry>();
+  /** The first entry of each source function, by its body key, and each later one's first. */
+  readonly #bodyEntries = new Map<string, FunctionId>();
+  readonly #bodies = new Map<FunctionId, FunctionId>();
 
   /** Whether the Definition runs tests, whose functions a mock may replace (§10). */
   readonly mocking: boolean;
@@ -210,7 +213,26 @@ export class DefinitionTables {
     const entry = this.#shared(given);
     const { closedOver } = identityOf(this.#identities, entry);
     const queue = closedOver === undefined ? this.#pending : this.#closing;
-    return this.#numbered(this.#keyOf(entry), (index) => queue.push({ ...entry, index }));
+    return this.#numbered(this.#keyOf(entry), (index) => {
+      this.#numberBody(entry, index);
+      queue.push({ ...entry, index });
+    });
+  }
+
+  /** Notes which entry first ran `entry`'s source function, numbered `index` (`EntryIdentity.body`). */
+  #numberBody(entry: LoweredEntry, index: FunctionId): void {
+    const { body } = identityOf(this.#identities, entry);
+    if (body === undefined) {
+      return;
+    }
+    const first = memo(
+      this.#bodyEntries,
+      `${entry.kind}:${body(this.#checker.typeKeys, entry)}`,
+      () => index,
+    );
+    if (first !== index) {
+      this.#bodies.set(index, first);
+    }
   }
 
   /** What tells `entry` apart from every other: its kind, then its identity within it. */
@@ -301,7 +323,8 @@ export class DefinitionTables {
       if (entry === undefined) {
         unreachable(`Function ${index} was referenced but never lowered.`);
       }
-      return entry;
+      const body = this.#bodies.get(index);
+      return body === undefined ? entry : { ...entry, body };
     });
     return {
       modules: this.#modules,

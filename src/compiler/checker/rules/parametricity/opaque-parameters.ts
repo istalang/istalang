@@ -15,9 +15,7 @@
  *   prelude's own functions), makes it concrete, as does a requirement call naming it, or a call
  *   giving it to a callee parameter that is concrete; a wait on a value naming it reads the
  *   prelude functions lowering waits through as such callees.
- * - What tells one instance from another keeps every parameter concrete: a `transient` variable,
- *   one per instance (§3.4); a parameter the signature doesn't name, whose instantiations' values
- *   are of one type, which `==` tells apart by the function they run (§3.14).
+ * - A `transient` variable, one per instance (§3.4), keeps every parameter concrete.
  * - A call of the function itself giving each parameter itself reads nothing new; any other cycle
  *   answers its table's stand-in, every parameter concrete.
  */
@@ -133,14 +131,7 @@ class Uses {
       checker.resultOf(declaration),
     ];
     const signature = this.#signature;
-    // A parameter its signature doesn't name gives two instantiations' values one type, which `==`
-    // tells apart by the function they run.
-    if (
-      !(
-        signature.some((type) => names(type, parameter)) &&
-        signature.every((type) => opaquelyNamed(this.#checker, type, parameter))
-      )
-    ) {
+    if (!signature.every((type) => opaquelyNamed(this.#checker, type, parameter))) {
       return false;
     }
     this.#codeFlows ??= this.#flows();

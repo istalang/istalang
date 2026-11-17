@@ -7,7 +7,6 @@
  */
 
 import { type NativeKeys, parameterKey, referenceKey } from '../../definition/extern-key.ts';
-import { entryPosition, entryValue } from '../../definition/values/equality.ts';
 import { mapValueOf, type Value } from '../../definition/values/values.ts';
 import { wellKnown } from '../../foundation/language/well-known/index.ts';
 import { type NativeContext, type Natives, Panic } from '../../runtime/natives.ts';
@@ -27,17 +26,18 @@ const entryTuple = ([key, value]: readonly [Value, Value]): Value => ({
 
 export const mapNatives = (keys: NativeKeys): Natives<NativeContext> => ({
   [keys.of('size', map)]: ([m]) => BigInt(mapValueOf(m).entries.length),
-  [keys.of('_find', map, keyType)]: ([m, k]) =>
-    BigInt(entryPosition(mapValueOf(m), k ?? null) ?? -1),
+  [keys.of('_find', map, keyType)]: ([m, k], { values }) =>
+    BigInt(values.entryPosition(mapValueOf(m), k ?? null) ?? -1),
   [keys.of('_valueAt', map, 'Int')]: ([m, position]) => {
     const { entries } = mapValueOf(m);
     return (entries[checkedIndex(int(position), entries.length, 'a map')] ?? [null, null])[1];
   },
-  [keys.of('has', map, keyType)]: ([m, k]) => entryPosition(mapValueOf(m), k ?? null) !== undefined,
+  [keys.of('has', map, keyType)]: ([m, k], { values }) =>
+    values.entryPosition(mapValueOf(m), k ?? null) !== undefined,
   [keys.of('delete', referenceKey(map), keyType)]: ([, k], context) =>
     context.changes(0).deleteEntry(k ?? null),
-  [keys.of('index', map, keyType)]: ([m, k]) => {
-    const found = entryValue(mapValueOf(m), k ?? null);
+  [keys.of('index', map, keyType)]: ([m, k], { values }) => {
+    const found = values.entryValue(mapValueOf(m), k ?? null);
     if (found === undefined) {
       throw new Panic('The map holds no such key.');
     }

@@ -16,7 +16,6 @@ import type { NativeKeys } from '../../definition/extern-key.ts';
 import type { TypeId } from '../../definition/operands.ts';
 import type { TypeDefinition } from '../../definition/tables/types.ts';
 import { fieldValueOf, structOf } from '../../definition/values/declared-values.ts';
-import { mapOf } from '../../definition/values/equality.ts';
 import type { Value } from '../../definition/values/values.ts';
 import { memo } from '../../foundation/structures/memo.ts';
 import { codePointPositions } from '../../foundation/text/code-points.ts';
@@ -110,7 +109,8 @@ function foundBuilder(
       text: matched,
       index: BigInt(position(match.index ?? 0)),
       captures: arrayOf(groups.map((group) => arrayOf(group === undefined ? [] : [group]))),
-      named: mapOf(named),
+      // Group names are distinct, so the map is their entries as they are.
+      named: { kind: 'map', entries: named },
     });
   };
 }

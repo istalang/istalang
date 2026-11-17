@@ -5,17 +5,19 @@
  * §3.14), held by the register it lands in when its value is counted.
  */
 
-import { setEntryInPlace } from '../../definition/values/equality.ts';
+import type { RuntimeValues } from '../../definition/values/equality.ts';
 import type { CompositeValue, Value } from '../../definition/values/values.ts';
 import type { Lifetimes } from './lifetimes.ts';
 import { Cell } from './objects/cell.ts';
 
 export class ValueBuilders {
   readonly #lifetimes: Lifetimes;
+  readonly #values: RuntimeValues;
   readonly #newId: () => number;
 
-  constructor(lifetimes: Lifetimes, newId: () => number) {
+  constructor(lifetimes: Lifetimes, values: RuntimeValues, newId: () => number) {
     this.#lifetimes = lifetimes;
+    this.#values = values;
     this.#newId = newId;
   }
 
@@ -43,7 +45,7 @@ export class ValueBuilders {
   /** `collection`, a `Map`, with `key` set to `value`, all moved in; a pair replaced let go of when `counted`. */
   readonly appendEntry = (collection: Value, key: Value, value: Value, counted: boolean): Value => {
     const own = this.#lifetimes.owned(collection as CompositeValue);
-    const replaced = setEntryInPlace(own as never, key, value);
+    const replaced = this.#values.setEntryInPlace(own as never, key, value);
     if (counted && replaced !== undefined) {
       this.#lifetimes.letGo(replaced[0], replaced[1]);
     }

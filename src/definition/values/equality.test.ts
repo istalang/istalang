@@ -9,17 +9,19 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { reverseKeys } from '../formats/codec.test-kit.ts';
 import { decodeJson, encodeJson } from '../formats/codec.ts';
-import {
+import { type MapValue, valueSemanticsOf } from './equality.ts';
+import { nested, valueArbitrary } from './values.test-kit.ts';
+import type { Value } from './values.ts';
+
+/** The semantics of a program with no functions: every closure its own body. */
+const {
   deleteEntryInPlace,
   entryPosition,
   entryValue,
-  type MapValue,
   mapOf,
   setEntryInPlace,
-  valuesEqual,
-} from './equality.ts';
-import { nested, valueArbitrary } from './values.test-kit.ts';
-import type { Value } from './values.ts';
+  equal: valuesEqual,
+} = valueSemanticsOf([]);
 
 const keys = valueArbitrary({ typed: true });
 const entries = fc.array(fc.tuple(keys, valueArbitrary({ typed: true })), { maxLength: 12 });

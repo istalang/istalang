@@ -37,6 +37,7 @@ describe('a type parameter used only opaquely', () => {
     ['given to itself', 'fn f<T>(x: T, n: Int) -> T:\n  if n == 0: x\n  else: f(x, n - 1)'],
     ['given to a callee using it opaquely', 'fn g<T>(x: T) -> T: x\nfn f<T>(x: T) -> T: g(x)'],
     ['awaited', 'ista async fn f<T>(x: Future<T, "ista">) -> T: await x'],
+    ['named by no part of its signature', 'fn f<T>(n: Int) -> Int: n'],
   ])('is opaque: %s', (_, declarations) => {
     expect(opaqueOf('f', declarations)).toEqual(['T']);
   });
@@ -54,7 +55,6 @@ describe('a type parameter whose type tells', () => {
     ['given to a callee whose type tells', 'fn g<T>(x: T) -> T?: x\nfn f<T>(x: T): drop g(x)'],
 
     ['taken by an extern a host implements', 'extern fn f<T>(x: T) -> T'],
-    ['named by no part of its signature', 'fn f<T>() -> Int: 1'],
     [
       'beside a transient, one per instance',
       'fn f<T>(x: T) -> T:\n  transient let n = 0\n  n += 1\n  x',

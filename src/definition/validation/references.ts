@@ -133,6 +133,7 @@ function fieldHoldings(fields: readonly Field[], owner: string): readonly Holdin
 function functionHoldings(entry: FunctionDefinition, where: string): readonly Holding[] {
   const common = [
     { where: `${where} module`, held: { kind: 'index', table: 'module', index: entry.module } },
+    ...functionAt(`${where} body`, entry.body),
     ...entry.annotations.map((value) => valueAt(`${where} annotation`, value)),
   ] as const;
   return entry.kind === 'code'
