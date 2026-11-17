@@ -231,6 +231,7 @@ export class Entries<Note> {
       open: true,
       reachedRunning: false,
       member: false,
+      walk: 0,
     };
     this.#started += 1;
     this.#running.at(-1)?.reads.add(entry);

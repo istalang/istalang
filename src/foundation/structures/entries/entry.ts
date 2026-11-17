@@ -73,6 +73,8 @@ export interface Entry<Note> {
   reachedRunning: boolean;
   /** Whether it lies on a cycle, so that it answers its table's stand-in. */
   member: boolean;
+  /** The last walk of notes that reached it (`notesOfReads`), which counts its walks. */
+  walk: number;
 }
 
 /** Whether `entry`, computing, reads the input of `read` (its name, then its arguments) first. */
@@ -107,19 +109,28 @@ export function notesFrom<Note>(entry: Entry<Note>): readonly Note[] {
   return [...entry.notes, ...notesOfReads(entry)];
 }
 
-/** The notes of every entry `entry` read, transitively, each entry once, its own left out. */
+/** How many walks of notes have started, each one's number stamped on the entries it reaches. */
+let walks = 0;
+
+/**
+ * The notes of every entry `entry` read, transitively, each entry once, its own left out. An entry
+ * reached is stamped with the walk's number rather than kept in a set: a walk reaches thousands of
+ * entries, and a walk runs to its end before another starts.
+ */
 export function notesOfReads<Note>(entry: Entry<Note>): readonly Note[] {
-  const seen = new Set<Entry<Note>>([entry]);
+  walks += 1;
+  const walk = walks;
+  entry.walk = walk;
   const pending = [...entry.reads];
   const notes: Note[] = [];
   for (const read of pending) {
-    seen.add(read);
+    read.walk = walk;
   }
   for (let next = pending.pop(); next !== undefined; next = pending.pop()) {
     notes.push(...next.notes);
     for (const read of next.reads) {
-      if (!seen.has(read)) {
-        seen.add(read);
+      if (read.walk !== walk) {
+        read.walk = walk;
         pending.push(read);
       }
     }
