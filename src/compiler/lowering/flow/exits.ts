@@ -7,9 +7,8 @@
  *   (values/optionals.ts); `is` tests a variant, an `any`'s held type, or a union's members
  *   (values/members/tests.ts), an instantiation having merged a literal member into its base
  *   compared with that literal.
- * - A field loop's top goes to its first pass; a `select` is the instruction choosing among its
- *   cases, each holding what its awaitable computed, its binding given what its future gave, or to
- *   its `else` alone where it has no case.
+ * - A field loop's top goes to its first pass; a `select` goes to the case its wait was decided
+ *   for (flow-waits.ts), or to its `else` alone where it has no case.
  * - `transient` is the instruction sharing a transient's cell from a call this one is nested in,
  *   going on to its initializer where none shares one (§3.4).
  */
@@ -17,15 +16,13 @@
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { TypeTest } from '../../checker/surface/checked-pattern.ts';
 import type { BlockId, BranchTest, Exit } from '../../checker/surface/flow-ir.ts';
-import { intType, unitType } from '../../checker/types/type/primitives.ts';
-import { selectCasesOf } from '../../syntax/expressions/readings.ts';
-import { caseValue, decidedAt, parked, waitRegisters } from '../calls/waits.ts';
+import { unitType } from '../../checker/types/type/primitives.ts';
 import type { TypedValue } from '../context.ts';
 import type { Label } from '../functions/code-writer.ts';
 import { type Branch, branchOnMembers } from '../values/members/tests.ts';
 import { branchOnPresent } from '../values/optionals.ts';
 import { branchOnVariant } from '../values/variant-values.ts';
-import { waypointAt } from './waypoints.ts';
+import { selected } from './flow-waits.ts';
 import type { FlowWriter } from './writer.ts';
 
 type ExitOf<Kind extends Exit['kind']> = Extract<Exit, { readonly kind: Kind }>;
@@ -87,7 +84,7 @@ const testWriters: {
     branchOnType(writer, writer.typed(value), test, { matched: holds, otherwise: fails });
   },
   fieldPass: (writer) => writer.goTo(writer.firstPass(), writer.flow.root.span),
-  select: (writer, test, to) => selected(writer, test, to),
+  select: selected,
   transient: (writer, { variable }, to) => {
     const [shared, unmade] = to as [BlockId, BlockId];
     const { span } = writer.flow.root;
@@ -114,60 +111,4 @@ function branchOnType(writer: FlowWriter, value: TypedValue, test: TypeTest, bra
   const variant =
     test.kind === 'variant' ? test.variant : context.tables.types.anyVariant(test.from, test.to);
   branchOnVariant(context, { register: value.register, variant }, branch, span);
-}
-
-/**
- * A `select` (§8): parks until one of its cases decides its wait, or, with an `else`, asks at once
- * whether one has (`decidedAt`); then goes to the case decided, which takes what its future gave and
- * lets go of the wait and of the losing cases' holdings, its own moving to the scope around the
- * `select` (spec amendment, "select losers").
- */
-function selected(
-  writer: FlowWriter,
-  { node, holds }: TestOf<'select'>,
-  to: readonly BlockId[],
-): void {
-  const { context } = writer;
-  const { code } = context;
-  const { span } = node;
-  const cases = selectCasesOf(node);
-  if (cases.length === 0) {
-    writer.goTo(to[0] ?? unreachable('A select goes nowhere.'), span);
-    return;
-  }
-  const { open, futures } = writer.waits.take();
-  const position =
-    node.elseClause === undefined
-      ? parked(context, open, { waypoint: waypointAt(writer.context, node), span })
-      : decidedAt(context, open, span);
-  const landings = cases.map(() => code.newLabel());
-  const otherwise = node.elseClause === undefined ? undefined : code.newLabel();
-  landings.forEach((landing, index) => {
-    if (index === landings.length - 1 && otherwise === undefined) {
-      code.jump(landing, span);
-      return;
-    }
-    const next = code.newLabel();
-    const at = context.constant(BigInt(index), intType, span);
-    code.branch(code.equal(position, at, span), landing, next, span);
-    code.place(next);
-  });
-  if (otherwise !== undefined) {
-    code.jump(otherwise, span);
-  }
-  landings.forEach((landing, index) => {
-    code.place(landing);
-    const future = futures[index];
-    if (future !== undefined) {
-      writer.waits.give(future, caseValue(context, open, index, span));
-    }
-    const losers = holds.flatMap((held, other) => (other === index ? [] : held));
-    code.letGo([position, ...waitRegisters(open), ...writer.registersEnding(losers)], span);
-    writer.jumpTo(to[index] ?? unreachable('A select case goes nowhere.'), span);
-  });
-  if (otherwise !== undefined) {
-    code.place(otherwise);
-    code.letGo([position, ...waitRegisters(open), ...writer.registersEnding(holds.flat())], span);
-    writer.jumpTo(to[cases.length] ?? unreachable('A select has no else.'), span);
-  }
 }

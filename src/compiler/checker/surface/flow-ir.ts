@@ -29,7 +29,7 @@
 
 import { memo } from '../../../foundation/structures/memo.ts';
 import type { VariableEntity } from '../../binder/entities.ts';
-import type { Expression, FieldLoopHeader, Select } from '../../syntax/expressions/index.ts';
+import type { Await, Expression, FieldLoopHeader, Select } from '../../syntax/expressions/index.ts';
 import type { Relation } from '../../syntax/expressions/operators.ts';
 import type { LabelledScope } from '../../syntax/statements/index.ts';
 import type { SyntaxNode } from '../../syntax/tree/index.ts';
@@ -182,7 +182,7 @@ export type Operation = { readonly site: NodeOf<string> } & (
       readonly arguments: readonly Argument[];
       readonly spreads: readonly number[];
     }
-  | { readonly op: 'suspend'; readonly awaited: readonly ValueId[] }
+  | { readonly op: 'suspend'; readonly site: Await | Select; readonly awaited: readonly ValueId[] }
   | {
       readonly op: 'keep';
       readonly values: readonly ValueId[];
@@ -207,8 +207,9 @@ export type Operation = { readonly site: NodeOf<string> } & (
  *   pass of the fields not known yet, or of no field); each pass runs once per field it visits,
  *   an instantiation's in field order (§3.1).
  * - `select`: which of a `select`'s cases goes on (§8), going to each case's, then to its `else`;
- *   each case `holds` the temporaries its awaitable computed, which it releases where it loses,
- *   and the scope around the `select` releases where it doesn't.
+ *   each case waits on its future in `futures`, which its `onAwait` was handed, and `holds` the
+ *   temporaries its awaitable computed, which it releases where it loses, and the scope around the
+ *   `select` releases where it doesn't.
  * - `transient`: whether a call this one is nested in, of the same function, shares its transient
  *   `variable` (§3.4), going to `[shared, unmade]`: where it does, `variable` holds that call's
  *   value, which no operation of this function wrote; where it doesn't, the declaration's
@@ -226,6 +227,7 @@ export type BranchTest =
   | {
       readonly kind: 'select';
       readonly node: Select;
+      readonly futures: readonly ValueId[];
       readonly holds: readonly (readonly ValueId[])[];
     }
   | { readonly kind: 'transient'; readonly variable: ValueId }

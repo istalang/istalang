@@ -4,7 +4,7 @@
  * Futures, resolvers and waits are the prelude's Istalang, so lowering writes calls into it around
  * the one instruction that waits:
  * - a wait of the running call (`_wait`), opened by a wait's first case;
- * - for each case, in order, a shared value of the case's type, empty, and the case's resolver
+ * - for each case, at its position, a shared value of the case's type, empty, and the case's resolver
  *   (`_caseResolver`), which puts the value it is resolved with there and decides the wait for the
  *   case's position. The resolver is handed to the case's `onAwait` and let go of at once, so what
  *   `onAwait` did with it is all that holds it, and one it dropped panics;
@@ -58,15 +58,21 @@ export function openWait(context: CodeContext, mode: Persistence, span: Anchored
   return { wait, mode, cases: [] };
 }
 
+/** A case of a wait: what its awaitable gives once it settles, and the case's position. */
+interface WaitCase {
+  readonly type: Type;
+  readonly position: number;
+}
+
 /**
- * The resolver of `open`'s next case, waiting on a value of `type`: it puts its value into the
- * case's shared value and decides the wait for the case's position. Its owner lets go of it once
- * the case's `onAwait` has it.
+ * The resolver of `open`'s case at `position`, waiting on a value of `type`: it puts its value into
+ * the case's shared value and decides the wait for the case's position. Its owner lets go of it
+ * once the case's `onAwait` has it.
  */
 export function caseResolver(
   context: CodeContext,
   open: OpenWait,
-  type: Type,
+  { type, position }: WaitCase,
   span: AnchoredSpan,
 ): Register {
   const { checker, code, tables } = context;
@@ -81,8 +87,7 @@ export function caseResolver(
   const struct = construct(context, value, new Map([['value', empty]]), span);
   code.emit({ kind: 'newCell', span, dst: shared, value: code.take(struct, span) });
   code.pin(shared);
-  const position = open.cases.length;
-  open.cases.push({ shared, type });
+  open.cases[position] = { shared, type };
   const mode = literalType(open.mode);
   const instance = preludeInstance(context, waitFunctions.caseResolver, [type, mode]);
   const resolverType = wellKnownTypeOf(context, wellKnown.resolver, [type, mode]);
@@ -188,7 +193,7 @@ export function awaitFuture(
     );
   }
   const open = openWait(context, mode, span);
-  const done = caseResolver(context, open, valueType, span);
+  const done = caseResolver(context, open, { type: valueType, position: 0 }, span);
   const callee = tables.index({
     kind: 'instance',
     instance: rootInstance(checker, declaration, parts),

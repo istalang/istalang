@@ -12,28 +12,23 @@
  *   is written (places.ts); any other is a move or copy into its own, or the conversion checking
  *   fitted.
  * - A call's `&` arguments are entered as places; a function value's pack spread passes its
- *   tuple's elements (§3.5). An `onAwait` gets the resolver of its case of the wait being opened
- *   (calls/waits.ts); `await` parks once every case has one, then takes what the future gave.
+ *   tuple's elements (§3.5). An `onAwait` gets the resolver of its case, and an `await` parks on
+ *   its wait (flow-waits.ts).
  * - `keep` copies a held variable's value into its scope's array of its type, then lets go of it
  *   (§7); a scope ending lets go of those arrays instead.
  */
 
 import type { Argument as DefinitionArgument } from '../../../definition/instructions/calls.ts';
 import type { Register } from '../../../definition/operands.ts';
-import { type Persistence, wellKnown } from '../../../foundation/language/well-known/index.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import { type ConstantForm, literalTypeForm } from '../../checker/surface/constant-form.ts';
 import type { Argument, Operation, ValueId } from '../../checker/surface/flow-ir.ts';
-import { substitute } from '../../checker/types/parts/substitution.ts';
 import type { Type } from '../../checker/types/type/index.ts';
 import { isPrimitive } from '../../checker/types/type/primitives.ts';
-import { wellKnownArguments } from '../../checker/types/type/well-known.ts';
 import type { SyntaxNode } from '../../syntax/tree/index.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
-import { type ClosedCall, calledParameters, substitutionOfCall } from '../calls/closed-calls.ts';
 import { emitCall, emitFunctionCall } from '../calls/emit-call.ts';
 import { packElementsOf } from '../calls/packs.ts';
-import { caseResolver, caseValue, openWait, parked, waitRegisters } from '../calls/waits.ts';
 import { nestedSpanOf } from '../functions/bodies.ts';
 import { constantValue } from '../tables/constants.ts';
 import { ownEntryOf } from '../tables/own-entries.ts';
@@ -41,9 +36,9 @@ import { equal, negated, ordered } from '../values/operators.ts';
 import { noneOf } from '../values/optionals.ts';
 import { structValue, tupleOf } from '../values/struct-values.ts';
 import { variantAt } from '../values/variant-values.ts';
+import { awaited, caseResolverOf } from './flow-waits.ts';
 import { globalRead, partRead } from './parts.ts';
 import { passedArguments, rootKindOf, writePlace } from './places.ts';
-import { waypointAt } from './waypoints.ts';
 import type { FlowWriter } from './writer.ts';
 
 type Of<Op extends Operation['op']> = Extract<Operation, { readonly op: Op }>;
@@ -67,22 +62,7 @@ export const operationWriters: {
   write: writePlace,
   call: called,
   callValue: calledValue,
-  suspend: (writer, { site, awaited }) => {
-    if (site.kind !== 'Await' || awaited.length === 0) {
-      return;
-    }
-    const { code } = writer.context;
-    const { span } = site;
-    const { open, futures } = writer.waits.take();
-    code.letGo(
-      [parked(writer.context, open, { waypoint: waypointAt(writer.context, site), span })],
-      span,
-    );
-    futures.forEach((future, position) => {
-      writer.waits.give(future, caseValue(writer.context, open, position, span));
-    });
-    code.letGo(waitRegisters(open), span);
-  },
+  suspend: awaited,
   keep: (writer, { values, until, site }) => {
     const { code } = writer.context;
     const { span } = site;
@@ -324,9 +304,11 @@ function called(writer: FlowWriter, operation: Of<'call'>): void {
   const native =
     closed.kind !== 'dispatch' && ownEntryOf(context.checker, closed.instance).kind === 'native';
   const passed = passedArguments(writer, given, { site, native });
-  const [future] = given;
   // A case hands its resolver to what it waits on, which keeps it if it is to decide the wait.
-  const done = role === 'onAwait' ? awaitedBy(writer, { future, closed }, span) : undefined;
+  const done =
+    role === 'onAwait'
+      ? caseResolverOf(writer, { future: awaitedIn(given, span), closed }, span)
+      : undefined;
   const arguments_ = done === undefined ? passed.arguments : [...passed.arguments, done];
   const result = context.tables.types.reference(writer.typeOf(into));
   const dst = emitFunctionCall(context, { span, call: closed, arguments: arguments_ }, result);
@@ -337,45 +319,12 @@ function called(writer: FlowWriter, operation: Of<'call'>): void {
   }
 }
 
-/**
- * The resolver of the case of the wait being opened, or opened now, that waits on `future`
- * (calls/waits.ts).
- */
-function awaitedBy(
-  writer: FlowWriter,
-  { future, closed }: { readonly future: Argument | undefined; readonly closed: ClosedCall },
-  span: AnchoredSpan,
-): Register {
-  if (future?.kind !== 'value') {
-    return unreachable(`What an await at ${span.from} waits on is no value.`);
-  }
-  const { context } = writer;
-  const [given, mode] = resolverArguments(writer, closed);
-  const open = writer.waits.opened(() => openWait(context, mode, span));
-  writer.waits.awaiting(future.value);
-  return caseResolver(context, open, given, span);
-}
-
-/**
- * What a case waits on, of the `Resolver<T, K>` its `onAwait`, `closed`, takes: what its awaitable
- * gives once it settles, `T`, and the kind its wait waits in, `K` (proposal 8, Rule 5), which code
- * that never parks, a `select` with an `else`, has of its awaitable.
- */
-function resolverArguments(writer: FlowWriter, closed: ClosedCall): readonly [Type, Persistence] {
-  const { checker } = writer.context;
-  const done = calledParameters(checker, closed)[1]?.type;
-  const resolver =
-    done === undefined
-      ? undefined
-      : substitute(done, substitutionOfCall(checker, closed), checker.typeRules);
-  const [given, mode] =
-    (resolver === undefined
-      ? undefined
-      : wellKnownArguments(checker, wellKnown.resolver, resolver)) ?? [];
-  if (given === undefined || mode?.kind !== 'literal') {
-    return unreachable(`An onAwait takes no resolver at ${closed.kind}.`);
-  }
-  return [given, mode.value === 'ista' ? 'ista' : 'live'];
+/** What an `onAwait` call, given `given`, waits on: the future it is handed first. */
+function awaitedIn(given: readonly Argument[], span: AnchoredSpan): ValueId {
+  const [future] = given;
+  return future?.kind === 'value'
+    ? future.value
+    : unreachable(`What an await at ${span.from} waits on is no value.`);
 }
 
 function calledValue(writer: FlowWriter, operation: Of<'callValue'>): void {

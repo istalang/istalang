@@ -338,7 +338,7 @@ export function selectFlow(builder: FlowBuilder, node: Select): ValueId {
   const given = { result: builder.temporaryOf(node), end: builder.newBlock() };
   const otherwise = node.elseClause?.body;
   const count = cases.length + (otherwise === undefined ? 0 : 1);
-  const starts = builder.branch({ kind: 'select', node, holds }, count);
+  const starts = builder.branch({ kind: 'select', node, futures, holds }, count);
   for (const [index, each] of cases.entries()) {
     builder.resumeIn(starts[index] as BlockId);
     builder.scopes.inScope(each, () => {

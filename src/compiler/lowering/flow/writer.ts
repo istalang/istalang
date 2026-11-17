@@ -83,7 +83,7 @@ export class FlowWriter {
   readonly #started = new Map<BlockId, number>();
   /** Where what each held variable holds is kept until (§7). */
   readonly #uses: FlowUses;
-  readonly waits = new FlowWaits();
+  readonly waits: FlowWaits;
   readonly holdLists = new HoldLists();
   /** The reads that hold their value (held-reads.ts), decided before the flow is written. */
   #held: ReadonlySet<ValueId> = new Set();
@@ -103,6 +103,7 @@ export class FlowWriter {
     this.#layout = layoutOf(flow);
     this.declaring = declaringWrites(flow);
     this.#uses = usesOf(flow);
+    this.waits = new FlowWaits(flow);
   }
 
   /** The context the block being written reads (`#contexts`). */
