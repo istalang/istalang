@@ -99,7 +99,7 @@ export function externDefaultsEntry(lowering: Lowering, instance: FunctionInstan
   return built.lowerBuilt((context, parameters) =>
     emitCall(
       context,
-      { span, callee: tables.functionIndex(instance), arguments: parameters },
+      { span, callee: tables.index({ kind: 'instance', instance }), arguments: parameters },
       result,
     ),
   );

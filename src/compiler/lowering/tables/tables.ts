@@ -5,6 +5,8 @@
  *   from a worklist, so a call can name one that isn't lowered yet, including itself. Only what
  *   `main` reaches is lowered: generics are compiled per instantiation (§3.5), which only
  *   reachability can enumerate.
+ * - An entry is numbered by its kind and its identity within it, which the kind table gives
+ *   (entries.ts), so one asked for twice is one entry.
  * - Types and constants are interned: one entry per distinct type (type-table.ts) or value, a
  *   value keyed by its persisted text.
  */
@@ -20,31 +22,28 @@ import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import { lineMapOf } from '../../../foundation/text/line-map.ts';
 import type { Checker } from '../../checker/check.ts';
 import { functionPlace } from '../../checker/surface/checked-annotation.ts';
-import type { RequiredField } from '../../checker/surface/checked-field.ts';
 import { passesAll } from '../../checker/surface/resolved-call.ts';
 import type { FunctionInstance } from '../../checker/surface/witness-closing.ts';
-import type { AnyType, Type } from '../../checker/types/type/index.ts';
+import type { Type } from '../../checker/types/type/index.ts';
 import { type ModuleId, programModule } from '../../program/program.ts';
-import type {
-  ConstantDeclaration,
-  ContextConstantDeclaration,
-  ExternConstantDeclaration,
-  FunctionDeclaration,
-} from '../../syntax/declarations/index.ts';
+import type { ContextConstantDeclaration } from '../../syntax/declarations/index.ts';
 import type { SyntaxTree } from '../../syntax/tree/index.ts';
 import { type AnchoredSpan, spanIn } from '../../syntax/tree/positions.ts';
-import { type ClosedCall, type Dispatch, leavesOut } from '../calls/closed-calls.ts';
+import { type ClosedCall, leavesOut } from '../calls/closed-calls.ts';
 import { nestedSpanOf } from '../functions/bodies.ts';
 import { laidOutAs } from '../values/holdings.ts';
 import { annotationValues } from './constants.ts';
 import {
+  type EntryIdentities,
+  type HostExternDeclaration,
+  identityOf,
+  type LoweredEntry,
+  type StartTarget,
+} from './entries.ts';
+import {
   type BodyOwner,
-  type ConversionEntry,
-  conversionKey,
-  instanceKey,
   instanceName,
   type NestedInstance,
-  nestedKey,
   nestedName,
   ownerDeclaration,
 } from './instances.ts';
@@ -52,59 +51,11 @@ import { qualifiedNameOf } from './names.ts';
 import { ownEntryOf } from './own-entries.ts';
 import { TypeTable } from './type-table.ts';
 
-/**
- * A function-table entry waiting to be lowered: a top-level function's instance, the entry of a
- * native extern's instance computing the defaults a call leaves out before calling it (§3.3), a nested
- * instance, an extern a host implements as its native sees it (synthesized/boundary/host-externs.ts),
- * the read of an extern constant, the wrapper a host starts a function through
- * (synthesized/boundary/starts.ts), a context constant's accessor (§3.4), the async entry of a
- * plain function made async, or a conversion of parts (functions/fits/).
- */
-export type PendingEntry =
-  | { readonly kind: 'instance'; readonly instance: FunctionInstance }
-  | { readonly kind: 'externDefaults'; readonly instance: FunctionInstance }
-  | { readonly kind: 'nested'; readonly nested: NestedInstance }
-  | { readonly kind: 'hostNative'; readonly declaration: FunctionDeclaration }
-  | {
-      /** An extern constant's native, which its declared type is given with. */
-      readonly kind: 'constantNative';
-      readonly declaration: ExternConstantDeclaration;
-      readonly type: Type;
-    }
-  | {
-      readonly kind: 'externConstant';
-      readonly declaration: ExternConstantDeclaration;
-      readonly type: Type;
-    }
-  | { readonly kind: 'start' | 'startEncode'; readonly target: StartTarget }
-  | { readonly kind: 'contextConstant'; readonly declaration: ContextConstantDeclaration }
-  | ConversionEntry;
-
-/**
- * An entry switching over every variant of an `any` type's enum (§3.10): a dispatch on a value's
- * own type, a conversion into another `any` type, or the read of a field a trait requires. It is
- * written once the worklist is empty, when lowering has reached every type converted into its `any`
- * type so far, and written again whenever a later entry converts another. A dispatch on a union's
- * members (§6) switches over a union's enum, whose variants are known, so it is written once.
- */
-export type ClosingEntry =
-  | { readonly kind: 'dispatch'; readonly dispatch: Dispatch }
-  | { readonly kind: 'anyConversion'; readonly from: AnyType; readonly to: AnyType }
-  | {
-      readonly kind: 'anyField';
-      readonly on: AnyType;
-      readonly required: RequiredField;
-      readonly result: Type;
-    };
-
-/** An extern a host implements: a function, or a constant. */
-export type HostExternDeclaration = FunctionDeclaration | ExternConstantDeclaration;
-
-/** What a host may start (§9): a top-level function, or a constant holding a sendable lambda. */
-export type StartTarget = FunctionDeclaration | ConstantDeclaration;
-
 /** What every function-table entry starts with: its name, and where it is declared. */
 export type EntryHeader = Pick<FunctionDefinition, 'name' | 'module' | 'span' | 'annotations'>;
+
+/** An entry with the index it was numbered. */
+type Numbered = LoweredEntry & { readonly index: FunctionId };
 
 export class DefinitionTables {
   readonly #checker: Checker;
@@ -115,8 +66,9 @@ export class DefinitionTables {
   readonly #constantIndexes = new Map<string, number>();
   readonly #functions: (FunctionDefinition | undefined)[] = [];
   readonly #functionIndexes = new Map<string, FunctionId>();
-  readonly #pending: (PendingEntry & { readonly index: FunctionId })[] = [];
-  readonly #closing: (ClosingEntry & { readonly index: FunctionId })[] = [];
+  readonly #identities: EntryIdentities;
+  readonly #pending: Numbered[] = [];
+  readonly #closing: Numbered[] = [];
   /** How many variants its `any` type had when each closing entry was last written. */
   readonly #writtenFor = new Map<FunctionId, number>();
   readonly #starts: Definition['starts'][number][] = [];
@@ -124,13 +76,18 @@ export class DefinitionTables {
   /** Whether the Definition runs tests, whose functions a mock may replace (§10). */
   readonly mocking: boolean;
 
-  constructor(checker: Checker, { mocking }: { readonly mocking: boolean }) {
+  /** Tables for `checker`'s program, telling entries apart by the kind table's `identities`. */
+  constructor(
+    checker: Checker,
+    { mocking, identities }: { readonly mocking: boolean; readonly identities: EntryIdentities },
+  ) {
     this.#checker = checker;
     this.mocking = mocking;
+    this.#identities = identities;
     this.types = new TypeTable(checker, {
-      functionIndex: (instance) => this.functionIndex(instance),
+      functionIndex: (instance) => this.index({ kind: 'instance', instance }),
       callIndex: (call) => this.callIndex(call),
-      hostNativeIndex: (declaration) => this.hostNativeIndex(declaration),
+      hostNativeIndex: (declaration) => this.index({ kind: 'hostNative', declaration }),
       annotationValues: (annotations) => annotationValues(this, annotations),
     });
   }
@@ -229,43 +186,25 @@ export class DefinitionTables {
     if (call.kind === 'function') {
       return leavesOut(this.#checker, call)
         ? this.leavingOutIndex(call.instance)
-        : this.functionIndex(call.instance);
+        : this.index({ kind: 'instance', instance: call.instance });
     }
     if (!passesAll(call.binding)) {
       unreachable(
         'A requirement is never spawned or named as a value with its arguments reordered.',
       );
     }
-    return this.dispatchIndex(call.dispatch);
+    return this.index({ kind: 'dispatch', dispatch: call.dispatch });
   }
 
-  /** The index of the entry calling `dispatch`'s function for each type its value may have. */
-  dispatchIndex(dispatch: Dispatch): FunctionId {
-    const { typeKeys } = this.#checker;
-    const typeArguments = dispatch.typeArguments.map((type) => typeKeys.typeKey(type));
-    const { on, through, constraint, member } = dispatch;
-    const target = `${typeKeys.typeKey(on)}:${typeKeys.typeKey(through)}.${constraint}.${member}`;
-    const key = `dispatch:${target}<${typeArguments.join(',')}>`;
-    return this.#closingIndex(key, { kind: 'dispatch', dispatch });
-  }
-
-  /** The index of the entry converting a value of the `any` type `from` into `to` (§3.10). */
-  anyConversionIndex(from: AnyType, to: AnyType): FunctionId {
-    const { typeKeys } = this.#checker;
-    const key = `convert:${typeKeys.typeKey(from)}->${typeKeys.typeKey(to)}`;
-    return this.#closingIndex(key, { kind: 'anyConversion', from, to });
-  }
-
-  /** The index of the entry reading `required`, of `result`, from a value of `on` (§3.10). */
-  anyFieldIndex(on: AnyType, required: RequiredField, result: Type): FunctionId {
-    const key = `field:${this.#checker.typeKeys.typeKey(on)}.${required.field.name.text}`;
-    return this.#closingIndex(key, { kind: 'anyField', on, required, result });
-  }
-
-  /** The index `instance` is called by; it is lowered later, from the worklist. */
-  functionIndex(instance: FunctionInstance): FunctionId {
-    const key = instanceKey(this.#checker.typeKeys, instance);
-    return this.#entryIndex(key, { kind: 'instance', instance });
+  /**
+   * The index of `entry`, numbered the first time it is asked for, then lowered from the worklist,
+   * or, a closing entry, written once the worklist is empty and again as its `any` type grows.
+   */
+  index(entry: LoweredEntry): FunctionId {
+    const { identity, closedOver } = identityOf(this.#identities, entry);
+    const key = `${entry.kind}:${identity(this.#checker.typeKeys, entry)}`;
+    const queue = closedOver === undefined ? this.#pending : this.#closing;
+    return this.#numbered(key, (index) => queue.push({ ...entry, index }));
   }
 
   /**
@@ -274,55 +213,14 @@ export class DefinitionTables {
    * them, then calling it (own-entries.ts).
    */
   leavingOutIndex(instance: FunctionInstance): FunctionId {
-    if (ownEntryOf(this.#checker, instance).kind !== 'native') {
-      return this.functionIndex(instance);
-    }
-    const key = `defaults:${instanceKey(this.#checker.typeKeys, instance)}`;
-    return this.#entryIndex(key, { kind: 'externDefaults', instance });
-  }
-
-  /** The index of a conversion's entry (§3.5), one per pair of types, lowered later too. */
-  conversionIndex(entry: ConversionEntry): FunctionId {
-    return this.#entryIndex(conversionKey(this.#checker.typeKeys, entry), entry);
-  }
-
-  /** The index of a lambda's or local function's entry (§3.14), lowered later too. */
-  nestedIndex(nested: NestedInstance): FunctionId {
-    return this.#entryIndex(nestedKey(this.#checker.typeKeys, nested), { kind: 'nested', nested });
-  }
-
-  /**
-   * The index of the extern a host implements, as its native sees it: JSON in and out (§9); a
-   * constant's comes with its declared type.
-   */
-  hostNativeIndex(declaration: FunctionDeclaration): FunctionId {
-    const key = `native:${this.#checker.typeKeys.identityOf(declaration)}`;
-    return this.#entryIndex(key, { kind: 'hostNative', declaration });
-  }
-
-  /** The index of the native of the extern constant `declaration`, declared of type `type`. */
-  constantNativeIndex(declaration: ExternConstantDeclaration, type: Type): FunctionId {
-    const key = `native:${this.#checker.typeKeys.identityOf(declaration)}`;
-    return this.#entryIndex(key, { kind: 'constantNative', declaration, type });
-  }
-
-  /** The index of the accessor of the context constant `declaration` (§3.4). */
-  contextConstantIndex(declaration: ContextConstantDeclaration): FunctionId {
-    const key = `contextConstant:${this.#checker.typeKeys.identityOf(declaration)}`;
-    return this.#entryIndex(key, { kind: 'contextConstant', declaration });
-  }
-
-  /** The index of the entry reading the extern constant `declaration`, of type `type` (§3.6). */
-  externConstantIndex(declaration: ExternConstantDeclaration, type: Type): FunctionId {
-    const key = `constant:${this.#checker.typeKeys.identityOf(declaration)}`;
-    return this.#entryIndex(key, { kind: 'externConstant', declaration, type });
+    const native = ownEntryOf(this.#checker, instance).kind === 'native';
+    return this.index({ kind: native ? 'externDefaults' : 'instance', instance });
   }
 
   /** The index of the entry a host starts `target` through, listed under `key` (§9). */
   startIndex(target: StartTarget, key: string): FunctionId {
-    const identity = this.#checker.typeKeys.identityOf(target);
-    const index = this.#entryIndex(`start:${identity}`, { kind: 'start', target });
-    const encode = this.#entryIndex(`startEncode:${identity}`, { kind: 'startEncode', target });
+    const index = this.index({ kind: 'start', target });
+    const encode = this.index({ kind: 'startEncode', target });
     if (!this.#starts.some((start) => start.function === index)) {
       this.#starts.push({ key, function: index, encode });
     }
@@ -333,13 +231,16 @@ export class DefinitionTables {
    * The next referenced entry still to be lowered, with its index: one lowering reached, then,
    * once none is left, a closing entry not yet written for every variant its `any` type has.
    */
-  nextPending(): ((PendingEntry | ClosingEntry) & { readonly index: FunctionId }) | undefined {
+  nextPending(): Numbered | undefined {
     return this.#pending.shift() ?? this.#nextStale();
   }
 
-  #nextStale(): (ClosingEntry & { readonly index: FunctionId }) | undefined {
+  #nextStale(): Numbered | undefined {
     for (const entry of this.#closing) {
-      const variants = this.#variantsOf(closedOver(entry));
+      const { closedOver } = identityOf(this.#identities, entry);
+      const variants = this.#variantsOf(
+        closedOver?.(entry) ?? unreachable('A closing entry closes over a type.'),
+      );
       if (this.#writtenFor.get(entry.index) !== variants) {
         this.#writtenFor.set(entry.index, variants);
         return entry;
@@ -355,14 +256,6 @@ export class DefinitionTables {
       return this.types.anyMembers(type).length;
     }
     return type.kind === 'union' ? this.types.unionMembers(type).length : 1;
-  }
-
-  #entryIndex(key: string, entry: PendingEntry): FunctionId {
-    return this.#numbered(key, (index) => this.#pending.push({ ...entry, index }));
-  }
-
-  #closingIndex(key: string, entry: ClosingEntry): FunctionId {
-    return this.#numbered(key, (index) => this.#closing.push({ ...entry, index }));
   }
 
   /** The index of the entry `key` names, numbered and queued by `queue` the first time. */
@@ -394,21 +287,5 @@ export class DefinitionTables {
       starts: this.#starts,
       purpose,
     };
-  }
-}
-
-/** The type whose variants a closing entry switches over: an `any` type, or a dispatch's union. */
-function closedOver(entry: ClosingEntry): Type {
-  switch (entry.kind) {
-    case 'dispatch':
-      return entry.dispatch.on;
-    case 'anyConversion':
-      return entry.from;
-    case 'anyField':
-      return entry.on;
-    default: {
-      const unhandled: never = entry;
-      return unhandled;
-    }
   }
 }

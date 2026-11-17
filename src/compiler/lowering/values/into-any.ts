@@ -25,7 +25,7 @@ export function convertedIntoAny(
       ? value
       : emitCall(
           context,
-          { span, callee: tables.anyConversionIndex(from, to), arguments: [value] },
+          { span, callee: tables.index({ kind: 'anyConversion', from, to }), arguments: [value] },
           tables.types.reference(to),
         );
   }

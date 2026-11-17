@@ -215,7 +215,7 @@ src/
                                                                  (scope-protocol.ts), and facts/: each fact a CheckedBody answers, read per pass,
                                                                  instantiated, and joined for tools (joined-body.ts)); it imports every layer, and no
                                                                  layer imports it
-    lowering/           checked program → Definition; lower.ts is the entry, context.ts one function's context. Desugaring the checker and lowering share is derived in syntax/; the rest lives here
+    lowering/           checked program → Definition; lower.ts is the entry, entry-kinds.ts every kind of function-table entry in one typed table (its identity and its entry), context.ts one function's context. Desugaring the checker and lowering share is derived in syntax/; the rest lives here
       functions/                                                 writing one function: its composition (index.ts), frames and the variables an entry declares,
                                                                  its prologue computing the defaults a call leaves out among them (frame-variables.ts), the
                                                                  entries built from parameters with no body (built-entries.ts), the kind an entry runs in:

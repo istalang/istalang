@@ -37,10 +37,11 @@ import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import { emitCall, emitFunctionCall } from '../../calls/emit-call.ts';
 import { awaitFuture } from '../../calls/waits.ts';
 import type { CodeContext } from '../../context.ts';
+import type { HostExternDeclaration } from '../../tables/entries.ts';
 import { declaredTypeOf, keyOf } from '../../tables/extern-keys.ts';
 import { rootInstance } from '../../tables/instances.ts';
 import { qualifiedNameOf } from '../../tables/names.ts';
-import type { DefinitionTables, HostExternDeclaration } from '../../tables/tables.ts';
+import type { DefinitionTables } from '../../tables/tables.ts';
 import { SynthesizedCode } from '../index.ts';
 import { codecCall } from './codec-calls.ts';
 import { emitInbound, inboundOf } from './inbound.ts';
@@ -75,7 +76,7 @@ export function hostCallOf(lowering: Lowering, instance: FunctionInstance): Host
   const result = checker.resultOf(declaration);
   return {
     within: instance,
-    native: tables.hostNativeIndex(declaration),
+    native: tables.index({ kind: 'hostNative', declaration }),
     parameters: checker.parametersOf(declaration).map(({ type }) => type),
     result,
     awaited: awaitedOf(checker, substitute(result, substitutionOf(instance), checker.typeRules)),
@@ -104,7 +105,11 @@ export function hostConstantEntry(
   const value = code.code.allocate(tables.types.reference(type));
   const kept = code.code.newLabel();
   code.code.contextConstant(value, name, kept, span);
-  const native = code.call(tables.constantNativeIndex(declaration, type), [], jsonOf(checker));
+  const native = code.call(
+    tables.index({ kind: 'constantNative', declaration, type }),
+    [],
+    jsonOf(checker),
+  );
   const inbound = inboundOf(checker, undefined, type, {
     from: 'result',
     path: header.name,
@@ -231,7 +236,7 @@ export function writeHostCall(
   const unit = { kind: 'primitive', name: 'Unit' } as const;
   const future = emitCall(
     context,
-    { span, callee: tables.functionIndex(instance), arguments: [] },
+    { span, callee: tables.index({ kind: 'instance', instance }), arguments: [] },
     tables.types.reference(futureType),
   );
   code.pin(future);

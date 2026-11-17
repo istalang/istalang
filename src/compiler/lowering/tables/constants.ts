@@ -64,9 +64,12 @@ export function constantValue(tables: DefinitionTables, form: ConstantForm): Val
     case 'function':
       return {
         kind: 'closure',
-        function: tables.nestedIndex({
-          owner: { kind: 'constant', declaration: form.constant },
-          node: form.lambda,
+        function: tables.index({
+          kind: 'nested',
+          nested: {
+            owner: { kind: 'constant', declaration: form.constant },
+            node: form.lambda,
+          },
         }),
         captures: [],
       };

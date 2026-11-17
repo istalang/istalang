@@ -38,9 +38,10 @@ import { awaits } from '../../../syntax/tokens/modifiers.ts';
 import type { Invalid } from '../../../syntax/tree/node.ts';
 import { emitCall } from '../../calls/emit-call.ts';
 import { constantValue } from '../../tables/constants.ts';
+import type { StartTarget } from '../../tables/entries.ts';
 import { keyOf } from '../../tables/extern-keys.ts';
 import { rootInstance } from '../../tables/instances.ts';
-import type { DefinitionTables, StartTarget } from '../../tables/tables.ts';
+import type { DefinitionTables } from '../../tables/tables.ts';
 import { SynthesizedCode } from '../index.ts';
 import { codecCall } from './codec-calls.ts';
 import { jsonOf } from './host-externs.ts';
@@ -206,7 +207,11 @@ function calledTarget(
 ): Register {
   const { checker, tables } = code;
   if (target.kind === 'FunctionDeclaration') {
-    return code.call(tables.functionIndex(rootInstance(checker, target)), values, given);
+    return code.call(
+      tables.index({ kind: 'instance', instance: rootInstance(checker, target) }),
+      values,
+      given,
+    );
   }
   const constant = checker.constantOf(target);
   if (constant?.form?.kind !== 'function' || constant.type === undefined) {

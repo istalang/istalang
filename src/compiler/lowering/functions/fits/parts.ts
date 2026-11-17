@@ -305,7 +305,7 @@ function preludeConversion(
   const instance = rootInstance(checker, declaration, conversion.typeArguments);
   return emitCall(
     context,
-    { span, callee: tables.functionIndex(instance), arguments: conversion.arguments },
+    { span, callee: tables.index({ kind: 'instance', instance }), arguments: conversion.arguments },
     tables.types.reference(conversion.result),
   );
 }

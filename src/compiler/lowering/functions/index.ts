@@ -289,7 +289,7 @@ class FunctionLowering implements EntryContext {
   }
 
   nestedIndex(node: Lambda | FunctionDeclaration): FunctionId {
-    return this.tables.nestedIndex({ owner: this.owner, node });
+    return this.tables.index({ kind: 'nested', nested: { owner: this.owner, node } });
   }
 
   closed(call: ResolvedCall): ClosedCall {

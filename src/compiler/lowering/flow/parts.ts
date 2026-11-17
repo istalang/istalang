@@ -55,7 +55,12 @@ export function partRead(
         const result = writer.typeOf(into);
         return readRequiredField(context, { value, field, result }, witnesses, span);
       }
-      const callee = context.tables.anyFieldIndex(value.type, part.required, writer.typeOf(into));
+      const callee = context.tables.index({
+        kind: 'anyField',
+        on: value.type,
+        required: part.required,
+        result: writer.typeOf(into),
+      });
       return emitCall(context, { span, callee, arguments: [value.register] }, resultType());
     }
     case 'behind': {
@@ -212,11 +217,15 @@ export function globalRead(
   );
   const result = context.tables.types.reference(known);
   if (owner.kind === 'ExternConstantDeclaration') {
-    const callee = context.tables.externConstantIndex(owner, known);
+    const callee = context.tables.index({
+      kind: 'externConstant',
+      declaration: owner,
+      type: known,
+    });
     return emitCall(context, { span, callee, arguments: [] }, result);
   }
   if (owner.kind === 'ContextConstantDeclaration') {
-    const callee = context.tables.contextConstantIndex(owner);
+    const callee = context.tables.index({ kind: 'contextConstant', declaration: owner });
     return emitCall(context, { span, callee, arguments: [] }, result);
   }
   const { checker } = context;

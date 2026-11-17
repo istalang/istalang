@@ -121,11 +121,6 @@ export interface ConversionSite {
   readonly span: AnchoredSpan;
 }
 
-/** The key of a conversion's entry: its kind, then both types'. */
-export function conversionKey(keys: TypeKeys, entry: ConversionEntry): string {
-  return `${entry.kind}:${keys.typeKey(entry.from)}->${keys.typeKey(entry.to)}`;
-}
-
 /** A conversion's name: both types' table keys. */
 export function conversionName(checker: Checker, entry: ConversionEntry): string {
   return `${tableKey(checker, entry.from)} as ${tableKey(checker, entry.to)}`;

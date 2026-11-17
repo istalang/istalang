@@ -1,64 +1,33 @@
 /**
  * Lowering's entry: a checked program, compiled into a Definition (docs/arch/definition.md).
  *
- * Lowering starts from `main`, or from a test program's suites (§10), and compiles every function
- * instance it reaches, through a worklist (tables/tables.ts, tables/instances.ts), and the runtime's
- * loop serving jobs once it reaches `delegate` (§5), as the program's job server: a function with
- * a body becomes code computing the defaults its call leaves out before its body, a struct's or a
- * variant's fields code building it, and an extern an entry bound to its native by key, beside code
- * computing its defaults for a call leaving them out. Lowering runs only on a program the checker
- * accepted, so it reports nothing; anything it can't lower is a bug in an earlier phase and throws.
+ * Lowering starts from `main`, or from a test program's suites (§10), and compiles every entry it
+ * reaches, through a worklist (tables/tables.ts), each by its kind's row of the kind table
+ * (entry-kinds.ts), and the runtime's loop serving jobs once it reaches `delegate` (§5), as the
+ * program's job server. Lowering runs only on a program the checker accepted, so it reports
+ * nothing; anything it can't lower is a bug in an earlier phase and throws.
  */
 
 import type { FunctionId } from '../../definition/operands.ts';
-import type { FunctionDefinition } from '../../definition/tables/functions.ts';
 import type { Definition } from '../../definition/tables/index.ts';
 import { languageModules, runtimeModule } from '../../foundation/language/well-known/index.ts';
 import { jobFunctions } from '../../foundation/language/well-known/jobs.ts';
 import { testingFunctions } from '../../foundation/language/well-known/testing.ts';
 import { unreachable } from '../../foundation/structures/unreachable.ts';
 import type { Checker } from '../checker/check.ts';
-import { type FunctionInstance, substitutionOf } from '../checker/surface/witness-closing.ts';
-import { substitute } from '../checker/types/parts/substitution.ts';
 import { stdModuleIdOf } from '../program/program.ts';
 import type { FunctionDeclaration } from '../syntax/declarations/index.ts';
-import { writtenBodyOf } from './functions/bodies.ts';
-import {
-  constructorEntry,
-  externDefaultsEntry,
-  hostExternEntry,
-  primitiveEntry,
-  structEntry,
-} from './functions/built-entries.ts';
-import { convertingEntry, wrappingEntry } from './functions/fits/index.ts';
-import type { Lowering } from './functions/frames.ts';
-import { accessorLowering, instanceLowering, nestedLowering } from './functions/index.ts';
-import { derivedCodecEntry } from './synthesized/boundary/codecs.ts';
-import {
-  constantNativeEntry,
-  hostConstantEntry,
-  hostNativeEntry,
-} from './synthesized/boundary/host-externs.ts';
-import {
-  listStart,
-  startableOf,
-  startables,
-  startEncodeEntry,
-  startEntry,
-} from './synthesized/boundary/starts.ts';
-import { anyConversionEntry, anyFieldEntry, dispatchEntry } from './synthesized/trait-objects.ts';
-import { keyOf } from './tables/extern-keys.ts';
+import { entryKinds, loweredEntry } from './entry-kinds.ts';
+import { listStart, startableOf, startables } from './synthesized/boundary/starts.ts';
 import { rootInstance } from './tables/instances.ts';
-import { qualifiedNameOf } from './tables/names.ts';
-import { ownEntryOf } from './tables/own-entries.ts';
-import { type ClosingEntry, DefinitionTables, type PendingEntry } from './tables/tables.ts';
+import { DefinitionTables } from './tables/tables.ts';
 
 /**
  * The Definition of everything `main` and the program's startable functions reach (§9): `main` is
  * started through its start entry, as a host starts any of the others.
  */
 export function lower(checker: Checker, main: FunctionDeclaration): Definition {
-  const tables = new DefinitionTables(checker, { mocking: false });
+  const tables = new DefinitionTables(checker, { mocking: false, identities: entryKinds });
   const started = startableOf(checker, main);
   if (started === undefined) {
     unreachable("'main' can't be started; the checker should have said why.");
@@ -87,9 +56,9 @@ interface Suite {
  * listing and running of their tests reach, which every test's instance starts from.
  */
 export function lowerTests(checker: Checker, suites: readonly Suite[]): Definition {
-  const tables = new DefinitionTables(checker, { mocking: true });
+  const tables = new DefinitionTables(checker, { mocking: true, identities: entryKinds });
   const indexOf = (declaration: FunctionDeclaration) =>
-    tables.functionIndex(rootInstance(checker, declaration));
+    tables.index({ kind: 'instance', instance: rootInstance(checker, declaration) });
   const runner = (name: string) =>
     checker.languageFunctions(languageModules.testing, name)[0] ??
     unreachable(`The testing module declares no '${name}'.`);
@@ -113,9 +82,9 @@ function lowerReached(checker: Checker, tables: DefinitionTables): FunctionId | 
   for (let next = tables.nextPending(); next !== undefined; next = tables.nextPending()) {
     const delegates = next.kind === 'instance' && next.instance.declaration === jobs?.delegate;
     if (delegates && jobs !== undefined && jobServer === undefined) {
-      jobServer = tables.functionIndex(rootInstance(checker, jobs.server));
+      jobServer = tables.index({ kind: 'instance', instance: rootInstance(checker, jobs.server) });
     }
-    tables.define(next.index, pendingEntry(checker, tables, next));
+    tables.define(next.index, loweredEntry({ checker, tables }, next));
   }
   return jobServer;
 }
@@ -132,121 +101,4 @@ function jobDeclarationsOf(
     checker.topLevelFunctions(runtime, name)[0] ??
     unreachable(`The runtime module declares no '${name}'.`);
   return { delegate: declared(jobFunctions.delegate), server: declared(jobFunctions.server) };
-}
-
-/** The entry `pending` stands for. */
-function pendingEntry(
-  checker: Checker,
-  tables: DefinitionTables,
-  pending: PendingEntry | ClosingEntry,
-): FunctionDefinition {
-  const lowering = { checker, tables };
-  switch (pending.kind) {
-    case 'instance':
-      return entryOf(checker, tables, pending.instance);
-    case 'externDefaults':
-      return externDefaultsEntry(lowering, pending.instance);
-    case 'nested':
-      return nestedLowering(lowering, pending.nested).lowerNested(pending.nested.node);
-    case 'hostNative':
-      return hostNativeEntry(lowering, pending.declaration);
-    case 'constantNative':
-      return constantNativeEntry(lowering, pending.declaration, pending.type);
-    case 'externConstant':
-      return hostConstantEntry(lowering, pending.declaration, pending.type);
-    case 'contextConstant':
-      return accessorLowering(lowering, pending.declaration).lowerAccessor(
-        pending.declaration,
-        qualifiedNameOf(checker, pending.declaration),
-      );
-    case 'start':
-    case 'startEncode': {
-      const startable = startableOf(checker, pending.target);
-      if (startable === undefined) {
-        unreachable('A start entry was made for what no host can start.');
-      }
-      return pending.kind === 'start'
-        ? startEntry(lowering, startable)
-        : startEncodeEntry(lowering, startable);
-    }
-    case 'dispatch':
-      return dispatchEntry(lowering, pending.dispatch);
-    case 'anyConversion':
-      return anyConversionEntry(lowering, pending.from, pending.to);
-    case 'anyField':
-      return anyFieldEntry(lowering, pending);
-    case 'converting':
-      return convertingEntry(lowering, pending);
-    case 'wrapping':
-      return wrappingEntry(lowering, pending);
-    default: {
-      const unhandled: never = pending;
-      return unhandled;
-    }
-  }
-}
-
-/** The entry for `instance`, made of what its own entry is (tables/own-entries.ts). */
-function entryOf(
-  checker: Checker,
-  tables: DefinitionTables,
-  instance: FunctionInstance,
-): FunctionDefinition {
-  const lowering = { checker, tables };
-  const own = ownEntryOf(checker, instance);
-  switch (own.kind) {
-    case 'struct':
-      return structEntry(lowering, instance);
-    case 'constructor':
-      return constructorEntry(lowering, instance);
-    case 'derivedCodec':
-      return derivedCodecEntry({ ...lowering, instance }, own.direction);
-    case 'hostExtern':
-      return hostExternEntry(lowering, instance);
-    case 'body':
-      return bodyEntry(lowering, instance);
-    case 'primitive':
-      return primitiveEntry(lowering, instance, own.op);
-    case 'native':
-      return nativeEntry(lowering, instance);
-    default: {
-      const unhandled: never = own;
-      return unhandled;
-    }
-  }
-}
-
-/** The code of `instance`'s function, its body. */
-function bodyEntry(lowering: Lowering, instance: FunctionInstance): FunctionDefinition {
-  const { checker } = lowering;
-  const { declaration } = instance;
-  const lowered = instanceLowering(lowering, instance);
-  const body = writtenBodyOf(checker.program, checker.moduleOf(declaration), declaration);
-  if (lowered === undefined || body === undefined) {
-    unreachable(`${declaration.name.text} has no body to lower.`);
-  }
-  return lowered.lower(body);
-}
-
-/** The entry binding `instance`, an extern, to its native by key, with its instance's types. */
-function nativeEntry(lowering: Lowering, instance: FunctionInstance): FunctionDefinition {
-  const { checker, tables } = lowering;
-  const { declaration } = instance;
-  const parameters = checker.parametersOf(declaration);
-  const substitution = substitutionOf(instance);
-  return {
-    kind: 'extern',
-    ...tables.entryHeader(instance),
-    key: keyOf(checker, declaration, parameters),
-    constant: false,
-    parameters: parameters.map((parameter) => {
-      const type = tables.types.reference(
-        substitute(parameter.type, substitution, checker.typeRules),
-      );
-      return { type: parameter.reference ? { kind: 'reference', to: type } : type };
-    }),
-    result: tables.types.reference(
-      substitute(checker.resultOf(declaration), substitution, checker.typeRules),
-    ),
-  };
 }

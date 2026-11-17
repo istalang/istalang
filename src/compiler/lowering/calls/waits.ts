@@ -52,7 +52,7 @@ export function openWait(context: CodeContext, mode: Persistence, span: Anchored
   const waitType = wellKnownTypeOf(context, wellKnown.wait, [literalType(mode)]);
   const wait = emitCall(
     context,
-    { span, callee: tables.functionIndex(instance), arguments: [handle] },
+    { span, callee: tables.index({ kind: 'instance', instance }), arguments: [handle] },
     tables.types.reference(waitType),
   );
   return { wait, mode, cases: [] };
@@ -89,7 +89,11 @@ export function caseResolver(
   const at = emitConstantInt(context, position, span);
   return emitCall(
     context,
-    { span, callee: tables.functionIndex(instance), arguments: [open.wait, at, shared] },
+    {
+      span,
+      callee: tables.index({ kind: 'instance', instance }),
+      arguments: [open.wait, at, shared],
+    },
     tables.types.reference(resolverType),
   );
 }
@@ -108,7 +112,7 @@ export function parked(
   const unit = tables.types.reference({ kind: 'primitive', name: 'Unit' });
   const parking = emitCall(
     context,
-    { span, callee: tables.functionIndex(instance), arguments: [open.wait] },
+    { span, callee: tables.index({ kind: 'instance', instance }), arguments: [open.wait] },
     unit,
   );
   code.letGo([parking], span);
@@ -124,7 +128,7 @@ export function decidedAt(context: CodeContext, open: OpenWait, span: AnchoredSp
   const instance = preludeInstance(context, waitFunctions.decided, [literalType(open.mode)]);
   return emitCall(
     context,
-    { span, callee: tables.functionIndex(instance), arguments: [open.wait] },
+    { span, callee: tables.index({ kind: 'instance', instance }), arguments: [open.wait] },
     tables.types.reference(intType),
   );
 }
@@ -185,7 +189,10 @@ export function awaitFuture(
   }
   const open = openWait(context, mode, span);
   const done = caseResolver(context, open, valueType, span);
-  const callee = tables.functionIndex(rootInstance(checker, declaration, parts));
+  const callee = tables.index({
+    kind: 'instance',
+    instance: rootInstance(checker, declaration, parts),
+  });
   const unit = tables.types.reference({ kind: 'primitive', name: 'Unit' });
   const result = emitCall(context, { span, callee, arguments: [future, done] }, unit);
   code.letGo([done, result], span);

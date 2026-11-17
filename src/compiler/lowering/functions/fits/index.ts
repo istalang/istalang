@@ -159,7 +159,7 @@ function partsConverted(
   if (from.kind === 'function' && target.kind === 'function') {
     return wrappedClosure(context, typed.value, { from, to: target }, how);
   }
-  const entry = tables.conversionIndex({ kind: 'converting', from: typed.type, to, at: how.at });
+  const entry = tables.index({ kind: 'converting', from: typed.type, to, at: how.at });
   return emitCall(
     context,
     { span: how.span, callee: entry, arguments: [typed.value] },
@@ -174,7 +174,7 @@ function wrappedClosure(
   { from, to }: { readonly from: FunctionType; readonly to: FunctionType },
   { at, span }: Applying,
 ): Register {
-  const entry = context.tables.conversionIndex({ kind: 'wrapping', from, to, at });
+  const entry = context.tables.index({ kind: 'wrapping', from, to, at });
   return closureOf(context, { entry, captures: [value] }, context.tables.types.reference(to), span);
 }
 
@@ -226,7 +226,7 @@ function rebuildingIn(code: SynthesizedCode, how: Applying): Rebuilding {
     converter: (from, to) =>
       closureOf(
         code,
-        { entry: tables.conversionIndex({ kind: 'converting', from, to, at }), captures: [] },
+        { entry: tables.index({ kind: 'converting', from, to, at }), captures: [] },
         {
           kind: 'function',
           parameters: [tables.types.reference(from)],

@@ -99,7 +99,7 @@ export function emitFunctionCall(
   const result = given ?? context.tables.types.reference(resultOfCall(context.checker, call));
   const parameters = boundParameters(context, toEmit);
   if (call.kind === 'dispatch') {
-    const callee = context.tables.dispatchIndex(call.dispatch);
+    const callee = context.tables.index({ kind: 'dispatch', dispatch: call.dispatch });
     return emitCall(context, { span, callee, arguments: parameters }, result, dst);
   }
   const { instance } = call;
@@ -116,7 +116,7 @@ export function emitFunctionCall(
       return emitPrimitive(context, { span, op: own.op, operands }, result, dst);
     }
     default: {
-      const callee = context.tables.functionIndex(instance);
+      const callee = context.tables.index({ kind: 'instance', instance });
       return emitCall(context, { span, callee, arguments: parameters }, result, dst);
     }
   }

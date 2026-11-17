@@ -29,8 +29,12 @@ import { keyOf } from './extern-keys.ts';
  * What an instance's own entry is made of; a derived codec's says which way it crosses, and a
  * primitive's which operation it is.
  */
-type OwnEntry =
-  | { readonly kind: 'struct' | 'constructor' | 'hostExtern' | 'body' | 'native' }
+export type OwnEntry =
+  | { readonly kind: 'struct' }
+  | { readonly kind: 'constructor' }
+  | { readonly kind: 'hostExtern' }
+  | { readonly kind: 'body' }
+  | { readonly kind: 'native' }
   | { readonly kind: 'derivedCodec'; readonly direction: JsonDirection }
   | { readonly kind: 'primitive'; readonly op: PrimitiveOp };
 
