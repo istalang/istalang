@@ -5,8 +5,8 @@
 # awaited, it registers a `Resolver.at` of its wait's resolver on each future, in position order,
 # so it decides as a `select`'s cases do (§8): at the lowest position among those resolved already,
 # at the first the event resolves among those resolving together (§6), and the others take nothing,
-# a pending `take` no value. The others are async
-# functions, so they watch their futures from the call on, and `timeout`'s limit counts from it.
+# a pending `take` no value. The others are async functions, so they watch their futures from the
+# call on, and `timeout`'s limit counts from it.
 # Those waiting for several arrivals await each future in a call of its own (`_arrivals`), started
 # with theirs, and a `First` of those calls still out, turn after turn: a `First` lets go of its
 # losers, which a slot then passes over (§8), so between two turns only the calls keep the futures

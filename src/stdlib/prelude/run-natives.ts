@@ -21,7 +21,7 @@ export const runNatives = (keys: NativeKeys): RunNatives => ({
   ...callNatives(keys),
 });
 
-/** What futures, what waits on them, their settling and their widening stand on. */
+/** What futures, what waits on them and their settling stand on. */
 const futureNatives = (keys: NativeKeys): RunNatives => {
   const waitersType = keys.type('_Waiters', value, parameterKey('K'));
   return {

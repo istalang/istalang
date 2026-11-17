@@ -43,7 +43,7 @@ target. Migrating that shape costs more than writing the right one.
 |---|---|---|
 | Lowering | Every decision: holds and let-gos, in place, copies at crossings, start wrappers, mock checks, collect points, stop landings, derived JSON codecs (one module) | TS, once |
 | IR (the Definition) | Typed registers; reach facts on every type; explicit cells and references; tuple, struct and variant fields apart; flavors as variants; lifetime instructions; spill sets per suspension | the contract |
-| Std in Istalang | Futures, resolvers, waits, slots, about 95 former natives (decision 6 lists what the run keeps in TS for now) | Istalang |
+| Std in Istalang | What waits on futures, resolvers, waits, slots, following, about 95 former natives (decision 6 lists what the run keeps) | Istalang |
 | Run | One: ready queue, park and unpark of executions, segments and commits, snapshots (root walk, object ids), contexts, instances, jobs, effects (clock, random draws, logs), counts and the collector, one host binding | TS for JS; ported once for LLVM |
 | Codegen | One ES module per program. Simple entries are plain functions; async entries are resumable functions over frame records. Primitive operations are inline JS | TS |
 | Natives | About 85 primitives (Int, Float, String, Array, Map, JSON text, effects, regex/crypto/tz libraries) taking and giving primitives | per backend |
@@ -92,17 +92,27 @@ target. Migrating that shape costs more than writing the right one.
      - LLVM reference-counts every heap value, with a periodic cycle collector that frees memory
        only. The checker forbids cycles through anything reaching a disposable.
 6. **Services in Istalang** run over these primitives:
-   - park and unpark an execution, enqueue a closure call, timer-at;
-   - a host-future token, the current execution;
-   - weak references and cells;
+   - park and unpark an execution, enqueue a closure call;
+   - a future, the run's token, settling once and calling the one record the prelude keeps of
+     what waits on it (`_wait`), as it settles or, as code its disposal runs, is disposed first;
+     futures one event settles call theirs in the event's order (FIFO, no resolver ranks, spec §6);
+   - the token sources: a call's future, a host's filling, timer-at (the timers due at one instant
+     one event, in the order set), the `disposed()`/`disposing()` watches and end watches;
+   - the current execution, weak references and cells;
    - stopping a suspended call, and the `disposing()` priority resume.
 
-   For now the run also keeps in TS settle order, timer grouping, the `disposed()`/`disposing()`
-   and end watches, resolver pruning, the mock registry, and a widened call's future following the
-   call's. Moving them to Istalang waits on measuring what it
-   costs (tracker Q59), after the merge.
+   What waits on a future, in what order, which resolvers can still decide and when a future is
+   given up on (`_Waiters`), and a widened call's future following the call's (`_converted`), are
+   Istalang (tracker Q59, done). Timers, the watches and the future stay tokens rather than
+   prelude structs (`Future` as a shared struct over a token, research/runtime-audit.md R3, was
+   weighed and declined: every
+   future site would change, and every await would pay an Istalang settle). The mock registry is
+   still TS; its agreed replacement (tracker B115) moves mocking whole into the testing library:
+   in a test build the compiler only wraps every function with a testing.ista hook, and the
+   library keeps the mocks in transients and seeds a spawned or isolated instance with them.
 
-   Object ids come from the instance's serial from the first slice on. Heap kinds: cell, resource, weakRef, execution, contextConstant.
+   Object ids come from the instance's serial from the first slice on. Heap kinds: cell, resource,
+   weakRef, execution, contextConstant, and the future and mock tokens.
 7. **Protocols are lowered:**
    - a start wrapper awaits the root and encodes its outcome;
    - `copy` at spawn and context calls;

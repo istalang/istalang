@@ -235,7 +235,7 @@ export class Run {
     this.settleTogether([[future, value]]);
   }
 
-  /** Settles futures together, calling what waits on them in the settle order (§8). */
+  /** Settles futures together as one event, calling what waits on them in its order (§6). */
   settleTogether(settling: Settling): void {
     this.#settler.settleTogether(settling);
   }

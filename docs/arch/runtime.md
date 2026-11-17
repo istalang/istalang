@@ -41,24 +41,27 @@ interpreter; a live run is a run that never commits.
 ## What the run does and what the prelude does
 
 Decision 6 of the ir-first design gives the run primitives only (`run/run-primitives.ts`, the `run`
-capability the prelude's natives call): futures that settle once and call what the prelude keeps
-waiting on them (`_wait`), park and unpark of an execution, `_later` (enqueue a closure call),
-timers, weak references, cells, stopping a disposed call and the `disposing()` priority resume. The run still keeps more than
-that in TypeScript until moving it is measured (tracker Q59), each a service a backend ports too:
-futures settling together as one event (`run/settling.ts`), timers grouped by when they come due
-(`run/timers.ts`, `Run.fireDue`), the `disposed()` and `disposing()` watches (`Run.disposedOf`,
-`Executions.disposingOf`), the watches on an instance's end (`run/end-watches.ts`), and the
-mock registry (`run/mocks.ts`). Everything else above the primitives is Istalang in the prelude:
+capability the prelude's natives call). A future is the run's object, a token that settles once
+and then calls what the prelude keeps waiting on it (`_wait`): a call's, a host's filling, a
+timer's (`time.at`; the timers due at one instant settle as one event, in the order set,
+`run/timers.ts`), a watch on a referent's disposal (`disposed()`, `Run.disposedOf`), on a call's
+(`disposing()`, `Executions.disposingOf`, with its priority resume) or on another instance's end
+(`run/end-watches.ts`). Futures one event settles call what waits on them in its order
+(`run/settling.ts`). The other primitives are park and unpark of an execution, `_later` (enqueue a
+closure call), weak references, cells and stopping a disposed call. The mock registry
+(`run/mocks.ts`) is still the run's; tracker B115 moves mocking into the testing library.
+Everything above them is Istalang in the prelude:
 
 - **Futures** are run objects carrying what waits on them as the prelude keeps it, a `_Waiters`
   record made as something first comes to wait (`_waitersMade`, the `_wait` primitive): the
   resolvers registered, in order, whether a case waiting on it lost, what runs each time something
   comes to wait (`_whenAwaited`) and what it keeps until it settles (`_keeps`). `onAwait` drops the
-  resolvers that can't decide any more as it registers one (`_standingResolvers`, by `_standing`:
-  pending, lost, or withdrawn), and `_givenUp` reads a future a case lost on with nothing left to
-  decide as given up. The run calls the record's `arrived` as the future settles, each resolver
-  deciding as `tryResolve` does, the first deciding, and its `disposed` as the future is disposed
-  first, as code its disposal runs (§7), cancelling each and letting go at once of what it kept. An
+  resolvers registered before it that can't decide any more as it registers one (`_registeredOn`,
+  `_pruned`, by `_standing`: pending, lost, withdrawn, or idle), and `_givenUp` reads a future a
+  case lost on, with nothing left that may decide, as given up. The run calls the record's
+  `arrived` as the future settles, each resolver deciding as `tryResolve` does, the first deciding,
+  and its `disposed` as the future is disposed first, as code its disposal runs (§7), cancelling
+  each and letting go at once of what it kept. An
   event calls its futures' records future by future in its order, each future's resolvers in
   registration order, deciding at once, so a race's losers take nothing and the `disposing()` case
   can still win while its future settles. A `disposed()` or `disposing()` watch's future, which
@@ -75,7 +78,7 @@ mock registry (`run/mocks.ts`). Everything else above the primitives is Istalang
   for whatever else reaches it, with no execution between.
 - **Resolvers** are shared structs of `decide` and their state, a `_Resolution<K>` (`state`,
   `cancels`, what it comes down to deciding: a wait's case, the resolver a `Resolver.at` one decides,
-  or a callback), which takes no value: only what passes a value on is compiled per awaited type, the
+  a callback, or a follower, `Follows`), which takes no value: only what passes a value on is compiled per awaited type, the
   rest once per mode (ir-first B116). `resolve` panics on a second resolve; one resolved to no effect
   (state 4) stays cancellable.
 - **Waits** (`_Wait`): `_caseResolver` decides the wait and unparks the call, reaching the wait
@@ -195,9 +198,10 @@ In a Definition built to run tests (spec §10):
 
 ## Snapshots (`snapshot/`)
 
-- `format.ts`: the persisted shape. Objects by id (cells, futures, a pending one with what waits
-  on it, `waiting`, as the prelude keeps it; executions, calls that ended,
-  which a handle may outlive and which keep no frame, weak references, resources, mocks); values as trees with run objects as handles; frames as data (function, the
+- `format.ts`: the persisted shape. Objects by id (cells; futures, a pending one with what waits
+  on it, `waiting`, as the prelude keeps it; executions; calls that ended, which a handle may
+  outlive and which keep no frame; weak references; resources; mocks); values as trees with run
+  objects as handles; frames as data (function, the
   label of the `park` it stands at, registers, where a register may hold a `&` reference), each
   execution with the transients' cells it kept where it started (its frame's own shares are its
   transient registers); live executions, timers, watches of other instances' ends, the ready queue,
