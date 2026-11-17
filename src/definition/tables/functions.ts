@@ -43,8 +43,8 @@ const common = {
   /** Annotation values in source order, such as `@Suite`. */
   annotations: z.array(value),
   /**
-   * The entry first lowered from the same declaration, lambda or local function, whose closures
-   * `==` reads as this one's (§3.14, `bodyOf`); absent on that first one.
+   * The entry of least key lowered from the same declaration, lambda or local function, whose
+   * closures `==` reads as this one's (§3.14, `bodyOf`); absent on that one.
    */
   body: functionId.optional(),
 };

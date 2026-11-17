@@ -7,8 +7,9 @@
  *   order of their own (`PendingOrder`).
  * - A **closing** entry switches over every variant of an `any` type's enum so far (entries.ts): it
  *   is written once the worklist is empty, and again whenever lowering has since added a variant.
- * - Entries lowered from one source function share the first one's number as their `body`, which
- *   `==` reads their closures by (§3.14).
+ * - Entries lowered from one source function share the number of the one of least key as their
+ *   `body`, which `==` reads their closures by (§3.14): chosen once every entry is numbered, so it
+ *   never depends on which lowering reached first.
  * - An entry another program lowered (std-lowering.ts) is numbered and queued as one asked for
  *   anew is, and taken over where it would have been lowered, so the order is the same.
  * - What each entry's lowering asks of the tables is recorded as its own (requests.ts).
@@ -16,6 +17,7 @@
 
 import type { FunctionId } from '../../../definition/operands.ts';
 import type { FunctionDefinition } from '../../../definition/tables/functions.ts';
+import { compareOrdered } from '../../../foundation/language/order.ts';
 import { memo } from '../../../foundation/structures/memo.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { Type } from '../../checker/types/type/index.ts';
@@ -66,9 +68,8 @@ export class FunctionTable {
   readonly #closing: Numbered[] = [];
   /** How many variants its `any` type had when each closing entry was last written. */
   readonly #writtenFor = new Map<FunctionId, number>();
-  /** The first entry of each source function, by its body key, and each later one's first. */
-  readonly #bodyEntries = new Map<string, FunctionId>();
-  readonly #bodies = new Map<FunctionId, FunctionId>();
+  /** The key of the source function each entry runs (`EntryIdentity.body`), where it runs one. */
+  readonly #bodyKeys = new Map<FunctionId, string>();
   /** Each entry lowered here from its kind, with its body key, by index. */
   readonly #lowered = new Map<FunctionId, Pick<LoweredHere, 'entry' | 'body'>>();
 
@@ -119,14 +120,10 @@ export class FunctionTable {
     return this.#indexes.get(key);
   }
 
-  /** Notes which entry first ran the source function `bodyKey` names (`EntryIdentity.body`). */
+  /** Notes that entry `index` runs the source function `bodyKey` names (`EntryIdentity.body`). */
   #numberBody(bodyKey: string | undefined, index: FunctionId): void {
-    if (bodyKey === undefined) {
-      return;
-    }
-    const first = memo(this.#bodyEntries, bodyKey, () => index);
-    if (first !== index) {
-      this.#bodies.set(index, first);
+    if (bodyKey !== undefined) {
+      this.#bodyKeys.set(index, bodyKey);
     }
   }
 
@@ -187,14 +184,30 @@ export class FunctionTable {
 
   /** Every entry, each with its `body`, and the keys they were numbered by, in index order. */
   finished(): { readonly functions: FunctionDefinition[]; readonly keys: readonly string[] } {
+    const keys = [...this.#indexes].sort(([, a], [, b]) => a - b).map(([key]) => key);
+    const bodies = this.#bodies(keys);
     const functions = this.#definitions.map((entry, index) => {
       if (entry === undefined) {
         unreachable(`Function ${index} was referenced but never lowered.`);
       }
-      const body = this.#bodies.get(index);
-      return body === undefined ? entry : { ...entry, body };
+      const body = bodies.get(index);
+      return body === undefined || body === index ? entry : { ...entry, body };
     });
-    const keys = [...this.#indexes].sort(([, a], [, b]) => a - b).map(([key]) => key);
     return { functions, keys };
+  }
+
+  /** Each entry running a source function, by index, with the one of least key running it. */
+  #bodies(keys: readonly string[]): ReadonlyMap<FunctionId, FunctionId> {
+    const keyOf = (index: FunctionId) => keys[index] ?? unreachable(`${index} has no key.`);
+    const least = new Map<string, FunctionId>();
+    for (const [index, bodyKey] of this.#bodyKeys) {
+      const known = least.get(bodyKey);
+      if (known === undefined || compareOrdered(keyOf(index), keyOf(known)) < 0) {
+        least.set(bodyKey, index);
+      }
+    }
+    return new Map(
+      [...this.#bodyKeys].map(([index, bodyKey]) => [index, least.get(bodyKey) ?? index]),
+    );
   }
 }
