@@ -1,12 +1,12 @@
 /**
- * The edges a walk reaches against their definition: an edge is reached exactly when its source is
+ * The nodes and edges a walk reaches against their definition: an edge is reached exactly when its source is
  * a root or the target of a reached edge leading into the graph, checked over random graphs whose
  * odd-numbered targets lead out of it. A chain of runtime size is walked without the host's stack.
  */
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { edgesReachedFrom } from './reachable.ts';
+import { edgesReachedFrom, nodesReachedFrom } from './reachable.ts';
 
 interface Edge {
   readonly from: number;
@@ -57,5 +57,17 @@ describe('edgesReachedFrom', () => {
       (edge) => edge.to,
     );
     expect(reached).toHaveLength(length);
+  });
+});
+
+describe('nodesReachedFrom', () => {
+  it('reaches the roots and every node a reached node leads to', () => {
+    fc.assert(
+      fc.property(graphs, fc.uniqueArray(fc.nat(7), { maxLength: 3 }), (edges, roots) => {
+        const next = (node: number) =>
+          edges.filter((edge) => edge.from === node).flatMap((edge) => inGraph(edge) ?? []);
+        expect(nodesReachedFrom(roots, next)).toEqual(graphNodesFrom(roots, edges));
+      }),
+    );
   });
 });

@@ -24,13 +24,15 @@
  */
 
 import { memo } from '../../../foundation/structures/memo.ts';
+import { nodesReachedFrom } from '../../../foundation/structures/reachable.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { Checker } from '../../checker/check.ts';
 import {
   type BlockId,
-  type Exit,
+  type FlowBlock,
   type FlowFunction,
   type Operation,
+  successorsOf,
   transientsOf,
   type ValueId,
 } from '../../checker/surface/flow-ir.ts';
@@ -139,26 +141,11 @@ interface Graph {
 function graphOf(flow: FlowFunction): Graph {
   const predecessors = new Map<BlockId, BlockId[]>();
   for (const [block, { exit }] of flow.blocks.entries()) {
-    for (const target of targetsOf(exit)) {
+    for (const target of successorsOf(exit)) {
       memo(predecessors, target, () => []).push(block);
     }
   }
   return { flow, predecessors };
-}
-
-/** The blocks reached from `starts` going `next`, `starts` among them. */
-function reached(starts: readonly BlockId[], next: (block: BlockId) => readonly BlockId[]) {
-  const seen = new Set<BlockId>(starts);
-  const pending = [...starts];
-  for (let block = pending.pop(); block !== undefined; block = pending.pop()) {
-    for (const each of next(block)) {
-      if (!seen.has(each)) {
-        seen.add(each);
-        pending.push(each);
-      }
-    }
-  }
-  return seen;
 }
 
 /** A read of a flow: where it is, its root, and the reads of parts of it, which borrow from it. */
@@ -238,8 +225,8 @@ function changedBeforeUse(
   if (usedAt.size === 0) {
     return false;
   }
-  const after = reached([at.block], (block) => targetsOf(flow.blocks[block]?.exit));
-  const before = reached(
+  const after = nodesReachedFrom([at.block], (block) => successorsOf(blockOf(flow, block).exit));
+  const before = nodesReachedFrom(
     used.map(({ block }) => block),
     (block) => predecessors.get(block) ?? [],
   );
@@ -251,7 +238,7 @@ function changedBeforeUse(
     const seenKey = `${key(position)}:${String(changed)}`;
     if (key(position) !== key(at) && !seen.has(seenKey)) {
       seen.add(seenKey);
-      const operation = flow.blocks[position.block]?.operations[position.index];
+      const operation = blockOf(flow, position.block).operations[position.index];
       const changesHere = operation !== undefined && changing(operation);
       if (usedAt.has(key(position)) && (changed || (changesHere && runsWhileUsing(operation)))) {
         return true;
@@ -274,25 +261,15 @@ function runsWhileUsing(operation: Operation | undefined): boolean {
 
 /** Where control goes from `position`: the next operation, or where its block's exit goes. */
 function successors(flow: FlowFunction, { block, index }: FlowPosition): readonly FlowPosition[] {
-  const current = flow.blocks[block];
-  if (current === undefined) {
-    return [];
-  }
+  const current = blockOf(flow, block);
   if (index < current.operations.length) {
     return [{ block, index: index + 1 }];
   }
-  return targetsOf(current.exit).map((target) => ({ block: target, index: 0 }));
+  return successorsOf(current.exit).map((target) => ({ block: target, index: 0 }));
 }
 
-function targetsOf(exit: Exit | undefined): readonly BlockId[] {
-  switch (exit?.kind) {
-    case 'goto':
-      return [exit.to];
-    case 'branch':
-      return exit.to;
-    default:
-      return [];
-  }
+function blockOf(flow: FlowFunction, block: BlockId): FlowBlock {
+  return flow.blocks[block] ?? unreachable(`No block ${block}.`);
 }
 
 /** Whether `operation` may change what a read of `root` reads: releasing a computed root ends it. */

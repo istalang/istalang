@@ -1,5 +1,5 @@
 /**
- * The edges of a directed graph reachable from some of its nodes, for a graph known only by asking
+ * The nodes or edges of a directed graph reachable from some of its nodes, for a graph known only by asking
  * each node for its own edges: a rule that judges a whole graph (a cycle, an expanding edge) asks
  * for the part its roots reach, never for every node of a program.
  *
@@ -34,4 +34,20 @@ export function edgesReachedFrom<Node, Edge>(
     }
   }
   return edges;
+}
+
+/** `roots`, and every node a path from them reaches going `next`. */
+export function nodesReachedFrom<Node>(
+  roots: Iterable<Node>,
+  next: (node: Node) => readonly Node[],
+): Set<Node> {
+  const reached = new Set<Node>();
+  const pending = [...roots];
+  for (let node = pending.pop(); node !== undefined; node = pending.pop()) {
+    if (!reached.has(node)) {
+      reached.add(node);
+      pending.push(...next(node));
+    }
+  }
+  return reached;
 }

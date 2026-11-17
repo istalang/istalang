@@ -12,6 +12,7 @@
  */
 
 import { addToGroup } from '../../../foundation/structures/groups.ts';
+import { nodesReachedFrom } from '../../../foundation/structures/reachable.ts';
 import {
   type BlockId,
   type FlowBlock,
@@ -105,15 +106,10 @@ function layPasses(
 
 /** The blocks a path from `from` reaches, never through `avoided`. */
 function reachedFrom(flow: FlowFunction, from: BlockId, avoided?: BlockId): Set<BlockId> {
-  const reached = new Set<BlockId>();
-  const pending = [from];
-  for (let block = pending.pop(); block !== undefined; block = pending.pop()) {
-    if (block !== avoided && !reached.has(block)) {
-      reached.add(block);
-      pending.push(...successorsOf((flow.blocks[block] as FlowBlock).exit));
-    }
-  }
-  return reached;
+  const exitOf = (block: BlockId) => (flow.blocks[block] as FlowBlock).exit;
+  return nodesReachedFrom(from === avoided ? [] : [from], (block) =>
+    successorsOf(exitOf(block)).filter((each) => each !== avoided),
+  );
 }
 
 /**
