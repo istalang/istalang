@@ -68,6 +68,9 @@ const field = z.strictObject({
   /** Annotation values in source order, each a struct value of the annotation's type. */
   annotations: z.array(value),
 });
+
+export type Field = z.output<typeof field>;
+
 /** What every entry states: its label, and its reach facts. */
 const common = {
   /** A declared type's module-qualified name, `time.Duration`; any other's table key. */

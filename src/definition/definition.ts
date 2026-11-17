@@ -9,12 +9,11 @@
  * - Its bytes are avsc's (formats/binary-format.ts), derived from its zod schema, which never runs
  *   on one. Whatever carries a Definition carries an `EncodedDefinition`, or the text a built module
  *   embeds; nothing outside this module knows how either is encoded.
- * - Validation covers more than shapes (./validation/): every index lands in its table, every
- *   instruction's registers have the types it needs, and every owned register is let go of exactly
- *   once on every path (the ownership verifier). It runs where bytes come from outside the
- *   toolchain (a store, a file), so a hand-edited or corrupted Definition is refused at load, never
- *   midway through an instance; the toolchain's own output is trusted, encoded once and not read
- *   back.
+ * - Validation covers more than shapes (./validation/): every index lands in its table, no
+ *   constant holds a handle, and every owned register is let go of exactly once on every path (the
+ *   ownership verifier). It runs where bytes come from outside the toolchain (a store, a file), so a
+ *   hand-edited or corrupted Definition is refused at load, never midway through an instance; the
+ *   toolchain's own output is trusted, encoded once and not read back.
  */
 
 import type { z } from 'zod';

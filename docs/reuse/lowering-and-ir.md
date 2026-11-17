@@ -55,7 +55,7 @@ tags: [reuse, lowering, definition, ir, instructions]
 - inspect `Definition` function parameters or captures → `takesReference`, `capturesOf`; where a code entry's body begins, past its prologue → `bodyStart` (`src/definition/tables/functions.ts`)
 - check an entry can encode an instance's outcome → `encoderProblem` (`src/definition/tables/functions.ts`); the encoder an `Instance<T>` type entry names for what it spawns → `outcomeEncoderOf` (`src/definition/tables/types.ts`)
 - inspect `Definition` type references, roles, cell or resource types → `typesIn`, `isResourceType`, `isCellType`, `hasRole` (`src/definition/tables/types.ts`)
-- validate `Definition` table references or value shapes → `checkReferences`, `valueProblems` (`src/definition/validation/references.ts`)
+- check every index a `Definition`'s tables hold lands in its table, and no constant holds a handle → `referenceIssues`; an index outside a table of a size → `outsideIssue` (`src/definition/validation/references.ts`)
 
 ## One-way rules
 
