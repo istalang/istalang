@@ -65,7 +65,7 @@ fn firstSuite() -> Array<Test>: [
     firstArrivedBeforeItsAwait
     (0, 1)
   )
-  test("wins in a select when its future resolves with or before a later case's", async fn(): {
+  test("wins in a select when its future settles ahead of a later case's in one event", async fn(): {
     const s = Slot.create<Int>()
     const r0 = s.read()
     const r1 = s.read()

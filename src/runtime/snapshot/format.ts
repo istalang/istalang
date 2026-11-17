@@ -39,7 +39,6 @@ const register = z.union([
 
 const waiting = z.strictObject({
   callback: value,
-  rank: z.array(integer),
   standing: value,
   cancelled: value,
 });

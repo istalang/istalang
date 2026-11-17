@@ -26,7 +26,7 @@ extern shared struct WeakRef<T is Disposable>
 type Mark = "simple" | "live" | "ista"
 type Persistence = "live" | "ista"
 # A future (§3.3) is what an async call, a timer or a host gives: the run's object, which settles
-# once and then calls, in the settle order, what waits on it (ir-first design, decision 6). It holds
+# once and then calls what waits on it, in the order it was registered (§6). It holds
 # its value and what waits on it, as a callback's chain is held from its futures up (spec §7); a
 # call's future also holds its call, which belongs to the language.
 @Holds<(T, Fn<(T,), Unit, K>, Fn<(), Int, K>, Fn<(), Unit, K>)>
@@ -53,7 +53,7 @@ K fn onAwait<T, K in Persistence>(self: Future<T, K>, done: Resolver<T, K>):
   if _settled(self): drop _decides(done, _valueOf(self))
   else:
     K fn arrived(value: T): drop _decides(done, value)
-    _onSettled(self, arrived, resolution->rank, _standingOf(resolution), _cancellerOf(resolution))
+    _onSettled(self, arrived, _standingOf(resolution), _cancellerOf(resolution))
 
 # One wait's one-shot resolver (Rule 5). A second `resolve` panics, and `tryResolve` says whether it
 # decided the wait, for races; once another case decided it, neither decides anything, and it is
@@ -67,11 +67,8 @@ shared struct Resolver<T, K in Persistence>:
 # A resolver's state. One let go of unresolved is cancelled, unless it is a case's never registered
 # on anything while its wait hasn't begun or still waits, which panics: an awaitable dropped it
 # (`_released`). It holds its `onCancel` callbacks and what it calls, never the futures it is
-# registered on. Its rank is where it decides among what settles together (spec §8): a case's by its
-# waiter and position, an at-resolver's by the resolver it decides and its position, a callback's
-# after every case, by when it was made.
+# registered on.
 shared struct _Resolution<K in Persistence>:
-  rank: Array<Int>
   decides: _Decides<K>
   state: _ResolverState = Pending
   cancels: Array<Fn<(), Unit, K>> = []
@@ -195,7 +192,7 @@ K fn Resolver.of<T, K in Persistence>(callback: Fn<(T,), Unit, K>) -> Resolver<T
     true
   new Resolver<T, K>{
     decide: later
-    resolution: new _Resolution<K>{rank: [1, _made()], decides: Callback}
+    resolution: new _Resolution<K>{decides: Callback}
   }
 
 # A resolver deciding `done` with `(position, value)` as it is resolved, in the same step: pending
@@ -206,7 +203,7 @@ K fn Resolver.at<T, K in Persistence>(done: Resolver<(Int, T), K>, position: Int
   const deciding = done->resolution
   new Resolver<T, K>{
     decide: decided
-    resolution: new _Resolution<K>{rank: [...deciding->rank, position], decides: At(deciding)}
+    resolution: new _Resolution<K>{decides: At(deciding)}
   }
 
 # Has `callback` called once `self` is cancelled: another case decided its wait, its waiter moved on
@@ -327,10 +324,7 @@ K fn _decide<K in Persistence>(wait: _Wait<K>, position: Int):
 # The state of the resolver of `wait`'s case at `position` (`_caseResolver`), which `wait` cancels
 # through a weak reference once another case decides it.
 K fn _caseResolution<K in Persistence>(wait: _Wait<K>, position: Int) -> _Resolution<K>:
-  const resolution = new _Resolution<K>{
-    rank: [0, _idOf(wait->call), position]
-    decides: Case(WeakRef(wait), wait->call)
-  }
+  const resolution = new _Resolution<K>{decides: Case(WeakRef(wait), wait->call)}
   const weak = WeakRef(resolution)
   K fn cancel(withdrawn: Bool):
     if weak.deref() is _Resolution as pending: _cancel(pending, withdrawn)
@@ -375,7 +369,7 @@ K fn _decided<K in Persistence>(wait: _Wait<K>) -> Int:
 extern K fn _settled<T, K in Persistence>(future: Future<T, K>) -> Bool
 @_Parametric
 extern K fn _valueOf<T, K in Persistence>(future: Future<T, K>) -> T
-# `callback` waits on `future` at `rank` while its resolver may still decide, as `standing` says
+# `callback` waits on `future` while its resolver may still decide, as `standing` says
 # (`_standing`): one that can't is dropped, and a future such ones waited on, one of them having
 # lost, and nothing waits on now is given up on. `cancelled` runs if `future` is disposed first.
 @Keeps{["future": ["callback", "standing", "cancelled"]]}
@@ -383,7 +377,6 @@ extern K fn _valueOf<T, K in Persistence>(future: Future<T, K>) -> T
 extern K fn _onSettled<T, K in Persistence>(
   future: Future<T, K>
   callback: Fn<(T,), Unit, K>
-  rank: Array<Int>
   standing: Fn<(), Int, K>
   cancelled: Fn<(), Unit, K>
 )
@@ -422,9 +415,6 @@ extern fn _waitEnded(call: _Call)
 extern fn _stayRunning(call: _Call)
 # Whether `call` is being disposed, its `disposing()` future settling (§7).
 extern fn _disposingWins(call: _Call) -> Bool
-extern fn _idOf(call: _Call) -> Int
-# A number above any this instance drew before, across its commits: a callback's rank by creation.
-extern fn _made() -> Int
 
 # What a function's values may capture (§3.14): only sendable values, only inert ones, which reach
 # no disposable, or any. Each allows the one before it.

@@ -203,9 +203,8 @@ const fillers: Handlers<Filling, PersistedObject, [], void> = {
     future.settled = persisted.settled;
     future.value = restored(persisted.value);
     future.lost = persisted.lost;
-    future.callbacks = persisted.callbacks.map(({ callback, rank, standing, cancelled }) => ({
+    future.callbacks = persisted.callbacks.map(({ callback, standing, cancelled }) => ({
       callback: restored(callback),
-      rank,
       standing: restored(standing),
       cancelled: restored(cancelled),
     }));

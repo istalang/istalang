@@ -133,7 +133,7 @@ ista async fn unregistered() -> Int:
   await runtime.commit()
   seen->value
 
-ista async fn rankedAcrossCommits() -> Array<String>:
+ista async fn orderedAcrossCommits() -> Array<String>:
   const order = new Shared<Array<String>>{value: []}
   const s = Slot.create<Int>()
   drop Resolver.of(fn(value: Int): order->value.push("dropped"))
@@ -180,13 +180,13 @@ fn suite() -> Array<Test>: [
     async fn(): assertEq(await unregistered(), -1)
   )
   test(
-    "callbacks settled together run in the order their resolvers were made, across commits"
-    async fn(): assertEq(await rankedAcrossCommits(), ["before", "after"])
+    "callbacks of futures settled together run in the order their futures settle, across commits"
+    async fn(): assertEq(await orderedAcrossCommits(), ["before", "after"])
   )
   test(
-    "callbacks settled together run in creation order with every segment re-run"
+    "callbacks of futures settled together run in the order their futures settle with every segment re-run"
     async fn(): assertEq(
-      await spawnCrashingEveryAwait(rankedAcrossCommits).result()
+      await spawnCrashingEveryAwait(orderedAcrossCommits).result()
       Ok(["before", "after"])
     )
   )

@@ -25,17 +25,12 @@ export const runNatives = (keys: NativeKeys): RunNatives => ({
 const futureNatives = (keys: NativeKeys): RunNatives => ({
   [keys.of('_settled', future)]: ([settled], { run }) => run.settled(given(settled)),
   [keys.of('_valueOf', future)]: ([settled], { run }) => run.valueOf(given(settled)),
-  [keys.of(
-    '_onSettled',
-    future,
-    functionKey([value], 'Unit'),
-    knownTypeKey(wellKnown.array, 'Int'),
-    functionKey([], 'Int'),
-    action,
-  )]: ([waited, callback, rank, standing, cancelled], { run }) => {
+  [keys.of('_onSettled', future, functionKey([value], 'Unit'), functionKey([], 'Int'), action)]: (
+    [waited, callback, standing, cancelled],
+    { run },
+  ) => {
     run.onSettled(given(waited), {
       callback: given(callback),
-      rank: given(rank),
       standing: given(standing),
       cancelled: given(cancelled),
     });
@@ -87,6 +82,4 @@ const callNatives = (keys: NativeKeys): RunNatives => ({
     return null;
   },
   [keys.of('_disposingWins', call)]: ([disposed], { run }) => run.disposingWins(given(disposed)),
-  [keys.of('_idOf', call)]: ([identified], { run }) => run.idOf(given(identified)),
-  [keys.of('_made')]: (_, { run }) => run.made(),
 });

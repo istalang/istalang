@@ -41,27 +41,29 @@ interpreter; a live run is a run that never commits.
 ## What the run does and what the prelude does
 
 Decision 6 of the ir-first design gives the run primitives only (`run/run-primitives.ts`, the `run`
-capability the prelude's natives call): futures that settle once and call their callbacks in rank
-order, park and unpark of an execution, `_later` (enqueue a closure call), timers, weak references,
+capability the prelude's natives call): futures that settle once and call their callbacks in the
+order they were registered (spec §6, FIFO: no resolver ranks), park and unpark of an execution, `_later` (enqueue a closure call), timers, weak references,
 cells, stopping a disposed call and the `disposing()` priority resume. The run still keeps more than
 that in TypeScript until moving it is measured (tracker Q59), each a service a backend ports too:
-the order a set of futures settles in (`run/settling.ts`), timers grouped by when they come due
+futures settling together as one event (`run/settling.ts`), timers grouped by when they come due
 (`run/timers.ts`, `Run.fireDue`), the `disposed()` and `disposing()` watches (`Run.disposedOf`,
 `Executions.disposingOf`), the watches on an instance's end (`run/end-watches.ts`), giving up on a
 case nothing waits on any more (`Future.lost`, read through `_standing`), a widened call's future
 following the call's (`run/following.ts`, the `following` primitive `_converted` calls), and the
 mock registry (`run/mocks.ts`). Everything else above the primitives is Istalang in the prelude:
 
-- **Futures** are run objects; `onAwait` registers a callback with a rank, a `standing` probe
+- **Futures** are run objects; `onAwait` registers a callback with a `standing` probe
   (`_standing`: pending, lost, or withdrawn) and what cancels its resolver if the future is disposed
   first. Every future a resolver is registered on resolves it as `tryResolve` does: the first
-  decides. What settling a set of futures settles in turn (a
+  decides. An event calls its futures' callbacks future by future in its order, each future's in
+  registration order, deciding at once, so a race's losers take nothing and the `disposing()`
+  case can still win while its future settles. What settling a set of futures settles in turn (a
   future following another, as a mock's answer does) settles together after it
   (`Run.settleTogether`). A widened call's future follows the call's (`run/following.ts`, prelude
   `_converted`, spec §3.14): it settles together with it, its value converted, holds it until then,
   and, disposed first, lets go of it at once, so the call stops as an unwidened one does; the
   call's future stays as it is for whatever else reaches it, with no execution between.
-- **Resolvers** are shared structs of `decide` and their state, a `_Resolution<K>` (`rank`, `state`,
+- **Resolvers** are shared structs of `decide` and their state, a `_Resolution<K>` (`state`,
   `cancels`, what it comes down to deciding: a wait's case, the resolver a `Resolver.at` one decides,
   or a callback), which takes no value: only what passes a value on is compiled per awaited type, the
   rest once per mode (ir-first B116). `resolve` panics on a second resolve; one resolved to no effect

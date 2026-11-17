@@ -144,9 +144,8 @@ function fieldsOf(object: RunObject, { named, persisted }: Naming): PersistedObj
       id,
       settled: object.settled,
       value: persisted(object.value),
-      callbacks: object.callbacks.map(({ callback, rank, standing, cancelled }) => ({
+      callbacks: object.callbacks.map(({ callback, standing, cancelled }) => ({
         callback: persisted(callback),
-        rank: [...rank],
         standing: persisted(standing),
         cancelled: persisted(cancelled),
       })),

@@ -4,8 +4,8 @@
  * `WithRun`). Every backend implements these; the std's other natives reach the run only through
  * the other capabilities they are given (capabilities.ts).
  *
- * - A future keeps the callbacks waiting on it with their rank (prelude.ista `Resolver`), and the
- *   run calls them in rank order as it settles (`Run.settle`). Each comes with what says what its
+ * - A future keeps the callbacks waiting on it, and the run calls them in the order they were
+ *   registered as it settles (`Run.settle`, §6). Each comes with what says what its
  *   resolver stands for: one that can't decide any more is dropped as another comes or is asked
  *   about, and a future one of those lost on, with nothing waiting on it, is given up on, which a
  *   slot passes over (§6, §8). A withdrawn one, a `select`'s that didn't wait, gives up on nothing.
@@ -30,8 +30,6 @@ import type { Run } from './run.ts';
 /** A callback registered on a future, with what decides it (prelude.ista `_onSettled`). */
 interface Registered {
   readonly callback: Value;
-  /** The `Array<Int>` of its rank. */
-  readonly rank: Value;
   readonly standing: Value;
   readonly cancelled: Value;
 }
@@ -56,9 +54,6 @@ export interface RunPrimitives {
   readonly waitEnded: (call: Value) => void;
   readonly stayRunning: (call: Value) => void;
   readonly disposingWins: (call: Value) => boolean;
-  readonly idOf: (call: Value) => bigint;
-  /** The next of the instance's serial, persisted with it. */
-  readonly made: () => bigint;
 }
 
 /** `future` given as a value, the handle of one. */
@@ -94,10 +89,9 @@ function futurePrimitives(run: Run) {
   return {
     settled: (given: Value) => futureOf(given).settled,
     valueOf: (given: Value) => futureOf(given).value,
-    onSettled: (given: Value, { callback, rank, standing, cancelled }: Registered) => {
+    onSettled: (given: Value, { callback, standing, cancelled }: Registered) => {
       const waited = futureOf(given);
-      const ranks = (rank as { readonly elements: readonly bigint[] }).elements;
-      const added: Waiting = { callback, rank: ranks, standing, cancelled };
+      const added: Waiting = { callback, standing, cancelled };
       for (const closure of closuresOf(added)) {
         run.lifetimes.hold(closure);
       }
@@ -164,7 +158,5 @@ function callPrimitives(run: Run) {
     waitEnded: (given: Value) => run.lifetimes.letGo(...callOf(given).awaiting.splice(0)),
     stayRunning: (given: Value) => run.queue.unready(callOf(given)),
     disposingWins: (given: Value) => run.executions.disposingWins(callOf(given)),
-    idOf: (given: Value) => BigInt(callOf(given).object),
-    made: () => BigInt(run.newId()),
   };
 }

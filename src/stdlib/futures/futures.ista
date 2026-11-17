@@ -3,15 +3,15 @@
 # Each function is written once over the kind (proposal 8, Rule 6), `K fn …<…, K in Persistence>`,
 # so futures of two kinds in one call are an inference error. `first` is an awaitable: once
 # awaited, it registers a `Resolver.at` of its wait's resolver on each future, in position order,
-# so it decides as a `select`'s cases do (§8): at the lowest position among those resolved already
-# or together, and the others take nothing, a pending `take` no value. The others are async
+# so it decides as a `select`'s cases do (§8): at the lowest position among those resolved already,
+# at the first the event resolves among those resolving together (§6), and the others take nothing,
+# a pending `take` no value. The others are async
 # functions, so they watch their futures from the call on, and `timeout`'s limit counts from it.
 # Those waiting for several arrivals await each future in a call of its own (`_arrivals`), started
 # with theirs, and a `First` of those calls still out, turn after turn: a `First` lets go of its
 # losers, which a slot then passes over (§8), so between two turns only the calls keep the futures
-# waiting in their queues. Calls are readied as their futures arrive and were made in position
-# order, so racing them keeps both the arrival order and, among those arriving together, the
-# position order.
+# waiting in their queues. Calls are readied as their futures arrive, so racing them keeps the
+# arrival order and, among those arriving together, the event's order (§6).
 #
 # A failure is a `Result`, never a rejection, so `all`, `any` and `quorum` read `Ok` and `Err` to
 # decide when to stop. None disposes a future it is given (§7): it lets go of them when it returns,

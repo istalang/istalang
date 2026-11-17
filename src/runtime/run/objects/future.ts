@@ -43,10 +43,9 @@ export class Future extends RunObject {
   }
 }
 
-/** A closure waiting on a future, and where it decides among what settles together (spec §8). */
+/** A closure waiting on a future, called with its value as it settles. */
 export interface Waiting {
   readonly callback: Value;
-  readonly rank: readonly bigint[];
   /** What the resolver the callback resolves stands for (prelude.ista `_standing`). */
   readonly standing: Value;
   /** What cancels that resolver, run if the future is disposed before it settles (§6). */

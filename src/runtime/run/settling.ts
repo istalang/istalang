@@ -1,6 +1,6 @@
 /**
- * Settling futures (§8): futures one event settles together call every callback waiting on any of
- * them at once, in the settle order: by rank (prelude.ista `Resolver`), then as they were added.
+ * Settling futures (§6): futures one event settles together call every callback waiting on any of
+ * them at once, future by future in the event's order, each future's in the order they were added.
  * A future following one of them (following.ts) settles with them, its value converted.
  * Then the run's own listeners hear each value, such as a call into a context waiting on its
  * invocation's future; what they settle meanwhile settles together after them, as futures following
@@ -65,8 +65,8 @@ export class Settler {
       if (!future.settled) {
         future.settled = true;
         future.value = value;
-        for (const { callback, rank, standing, cancelled } of future.callbacks.splice(0)) {
-          waiting.push({ callback, rank, value });
+        for (const { callback, standing, cancelled } of future.callbacks.splice(0)) {
+          waiting.push({ callback, value });
           this.#lifetimes.letGo(standing, cancelled);
         }
         this.#lifetimes.letGo(...future.onAwaited.splice(0));
@@ -85,30 +85,15 @@ export class Settler {
   }
 
   #called(waiting: readonly Waited[]): void {
-    for (const { callback, value } of waiting.toSorted((first, second) =>
-      compareRanks(first.rank, second.rank),
-    )) {
+    for (const { callback, value } of waiting) {
       this.#lifetimes.letGo(this.#call(callback, value) as Value);
       this.#lifetimes.letGo(callback);
     }
   }
 }
 
-/** A callback waiting on a settled future, with its rank and the value it is called with. */
+/** A callback waiting on a settled future, with the value it is called with. */
 interface Waited {
   readonly callback: Value;
-  readonly rank: readonly bigint[];
   readonly value: Value;
-}
-
-/** Ranks in order: element by element, a rank before the longer ranks it begins. */
-function compareRanks(first: readonly bigint[], second: readonly bigint[]): number {
-  for (let at = 0; at < Math.min(first.length, second.length); at += 1) {
-    const a = first[at] ?? 0n;
-    const b = second[at] ?? 0n;
-    if (a !== b) {
-      return a < b ? -1 : 1;
-    }
-  }
-  return first.length - second.length;
 }

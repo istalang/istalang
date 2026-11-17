@@ -9,8 +9,8 @@ import * as time from 'time'
 import Inbox from 'inbox'
 
 ista async fn firstInSelect() -> Int:
-  const f0 = time.delay(1s)
   const f1 = time.delay(1s)
+  const f0 = time.delay(1s)
   await select:
     case futures.first([f0]): 0
     case f1: 1
@@ -148,7 +148,7 @@ ista async fn fillFirstCaseReads(s: Slot<Int>):
   await runtime.commit()
   _ = s.put(5)
 
-ista async fn firstCaseReads() -> Int:
+ista async fn readsInQueueOrder() -> Int:
   const s = Slot.create<Int>()
   const r2 = s.read()
   const r1 = s.read()
@@ -159,7 +159,7 @@ ista async fn firstCaseReads() -> Int:
   await filling
   picked
 
-ista async fn firstCaseTimers() -> Int:
+ista async fn timersInSetOrder() -> Int:
   const t2 = time.delay(5ms)
   const t1 = time.delay(5ms)
   await select:
@@ -171,7 +171,7 @@ ista async fn watchBoth(d1: Future<Unit, "ista">, d2: Future<Unit, "ista">) -> I
     case d1: 1
     case d2: 2
 
-ista async fn firstCaseDisposals() -> Int:
+ista async fn casesOnOneWatch() -> Int:
   const box = Inbox.create<Int>()
   const w = WeakRef(box)
   const d2 = w.disposed()
@@ -185,7 +185,7 @@ ista async fn waitOn(timer: Future<Unit, "ista">, log: Inbox<Int>, tag: Int):
   await timer
   log.send(tag)
 
-ista async fn readyCreationOrder() -> Array<Int>:
+ista async fn readiedInSetOrder() -> Array<Int>:
   const log = Inbox.create<Int>()
   const t2 = time.delay(5ms)
   const t1 = time.delay(5ms)
@@ -217,8 +217,8 @@ ista async fn waitingPutsHoldTheirValues() -> String:
 @Suite{"waits"}
 fn suite() -> Array<Test>: [
   test(
-    "futures.first in a select wins at its case when its future resolves together with a later case"
-    async fn(): assertEq(await firstInSelect(), 0)
+    "futures.first in a select loses to a later case whose future settles ahead of its own in one event"
+    async fn(): assertEq(await firstInSelect(), 1)
   )
   test(
     "futures.first in a select decides as its value arrives, a later case taking nothing"
@@ -253,20 +253,20 @@ fn suite() -> Array<Test>: [
     async fn(): assertEq(await loserRevertibleAtResume(), (["stale"], []))
   )
   test(
-    "a wait decides at its first case in order when several slot reads resolve together"
-    async fn(): assertEq(await firstCaseReads(), 15)
+    "slot reads served together decide a wait in their slot's queue order"
+    async fn(): assertEq(await readsInQueueOrder(), 25)
   )
   test(
-    "a wait decides at its first case in order when several timers resolve together"
-    async fn(): assertEq(await firstCaseTimers(), 1)
+    "timers due at one instant decide a wait in the order they were set"
+    async fn(): assertEq(await timersInSetOrder(), 2)
   )
   test(
-    "a wait decides at its first case in order when several disposal watches resolve together"
-    async fn(): assertEq(await firstCaseDisposals(), 1)
+    "cases waiting on one disposal watch decide their wait at the first registered"
+    async fn(): assertEq(await casesOnOneWatch(), 1)
   )
   test(
-    "waiters readied together by their timers run in execution creation order"
-    async fn(): assertEq(await readyCreationOrder(), [1, 2])
+    "waiters readied together by their timers run in the order the timers were set"
+    async fn(): assertEq(await readiedInSetOrder(), [2, 1])
   )
   test(
     "a waiting put's value is held by its put alone: let go of with it, or as it loses a select"

@@ -254,11 +254,11 @@ ista fn clocks() -> Array<Test>: [
     ])
     assertEq(records.calls(), [("first",), ("second",), ("late",)])
   })
-  test("passes the deadlines due at one instant together", withClock, async fn(clock): {
+  test("passes the deadlines due at one instant together, in the order they were set", withClock, async fn(clock): {
     const racing = racesDeadlines(1, 1)
     await runtime.commit()
     clock.advance(Duration{value: 1})
-    assertEq(await racing, "second")
+    assertEq(await racing, "first")
   })
   test("resolves a deadline already reached at once", async fn(): {
     const clock = FakeClock{start: Time{value: 5}}
