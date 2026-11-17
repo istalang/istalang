@@ -40,7 +40,7 @@ interface EmittedEntry {
 
 /** The function of the entry `scope` describes. */
 export function emitEntry(scope: Omit<EntryScope, 'jumps'>): EmittedEntry {
-  const { entry, index, onFrames } = scope;
+  const { entry, onFrames } = scope;
   const targets = jumpTargets(entry);
   const jumps = targets.size > 0 || onFrames;
   const full: EntryScope = { ...scope, jumps };
@@ -50,26 +50,8 @@ export function emitEntry(scope: Omit<EntryScope, 'jumps'>): EmittedEntry {
     lines.push(text);
     instructions.push(at);
   };
-  const registers = entry.registers.map((_, each) => register(each));
-  const parameters = entry.parameters.length;
-  if (onFrames) {
-    line(`function f${index}(frame) {`);
-    line('  const cl = frame.closure;');
-    if (registers.length > 0) {
-      line(`  let [${registers.join(', ')}] = frame.registers;`);
-    }
-  } else {
-    const arguments_ = registers.slice(0, parameters);
-    line(`function f${index}(${[...arguments_, 'cl'].join(', ')}) {`);
-    const captured = Array.from(
-      { length: entry.captures },
-      (_, at) => `${register(parameters + at)} = cl.captures[${at}]`,
-    );
-    const rest = registers.slice(parameters + entry.captures);
-    const declared = [...captured, ...rest];
-    if (declared.length > 0) {
-      line(`  let ${declared.join(', ')};`);
-    }
+  for (const opening of openingLines(scope)) {
+    line(opening);
   }
   const counted = countedRegisters(scope);
   if (counted.length > 0) {
@@ -100,6 +82,31 @@ export function emitEntry(scope: Omit<EntryScope, 'jumps'>): EmittedEntry {
   }
   line('}');
   return { lines, instructions };
+}
+
+/** The lines opening the entry's function: its signature and its registers. */
+function openingLines({ entry, index, onFrames }: Omit<EntryScope, 'jumps'>): string[] {
+  const registers = entry.registers.map((_, each) => register(each));
+  const parameters = entry.parameters.length;
+  const lines: string[] = [];
+  if (onFrames) {
+    lines.push(`function f${index}(frame) {`, '  const cl = frame.closure;');
+    if (registers.length > 0) {
+      lines.push(`  let [${registers.join(', ')}] = frame.registers;`);
+    }
+  } else {
+    const arguments_ = registers.slice(0, parameters);
+    lines.push(`function f${index}(${[...arguments_, 'cl'].join(', ')}) {`);
+    const captured = Array.from(
+      { length: entry.captures },
+      (_, at) => `${register(parameters + at)} = cl.captures[${at}]`,
+    );
+    const declared = [...captured, ...registers.slice(parameters + entry.captures)];
+    if (declared.length > 0) {
+      lines.push(`  let ${declared.join(', ')};`);
+    }
+  }
+  return lines;
 }
 
 /** The instructions some instruction of `entry` jumps to. */
