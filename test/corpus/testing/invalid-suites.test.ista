@@ -5,8 +5,8 @@
 # error: 5951 at 38:40
 # error: 5951 at 41:41
 # error: 5951 at 48:18
-# error: 5951 at 64:56
-# error: 5950 at 70:9
+# error: 5951 at 62:56
+# error: 5950 at 68:9
 #
 # A suite function only builds its list (§10), in an instance: an fn or ista fn, not async, taking
 # nothing and returning Array<Test>, whose own body calls no extern and makes no shared struct or
@@ -40,7 +40,7 @@ fn makesShared() -> Array<Test>: _with(new Box{n: 1})
 @Suite{"makes a slot"}
 ista fn makesSlot() -> Array<Test>: _of(Slot.create<Int>())
 
-struct Bag {}
+struct Bag
 extern fn Bag.default() -> Bag
 
 @Suite{"calls an extern implicitly"}
@@ -54,11 +54,9 @@ fn fine() -> Array<Test>: [Case(title: "t", body: async fn(): { drop fetch(); ()
 fn _with(box: Box) -> Array<Test>: []
 ista fn _of(slot: Slot<Int>) -> Array<Test>: []
 
-ista async fn check(n: Int):
-  drop n
+ista async fn check(n: Int): drop n
 
-ista async fn checkFetched():
-  drop fetch()
+ista async fn checkFetched(): drop fetch()
 
 @Suite{"a deferred call computes what it passes now"}
 ista fn computesNow() -> Array<Test>: [test("t") check(fetch())]

@@ -54,10 +54,7 @@ fn suite() -> Array<Test>: [
     test("is written and read as ISO 8601 without a zone", fn(): {
       const dateTime = DateTime{year: 2026, month: 10, day: 25, hour: 13}
       assertEq(String(dateTime), "2026-10-25T13:00:00")
-      assertEq(
-        DateTime.parse("2026-10-25T13:00:00.5")
-        Ok(DateTime{...dateTime, millisecond: 500})
-      )
+      assertEq(DateTime.parse("2026-10-25T13:00:00.5"), Ok(DateTime{...dateTime, millisecond: 500}))
       assert(DateTime.parse("2026-10-25T13:00:00Z") is Err(...))
       assert(DateTime.parse("2026-02-30T00:00:00") is Err(...))
       assert(DateTime.parse("2026-10-25T13:00:00.0001") is Err(...))

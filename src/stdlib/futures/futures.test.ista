@@ -285,7 +285,11 @@ ista async fn allSettledAwaitingFromTheCall() -> (Array<Int>, Int):
 
 @Suite{"futures › watching from the call on"}
 fn watchingSuite() -> Array<Test>: [
-  ...runAndReRun("all keeps its takes' place between arrivals", allKeepingItsPlace, (Ok([1, 2]), Ok(3)))
+  ...runAndReRun(
+    "all keeps its takes' place between arrivals"
+    allKeepingItsPlace
+    (Ok([1, 2]), Ok(3))
+  )
   ...runAndReRun("any keeps its takes' place between arrivals", anyKeepingItsPlace, (Ok(2), Ok(3)))
   ...runAndReRun(
     "quorum keeps its takes' place between arrivals"

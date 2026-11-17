@@ -1,10 +1,10 @@
 # error: 5105 at 19:4
 # error: 5001 at 22:31
-# error: 5123 at 23:8
+# error: 5123 at 23:9
 # error: 5001 at 24:57
 # error: 5001 at 26:72
-# error: 5001 at 29:14
-# error: 5105 at 34:4
+# error: 5001 at 28:22
+# error: 5105 at 33:4
 # An async function never fits a plain function type, and a plain one fits an async type (§3.14),
 # inside a value type too (§3.5), but an async one never fits made async again; a mock never makes
 # its target async (§10). A plain lambda's `return`s give the future's value, as its body does.
@@ -20,13 +20,12 @@ fn sum(...all: Array<Int>) -> Int: 0
 
 ista fn main():
   const wanted: fn() -> Int = later
-  drop(testing.mock<(), Future<Int, "ista">>(plain, later))
+  drop (testing.mock<(), Future<Int, "ista">>(plain, later))
   const twice: ista async fn() -> Future<Int, "ista"> = later
   const xs: Array<(ista async fn() -> Int) | String> = [later]
   const ys: Array<(ista async fn() -> Future<Int, "ista">) | String> = xs
   const disagreeing: ista async fn(Int) -> Int = fn(x): {
-    if x > 0:
-      return "wrong"
+    if x > 0: return "wrong"
     1
   }
 

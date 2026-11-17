@@ -8,11 +8,9 @@ shared struct Lease:
   name: String
   log: Shared<Array<String>>
 
-fn dispose(self: Lease):
-  self->log->value.push("disposed " + self->name)
+fn dispose(self: Lease): self->log->value.push("disposed " + self->name)
 
-fn note(log: Shared<Array<String>>, text: String):
-  log->value.push(text)
+fn note(log: Shared<Array<String>>, text: String): log->value.push(text)
 
 fn unnamedParts() -> Array<String>:
   const log = new Shared<Array<String>>{value: []}
@@ -38,22 +36,26 @@ fn exitsReleaseTemporaries() -> Array<String>:
     _ = pair
   note(log, "after break")
   for i in 0..2:
-    const pair = (new Lease{name: "turn " + i, log}, {
-      if i == 0: continue
-      0
-    })
+    const pair = (
+      new Lease{name: "turn " + i, log}
+      {
+        if i == 0: continue
+        0
+      }
+    )
     _ = pair
   note(log, "after continue")
   log->value
 
 fn defaulted(
-  log: Shared<Array<String>>,
-  a: Int = { hold(defaulted) _ = defer note(log, "held by a"); note(log, "default a"); 1 },
-  b: Bool = (new Lease{name: "b's temporary", log} is Lease as lease) and lease->name != "",
-  c: Int = { note(log, "default c"); a + 1 },
+  log: Shared<Array<String>>
+  a: Int = { hold(defaulted) _ = defer note(log, "held by a"); note(log, "default a"); 1 }
+  b: Bool = (new Lease{name: "b's temporary", log} is Lease as lease) and lease->name != ""
+  c: Int = { note(log, "default c"); a + 1 }
 ) -> Int:
   note(log, "body")
-  if b: a + c else: 0
+  if b: a + c
+  else: 0
 
 fn defaultsLiveAsTheFunction() -> Array<String>:
   const log = new Shared<Array<String>>{value: []}
@@ -75,8 +77,49 @@ fn fieldDefaultsLiveAsTheirStruct() -> Array<String>:
 
 @Suite{"holders"}
 fn suite() -> Array<Test>: [
-  test("a _ among a destructuring's targets holds its part alone, so dropping or reassigning a named part disposes it", fn(): assertEq(unnamedParts(), ["disposed a", "a dropped", "disposed b", "b assigned", "disposed kept2", "disposed b2", "disposed kept"]))
-  test("break and continue release the temporaries of the statements and loops they leave", fn(): assertEq(exitsReleaseTemporaries(), ["disposed item", "after break outer", "disposed operand", "after break", "disposed turn 0", "disposed turn 1", "after continue"]))
-  test("a default's temporaries end with it, and what it holds for its function ends with the function", fn(): assertEq(defaultsLiveAsTheFunction(), ["default a", "disposed b's temporary", "default c", "body", "held by a", "returned"]))
-  test("a field default's temporaries end with it, and what it holds for building its struct ends once the struct is built", fn(): assertEq(fieldDefaultsLiveAsTheirStruct(), ["default a", "disposed b's temporary", "default c", "held by a", "built"]))
+  test(
+    "a _ among a destructuring's targets holds its part alone, so dropping or reassigning a named part disposes it"
+    fn(): assertEq(unnamedParts(), [
+      "disposed a"
+      "a dropped"
+      "disposed b"
+      "b assigned"
+      "disposed kept2"
+      "disposed b2"
+      "disposed kept"
+    ])
+  )
+  test(
+    "break and continue release the temporaries of the statements and loops they leave"
+    fn(): assertEq(exitsReleaseTemporaries(), [
+      "disposed item"
+      "after break outer"
+      "disposed operand"
+      "after break"
+      "disposed turn 0"
+      "disposed turn 1"
+      "after continue"
+    ])
+  )
+  test(
+    "a default's temporaries end with it, and what it holds for its function ends with the function"
+    fn(): assertEq(defaultsLiveAsTheFunction(), [
+      "default a"
+      "disposed b's temporary"
+      "default c"
+      "body"
+      "held by a"
+      "returned"
+    ])
+  )
+  test(
+    "a field default's temporaries end with it, and what it holds for building its struct ends once the struct is built"
+    fn(): assertEq(fieldDefaultsLiveAsTheirStruct(), [
+      "default a"
+      "disposed b's temporary"
+      "default c"
+      "held by a"
+      "built"
+    ])
+  )
 ]

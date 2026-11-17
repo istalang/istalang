@@ -10,8 +10,7 @@ shared struct Lease:
   log: Shared<Array<String>>
   child: Lease? = none
 
-fn dispose(self: Lease):
-  self->log->value.push("disposed " + self->name)
+fn dispose(self: Lease): self->log->value.push("disposed " + self->name)
 
 ista async fn disposalRounds() -> String:
   const log = new Shared<Array<String>>{value: []}
@@ -25,5 +24,8 @@ ista async fn disposalRounds() -> String:
 
 @Suite{"disposal"}
 fn suite() -> Array<Test>: [
-  test("the current round finishes before what a disposal in that round held is disposed", async fn(): assertEq(await disposalRounds(), "disposed 2, disposed 1, disposed 0"))
+  test(
+    "the current round finishes before what a disposal in that round held is disposed"
+    async fn(): assertEq(await disposalRounds(), "disposed 2, disposed 1, disposed 0")
+  )
 ]

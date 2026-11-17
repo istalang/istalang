@@ -35,8 +35,7 @@ ista async fn jsonBetweenWrites() -> String:
     case _: written = none
   [first, second, third, json.stringify(kept), json.stringify(o), json.stringify(written)].join("|")
 
-ista async fn give(xs: Array<Int>) -> Array<Int>:
-  xs
+ista async fn give(xs: Array<Int>) -> Array<Int>: xs
 
 ista async fn sentCopies() -> Array<Int>:
   const box = Inbox.create<Array<Int>>()
@@ -56,8 +55,7 @@ fn unwrap(r: Result<Array<Int>>) -> Array<Int>:
     case Ok(xs): xs
     case Err(_): []
 
-ista async fn echo(xs: Array<Int>) -> Array<Int>:
-  xs
+ista async fn echo(xs: Array<Int>) -> Array<Int>: xs
 
 ista async fn spawnCopies() -> Array<Int>:
   let xs = [10, 20]
@@ -73,21 +71,14 @@ ista async fn spawnCopies() -> Array<Int>:
 ista async fn blockValueAfterDefer() -> Array<Int>:
   let xs = [10, 20]
   xs.push(30)
-  const before = {
-    _ = defer(fn(): {
-      xs.push(999)
-      xs[0] = 888
-    })
-    xs
-  }
+  const before = { _ = defer(fn(): { xs.push(999); xs[0] = 888 }); xs }
   [...before, ...xs]
 
 shared struct Res:
   id: Int
   log: Shared<Array<String>>
 
-fn dispose(self: Res):
-  self->log->value.push("disposed " + self->id)
+fn dispose(self: Res): self->log->value.push("disposed " + self->id)
 
 struct Box:
   res: Res
@@ -100,8 +91,7 @@ fn readId(r: Res, x: Int) -> Int:
   r->log->value.push("read " + r->id)
   r->id + x
 
-fn takePair(p: Pair, x: Int) -> (Int, Int):
-  (p.a, x)
+fn takePair(p: Pair, x: Int) -> (Int, Int): (p.a, x)
 
 fn variableReadBeforeItsWrite() -> (Int, Int):
   let n = 1
@@ -142,14 +132,47 @@ fn swapped() -> (Int, Int):
 
 @Suite{"aliasing"}
 fn suite() -> Array<Test>: [
-  test("json.stringify writes each value as it is now, between changes in place, through the JSON kept of it", async fn(): assertEq(await jsonBetweenWrites(), '{"left":{"items":[1],"tags":{"a":1}},"right":{"items":[],"tags":{}}}|{"left":{"items":[1,2],"tags":{"a":1}},"right":{"items":[],"tags":{}}}|{"left":{"items":[1,2],"tags":{"b":2}},"right":{"items":[],"tags":{}}}|{"left":{"items":[1,2],"tags":{"b":2}},"right":{"items":[],"tags":{}}}|{"left":{"items":[1,2],"tags":{"b":2}},"right":{"items":[3],"tags":{}}}|{"items":"gone","tags":{"b":2}}'))
-  test("values sent through slots, inboxes and resolved futures stay as sent when the sender changes its own", async fn(): assertEq(await sentCopies(), [1, 2, 3, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 5]))
-  test("values given to spawn and runtime.isolate stay as given when the caller changes its own before awaiting", async fn(): assertEq(await spawnCopies(), [10, 20, 30, 10, 20, 30, 999, 20, 30, 400]))
-  test("a block expression value stays as computed when a defer changes the outer variable at block exit", async fn(): assertEq(await blockValueAfterDefer(), [10, 20, 30, 888, 20, 30, 999]))
-  test("a variable read keeps its value when a later operand of its expression assigns the variable", fn(): assertEq(variableReadBeforeItsWrite(), (1, 2)))
-  test("an argument keeps its value when a later argument changes a part of its variable in place", fn(): assertEq(partReadBeforeItsWrite(), (1, 10)))
-  test("a part read as an argument holds its value when a later argument replaces it", fn(): assertEq(borrowedBeforeItsDisposal(), ["read 1", "disposed 1", "got 11"]))
-  test("a value read behind a handle holds it when a later argument's call replaces it", fn(): assertEq(readBehindBeforeItsDisposal(), ["read 1", "disposed 1", "got 11"]))
-  test("a captured variable read keeps its value when a later operand's call assigns it", fn(): assertEq(capturedReadBeforeItsWrite(), (1, 2)))
-  test("a destructuring assignment takes its value apart as it was before writing any part", fn(): assertEq(swapped(), (20, 10)))
+  test(
+    "json.stringify writes each value as it is now, between changes in place, through the JSON kept of it"
+    async fn(): assertEq(
+      await jsonBetweenWrites()
+      '{"left":{"items":[1],"tags":{"a":1}},"right":{"items":[],"tags":{}}}|{"left":{"items":[1,2],"tags":{"a":1}},"right":{"items":[],"tags":{}}}|{"left":{"items":[1,2],"tags":{"b":2}},"right":{"items":[],"tags":{}}}|{"left":{"items":[1,2],"tags":{"b":2}},"right":{"items":[],"tags":{}}}|{"left":{"items":[1,2],"tags":{"b":2}},"right":{"items":[3],"tags":{}}}|{"items":"gone","tags":{"b":2}}'
+    )
+  )
+  test(
+    "values sent through slots, inboxes and resolved futures stay as sent when the sender changes its own"
+    async fn(): assertEq(await sentCopies(), [1, 2, 3, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 5])
+  )
+  test(
+    "values given to spawn and runtime.isolate stay as given when the caller changes its own before awaiting"
+    async fn(): assertEq(await spawnCopies(), [10, 20, 30, 10, 20, 30, 999, 20, 30, 400])
+  )
+  test(
+    "a block expression value stays as computed when a defer changes the outer variable at block exit"
+    async fn(): assertEq(await blockValueAfterDefer(), [10, 20, 30, 888, 20, 30, 999])
+  )
+  test(
+    "a variable read keeps its value when a later operand of its expression assigns the variable"
+    fn(): assertEq(variableReadBeforeItsWrite(), (1, 2))
+  )
+  test(
+    "an argument keeps its value when a later argument changes a part of its variable in place"
+    fn(): assertEq(partReadBeforeItsWrite(), (1, 10))
+  )
+  test(
+    "a part read as an argument holds its value when a later argument replaces it"
+    fn(): assertEq(borrowedBeforeItsDisposal(), ["read 1", "disposed 1", "got 11"])
+  )
+  test(
+    "a value read behind a handle holds it when a later argument's call replaces it"
+    fn(): assertEq(readBehindBeforeItsDisposal(), ["read 1", "disposed 1", "got 11"])
+  )
+  test(
+    "a captured variable read keeps its value when a later operand's call assigns it"
+    fn(): assertEq(capturedReadBeforeItsWrite(), (1, 2))
+  )
+  test(
+    "a destructuring assignment takes its value apart as it was before writing any part"
+    fn(): assertEq(swapped(), (20, 10))
+  )
 ]

@@ -95,7 +95,12 @@ ista async fn nestedPositions() -> Int:
     gone.onCancel(fn(): see(seen, seen->value + 3))
     later(1).onAwait(Resolver.at(gone, 0))
     later(2).onAwait(Resolver.at(gone, 1))
-    const nested = Resolver.of(fn(outer: (Int, (Int, Int))): see(seen, seen->value + outer.0 * 100 + outer.1.0 * 10 + outer.1.1))
+    const nested = Resolver.of(
+      fn(outer: (Int, (Int, Int))): see(
+        seen
+        seen->value + outer.0 * 100 + outer.1.0 * 10 + outer.1.1
+      )
+    )
     survived.onAwait(Resolver.at(Resolver.at(nested, 2), 4))
   await runtime.commit()
   _ = await survived
@@ -146,13 +151,43 @@ ista async fn rankedAcrossCommits() -> Array<String>:
 
 @Suite{"callbacks"}
 fn suite() -> Array<Test>: [
-  test("a callback is called once resolved, after the code resolving it waits", async fn(): assertEq(await afterResolverWaits(), 3))
-  test("a callback waits on a future without await, through its onAwait", async fn(): assertEq(await withoutAwait(), 7))
-  test("a callback lives as long as its future, even once what it would decide is decided", async fn(): assertEq(await livesWithFuture(), 30))
-  test("a callback stays alive through a surviving Resolver.at registration when another position future is let go of", async fn(): assertEq(await survivingPosition(), 2701))
-  test("a callback is cancelled once every Resolver.at future holding its chain is let go of, and resolves through nested chains", async fn(): assertEq(await nestedPositions(), 248))
-  test("the losing futures.first and select cases are disposed when the winner resolves across commits", async fn(): assertEq(await losersDisposed(), 4930))
-  test("a callback let go of unresolved, registered on nothing, is cancelled", async fn(): assertEq(await unregistered(), -1))
-  test("callbacks settled together run in the order their resolvers were made, across commits", async fn(): assertEq(await rankedAcrossCommits(), ["before", "after"]))
-  test("callbacks settled together run in creation order with every segment re-run", async fn(): assertEq(await spawnCrashingEveryAwait(rankedAcrossCommits).result(), Ok(["before", "after"])))
+  test(
+    "a callback is called once resolved, after the code resolving it waits"
+    async fn(): assertEq(await afterResolverWaits(), 3)
+  )
+  test(
+    "a callback waits on a future without await, through its onAwait"
+    async fn(): assertEq(await withoutAwait(), 7)
+  )
+  test(
+    "a callback lives as long as its future, even once what it would decide is decided"
+    async fn(): assertEq(await livesWithFuture(), 30)
+  )
+  test(
+    "a callback stays alive through a surviving Resolver.at registration when another position future is let go of"
+    async fn(): assertEq(await survivingPosition(), 2701)
+  )
+  test(
+    "a callback is cancelled once every Resolver.at future holding its chain is let go of, and resolves through nested chains"
+    async fn(): assertEq(await nestedPositions(), 248)
+  )
+  test(
+    "the losing futures.first and select cases are disposed when the winner resolves across commits"
+    async fn(): assertEq(await losersDisposed(), 4930)
+  )
+  test(
+    "a callback let go of unresolved, registered on nothing, is cancelled"
+    async fn(): assertEq(await unregistered(), -1)
+  )
+  test(
+    "callbacks settled together run in the order their resolvers were made, across commits"
+    async fn(): assertEq(await rankedAcrossCommits(), ["before", "after"])
+  )
+  test(
+    "callbacks settled together run in creation order with every segment re-run"
+    async fn(): assertEq(
+      await spawnCrashingEveryAwait(rankedAcrossCommits).result()
+      Ok(["before", "after"])
+    )
+  )
 ]

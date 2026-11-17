@@ -1,7 +1,17 @@
 # The random module (spec §3.8): draws within their bounds, UUIDs in their layout, values a mock
 # fixes, and the draws a segment makes again when it runs again (§5).
 
-import Suite, Test, test, assert, assertEq, expectPanic, mock, calls, spawnCrashingEveryAwait from 'testing'
+import (
+  Suite
+  Test
+  test
+  assert
+  assertEq
+  expectPanic
+  mock
+  calls
+  spawnCrashingEveryAwait
+) from 'testing'
 import * as random from 'random'
 import * as runtime from 'runtime'
 

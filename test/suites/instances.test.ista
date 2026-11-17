@@ -44,9 +44,24 @@ ista async fn endedBeforeWait() -> Int:
 
 @Suite{"instances"}
 fn suite() -> Array<Test>: [
-  test("a spawn carries a sendable closure's captures into the child", async fn(): assertEq(await closureCaptures(), Ok(42)))
-  test("a child started through a shorter function value computes what it left out", async fn(): assertEq(await shorterFunctionValue(), Ok(42)))
-  test("an instance ends with the value of the future its function gives, an async or a plain callee", async fn(): assertEq(await asyncAndPlainRoots(), (Ok(2), Ok(4))))
-  test("an instance starts given a future-returning std function as a function value, by spawn or isolate", async fn(): assertEq(await futureExternRoots(), (Ok(()), Ok(()))))
-  test("a wait on an instance that ended before the wait began resolves", async fn(): assertEq(await endedBeforeWait(), 7))
+  test(
+    "a spawn carries a sendable closure's captures into the child"
+    async fn(): assertEq(await closureCaptures(), Ok(42))
+  )
+  test(
+    "a child started through a shorter function value computes what it left out"
+    async fn(): assertEq(await shorterFunctionValue(), Ok(42))
+  )
+  test(
+    "an instance ends with the value of the future its function gives, an async or a plain callee"
+    async fn(): assertEq(await asyncAndPlainRoots(), (Ok(2), Ok(4)))
+  )
+  test(
+    "an instance starts given a future-returning std function as a function value, by spawn or isolate"
+    async fn(): assertEq(await futureExternRoots(), (Ok(()), Ok(())))
+  )
+  test(
+    "a wait on an instance that ended before the wait began resolves"
+    async fn(): assertEq(await endedBeforeWait(), 7)
+  )
 ]

@@ -3,7 +3,19 @@
 # `only` would skip every other test of the run, the whole standard library's, so the focus the
 # constructors give is read from the tests they build; the runner's own tests run focused tests.
 
-import Suite, Test, test, group, skip, only, Setup, setups, assert, assertEq, expectPanic from 'testing'
+import (
+  Suite
+  Test
+  test
+  group
+  skip
+  only
+  Setup
+  setups
+  assert
+  assertEq
+  expectPanic
+) from 'testing'
 import FakeClock, FakeQueue, FakeReceipts, withClock, mock, handle, idle, state from 'testing'
 import * as testing from 'testing'
 import * as runtime from 'runtime'
@@ -140,7 +152,8 @@ fn many(a: Int, b: Int, c: Int, d: Int, e: Int, f: Int, g: Int, h: String) -> St
 ista async fn later(a: Int) -> Int: a
 fn scaled(n: Int, by: Int = 10, offset: Int = n) -> Int: n * by + offset
 ista async fn scaledLater(n: Int, by: Int = 10) -> Int: n * by
-struct Cents { value: Int }
+struct Cents:
+  value: Int
 fn toJson(self: Cents, scale: Int = 2) -> json.Json: json.encodeText(String(self.value * scale))
 fn cents() -> Cents: Cents{value: 5}
 
@@ -181,11 +194,14 @@ fn mocks() -> Array<Test>: [
     assertEq(await (spawn scaled(7)).result(), Ok(-10))
     assertEq(m.calls(), [(7, 10, 7)])
   })
-  test("fills the defaults of the encoder the runtime calls for an instance's outcome", async fn(): {
-    const m = mock(toJson, fn(self: Cents, scale: Int) -> json.Json: json.encodeText("mocked"))
-    assertEq(await (spawn cents()).result(), Ok(Cents{value: 5}))
-    assertEq(m.calls(), [(Cents{value: 5}, 2)])
-  })
+  test(
+    "fills the defaults of the encoder the runtime calls for an instance's outcome"
+    async fn(): {
+      const m = mock(toJson, fn(self: Cents, scale: Int) -> json.Json: json.encodeText("mocked"))
+      assertEq(await (spawn cents()).result(), Ok(Cents{value: 5}))
+      assertEq(m.calls(), [(Cents{value: 5}, 2)])
+    }
+  )
   test("sees every call of the codec it replaces, of a value written before too", fn(): {
     const kept = Cents{value: 3}
     assertEq(json.encode(kept), "6")

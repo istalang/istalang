@@ -74,10 +74,8 @@ ista async fn losingSlotKeeps() -> Int:
   const b = Slot.create<Int>()
   const filling = fillLosingSlotKeeps(a, b)
   const got = await select:
-    case a.take() as x:
-      x
-    case b.take() as y:
-      y
+    case a.take() as x: x
+    case b.take() as y: y
   const left = await b.take()
   await filling
   got * 10 + left
@@ -97,10 +95,8 @@ ista async fn losingColdTake() -> Int:
   const cold = ColdTake{slot: s}
   const filling = fillLosingColdTake(s)
   const got = await select:
-    case s.read() as x:
-      x
-    case cold as y:
-      y
+    case s.read() as x: x
+    case cold as y: y
   const left = await s.take()
   await filling
   got * 100 + left
@@ -135,10 +131,8 @@ ista async fn losingDisposingWatch() -> String:
 
 ista async fn workerLoserRevertibleAtResume(a: Slot<Int>, log: Inbox<String>) -> Int:
   await select:
-    case a.take() as x:
-      x
-    case (log.sendRevertible("stale"), workerLoserRevertibleAtResume.disposing()).1:
-      0
+    case a.take() as x: x
+    case (log.sendRevertible("stale"), workerLoserRevertibleAtResume.disposing()).1: 0
 
 ista async fn loserRevertibleAtResume() -> (Array<String>, Array<String>):
   const a = Slot.create<Int>()
@@ -160,10 +154,8 @@ ista async fn firstCaseReads() -> Int:
   const r1 = s.read()
   const filling = fillFirstCaseReads(s)
   const picked = await select:
-    case r1 as x:
-      x + 10
-    case r2 as y:
-      y + 20
+    case r1 as x: x + 10
+    case r2 as y: y + 20
   await filling
   picked
 
@@ -171,17 +163,13 @@ ista async fn firstCaseTimers() -> Int:
   const t2 = time.delay(5ms)
   const t1 = time.delay(5ms)
   await select:
-    case t1:
-      1
-    case t2:
-      2
+    case t1: 1
+    case t2: 2
 
 ista async fn watchBoth(d1: Future<Unit, "ista">, d2: Future<Unit, "ista">) -> Int:
   await select:
-    case d1:
-      1
-    case d2:
-      2
+    case d1: 1
+    case d2: 2
 
 ista async fn firstCaseDisposals() -> Int:
   const box = Inbox.create<Int>()
@@ -211,8 +199,7 @@ shared struct Offered:
   id: Int
   log: Shared<Array<String>>
 
-fn dispose(self: Offered):
-  self->log->value.push("disposed " + self->id)
+fn dispose(self: Offered): self->log->value.push("disposed " + self->id)
 
 ista async fn waitingPutsHoldTheirValues() -> String:
   const log = new Shared<Array<String>>{value: []}
@@ -229,18 +216,63 @@ ista async fn waitingPutsHoldTheirValues() -> String:
 
 @Suite{"waits"}
 fn suite() -> Array<Test>: [
-  test("futures.first in a select wins at its case when its future resolves together with a later case", async fn(): assertEq(await firstInSelect(), 0))
-  test("futures.first in a select decides as its value arrives, a later case taking nothing", async fn(): assertEq(await firstTakesNothing(), (10, -1, 20)))
-  test("futures.first takes nothing from a later future once an earlier one had resolved", async fn(): assertEq(await firstResolvedEarlier(), (0, 3)))
-  test("a select that does not wait leaves a held take in its slot queue, having awaited nothing", async fn(): assertEq(await selectNoWaitTake(), (-1, 7, 8)))
-  test("a slot operation a losing case awaited is passed over while nothing awaits it, and served once awaited again", async fn(): assertEq(await passedOverTake(), (0, 5, 5)))
-  test("a select's losing slot keeps a value put right after the winner's", async fn(): assertEq(await losingSlotKeeps(), 12))
-  test("a losing cold take held only by its resolver leaves the slot's value", async fn(): assertEq(await losingColdTake(), 4242))
-  test("a losing case keeping only its disposing() watch leaves the slot's value to a later take", async fn(): assertEq(await losingDisposingWatch(), "now, value kept"))
-  test("a losing case's revertible message is retracted when the winner resumes, not at the decision (select-losers amendment)", async fn(): assertEq(await loserRevertibleAtResume(), (["stale"], [])))
-  test("a wait decides at its first case in order when several slot reads resolve together", async fn(): assertEq(await firstCaseReads(), 15))
-  test("a wait decides at its first case in order when several timers resolve together", async fn(): assertEq(await firstCaseTimers(), 1))
-  test("a wait decides at its first case in order when several disposal watches resolve together", async fn(): assertEq(await firstCaseDisposals(), 1))
-  test("waiters readied together by their timers run in execution creation order", async fn(): assertEq(await readyCreationOrder(), [1, 2]))
-  test("a waiting put's value is held by its put alone: let go of with it, or as it loses a select", async fn(): assertEq(await waitingPutsHoldTheirValues(), "disposed 2, dropped, disposed 3, timer won"))
+  test(
+    "futures.first in a select wins at its case when its future resolves together with a later case"
+    async fn(): assertEq(await firstInSelect(), 0)
+  )
+  test(
+    "futures.first in a select decides as its value arrives, a later case taking nothing"
+    async fn(): assertEq(await firstTakesNothing(), (10, -1, 20))
+  )
+  test(
+    "futures.first takes nothing from a later future once an earlier one had resolved"
+    async fn(): assertEq(await firstResolvedEarlier(), (0, 3))
+  )
+  test(
+    "a select that does not wait leaves a held take in its slot queue, having awaited nothing"
+    async fn(): assertEq(await selectNoWaitTake(), (-1, 7, 8))
+  )
+  test(
+    "a slot operation a losing case awaited is passed over while nothing awaits it, and served once awaited again"
+    async fn(): assertEq(await passedOverTake(), (0, 5, 5))
+  )
+  test(
+    "a select's losing slot keeps a value put right after the winner's"
+    async fn(): assertEq(await losingSlotKeeps(), 12)
+  )
+  test(
+    "a losing cold take held only by its resolver leaves the slot's value"
+    async fn(): assertEq(await losingColdTake(), 4242)
+  )
+  test(
+    "a losing case keeping only its disposing() watch leaves the slot's value to a later take"
+    async fn(): assertEq(await losingDisposingWatch(), "now, value kept")
+  )
+  test(
+    "a losing case's revertible message is retracted when the winner resumes, not at the decision (select-losers amendment)"
+    async fn(): assertEq(await loserRevertibleAtResume(), (["stale"], []))
+  )
+  test(
+    "a wait decides at its first case in order when several slot reads resolve together"
+    async fn(): assertEq(await firstCaseReads(), 15)
+  )
+  test(
+    "a wait decides at its first case in order when several timers resolve together"
+    async fn(): assertEq(await firstCaseTimers(), 1)
+  )
+  test(
+    "a wait decides at its first case in order when several disposal watches resolve together"
+    async fn(): assertEq(await firstCaseDisposals(), 1)
+  )
+  test(
+    "waiters readied together by their timers run in execution creation order"
+    async fn(): assertEq(await readyCreationOrder(), [1, 2])
+  )
+  test(
+    "a waiting put's value is held by its put alone: let go of with it, or as it loses a select"
+    async fn(): assertEq(
+      await waitingPutsHoldTheirValues()
+      "disposed 2, dropped, disposed 3, timer won"
+    )
+  )
 ]
