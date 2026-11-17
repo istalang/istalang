@@ -76,7 +76,7 @@ export class StdReuse {
     return kept === undefined ? this.#seams.functions.index(key, entry) : this.#adopted(key, kept);
   }
 
-  /** The index of the entry `key` names, taken over from `kept` where it would be lowered. */
+  /** The index of the entry `key` names, taken over from `kept` in place of being lowered. */
   #adopted(key: string, kept: LoweredFunction): FunctionId {
     return this.#seams.functions.adopt(key, kept.body, () =>
       this.#kept.adoptedFunction(kept, this.#keyNumbering),

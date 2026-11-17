@@ -14,7 +14,7 @@
  *   `body`, which `==` reads their closures by (§3.14): chosen once every entry is numbered, so it
  *   never depends on which lowering reached first.
  * - An entry another program lowered (std-lowering.ts) is numbered and queued as one asked for
- *   anew is, and taken over where it would have been lowered, so the order is the same.
+ *   anew is, and taken over in place of being lowered.
  * - What each entry's lowering asks of the tables is recorded as its own (requests.ts).
  */
 
@@ -95,7 +95,7 @@ export class FunctionTable {
 
   /**
    * The index of the entry keyed `key`, numbered and queued the first time it is asked for, as
-   * `index` numbers one, to be written by `adopted` (std-reuse.ts) where it would be lowered.
+   * `index` numbers one, to be written by `adopted` (std-reuse.ts) in place of being lowered.
    */
   adopt(key: string, bodyKey: string | undefined, adopted: () => FunctionDefinition): FunctionId {
     return this.#numbered(key, (index) => {

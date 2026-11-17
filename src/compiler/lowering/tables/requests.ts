@@ -1,8 +1,9 @@
 /**
- * What each entry asks of the tables: every function, type, constant and module an entry's lowering
- * or a type entry's layout asks for, in the order first asked, whether it was there already or not.
- * A program reusing an entry another lowered (std-lowering.ts) asks for the same again, in the same
- * order, so its tables number and lay out exactly what lowering the entry itself would have.
+ * What each entry asks of the tables: the set of functions, types, constants and modules an
+ * entry's lowering or a type entry's layout asks for, whether they were there already or not. A
+ * program reusing an entry another lowered (std-lowering.ts) asks for the same set again, so its
+ * tables hold exactly what lowering the entry itself would have put there; in what order is no
+ * matter, since a Definition never shows which entry lowering reached first.
  *
  * - A request goes to the entry being lowered or laid out; one made outside every entry, as `lower`
  *   lists the starts, belongs to none.
@@ -13,6 +14,7 @@
 import type { Renumbering } from '../../../definition/references.ts';
 import { memo } from '../../../foundation/structures/memo.ts';
 import { withPushed } from '../../../foundation/structures/stack.ts';
+import { unreachable } from '../../../foundation/structures/unreachable.ts';
 
 /** A kind of table a request asks of, as references are renumbered by. */
 export type RequestKind = keyof Renumbering;
@@ -23,78 +25,61 @@ export interface TableRequest {
   readonly index: number;
 }
 
-/** What a list of requests belongs to: a function entry's lowering, or a type entry's layout. */
+/** What a set of requests belongs to: a function entry's lowering, or a type entry's layout. */
 export interface RequestOwner {
   readonly kind: 'function' | 'type';
   readonly index: number;
 }
 
-/** Each request kind's place in a request's code, which tells requests apart in one number. */
-const kindCodes: Readonly<Record<RequestKind, number>> = {
-  function: 0,
-  type: 1,
-  constant: 2,
-  module: 3,
-};
+/** Each request kind, by its place in a request's code, which tells requests apart in one number. */
+const kinds: readonly RequestKind[] = ['function', 'type', 'constant', 'module'];
 
-const kindCount = Object.keys(kindCodes).length;
+/** One owner's requests, each by its code. */
+type RequestSet = Set<number>;
 
-/** One owner's requests, each recorded once, by its code. */
-interface RequestList {
-  readonly requests: TableRequest[];
-  readonly codes: Set<number>;
+function codeOf({ kind, index }: TableRequest): number {
+  return index * kinds.length + kinds.indexOf(kind);
 }
 
-function requestList(): RequestList {
-  return { requests: [], codes: new Set() };
-}
-
-/** Adds `request` to `list` unless it holds it already. */
-function addTo(list: RequestList | undefined, request: TableRequest): void {
-  const code = request.index * kindCount + kindCodes[request.kind];
-  if (list !== undefined && !list.codes.has(code)) {
-    list.codes.add(code);
-    list.requests.push(request);
-  }
+function requestOf(code: number): TableRequest {
+  const kind = kinds[code % kinds.length] ?? unreachable(`${String(code)} codes no request.`);
+  return { kind, index: Math.floor(code / kinds.length) };
 }
 
 export class TableRequests {
-  readonly #lists = {
-    function: new Map<number, RequestList>(),
-    type: new Map<number, RequestList>(),
-  };
-  /** The lists of the entries being lowered or laid out, the innermost last. */
-  readonly #working: RequestList[] = [];
+  readonly #sets = { function: new Map<number, RequestSet>(), type: new Map<number, RequestSet>() };
+  /** The sets of the entries being lowered or laid out, the innermost last. */
+  readonly #working: RequestSet[] = [];
 
   /** Records a request for entry `index` of the `kind` table, made by the entry `during` runs. */
   record(kind: RequestKind, index: number): void {
-    addTo(this.#working.at(-1), { kind, index });
+    this.#working.at(-1)?.add(codeOf({ kind, index }));
   }
 
   /** What `run` gives, its requests recorded as `owner`'s. */
   during<T>(owner: RequestOwner, run: () => T): T {
-    const list = memo(this.#lists[owner.kind], owner.index, requestList);
-    return withPushed(this.#working, list, run);
+    const set = memo(this.#sets[owner.kind], owner.index, () => new Set<number>());
+    return withPushed(this.#working, set, run);
   }
 
   /** What `run` gives with the requests it made, which are also the current entry's. */
   captured<T>(run: () => T): { readonly result: T; readonly requests: readonly TableRequest[] } {
-    const list = requestList();
-    const result = withPushed(this.#working, list, run);
-    this.replayed(list.requests);
-    return { result, requests: list.requests };
+    const set = new Set<number>();
+    const result = withPushed(this.#working, set, run);
+    const requests = [...set].map(requestOf);
+    this.replayed(requests);
+    return { result, requests };
   }
 
   /** Records `requests` again, as the current entry's. */
   replayed(requests: readonly TableRequest[]): void {
-    const current = this.#working.at(-1);
     for (const request of requests) {
-      addTo(current, request);
+      this.#working.at(-1)?.add(codeOf(request));
     }
   }
 
-  /** The requests `owner` made, in the order first made. */
+  /** The requests `owner` made. */
   of(owner: RequestOwner): readonly TableRequest[] {
-    return this.#lists[owner.kind].get(owner.index)?.requests ?? [];
+    return [...(this.#sets[owner.kind].get(owner.index) ?? [])].map(requestOf);
   }
 }

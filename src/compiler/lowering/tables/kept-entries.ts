@@ -12,9 +12,10 @@
  *   only when every function and type it asks for is kept too (`keptOwners`), since a program
  *   can't lower an entry from a key alone, which carries none of the checker's objects lowering
  *   reads.
- * - **Taken over as lowered:** a program taking an entry over asks for what lowering it asked for,
- *   in the same order (requests.ts), so it numbers, queues and lays out everything as lowering the
- *   entry itself would have, and its Definition is the one it gets with nothing kept.
+ * - **Taken over as lowered:** a program taking an entry over asks for the set lowering it asked
+ *   for (requests.ts), so its tables hold everything lowering the entry itself would have put
+ *   there, and, as a Definition never shows the order lowering went in, it is the one the program
+ *   gets with nothing kept.
  */
 
 import { z } from 'zod';

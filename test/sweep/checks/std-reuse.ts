@@ -1,8 +1,9 @@
 /**
  * A program lowered after others over its std, taking over the std's entries they kept
  * (src/compiler/lowering/tables/std-lowering.ts), lowers to the Definition it lowers to with
- * nothing kept: the sweep's compile, made after the subjects before it in its slice, against the
- * same checked program lowered again over a std lowering of its own.
+ * nothing kept, whatever order it lowers its entries in: the sweep's compile, made after the
+ * subjects before it in its slice, against the same checked program lowered again over a std
+ * lowering of its own, the last pending entry first.
  */
 
 import { expect } from 'vitest';
@@ -20,7 +21,10 @@ function loweredAlike(_: undefined, { subject }: { readonly subject: ProgramSubj
   if (main === undefined) {
     throw new Error(`${subject.name} has no main.`);
   }
-  const alone = lower(checkProgram(program), main, { std: new StdLowering() });
+  const alone = lower(checkProgram(program), main, {
+    std: new StdLowering(),
+    order: (count) => count - 1,
+  });
   expect(encodeDefinition(alone).hash).toBe(encodedOf(subject).hash);
   return 1;
 }
