@@ -285,17 +285,28 @@ K fn _waitOf<K in Persistence>(weak: WeakRef<_Wait<K>>) -> _Wait<K>?: weak.deref
 K fn _caseResolver<T, K in Persistence>(
   wait: _Wait<K>
   position: Int
-  into: Shared<T?>
+  into: Shared<Array<T>>
 ) -> Resolver<T, K>:
   const weak = WeakRef(wait)
   K fn decide(value: T) -> Bool:
     if _waitOf(weak) is _Wait as waiting:
       if _decidable(waiting):
-        into->value = value
+        into->value = [value]
         _decide(waiting, position)
         return true
     false
   new Resolver<T, K>{decide, resolution: _caseResolution(wait, position)}
+
+# Where a case's resolver puts its value (`_caseResolver`), empty until then: an array, never an
+# optional, so a case's code names no union of its type of value.
+fn _caseInto<T>() -> Shared<Array<T>>: new Shared<Array<T>>{value: []}
+
+# The value a case's resolver put into `into`, taken out: a resolver outliving its wait still
+# reaches `into`, and must not keep the value its waiter moved on with (§7).
+fn _caseTaken<T>(into: Shared<Array<T>>) -> T:
+  const taken = into->value
+  into->value = []
+  taken[0]
 
 # Whether a case of `wait` may decide it now: it is pending, or decided and its call being disposed.
 K fn _decidable<K in Persistence>(wait: _Wait<K>) -> Bool:

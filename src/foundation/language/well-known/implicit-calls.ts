@@ -53,20 +53,23 @@ export const panicFunction = 'panic';
 export const awaitFunction = 'onAwait';
 
 /**
- * What lowering calls around a wait (proposal 8, Rule 5): the prelude's new wait of the running
- * call; the resolver of one of its cases, which puts the value it is resolved with into the case's
- * shared value and decides the wait for the case's position; and, for a `select` with an `else`,
- * the position a wait was decided for at once, or -1, the wait then given up.
- */
-/**
  * What a host extern's wrapper calls for the future its host fills (§9): a pending future of the
  * run's, which the host's native is given and the run settles with what the host gives.
  */
 export const hostFutureFunction = '_pendingFuture';
 
+/**
+ * What lowering calls around a wait (proposal 8, Rule 5): the prelude's new wait of the running
+ * call; where a case's value is put, the resolver of the case, which puts the value it is resolved
+ * with there and decides the wait for the case's position, and that value taken out once the wait
+ * is decided for it; the notice that the call parks on the wait; and, for a `select` with an
+ * `else`, the position a wait was decided for at once, or -1, the wait then given up.
+ */
 export const waitFunctions = {
   wait: '_wait',
+  caseInto: '_caseInto',
   caseResolver: '_caseResolver',
+  caseTaken: '_caseTaken',
   decided: '_decided',
   parking: '_parking',
 } as const;
