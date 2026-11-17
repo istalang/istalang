@@ -119,9 +119,11 @@ export const wellKnown = {
   keeps: { module: 'lifetimes', name: 'Keeps' },
   /**
    * The stand-ins a shared instance takes for a type parameter its code uses only opaquely, one per
-   * lifetime class (§3.5), and the annotation on a std extern whose native reads no type argument.
+   * representation a primitive isn't (§3.5), and the annotation on a std extern whose native reads
+   * no type argument.
    */
-  plainStandIn: { module: 'prelude', name: '_Plain' },
+  handleStandIn: { module: 'prelude', name: '_Handle' },
+  tagStandIn: { module: 'prelude', name: '_Tag' },
   heapStandIn: { module: 'prelude', name: '_Heap' },
   countedStandIn: { module: 'prelude', name: '_Counted' },
   parametric: { module: 'prelude', name: '_Parametric' },

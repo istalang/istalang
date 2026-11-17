@@ -23,7 +23,7 @@
 import { languageModules, wellKnown } from '../../../foundation/language/well-known/index.ts';
 import { testingFunctions } from '../../../foundation/language/well-known/testing.ts';
 import type { ModuleId } from '../../program/program.ts';
-import { constructedVariant } from '../../syntax/declarations/field-defaults.ts';
+import { constructedVariant, functionsOf } from '../../syntax/declarations/field-defaults.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations/index.ts';
 import { argumentValue } from '../../syntax/expressions/arguments.ts';
 import type { Call } from '../../syntax/expressions/calls.ts';
@@ -81,6 +81,51 @@ export function checkTestingCalls(
   return targets;
 }
 
+/**
+ * What the mock `site` makes is given as its target, `mock`'s first parameter as its binding
+ * passes it: the argument, its value, and the naming of a function it is, if it is one.
+ */
+function writtenTarget(site: Call, mock: FunctionCall) {
+  const [source] = mock.binding;
+  const argument = source?.kind === 'argument' ? site.arguments[source.index] : undefined;
+  const target = argument === undefined ? undefined : unparenthesized(argumentValue(argument));
+  const recorded = target === undefined ? undefined : namingOf(target);
+  return { argument, target, recorded };
+}
+
+/**
+ * The functions the program's test modules mock (§10). A mock replaces one function-table entry,
+ * so an instance of one stays its own, never shared across types (rules/parametricity/).
+ */
+export function mockedFunctions(
+  checker: Pick<CheckerContext, 'inputs' | 'bodyOf' | 'defaultsOf' | 'languageFunctions'>,
+): ReadonlySet<FunctionDeclaration> {
+  const { inputs } = checker;
+  const mocks = checker.languageFunctions(languageModules.testing, testingFunctions.mock);
+  const testing = inputs.role(languageModules.testing);
+  // Only a test module may import testing (§10), and only one running mocks anything: the testing
+  // module's own code mocks only for it.
+  const tests =
+    testing === undefined
+      ? []
+      : inputs.modules().filter((module) => inputs.importedBy(module).includes(testing));
+  const mocking = testing === undefined || tests.length === 0 ? [] : [testing, ...tests];
+  const bodies = mocking
+    .flatMap((module) => functionsOf({ items: inputs.itemsOf(module) }))
+    .flatMap((declaration) => [checker.bodyOf(declaration), checker.defaultsOf(declaration)]);
+  const mocked = bodies.flatMap((body) =>
+    (body?.madeCalls() ?? []).flatMap(({ kind, site, call }) => {
+      if (kind !== 'call' || call.kind !== 'function' || !mocks.includes(call.function)) {
+        return [];
+      }
+      const { recorded } = isWrittenCall(site) ? writtenTarget(site, call) : {};
+      const named = recorded === undefined ? undefined : body?.functionValues.get(recorded);
+      return named?.kind === 'function' ? [named.function] : [];
+    }),
+  );
+  return new Set(mocked);
+}
+
 /** `target`, where it may name a function as a value (§3.14). */
 function namingOf(target: Expression): FunctionNaming | undefined {
   switch (target.kind) {
@@ -102,10 +147,7 @@ function checkTarget(
   site: Call,
   mock: FunctionCall,
 ): FunctionNaming | undefined {
-  const [source] = mock.binding;
-  const argument = source?.kind === 'argument' ? site.arguments[source.index] : undefined;
-  const target = argument === undefined ? undefined : unparenthesized(argumentValue(argument));
-  const recorded = target === undefined ? undefined : namingOf(target);
+  const { argument, target, recorded } = writtenTarget(site, mock);
   const named = recorded === undefined ? undefined : context.calls.valueOf(recorded);
   const names = named?.kind === 'function' && constructedVariant(named.function) === undefined;
   if (target === undefined || recorded === undefined || !names) {
@@ -138,7 +180,7 @@ function checkHandle(context: BodyContext, site: Call, made: Type | undefined): 
 }
 
 /** Whether `site` is a call written as one, `f(…)`, rather than an operator's or a name's. */
-function isWrittenCall(site: ResolvedSite): site is Call {
+function isWrittenCall(site: NodeOf<string>): site is Call {
   return site.kind === 'Call';
 }
 

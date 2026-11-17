@@ -49,7 +49,7 @@ import {
 } from './instances.ts';
 import { qualifiedNameOf } from './names.ts';
 import { ownEntryOf } from './own-entries.ts';
-import { Stencils } from './stencils.ts';
+import { holdsStandIn, Stencils } from './stencils.ts';
 import { TypeTable } from './type-table.ts';
 
 /** What every function-table entry starts with: its name, and where it is declared. */
@@ -73,8 +73,8 @@ export class DefinitionTables {
   /** How many variants its `any` type had when each closing entry was last written. */
   readonly #writtenFor = new Map<FunctionId, number>();
   readonly #starts: Definition['starts'][number][] = [];
-  /** How instances are shared; none in a Definition running tests, where a mock replaces one entry (§10). */
-  readonly #stencils: Stencils | undefined;
+  /** How instances are shared (stencils.ts). */
+  readonly #stencils: Stencils;
   /** Each instance entry as shared, by its own key. */
   readonly #sharedEntries = new Map<string, LoweredEntry>();
   /** The first entry of each source function, by its body key, and each later one's first. */
@@ -97,8 +97,9 @@ export class DefinitionTables {
       callIndex: (call) => this.callIndex(call),
       hostNativeIndex: (declaration) => this.index({ kind: 'hostNative', declaration }),
       annotationValues: (annotations) => annotationValues(this, annotations),
+      holdsStandIn: (type) => holdsStandIn(checker, type),
     });
-    this.#stencils = mocking ? undefined : new Stencils(checker, this.types);
+    this.#stencils = new Stencils(checker, this.types);
   }
 
   /** The index of `module` in the module table, with its line starts for spans. */
@@ -243,13 +244,18 @@ export class DefinitionTables {
 
   /** `entry` as it is keyed and lowered: an instance as shared (stencils.ts). */
   #shared(entry: LoweredEntry): LoweredEntry {
-    const stencils = this.#stencils;
-    if (stencils === undefined || (entry.kind !== 'instance' && entry.kind !== 'externDefaults')) {
+    if (entry.kind === 'converting' || entry.kind === 'wrapping') {
+      if (holdsStandIn(this.#checker, entry.from) || holdsStandIn(this.#checker, entry.to)) {
+        unreachable(`A conversion of ${entry.kind} parts meets a shared instance's stand-in.`);
+      }
+      return entry;
+    }
+    if (entry.kind !== 'instance' && entry.kind !== 'externDefaults') {
       return entry;
     }
     return memo(this.#sharedEntries, this.#keyOf(entry), () => ({
       ...entry,
-      instance: stencils.shared(entry.instance),
+      instance: this.#stencils.shared(entry.instance),
     }));
   }
 

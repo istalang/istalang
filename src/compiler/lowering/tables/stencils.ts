@@ -1,18 +1,20 @@
 /**
  * Shared instances (§3.5): an instance is keyed, and lowered, with each type argument its
- * declaration's code uses only opaquely (checker `opaqueParametersOf`) replaced by the prelude's
- * stand-in for that argument's lifetime class, so instantiations a backend runs alike are one entry
- * (Go's GC-shape stenciling, with the lifetime class as the shape).
+ * declaration's code uses only opaquely (checker `opaqueParametersOf`) replaced by the stand-in for
+ * that argument's representation (definition `representationOf`), so instantiations every backend
+ * runs alike are one entry (Go's GC-shape stenciling, with the representation as the shape).
  *
- * - The class is the Definition's own (`lifetimeOf`), and a stand-in's entry has it, so code typed
- *   by a stand-in holds and lets go of a value as code typed by its argument would.
- * - An argument whose class can't be read yet, its entry still being laid out (a recursive type's
- *   own `dispose`), stays as it is: that instance is merely not shared.
+ * - A primitive stands for its own representation, so an instance at a literal type is the one at
+ *   its base; any other representation has the prelude's stand-in, whose own entry has it, checked.
+ * - An argument whose representation can't be read yet, its entry still being laid out (a recursive
+ *   type's own `dispose`), stays as it is: that instance is merely not shared.
  * - Witnesses are left as they are: an opaque parameter is constrained by nothing.
- * - A shared instance's name spells a stand-in as the parameter it stands for (instances.ts).
+ * - A shared instance's name spells a prelude stand-in as the parameter it stands for
+ *   (instances.ts).
  */
 
-import type { Lifetime } from '../../../definition/tables/types.ts';
+import type { Representation } from '../../../definition/tables/types.ts';
+import { type PrimitiveName, primitiveNames } from '../../../foundation/language/primitives.ts';
 import {
   type WellKnownDeclaration,
   wellKnown,
@@ -21,18 +23,30 @@ import { memo } from '../../../foundation/structures/memo.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { Checker } from '../../checker/check.ts';
 import type { FunctionInstance } from '../../checker/surface/witness-closing.ts';
+import { nominalsIn } from '../../checker/types/parts/type-parts.ts';
 import type { Type } from '../../checker/types/type/index.ts';
+import { primitiveType } from '../../checker/types/type/primitives.ts';
 import { typeParametersOf } from '../../syntax/declarations/index.ts';
 import type { TypeTable } from './type-table.ts';
 
-/** The prelude's stand-in for each lifetime class. */
+/** The prelude's stand-in for each representation a primitive isn't. */
 const standIns = {
-  plain: wellKnown.plainStandIn,
+  handle: wellKnown.handleStandIn,
+  tag: wellKnown.tagStandIn,
   heap: wellKnown.heapStandIn,
   counted: wellKnown.countedStandIn,
-} as const satisfies Record<Lifetime, WellKnownDeclaration>;
+} as const satisfies Record<Exclude<Representation, PrimitiveName>, WellKnownDeclaration>;
 
-/** Whether `type` is a stand-in, which a shared instance's name spells as its parameter. */
+/**
+ * Whether `type` holds a prelude stand-in at any depth: what a decision by a type's shape (a
+ * union's order, a conversion, a codec) must never meet, since parametricity keeps every parameter
+ * such a decision reads concrete; one that meets it is drift between the two, which must crash.
+ */
+export function holdsStandIn(checker: Pick<Checker, 'wellKnownEntity'>, type: Type): boolean {
+  return nominalsIn(type).some((nominal) => isStandIn(checker, nominal));
+}
+
+/** Whether `type` is a prelude stand-in, which a shared instance's name spells as its parameter. */
 export function isStandIn(checker: Pick<Checker, 'wellKnownEntity'>, type: Type): boolean {
   return (
     type.kind === 'nominal' &&
@@ -43,7 +57,7 @@ export function isStandIn(checker: Pick<Checker, 'wellKnownEntity'>, type: Type)
 export class Stencils {
   readonly #checker: Checker;
   readonly #types: TypeTable;
-  readonly #standIns = new Map<Lifetime, Type>();
+  readonly #standIns = new Map<Representation, Type>();
 
   constructor(checker: Checker, types: TypeTable) {
     this.#checker = checker;
@@ -53,32 +67,42 @@ export class Stencils {
   /** `instance` as its entry is keyed and lowered: each opaque argument its stand-in. */
   shared(instance: FunctionInstance): FunctionInstance {
     const opaque = this.#checker.opaqueParametersOf(instance.declaration);
-    if (opaque.size === 0) {
-      return instance;
-    }
     const parameters = typeParametersOf(instance.declaration.typeParameters);
     const typeArguments = instance.typeArguments.map((argument, position) => {
       const parameter = parameters[position];
-      const lifetime =
+      if (
+        !(parameter !== undefined && opaque.has(parameter)) &&
+        holdsStandIn(this.#checker, argument)
+      ) {
+        unreachable(
+          `${instance.declaration.name.text} reads its type argument ${String(position)}, which a shared instance gave a stand-in.`,
+        );
+      }
+      const representation =
         parameter !== undefined && opaque.has(parameter)
-          ? this.#types.lifetimeOf(argument)
+          ? this.#types.representationOf(argument)
           : undefined;
-      return lifetime === undefined ? argument : this.#standIn(lifetime);
+      return representation === undefined ? argument : this.#standIn(representation);
     });
     return { ...instance, typeArguments };
   }
 
-  /** The stand-in of `lifetime`, which its own entry must keep as one. */
-  #standIn(lifetime: Lifetime): Type {
-    return memo(this.#standIns, lifetime, () => {
-      const standIn =
-        this.#checker.wellKnownType(standIns[lifetime]) ??
-        unreachable('A program sharing instances has a prelude.');
-      const kept = this.#types.lifetimeOf(standIn);
-      if (kept !== lifetime) {
-        unreachable(`The ${lifetime} stand-in is kept as ${String(kept)}.`);
+  /** The stand-in of `representation`, which its own entry must have. */
+  #standIn(representation: Representation): Type {
+    return memo(this.#standIns, representation, () => {
+      const standIn = isPrimitive(representation)
+        ? primitiveType(representation)
+        : (this.#checker.wellKnownType(standIns[representation]) ??
+          unreachable('A program sharing instances has a prelude.'));
+      const kept = this.#types.representationOf(standIn);
+      if (kept !== representation) {
+        unreachable(`The ${representation} stand-in is represented as ${String(kept)}.`);
       }
       return standIn;
     });
   }
+}
+
+function isPrimitive(representation: Representation): representation is PrimitiveName {
+  return (primitiveNames as readonly string[]).includes(representation);
 }

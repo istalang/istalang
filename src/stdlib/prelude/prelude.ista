@@ -1081,15 +1081,17 @@ trait Parsable:
 struct Waypoint:
   label: String
 
-# Shared instances (§3.5): an instance is compiled once for every type of one lifetime class at a
-# type parameter its code uses only opaquely, taking one of these stand-ins in its place, as a backend
-# keeps holders of it (lowering/tables/stencils.ts): plain, a heap value, a value that may reach a
-# disposable. No value is of them.
-extern struct _Plain
+# Shared instances (§3.5): an instance is compiled once for every type of one representation at a
+# type parameter its code uses only opaquely (lowering/tables/stencils.ts), taking a primitive for its
+# own, else one of these stand-ins: a pointer its backend never counts, an enum's bare tag, a heap
+# value, a value that may reach a disposable. No value is of them.
+extern struct _Handle
+enum _Tag:
+  Tag
 struct _Heap
 struct _Counted:
   reaches: fn()
 
 # On a std extern function: its native reads none of its type arguments, so one entry serves every
-# type of one lifetime class at each (`_Plain`).
+# type of one representation at each (`_Handle`).
 struct _Parametric

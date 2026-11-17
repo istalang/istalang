@@ -32,8 +32,8 @@ import type { FunctionId, TypeId } from '../../../definition/operands.ts';
 import {
   type EnumRole,
   type ExternRole,
-  type Lifetime,
-  lifetimeOf,
+  type Representation,
+  representationOf,
   type StructuralReference,
   type TypeDefinition,
   type TypeReference,
@@ -79,6 +79,8 @@ interface TypeTableSeams {
   readonly hostNativeIndex: (declaration: FunctionDeclaration) => FunctionId;
   /** The persisted values of annotations the checker computed (§3.16). */
   readonly annotationValues: (annotations: readonly CheckedAnnotation[]) => Value[];
+  /** Whether a type holds a shared instance's stand-in, which no layout by members may meet. */
+  readonly holdsStandIn: (type: Type) => boolean;
 }
 
 /** What every entry states of its type: whether it reaches a disposable, and whether it is heap. */
@@ -166,13 +168,13 @@ export class TypeTable {
   }
 
   /**
-   * How a backend keeps holders of values of `type` (definition `lifetimeOf`); undefined while an
-   * entry that says so is still being laid out, as a recursive type's is while its layout runs.
+   * How every backend represents values of `type` (definition `representationOf`); undefined while
+   * an entry that says so is still being laid out, as a recursive type's is while its layout runs.
    */
-  lifetimeOf(type: Type): Lifetime | undefined {
+  representationOf(type: Type): Representation | undefined {
     const reference = this.reference(type);
     const laidOut = typesIn(reference).every((index) => this.#entries[index] !== placeholder);
-    return laidOut ? lifetimeOf(this.entries, reference) : undefined;
+    return laidOut ? representationOf(this.entries, reference) : undefined;
   }
 
   /** The index of the type entry for `type`. */
@@ -210,6 +212,7 @@ export class TypeTable {
    */
   anyVariant(type: AnyType, member: Type): HeldVariant {
     const held = baseOf(member);
+    this.#refuseStandIn(held, type);
     const { members } = this.#anyEntry(type);
     const found = members.findIndex((each) => sameType(each.type, held));
     const name = tableKey(this.#checker, held);
@@ -365,7 +368,17 @@ export class TypeTable {
   }
 
   /** A union's enum: a variant per member, its value in the one field, a one-value member none. */
+  /** Crashes where a stand-in reaches a layout ordered by its members' types (stencils.ts). */
+  #refuseStandIn(member: Type, within: AnyType | UnionType): void {
+    if (this.#seams.holdsStandIn(member)) {
+      unreachable(`${tableKey(this.#checker, within)} holds a shared instance's stand-in.`);
+    }
+  }
+
   #unionLayout(type: UnionType): TypeDefinition {
+    for (const member of type.members) {
+      this.#refuseStandIn(member, type);
+    }
     const variants = this.unionMembers(type).map((member) => ({
       name: tableKey(this.#checker, member),
       fields: hasOneValue(member)

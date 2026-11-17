@@ -18,7 +18,7 @@ const declarations = [
 
 describe('two function values', () => {
   it.each([
-    ['of one lambda in instances of two lifetime classes', 'made(1) == made([1])', true],
+    ['of one lambda in instances of two representations', 'made(1) == made([1])', true],
     [
       'of one lambda in instances a union keeps apart',
       'madeOptional(1) == madeOptional("a")',

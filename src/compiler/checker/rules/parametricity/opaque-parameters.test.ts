@@ -67,3 +67,26 @@ describe('a type parameter whose type tells', () => {
     expect(opaqueOf('f', 'fn f<A, B>(a: A, b: B) -> (A, B?): (a, b)')).toEqual(['A']);
   });
 });
+
+describe('a function a test mocks', () => {
+  it('keeps every parameter concrete: a mock replaces one entry', () => {
+    const tests = [
+      "import Suite, Test, test, mock from 'testing'",
+      "import keep from 'main.ista'",
+      '@Suite{"keep"}',
+      'fn suite() -> Array<Test>: [',
+      '  test("mocked", fn(): {',
+      '    hold _ = mock(keep<Int>, fn(x: Int) -> Int: x)',
+      '  })',
+      ']',
+    ].join('\n');
+    const program = stdProgramOf({
+      'keep.test.ista': tests,
+      'main.ista': 'fn keep<T>(x: T) -> T: x',
+    });
+    const checker = checkedAfterStd(program);
+    expect(checker.diagnosticsOf(idOf('keep.test.ista'))).toEqual([]);
+    const [keep] = checker.topLevelFunctions(idOf('main.ista'), 'keep');
+    expect(keep === undefined ? undefined : [...checker.opaqueParametersOf(keep)]).toEqual([]);
+  });
+});

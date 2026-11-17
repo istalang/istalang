@@ -218,7 +218,7 @@ export interface Checker {
   readonly reachesDisposable: (type: Type) => boolean;
   /**
    * The type parameters of a function its code uses only opaquely, at which lowering compiles one
-   * instance per lifetime class of their arguments (rules/parametricity/).
+   * instance per representation of their arguments (rules/parametricity/).
    */
   readonly opaqueParametersOf: (declaration: FunctionDeclaration) => ReadonlySet<TypeParameter>;
   /** What tools ask by position: what names denote, the body holding a node (lookup/). */

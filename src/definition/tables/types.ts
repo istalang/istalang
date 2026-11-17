@@ -18,7 +18,8 @@
  */
 
 import { z } from 'zod';
-import { primitiveNames } from '../../foundation/language/primitives.ts';
+import { type PrimitiveName, primitiveNames } from '../../foundation/language/primitives.ts';
+import { unreachable } from '../../foundation/structures/unreachable.ts';
 import { functionId, typeId } from '../operands.ts';
 import { value } from '../values/values.ts';
 
@@ -227,6 +228,42 @@ export function lifetimeOf(types: readonly TypeDefinition[], reference: TypeRefe
         entry.kind === 'shared';
       return behindSeam ? 'plain' : 'heap';
     }
+    default: {
+      const unhandled: never = reference;
+      return unhandled;
+    }
+  }
+}
+
+/**
+ * How every backend represents values of a type (definition.md, "Types and locations"): the class
+ * whose values each backend holds, passes, stores and lets go of alike, so code typed by one type
+ * of a class runs values of any other (a shared instance, lowering/tables/stencils.ts). A counted or
+ * heap value is a reference its backend counts; a plain one is a primitive, each of its own width
+ * (`Int`, `Float`, …), an enum's bare tag (`tag`), or a pointer it never counts: a run object's or
+ * a host value's handle, or a place (`handle`).
+ */
+export type Representation = PrimitiveName | 'tag' | 'handle' | Exclude<Lifetime, 'plain'>;
+
+/** The representation of values of `reference` (`Representation`). */
+export function representationOf(
+  types: readonly TypeDefinition[],
+  reference: TypeReference,
+): Representation {
+  const lifetime = lifetimeOf(types, reference);
+  if (lifetime !== 'plain') {
+    return lifetime;
+  }
+  switch (reference.kind) {
+    case 'primitive':
+      return reference.name;
+    case 'named':
+      return types[reference.type]?.kind === 'enum' ? 'tag' : 'handle';
+    case 'reference':
+      return 'handle';
+    case 'tuple':
+    case 'function':
+      return unreachable('A tuple or a function is never plain.');
     default: {
       const unhandled: never = reference;
       return unhandled;

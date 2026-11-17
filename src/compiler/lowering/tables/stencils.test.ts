@@ -1,8 +1,8 @@
 /**
  * Shared instances (§3.5, stencils.ts): a generic function whose code uses a type parameter only
- * opaquely is one entry per lifetime class of the arguments it is given, and each of them runs as
- * the instance of its own type would; a parameter whose type tells, as a union naming it does,
- * stays one entry per type.
+ * opaquely is one entry per representation of the arguments it is given, a primitive its own, and
+ * each of them runs as the instance of its own type would; a parameter whose type tells, as a union
+ * naming it does, stays one entry per type.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -28,7 +28,7 @@ function entryNames(declarations: string, calls: readonly string[]): readonly st
   return compiledEncoded(program).definition.functions.map((entry) => entry.name);
 }
 
-/** A call of `name` at a value of each lifetime class, two types of each. */
+/** A call of `name` at a value of each representation: two primitives, two of heap, two counted. */
 function callsAtEveryClass(name: string): readonly string[] {
   return [
     `${name}(1)`,
@@ -42,11 +42,12 @@ function callsAtEveryClass(name: string): readonly string[] {
 
 describe('a generic function using its type parameter only opaquely', () => {
   it(
-    'is one entry per lifetime class, named by its parameter',
+    'is one entry per representation, a stand-in named by its parameter',
     () => {
       const names = entryNames('fn keep<T>(x: T) -> (T, T): (x, x)', callsAtEveryClass('keep'));
       expect(names.filter((name) => name.startsWith('main.keep'))).toEqual([
-        'main.keep<T>',
+        'main.keep<Int>',
+        'main.keep<String>',
         'main.keep<T>',
         'main.keep<T>',
       ]);

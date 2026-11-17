@@ -191,6 +191,8 @@ const checkerSurface = [
   'types/written/named-types.ts',
   'types/written/pattern-types.ts',
   'types/parts/substitution.ts',
+  // The types a type is built from, which lowering's tripwire walks for a shared instance's stand-in.
+  'types/parts/type-parts.ts',
   'types/type/type-rules.ts',
   'types/fitting/fit/index.ts',
   // The parts a conversion of parts pairs, which lowering rebuilds a value by.

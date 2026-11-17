@@ -106,7 +106,7 @@ function layoutParts(checker: TypeReader, type: NominalType): readonly Type[] {
 }
 
 /**
- * Whether `parameter`, one of `own`, differs by more than its argument's lifetime class: it is
+ * Whether `parameter`, one of `own`, differs by more than its argument's representation: it is
  * constrained, a mark's (`in`) or a pack, or another of `own`'s constraints names it.
  */
 export function isConstrained(

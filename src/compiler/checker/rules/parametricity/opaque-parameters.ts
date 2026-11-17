@@ -1,6 +1,6 @@
 /**
  * Parametricity (§3.5): the type parameters a generic function's code uses only opaquely, passing
- * their values on and never asking which type they are of, so one instance per lifetime class of
+ * their values on and never asking which type they are of, so one instance per representation of
  * their arguments runs every instantiation alike (lowering/tables/stencils.ts). Lowering writes a
  * body from its flows alone (surface/flow-ir.ts), and closes the calls its code reaches
  * (surface/reach.ts), so those two are what is read. Conservative: a parameter stays concrete
@@ -9,6 +9,7 @@
  * - A parameter is concrete when it is constrained, a mark's (`in`) or a pack, or another
  *   parameter's constraint names it: witnesses and kinds are per type.
  * - An extern's are concrete unless it is `@_Parametric`: its native reads none of them.
+ * - A function a test mocks keeps every parameter concrete: a mock replaces one entry (§10).
  * - What its flows do with it (its own, its defaults', its closures'): flow-uses.ts. Every type
  *   there names it only where layout ignores it (opaque-types.ts).
  * - Every call its code reaches (surface/reach.ts: written, made by the language, a wait's, a
@@ -30,6 +31,7 @@ import { reachedCalls } from '../../surface/reach.ts';
 import { instantiatingTypesOf, type ResolvedCall } from '../../surface/resolved-call.ts';
 import type { Type } from '../../types/type/index.ts';
 import { annotationNamed } from '../annotations/named.ts';
+import { mockedFunctions } from '../testing.ts';
 import { flowOpaque, type Judge } from './flow-uses.ts';
 import { isConstrained, names, opaquelyNamed } from './opaque-types.ts';
 
@@ -60,9 +62,17 @@ type Reader = Pick<
 export function opaqueParametersQuery(
   checker: Reader & Pick<CheckerContext, 'entries'>,
 ): CheckerContext['opaqueParametersOf'] {
+  const mocked = checker.entries.table({
+    name: 'mocked functions',
+    compute: () => mockedFunctions(checker),
+    equal: sameMembers,
+  });
   const table = checker.entries.table({
     name: 'opaque parameters',
-    compute: (declaration: FunctionDeclaration) => opaqueParametersOf(checker, declaration, query),
+    compute: (declaration: FunctionDeclaration) =>
+      mocked.get(undefined).has(declaration)
+        ? new Set<TypeParameter>()
+        : opaqueParametersOf(checker, declaration, query),
     equal: sameMembers,
     cyclic: { standIn: () => new Set<TypeParameter>() },
   });
