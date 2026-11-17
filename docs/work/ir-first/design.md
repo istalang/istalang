@@ -43,7 +43,7 @@ target. Migrating that shape costs more than writing the right one.
 |---|---|---|
 | Lowering | Every decision: holds and let-gos, in place, copies at crossings, start wrappers, mock checks, collect points, stop landings, derived JSON codecs (one module) | TS, once |
 | IR (the Definition) | Typed registers; reach facts on every type; explicit cells and references; tuple, struct and variant fields apart; flavors as variants; lifetime instructions; spill sets per suspension | the contract |
-| Std in Istalang | Futures, resolvers, waits, slots, timer grouping, `disposed()`/`disposing()` watches, settle order, the mock registry, about 95 former natives | Istalang |
+| Std in Istalang | Futures, resolvers, waits, slots, about 95 former natives (decision 6 lists what the run keeps in TS for now) | Istalang |
 | Run | One: ready queue, park and unpark of executions, segments and commits, snapshots (root walk, object ids), contexts, instances, jobs, effects (clock, random draws, logs), counts and the collector, one host binding | TS for JS; ported once for LLVM |
 | Codegen | One ES module per program. Simple entries are plain functions; async entries are resumable functions over frame records. Primitive operations are inline JS | TS |
 | Natives | About 85 primitives (Int, Float, String, Array, Map, JSON text, effects, regex/crypto/tz libraries) taking and giving primitives | per backend |
@@ -97,7 +97,8 @@ target. Migrating that shape costs more than writing the right one.
    - stopping a suspended call, and the `disposing()` priority resume.
 
    For now the run also keeps in TS settle order, timer grouping, the `disposed()`/`disposing()`
-   and end watches, and resolver pruning. Moving them to Istalang waits on measuring what it
+   and end watches, resolver pruning, the mock registry, and a widened call's future following the
+   call's. Moving them to Istalang waits on measuring what it
    costs (tracker Q59), after the merge.
 
    Object ids come from the instance's serial from the first slice on. Heap kinds: cell, resource, weakRef, execution, contextConstant.
@@ -127,6 +128,9 @@ target. Migrating that shape costs more than writing the right one.
 - **`select` losers:** resolvers still cancel at the decision, so a value reaching a losing take's
   slot right after the winner's stays there; only the losers' holdings are let go when the winner
   resumes, which lowering emits at each case's target.
+- **Widened async calls (§3.14):** a widened call's future follows the call's own and settles with
+  its value converted, so the call is the function's own call and the future it gives is unchanged.
+- **Context keys (§9):** a key holds no `/`, the separator of spawned instances' names.
 
 ## Invariants
 
