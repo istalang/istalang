@@ -8,9 +8,6 @@
  *   `_Waiters`): the run calls it as the future settles (`Run.settle`, §6), or, as code its disposal
  *   runs, as it is disposed first. Which resolvers wait, in what order, and which can still decide
  *   are the prelude's.
- * - A future widened is followed by one of its own (`following`, following.ts), which settles as
- *   it does with its value converted, so a widened call's future is the call's own and the future
- *   it follows stays as it is for whatever else reaches it.
  * - `later` readies a call of its own, as a `Resolver.of` callback and an `onCancel` run (§8).
  * - `unpark` readies a parked call to resume with its wait's decided position; a wait decided
  *   before its call parks readies it all the same, as awaiting still yields (§6), unless the call
@@ -21,7 +18,6 @@
  */
 
 import type { Value } from '../../definition/values/values.ts';
-import { convertedFollowing, follow } from './following.ts';
 import type { Execution } from './objects/execution.ts';
 import { Future, type Waiting, waitingValues } from './objects/future.ts';
 import type { Run } from './run.ts';
@@ -37,8 +33,6 @@ export interface RunPrimitives {
   readonly settleAll: (futures: Value, value: Value) => void;
   readonly pendingFuture: () => Value;
   readonly settle: (future: Value, value: Value) => void;
-  /** A future following `future`, settling with what `converter` makes of its value. */
-  readonly following: (future: Value, converter: Value) => Value;
   readonly later: (callback: Value) => void;
   readonly unpark: (call: Value, position: Value) => void;
   readonly awaiting: (call: Value, holding: Value) => void;
@@ -55,7 +49,7 @@ const callOf = (value: Value) => value as unknown as Execution;
 
 /** The primitives of `run`. */
 export function runPrimitivesOf(run: Run): RunPrimitives {
-  return { ...futurePrimitives(run), ...conversionPrimitives(run), ...callPrimitives(run) };
+  return { ...futurePrimitives(run), ...callPrimitives(run) };
 }
 
 /** What futures, what waits on them and their settling stand on. */
@@ -81,25 +75,6 @@ function futurePrimitives(run: Run) {
     settle: (given: Value, value: Value) => {
       run.lifetimes.hold(value);
       run.settle(futureOf(given), value);
-    },
-  };
-}
-
-/** What a future widened stands on (prelude.ista `_converted`). */
-function conversionPrimitives(run: Run) {
-  return {
-    following: (given: Value, converter: Value) => {
-      const followed = futureOf(given);
-      const follower = new Future(run.newId());
-      run.lifetimes.hold(converter);
-      if (followed.settled) {
-        const call = (closure: Value, value: Value) => run.callValue(closure, [value]);
-        run.settle(follower, convertedFollowing(call, run.lifetimes, converter, followed.value));
-      } else {
-        run.lifetimes.hold(given);
-        follow(follower, { future: followed, converter });
-      }
-      return follower as unknown as Value;
     },
   };
 }

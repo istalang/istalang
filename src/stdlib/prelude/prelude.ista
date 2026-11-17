@@ -64,7 +64,7 @@ K fn _registeredOn<T, K in Persistence>(future: Future<T, K>, done: Resolver<T, 
   # Pushed before pruning: what pruning reads back through weak references, the analysis of
   # lifetimes takes to reach anything of its type, `done` among them (§7).
   waiters->resolvers.push(done)
-  _pruned(waiters, waiters->resolvers.length() - 1)
+  drop _pruned(waiters, waiters->resolvers.length() - 1)
   waiters
 
 # What waits on a pending future (`_waitersMade`): the resolvers registered on it, in order, those
@@ -103,27 +103,33 @@ K fn _emptied<T, K in Persistence>(waiters: _Waiters<T, K>):
 
 # Drops the resolvers registered on `waiters`' future before position `end` that can't decide any
 # more: one that lost marks the future as one a case lost on (§8), and one withdrawn gives up on
-# nothing. In place, as a pruned copy written back would hold what it was read from, which the
-# analysis of lifetimes can't tell from a cycle (§7).
-K fn _pruned<T, K in Persistence>(waiters: _Waiters<T, K>, end: Int):
+# nothing. An idle one stays, marking it as one lost on for now. In place, as a pruned copy written
+# back would hold what it was read from, which the analysis of lifetimes can't tell from a cycle
+# (§7). Whether one of those before `end` may still decide.
+K fn _pruned<T, K in Persistence>(waiters: _Waiters<T, K>, end: Int) -> Bool:
+  let mayDecide = false
   let index = end
   while index > 0:
     index -= 1
     match _standing(waiters->resolvers[index]->resolution):
-      case MayDecide: ()
+      case MayDecide: mayDecide = true
+      case Idle: waiters->lost = true
       case Lost:
         waiters->lost = true
         waiters->resolvers[index..index + 1] = []
       case Withdrawn: waiters->resolvers[index..index + 1] = []
+  mayDecide
 
 # Whether `future` was given up on: pending, a case waiting on it lost, and nothing that may still
-# decide waits on it, so a slot passes it over (§8).
+# decide waits on it, so a slot passes it over (§8). It keeps nothing: what a follower's standing
+# runs (`_converted`) is code the analysis of lifetimes can't follow.
+@Keeps{[:]}
 K fn _givenUp<T, K in Persistence>(future: Future<T, K>) -> Bool:
   const found = _waitersOf(future)
   if _settled(future) or found.length() == 0: return false
   const waiters = found[0]
-  _pruned(waiters, waiters->resolvers.length())
-  waiters->lost and waiters->resolvers.length() == 0
+  const mayDecide = _pruned(waiters, waiters->resolvers.length())
+  waiters->lost and not mayDecide
 
 # Has `run` run each time something comes to wait on `future`, while it is pending.
 @Keeps{["future": ["run"]]}
@@ -134,6 +140,44 @@ K fn _whenAwaited<T, K in Persistence>(future: Future<T, K>, run: Fn<(), Unit, K
 @Keeps{["future": ["kept"]]}
 K fn _keeps<T, K in Persistence>(future: Future<T, K>, kept: Fn<(), Unit, K>):
   _waitersMade(future)->kept.push(kept)
+
+# A future of `U` following `future`, a `T`'s, as a function widened gives it (§3.14): it settles as
+# `future` does, in the same event, with what `convert`, a conversion's entry, makes of its value,
+# and leaves `future` as it is for whatever else reaches it. Widening awaits nothing, so its
+# resolver on `future` is registered as no wait is (`_registeredOn`): it reaches the follower
+# weakly and stands as the follower does, dropped once that is gone and idle while it is given up
+# on, so `future` is given up on with it (§8). Each wait on the follower is one on `future`, which
+# a slot serves where it stands (`_awaitedAgain`); what runs it keeps `future` until the follower
+# settles, as an unwidened caller holds its call's future, and lets go of it at once as the
+# follower is disposed first, so the call stops as an unwidened one does (§7).
+K fn _converted<T, U, K in Persistence>(future: Future<T, K>, convert: fn(T) -> U) -> Future<U, K>:
+  const follower = _pendingFuture<U, K>()
+  if _settled(future):
+    _settle(follower, convert(_valueOf(future)))
+    return follower
+  const following = WeakRef(follower)
+  K fn arrived(value: T) -> Bool:
+    if following.deref() is Future<U, K> as settling: _settle(settling, convert(value))
+    true
+  K fn standing() -> _Standing:
+    if following.deref() is Future<U, K> as waited:
+      if _givenUp(waited): Idle
+      else: MayDecide
+    else: Withdrawn
+  drop _registeredOn(future, new Resolver<T, K>{
+    decide: arrived
+    resolution: new _Resolution<K>{decides: Follows(standing)}
+  })
+  K fn awaitedAgain(): _awaitedAgain(future)
+  _whenAwaited(follower, awaitedAgain)
+  follower
+
+# Runs what runs as something comes to wait on `future`, pending (`_whenAwaited`): a follower of it
+# is awaited (`_converted`).
+K fn _awaitedAgain<T, K in Persistence>(future: Future<T, K>):
+  const found = _waitersOf(future)
+  if found.length() == 1:
+    for awaited in found[0]->awaited: awaited()
 
 # One wait's one-shot resolver (Rule 5). A second `resolve` panics, and `tryResolve` says whether it
 # decided the wait, for races; once another case decided it, neither decides anything, and it is
@@ -172,19 +216,22 @@ fn _cancellable(state: _ResolverState) -> Bool: state is Pending or state is Unh
 
 # What a resolver comes down to deciding (§7): a wait's case, the wait reached weakly, since its call
 # holds what its cases' chains are registered on, and that call's handle; the resolver a
-# `Resolver.at` one decides; or a callback.
+# `Resolver.at` one decides; a callback; or a future following the one it is registered on, which
+# `standing` tells where it stands, reached weakly (`_converted`).
 enum _Decides<K in Persistence>:
   Case(wait: WeakRef<_Wait<K>>, call: _Call)
   At(done: _Resolution<K>)
   Callback
+  Follows(standing: Fn<(), _Standing, K>)
 
 # What a resolver stands for to a future it is registered on: it may still decide; it lost, decided
-# otherwise or let go of; or it was withdrawn by a `select` that didn't wait, which gives up on
-# nothing (§8).
+# otherwise or let go of; it was withdrawn by a `select` that didn't wait, which gives up on nothing
+# (§8); or it is idle, a follower given up on that may be awaited again (`_converted`).
 enum _Standing:
   MayDecide
   Lost
   Withdrawn
+  Idle
 
 # Where `resolution` stands (`_Standing`). An at-resolver stands for what the resolver it decides
 # does while pending.
@@ -197,6 +244,7 @@ K fn _standing<K in Persistence>(resolution: _Resolution<K>) -> _Standing:
       else: Lost
     case At(done): _standing(done)
     case Callback: MayDecide
+    case Follows(standing): standing()
 
 # The wait `resolution`, a case's, decides, while its waiter holds it; none for any other.
 K fn _caseWait<K in Persistence>(resolution: _Resolution<K>) -> _Wait<K>?:
@@ -449,16 +497,6 @@ extern K fn _wait<T, K in Persistence>(
 )
 @_Parametric
 extern K fn _pendingFuture<T, K in Persistence>() -> Future<T, K>
-# A future of `U` following `future`, a `T`'s, as a function widened gives it (§3.14): it settles as
-# `future` does, together with it, with what `convert` makes of its value, and leaves `future` as it
-# is for whatever else reaches it. It holds `future` until that settles, as an unwidened caller holds
-# its call's future, and `convert`, a conversion's entry capturing nothing.
-@Keeps{[:]}
-@_Parametric
-extern K fn _converted<T, U, K in Persistence>(
-  future: Future<T, K>
-  convert: fn(T) -> U
-) -> Future<U, K>
 @_Parametric
 extern K fn _settle<T, K in Persistence>(future: Future<T, K>, value: T)
 # Settles each of `futures` with `value`, as one event.

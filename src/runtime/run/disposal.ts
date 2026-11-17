@@ -7,9 +7,7 @@
  *   disposed in rounds of its own as it returns, before what the disposed value held (§7).
  * - A **future** cancels what a host was to fill, and runs what waits on it as code its disposal
  *   runs (§6: its resolvers cancelled), stops its call (executions.ts), and lets go of what waits on
- *   it and of its value. One following another
- *   (following.ts) lets go of that at once, so the call it follows stops as its own future's
- *   disposal would stop it.
+ *   it and of its value.
  * - A **resource** is forgotten, and released: by the runtime, where its
  *   disposal is the runtime's own, else by its host through its type's `dispose` (§7, §9).
  * - A **mock** no call reaches any more lets go of its replacement and the calls it recorded (§10).
@@ -20,7 +18,6 @@
 
 import type { Value } from '../../definition/values/values.ts';
 import { panicOf } from '../natives.ts';
-import { unfollowed } from './following.ts';
 import type { Disposer } from './lifetimes.ts';
 import type { Mocks } from './mocks.ts';
 import { Cell } from './objects/cell.ts';
@@ -49,8 +46,6 @@ export interface DisposalSeams {
   /** Calls the closure `closure` with nothing, as code a disposal runs, its let-gos apart (§7). */
   readonly callApart: (closure: Value) => void;
   readonly letGo: (...values: (Value | undefined)[]) => void;
-  /** Lets go of `values` apart from the round, disposing at once what loses its last holder. */
-  readonly letGoAtOnce: (...values: (Value | undefined)[]) => void;
   readonly stop: (execution: Execution) => void;
   readonly settle: (future: Future, value: Value) => void;
 }
@@ -117,13 +112,6 @@ function releasedByFuture(future: Future, seams: DisposalSeams): readonly Value[
   if (future.execution !== undefined) {
     seams.stop(future.execution);
   }
-  const following = unfollowed(future);
-  if (following !== undefined) {
-    seams.letGoAtOnce(following.future as unknown as Value);
-  }
-  const held = [
-    ...(waiting === undefined ? [] : waitingValues(waiting)),
-    ...(following === undefined ? [] : [following.converter]),
-  ];
+  const held = [...(waiting === undefined ? [] : waitingValues(waiting))];
   return future.settled ? [future.value, ...held] : held;
 }

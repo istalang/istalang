@@ -47,8 +47,7 @@ timers, weak references, cells, stopping a disposed call and the `disposing()` p
 that in TypeScript until moving it is measured (tracker Q59), each a service a backend ports too:
 futures settling together as one event (`run/settling.ts`), timers grouped by when they come due
 (`run/timers.ts`, `Run.fireDue`), the `disposed()` and `disposing()` watches (`Run.disposedOf`,
-`Executions.disposingOf`), the watches on an instance's end (`run/end-watches.ts`), a widened call's future
-following the call's (`run/following.ts`, the `following` primitive `_converted` calls), and the
+`Executions.disposingOf`), the watches on an instance's end (`run/end-watches.ts`), and the
 mock registry (`run/mocks.ts`). Everything else above the primitives is Istalang in the prelude:
 
 - **Futures** are run objects carrying what waits on them as the prelude keeps it, a `_Waiters`
@@ -63,12 +62,17 @@ mock registry (`run/mocks.ts`). Everything else above the primitives is Istalang
   event calls its futures' records future by future in its order, each future's resolvers in
   registration order, deciding at once, so a race's losers take nothing and the `disposing()` case
   can still win while its future settles. A `disposed()` or `disposing()` watch's future, which
-  nothing holds between two waits on it, is made anew once disposed (`watchFuture`). What settling a set of futures settles in turn (a
-  future following another, as a mock's answer does) settles together after it
-  (`Run.settleTogether`). A widened call's future follows the call's (`run/following.ts`, prelude
-  `_converted`, spec §3.14): it settles together with it, its value converted, holds it until then,
-  and, disposed first, lets go of it at once, so the call stops as an unwidened one does; the
-  call's future stays as it is for whatever else reaches it, with no execution between.
+  nothing holds between two waits on it, is made anew once disposed (`watchFuture`). What the
+  run's own listeners settle in turn (a mock's answer) settles together after the event
+  (`Run.settleTogether`). A widened call's future follows the call's (prelude `_converted`, spec
+  §3.14): a resolver registered on the call's future as no wait is (`_registeredOn`), reaching the
+  follower weakly, settles it within the call's event, its value converted. It stands as the
+  follower does (`Follows`): dropped once the follower is gone, idle while it is given up on, so
+  the call's future is given up on with it. Each wait on the follower runs the call's future's
+  `_whenAwaited` hooks (`_awaitedAgain`), so a slot serves it where it stands; what runs them keeps
+  the call's future until the follower settles, and lets go of it at once as the follower is
+  disposed first, so the call stops as an unwidened one does. The call's future stays as it is
+  for whatever else reaches it, with no execution between.
 - **Resolvers** are shared structs of `decide` and their state, a `_Resolution<K>` (`state`,
   `cancels`, what it comes down to deciding: a wait's case, the resolver a `Resolver.at` one decides,
   or a callback), which takes no value: only what passes a value on is compiled per awaited type, the
@@ -191,8 +195,8 @@ In a Definition built to run tests (spec §10):
 
 ## Snapshots (`snapshot/`)
 
-- `format.ts`: the persisted shape. Objects by id (cells, futures, each with the future it follows
-  and the converter, `follows`, where it follows one; executions, calls that ended,
+- `format.ts`: the persisted shape. Objects by id (cells, futures, a pending one with what waits
+  on it, `waiting`, as the prelude keeps it; executions, calls that ended,
   which a handle may outlive and which keep no frame, weak references, resources, mocks); values as trees with run objects as handles; frames as data (function, the
   label of the `park` it stands at, registers, where a register may hold a `&` reference), each
   execution with the transients' cells it kept where it started (its frame's own shares are its

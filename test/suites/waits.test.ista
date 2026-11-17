@@ -195,6 +195,19 @@ ista async fn readiedInSetOrder() -> Array<Int>:
   await second
   [await log.receive(), await log.receive()]
 
+ista fn takeOf(s: Slot<Int>) -> Future<Int, "ista">: s.take()
+
+ista async fn widenedTakeLosing() -> (Int, Int?, Int):
+  const s = Slot.create<Int>()
+  const widened: ista fn(Slot<Int>) -> Future<Int?, "ista"> = takeOf
+  const pending = widened(s)
+  await select:
+    case pending: ()
+    case time.delay(1ms): ()
+  _ = s.put(5)
+  const left = peek(s)
+  (left, await pending, peek(s))
+
 shared struct Offered:
   id: Int
   log: Shared<Array<String>>
@@ -267,6 +280,10 @@ fn suite() -> Array<Test>: [
   test(
     "waiters readied together by their timers run in the order the timers were set"
     async fn(): assertEq(await readiedInSetOrder(), [2, 1])
+  )
+  test(
+    "a widened take a select lost on is passed over by its slot, and served where it stands once awaited again"
+    async fn(): assertEq(await widenedTakeLosing(), (5, 5, -1))
   )
   test(
     "a waiting put's value is held by its put alone: let go of with it, or as it loses a select"

@@ -139,7 +139,7 @@ function fieldsOf(object: RunObject, { named, persisted }: Naming): PersistedObj
     };
   }
   if (object instanceof Future) {
-    return futureOf(object, { named, persisted });
+    return futureOf(object, persisted);
   }
   if (object instanceof Execution) {
     return executionOf(object, { named, persisted });
@@ -173,8 +173,8 @@ function fieldsOf(object: RunObject, { named, persisted }: Naming): PersistedObj
 }
 
 /** `future` as a snapshot writes it, with what waits on it while it is pending. */
-function futureOf(future: Future, { named, persisted }: Naming): PersistedObject {
-  const { waiting, follows } = future;
+function futureOf(future: Future, persisted: Naming['persisted']): PersistedObject {
+  const { waiting } = future;
   return {
     kind: 'future',
     id: future.object,
@@ -189,9 +189,6 @@ function futureOf(future: Future, { named, persisted }: Naming): PersistedObject
             disposed: persisted(waiting.disposed),
           },
         }),
-    ...(follows === undefined
-      ? {}
-      : { follows: { future: named(follows.future), converter: persisted(follows.converter) } }),
   };
 }
 

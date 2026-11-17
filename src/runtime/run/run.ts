@@ -159,7 +159,6 @@ export class Run {
       callApart: (closure) =>
         this.lifetimes.apart(() => this.lifetimes.letGo(this.callValue(closure, []) as Value)),
       letGo: (...values) => this.lifetimes.letGo(...values),
-      letGoAtOnce: (...values) => this.lifetimes.apart(() => this.lifetimes.letGo(...values)),
       stop: (execution) => this.executions.stop(execution),
       settle: (future, value) => this.settle(future, value),
     };

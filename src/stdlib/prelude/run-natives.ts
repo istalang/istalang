@@ -54,10 +54,6 @@ const futureNatives = (keys: NativeKeys): RunNatives => {
       run.settle(given(settling), given(settled));
       return null;
     },
-    [keys.of('_converted', future, functionKey([value], parameterKey('U')))]: (
-      [widened, converter],
-      { run },
-    ) => run.following(given(widened), given(converter)),
   };
 };
 
