@@ -41,7 +41,7 @@ import type {
   StartTarget,
 } from './tables/entries.ts';
 import { keyOf } from './tables/extern-keys.ts';
-import { instanceKey, nestedKey } from './tables/instances.ts';
+import { instanceKey, nestedKey, ownerDeclaration } from './tables/instances.ts';
 import { qualifiedNameOf } from './tables/names.ts';
 import { type OwnEntry, ownEntryOf } from './tables/own-entries.ts';
 import { parameterTypeOf } from './tables/parameter-types.ts';
@@ -54,7 +54,7 @@ interface EntryKindRow<Kind extends EntryKind> extends EntryIdentity<Kind> {
 export const entryKinds: { readonly [Kind in EntryKind]: EntryKindRow<Kind> } = {
   instance: {
     identity: (keys, { instance }) => instanceKey(keys, instance),
-    body: (keys, { instance }) => String(keys.identityOf(instance.declaration)),
+    body: (keys, { instance }) => keys.declaration(instance.declaration),
     entry: (lowering, { instance }) => {
       const own = ownEntryOf(lowering.checker, instance);
       return handlerOf(ownEntries, own)(lowering, own, instance);
@@ -62,28 +62,28 @@ export const entryKinds: { readonly [Kind in EntryKind]: EntryKindRow<Kind> } = 
   },
   externDefaults: {
     identity: (keys, { instance }) => instanceKey(keys, instance),
-    body: (keys, { instance }) => String(keys.identityOf(instance.declaration)),
+    body: (keys, { instance }) => keys.declaration(instance.declaration),
     entry: (lowering, { instance }) => externDefaultsEntry(lowering, instance),
   },
   nested: {
     identity: (keys, { nested }) => nestedKey(keys, nested),
-    body: (keys, { nested }) => String(keys.identityOf(nested.node)),
+    body: (keys, { nested }) => keys.node(nested.node.span, ownerDeclaration(nested.owner)),
     entry: (lowering, { nested }) => nestedLowering(lowering, nested).lowerNested(nested.node),
   },
   hostNative: {
-    identity: (keys, { declaration }) => String(keys.identityOf(declaration)),
+    identity: (keys, { declaration }) => keys.declaration(declaration),
     entry: (lowering, { declaration }) => hostNativeEntry(lowering, declaration),
   },
   constantNative: {
-    identity: (keys, { declaration }) => String(keys.identityOf(declaration)),
+    identity: (keys, { declaration }) => keys.declaration(declaration),
     entry: (lowering, { declaration, type }) => constantNativeEntry(lowering, declaration, type),
   },
   externConstant: {
-    identity: (keys, { declaration }) => String(keys.identityOf(declaration)),
+    identity: (keys, { declaration }) => keys.declaration(declaration),
     entry: (lowering, { declaration, type }) => hostConstantEntry(lowering, declaration, type),
   },
   contextConstant: {
-    identity: (keys, { declaration }) => String(keys.identityOf(declaration)),
+    identity: (keys, { declaration }) => keys.declaration(declaration),
     entry: (lowering, { declaration }) =>
       accessorLowering(lowering, declaration).lowerAccessor(
         declaration,
@@ -91,38 +91,38 @@ export const entryKinds: { readonly [Kind in EntryKind]: EntryKindRow<Kind> } = 
       ),
   },
   start: {
-    identity: (keys, { target }) => String(keys.identityOf(target)),
+    identity: (keys, { target }) => keys.declaration(target),
     entry: (lowering, { target }) => startEntry(lowering, startedBy(lowering, target)),
   },
   startEncode: {
-    identity: (keys, { target }) => String(keys.identityOf(target)),
+    identity: (keys, { target }) => keys.declaration(target),
     entry: (lowering, { target }) => startEncodeEntry(lowering, startedBy(lowering, target)),
   },
   converting: {
-    identity: (keys, { from, to }) => `${keys.typeKey(from)}->${keys.typeKey(to)}`,
+    identity: (keys, { from, to }) => `${keys.type(from)}->${keys.type(to)}`,
     entry: convertingEntry,
   },
   wrapping: {
-    identity: (keys, { from, to }) => `${keys.typeKey(from)}->${keys.typeKey(to)}`,
+    identity: (keys, { from, to }) => `${keys.type(from)}->${keys.type(to)}`,
     entry: wrappingEntry,
   },
   dispatch: {
     identity: (keys, { dispatch }) => {
       const { on, through, constraint, member } = dispatch;
-      const typeArguments = dispatch.typeArguments.map((type) => keys.typeKey(type));
-      const target = `${keys.typeKey(on)}:${keys.typeKey(through)}.${constraint}.${member}`;
+      const typeArguments = dispatch.typeArguments.map((type) => keys.type(type));
+      const target = `${keys.type(on)}:${keys.type(through)}.${constraint}.${member}`;
       return `${target}<${typeArguments.join(',')}>`;
     },
     closedOver: ({ dispatch }) => dispatch.on,
     entry: (lowering, { dispatch }) => dispatchEntry(lowering, dispatch),
   },
   anyConversion: {
-    identity: (keys, { from, to }) => `${keys.typeKey(from)}->${keys.typeKey(to)}`,
+    identity: (keys, { from, to }) => `${keys.type(from)}->${keys.type(to)}`,
     closedOver: ({ from }) => from,
     entry: (lowering, { from, to }) => anyConversionEntry(lowering, from, to),
   },
   anyField: {
-    identity: (keys, { on, required }) => `${keys.typeKey(on)}.${required.field.name.text}`,
+    identity: (keys, { on, required }) => `${keys.type(on)}.${required.field.name.text}`,
     closedOver: ({ on }) => on,
     entry: anyFieldEntry,
   },

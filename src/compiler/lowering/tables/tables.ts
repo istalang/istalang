@@ -40,6 +40,7 @@ import {
   type LoweredEntry,
   type StartTarget,
 } from './entries.ts';
+import { type EntryKeys, entryKeysOf } from './entry-keys.ts';
 import {
   type BodyOwner,
   instanceName,
@@ -68,6 +69,7 @@ export class DefinitionTables {
   readonly #functions: (FunctionDefinition | undefined)[] = [];
   readonly #functionIndexes = new Map<string, FunctionId>();
   readonly #identities: EntryIdentities;
+  readonly #keys: EntryKeys;
   readonly #pending: Numbered[] = [];
   readonly #closing: Numbered[] = [];
   /** How many variants its `any` type had when each closing entry was last written. */
@@ -92,6 +94,7 @@ export class DefinitionTables {
     this.#checker = checker;
     this.mocking = mocking;
     this.#identities = identities;
+    this.#keys = entryKeysOf(checker);
     this.types = new TypeTable(checker, {
       functionIndex: (instance) => this.index({ kind: 'instance', instance }),
       callIndex: (call) => this.callIndex(call),
@@ -227,11 +230,7 @@ export class DefinitionTables {
     if (body === undefined) {
       return;
     }
-    const first = memo(
-      this.#bodyEntries,
-      `${entry.kind}:${body(this.#checker.typeKeys, entry)}`,
-      () => index,
-    );
+    const first = memo(this.#bodyEntries, `${entry.kind}:${body(this.#keys, entry)}`, () => index);
     if (first !== index) {
       this.#bodies.set(index, first);
     }
@@ -240,7 +239,7 @@ export class DefinitionTables {
   /** What tells `entry` apart from every other: its kind, then its identity within it. */
   #keyOf(entry: LoweredEntry): string {
     const { identity } = identityOf(this.#identities, entry);
-    return `${entry.kind}:${identity(this.#checker.typeKeys, entry)}`;
+    return `${entry.kind}:${identity(this.#keys, entry)}`;
   }
 
   /** `entry` as it is keyed and lowered: an instance as shared (stencils.ts). */

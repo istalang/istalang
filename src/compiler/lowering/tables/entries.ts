@@ -15,7 +15,6 @@
 
 import type { RequiredField } from '../../checker/surface/checked-field.ts';
 import type { FunctionInstance } from '../../checker/surface/witness-closing.ts';
-import type { TypeKeys } from '../../checker/types/identity/type-keys.ts';
 import type { AnyType, Type } from '../../checker/types/type/index.ts';
 import type {
   ConstantDeclaration,
@@ -24,6 +23,7 @@ import type {
   FunctionDeclaration,
 } from '../../syntax/declarations/index.ts';
 import type { Dispatch } from '../calls/closed-calls.ts';
+import type { EntryKeys } from './entry-keys.ts';
 import type { ConversionEntry, NestedInstance } from './instances.ts';
 
 /** An extern a host implements: a function, or a constant. */
@@ -77,13 +77,13 @@ export type EntryOf<Kind extends EntryKind> = Extract<LoweredEntry, { readonly k
 /** How the tables tell an entry of one kind from the others of its kind. */
 export interface EntryIdentity<Kind extends EntryKind> {
   /** What tells the entry apart within its kind: equal for two entries that are one. */
-  readonly identity: (keys: TypeKeys, entry: EntryOf<Kind>) => string;
+  readonly identity: (keys: EntryKeys, entry: EntryOf<Kind>) => string;
   /**
    * The source function the entry runs, as `==` reads its closures (§3.14): equal for two entries
    * lowered from one declaration, lambda or local function; none for an entry that is a body of
    * its own.
    */
-  readonly body?: (keys: TypeKeys, entry: EntryOf<Kind>) => string;
+  readonly body?: (keys: EntryKeys, entry: EntryOf<Kind>) => string;
   /** The type whose variants a closing entry switches over; none for an entry lowered once. */
   readonly closedOver?: (entry: EntryOf<Kind>) => Type;
 }

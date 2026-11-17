@@ -21,7 +21,6 @@
 
 import type { Checker } from '../../checker/check.ts';
 import type { FunctionInstance } from '../../checker/surface/witness-closing.ts';
-import type { TypeKeys } from '../../checker/types/identity/type-keys.ts';
 import {
   isMarkParameter,
   type QualifierLookup,
@@ -37,6 +36,7 @@ import {
 import type { FieldLoopHeader, Lambda } from '../../syntax/expressions/index.ts';
 import type { VariableDeclaration } from '../../syntax/statements/index.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
+import type { EntryKeys } from './entry-keys.ts';
 import { qualifiedNameOf, tableKey } from './names.ts';
 import { isStandIn } from './stencils.ts';
 
@@ -127,18 +127,20 @@ export function conversionName(checker: Checker, entry: ConversionEntry): string
   return `${tableKey(checker, entry.from)} as ${tableKey(checker, entry.to)}`;
 }
 
-/** The key of a nested function's entry: its owner's, then its node's identity. */
-export function nestedKey(keys: TypeKeys, nested: NestedInstance): string {
-  return `${ownerKey(keys, nested.owner)}#${keys.identityOf(nested.node)}`;
+/** The key of a nested function's entry: its owner's, then where its node stands. */
+export function nestedKey(keys: EntryKeys, nested: NestedInstance): string {
+  const within = ownerDeclaration(nested.owner);
+  return `${ownerKey(keys, nested.owner)}#${keys.node(nested.node.span, within)}`;
 }
 
-function ownerKey(keys: TypeKeys, owner: BodyOwner): string {
+function ownerKey(keys: EntryKeys, owner: BodyOwner): string {
+  const within = ownerDeclaration(owner);
   const own =
     owner.kind === 'constant' || owner.kind === 'contextConstant'
-      ? `${owner.kind} ${keys.identityOf(owner.declaration)}`
+      ? `${owner.kind} ${keys.declaration(owner.declaration)}`
       : `${instanceKey(keys, owner.instance)}${owner.kind === 'defaults' ? '=' : ''}`;
   const passes = (owner.passes ?? []).map(
-    ({ header, field }) => `[${keys.identityOf(header)}.${field}]`,
+    ({ header, field }) => `[${keys.node(header.span, within)}.${field}]`,
   );
   return `${own}${passes.join('')}`;
 }
@@ -160,9 +162,9 @@ function ownerName(checker: Checker, owner: BodyOwner): string {
 }
 
 /** The key two instances share exactly when they are one entry. */
-export function instanceKey(keys: TypeKeys, instance: FunctionInstance): string {
-  const typeArguments = instance.typeArguments.map((type) => keys.typeKey(type));
-  return `${keys.identityOf(instance.declaration)}<${typeArguments.join(',')}>`;
+export function instanceKey(keys: EntryKeys, instance: FunctionInstance): string {
+  const typeArguments = instance.typeArguments.map((type) => keys.type(type));
+  return `${keys.declaration(instance.declaration)}<${typeArguments.join(',')}>`;
 }
 
 /**
