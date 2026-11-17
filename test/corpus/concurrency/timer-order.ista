@@ -1,24 +1,28 @@
 # outcome: "2 at 1 | true"
 # Timers come due in the order of their instants, whichever was made first (§6): the earlier one
-# wins a race of `futures.first` and of `select`, even when the later one was made before it.
+# wins a race of `futures.first` and of `select`, even when the later one was made before it. Each
+# race reads `now()` once and sets its timers at instants from it: live code reads the clock itself
+# (§5), so two timers set by `delay` could be any time apart, and the later-made one earlier.
 
 import * as futures from 'futures'
 import * as time from 'time'
 
-live async fn after(wait: time.Duration, value: Int) -> Int:
-  await time.delay(wait)
+live async fn after(due: time.Time, value: Int) -> Int:
+  await time.at(due)
   value
 
 live async fn raced() -> String:
-  const slow = after(6ms, 1)
-  const fast = after(2ms, 2)
+  const start = time.now()
+  const slow = after(start + 6ms, 1)
+  const fast = after(start + 2ms, 2)
   const (position, value) = await futures.first([slow, fast])
   String(value) + " at " + String(position)
 
 live async fn selected() -> Bool:
-  const later = time.delay(5ms)
+  const start = time.now()
+  const later = time.at(start + 5ms)
   await select:
     case later: false
-    case time.delay(1ms): true
+    case time.at(start + 1ms): true
 
 live async fn main() -> String: await raced() + " | " + String(await selected())
