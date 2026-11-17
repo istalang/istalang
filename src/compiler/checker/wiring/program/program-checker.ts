@@ -86,6 +86,7 @@ import { JsonForms } from '../../rules/boundary/json-forms.ts';
 import { Expansion } from '../../rules/expansion/functions.ts';
 import { externHeldOf, keepsOf } from '../../rules/lifetimes/externs.ts';
 import { Lifetimes } from '../../rules/lifetimes/lifetimes.ts';
+import { opaqueParametersQuery } from '../../rules/parametricity/opaque-parameters.ts';
 import type { CheckedBody } from '../../surface/checked-body.ts';
 import { type Fit, type Fitting, fitOf } from '../../types/fitting/fit/index.ts';
 import { typeKeys } from '../../types/identity/type-keys.ts';
@@ -149,6 +150,7 @@ export class ProgramChecker implements CheckerContext {
   /** The module whose item, or item's type parameter, `node` is; undefined for a local one. */
   readonly #itemModuleOf: (node: NodeOf<string>) => ModuleId | undefined;
   readonly #resolvedTypes: EntryTable<CheckerNote, TypeNode, Type, ModuleId>;
+  readonly opaqueParametersOf: CheckerContext['opaqueParametersOf'];
   readonly disposalOf: CheckerContext['disposalOf'];
   readonly disposeKindsOf: CheckerContext['disposeKindsOf'];
   readonly externHeldOf: CheckerContext['externHeldOf'] = (type) => externHeldOf(this, type);
@@ -230,11 +232,10 @@ export class ProgramChecker implements CheckerContext {
     this.traitObjects = traitObjectsOf(this);
     this.rootGoals = programRootGoals(this, rootSearches);
     this.lookup = new Lookup(this);
+    this.opaqueParametersOf = opaqueParametersQuery(this);
   }
 
-  reachesDisposable(type: Type): boolean {
-    return this.lifetimes.reachesDisposable(type);
-  }
+  readonly reachesDisposable = (type: Type): boolean => this.lifetimes.reachesDisposable(type);
 
   /** Checks a function's body, which must produce `declaredResult` if given. */
   #checkBody(

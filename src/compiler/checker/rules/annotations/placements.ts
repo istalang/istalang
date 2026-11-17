@@ -23,6 +23,7 @@ export const known = {
   suite: wellKnown.suite,
   holds: wellKnown.holds,
   keeps: wellKnown.keeps,
+  parametric: wellKnown.parametric,
 } as const satisfies Record<string, WellKnownDeclaration>;
 
 export type Known = keyof typeof known;
@@ -88,6 +89,7 @@ export const placements: Record<
     }
     return isStd ? undefined : (at) => checkerDiagnostics.keepsOutsideStd(at);
   },
+  parametric: (place) => (place.kind === 'function' && place.isExtern ? undefined : 'elsewhere'),
   any: (place) =>
     place.kind === 'field' || place.kind === 'function' || place.kind === 'struct'
       ? undefined

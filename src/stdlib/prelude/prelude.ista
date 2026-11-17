@@ -298,7 +298,7 @@ K fn _caseResolver<T, K in Persistence>(
   new Resolver<T, K>{decide, resolution: _caseResolution(wait, position)}
 
 # Where a case's resolver puts its value (`_caseResolver`), empty until then: an array, never an
-# optional, so a case's code names no union of its type of value.
+# optional, so a case's code is one instance for every type of value of one lifetime (§3.5).
 fn _caseInto<T>() -> Shared<Array<T>>: new Shared<Array<T>>{value: []}
 
 # The value a case's resolver put into `into`, taken out: a resolver outliving its wait still
@@ -371,12 +371,15 @@ K fn _decided<K in Persistence>(wait: _Wait<K>) -> Int:
   -1
 
 # The run's primitives the futures above stand on (ir-first design, decision 6).
+@_Parametric
 extern K fn _settled<T, K in Persistence>(future: Future<T, K>) -> Bool
+@_Parametric
 extern K fn _valueOf<T, K in Persistence>(future: Future<T, K>) -> T
 # `callback` waits on `future` at `rank` while its resolver may still decide, as `standing` says
 # (`_standing`): one that can't is dropped, and a future such ones waited on, one of them having
 # lost, and nothing waits on now is given up on. `cancelled` runs if `future` is disposed first.
 @Keeps{["future": ["callback", "standing", "cancelled"]]}
+@_Parametric
 extern K fn _onSettled<T, K in Persistence>(
   future: Future<T, K>
   callback: Fn<(T,), Unit, K>
@@ -384,22 +387,28 @@ extern K fn _onSettled<T, K in Persistence>(
   standing: Fn<(), Int, K>
   cancelled: Fn<(), Unit, K>
 )
+@_Parametric
 extern K fn _givenUp<T, K in Persistence>(future: Future<T, K>) -> Bool
 # `callback` runs each time something comes to wait on `future`.
 @Keeps{["future": ["callback"]]}
+@_Parametric
 extern K fn _onAwaited<T, K in Persistence>(future: Future<T, K>, callback: Fn<(), Unit, K>)
+@_Parametric
 extern K fn _pendingFuture<T, K in Persistence>() -> Future<T, K>
 # A future of `U` following `future`, a `T`'s, as a function widened gives it (§3.14): it settles as
 # `future` does, together with it, with what `convert` makes of its value, and leaves `future` as it
 # is for whatever else reaches it. It holds `future` until that settles, as an unwidened caller holds
 # its call's future, and `convert`, a conversion's entry capturing nothing.
 @Keeps{[:]}
+@_Parametric
 extern K fn _converted<T, U, K in Persistence>(
   future: Future<T, K>
   convert: fn(T) -> U
 ) -> Future<U, K>
+@_Parametric
 extern K fn _settle<T, K in Persistence>(future: Future<T, K>, value: T)
 # Settles each of `futures` with `value`, as one event.
+@_Parametric
 extern K fn _settleAll<T, K in Persistence>(futures: Array<Future<T, K>>, value: T)
 extern K fn _later<K in Persistence>(callback: Fn<(), Unit, K>)
 extern fn _unpark(call: _Call, position: Int)
@@ -615,6 +624,7 @@ extern shared struct _Cell<T>
 # so a slot is ista data, which only ista code handles (proposal 8, Rule 6); a slot dies along with
 # the values in it, so its disposal lets go of its contents, disposed in the slot's own round before
 # anything created before them.
+@_Parametric
 extern K fn dispose<T, K in Persistence>(self: Future<T, K>)
 ista fn dispose<T>(self: Slot<T>): self->contents = []
 
@@ -671,22 +681,31 @@ extern fn panic(message: String) -> Never
 # Collections (§3.8, §3.9, §3.10). Indexing panics outside the bounds, while `at` and `get` return an
 # optional, and `at` and `slice` count a negative index from the end, as JavaScript does. A string
 # counts code points. Methods taking a function are code, below, since only code calls one.
+@_Parametric
 extern fn length<T>(self: Array<T>) -> Int
 fn at<T>(self: Array<T>, index: Int) -> T?:
   const position = _positionOf(index, self.length())
   if position == -1: none
   else: self[position]
+@_Parametric
 extern fn push<T>(self: &Array<T>, item: T)
 fn pop<T>(self: &Array<T>) -> T?:
   if self.length() == 0: none
   else: self._popLast()
 # Removes and gives the last item of an array, which has one.
+@_Parametric
 extern fn _popLast<T>(self: &Array<T>) -> T
+@_Parametric
 extern fn slice<T>(self: Array<T>, start: Int = 0, end: Int? = none) -> Array<T>
+@_Parametric
 extern fn index<T>(self: Array<T>, key: Int) -> T
+@_Parametric
 extern fn index<T>(self: Array<T>, key: Range) -> Array<T>
+@_Parametric
 extern fn setIndex<T>(self: &Array<T>, key: Int, value: T)
+@_Parametric
 extern fn setIndex<T>(self: &Array<T>, key: Range, value: Array<T>)
+@_Parametric
 extern fn Array.default<T>() -> Array<T>
 
 fn indexOf<T>(self: Array<T>, item: T) -> Int: self.findIndex(fn(each): each == item)
@@ -714,22 +733,32 @@ fn join(self: Array<String>, separator: String) -> String:
 
 # What an array pattern reads once its length test passed (§3.11): the item `offset` from the start,
 # or from the end when negative, and the items between the first `before` and the last `after`.
+@_Parametric
 extern fn _patternItem<T>(self: Array<T>, offset: Int) -> T
+@_Parametric
 extern fn _patternRest<T>(self: Array<T>, before: Int, after: Int) -> Array<T>
 
+@_Parametric
 extern fn size<K, V>(self: Map<K, V>) -> Int
 fn get<K, V>(self: Map<K, V>, key: K) -> V?:
   const position = self._find(key)
   if position == -1: none
   else: self._valueAt(position)
 # Where `key`'s entry is in a map's own order; -1 where it has none.
+@_Parametric
 extern fn _find<K, V>(self: Map<K, V>, key: K) -> Int
 # The value of the entry at `position` in a map's own order.
+@_Parametric
 extern fn _valueAt<K, V>(self: Map<K, V>, position: Int) -> V
+@_Parametric
 extern fn has<K, V>(self: Map<K, V>, key: K) -> Bool
+@_Parametric
 extern fn delete<K, V>(self: &Map<K, V>, key: K) -> Bool
+@_Parametric
 extern fn index<K, V>(self: Map<K, V>, key: K) -> V
+@_Parametric
 extern fn setIndex<K, V>(self: &Map<K, V>, key: K, value: V)
+@_Parametric
 extern fn Map.default<K, V>() -> Map<K, V>
 
 fn includes<K, V>(self: Map<K, V>, key: K) -> Bool: self.has(key) # as `has`, for `in`
@@ -873,6 +902,7 @@ fn _cursor<T>(count: Int, item: fn(Int) -> T) -> fn() -> Step<T>:
   next
 
 # The entry at `position` in a map's own order.
+@_Parametric
 extern fn _entryAt<K, V>(self: Map<K, V>, position: Int) -> (K, V)
 
 # The code point starting at UTF-16 `offset` in a string, and the offset after it; `""` at the end.
@@ -1050,3 +1080,16 @@ trait Parsable:
 # Names the suspension point of the statement it annotates, for tests and operators (§10).
 struct Waypoint:
   label: String
+
+# Shared instances (§3.5): an instance is compiled once for every type of one lifetime class at a
+# type parameter its code uses only opaquely, taking one of these stand-ins in its place, as a backend
+# keeps holders of it (lowering/tables/stencils.ts): plain, a heap value, a value that may reach a
+# disposable. No value is of them.
+extern struct _Plain
+struct _Heap
+struct _Counted:
+  reaches: fn()
+
+# On a std extern function: its native reads none of its type arguments, so one entry serves every
+# type of one lifetime class at each (`_Plain`).
+struct _Parametric

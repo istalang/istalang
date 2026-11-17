@@ -29,12 +29,15 @@
  */
 
 import type { FunctionId, TypeId } from '../../../definition/operands.ts';
-import type {
-  EnumRole,
-  ExternRole,
-  StructuralReference,
-  TypeDefinition,
-  TypeReference,
+import {
+  type EnumRole,
+  type ExternRole,
+  type Lifetime,
+  lifetimeOf,
+  type StructuralReference,
+  type TypeDefinition,
+  type TypeReference,
+  typesIn,
 } from '../../../definition/tables/types.ts';
 import type { Value } from '../../../definition/values/values.ts';
 import { compareOrdered } from '../../../foundation/language/order.ts';
@@ -160,6 +163,16 @@ export class TypeTable {
         return unhandled;
       }
     }
+  }
+
+  /**
+   * How a backend keeps holders of values of `type` (definition `lifetimeOf`); undefined while an
+   * entry that says so is still being laid out, as a recursive type's is while its layout runs.
+   */
+  lifetimeOf(type: Type): Lifetime | undefined {
+    const reference = this.reference(type);
+    const laidOut = typesIn(reference).every((index) => this.#entries[index] !== placeholder);
+    return laidOut ? lifetimeOf(this.entries, reference) : undefined;
   }
 
   /** The index of the type entry for `type`. */

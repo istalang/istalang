@@ -196,16 +196,16 @@ function reachesDisposable(types: readonly TypeDefinition[], reference: TypeRefe
   }
 }
 
+/** How a backend keeps holders of a type's values (`lifetimeOf`). */
+export type Lifetime = 'counted' | 'heap' | 'plain';
+
 /**
  * How a backend keeps holders of values of `reference` (ir-first design, decision 5): `counted`,
  * each holder counted, as what reaches a disposable is; `heap`, an allocation shared between
  * holders, whose holders a backend counts to free it or to change it in place when unique; `plain`,
  * a scalar or a handle reaching no disposable, whose holders nothing counts.
  */
-export function lifetimeOf(
-  types: readonly TypeDefinition[],
-  reference: TypeReference,
-): 'counted' | 'heap' | 'plain' {
+export function lifetimeOf(types: readonly TypeDefinition[], reference: TypeReference): Lifetime {
   if (reachesDisposable(types, reference)) {
     return 'counted';
   }

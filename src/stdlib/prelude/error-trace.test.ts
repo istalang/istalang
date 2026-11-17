@@ -51,7 +51,7 @@ const numberLine = /^at \S*Job \(\S+:3:25\)$/u;
 /** The std's frames building a parse error, innermost first, which `Int.parse` returns (§3.10). */
 const parseLines = [
   /^at prelude\.Error\.unparsed \(std:prelude:\d+:\d+\)$/u,
-  /^at prelude\._parsed<Int> \(std:prelude:\d+:\d+\)$/u,
+  /^at prelude\._parsed<T> \(std:prelude:\d+:\d+\)$/u,
   /^at prelude\.Int\.parse \(std:prelude:\d+:\d+\)$/u,
 ];
 

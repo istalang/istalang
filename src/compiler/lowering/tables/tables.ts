@@ -49,6 +49,7 @@ import {
 } from './instances.ts';
 import { qualifiedNameOf } from './names.ts';
 import { ownEntryOf } from './own-entries.ts';
+import { Stencils } from './stencils.ts';
 import { TypeTable } from './type-table.ts';
 
 /** What every function-table entry starts with: its name, and where it is declared. */
@@ -72,6 +73,10 @@ export class DefinitionTables {
   /** How many variants its `any` type had when each closing entry was last written. */
   readonly #writtenFor = new Map<FunctionId, number>();
   readonly #starts: Definition['starts'][number][] = [];
+  /** How instances are shared; none in a Definition running tests, where a mock replaces one entry (§10). */
+  readonly #stencils: Stencils | undefined;
+  /** Each instance entry as shared, by its own key. */
+  readonly #sharedEntries = new Map<string, LoweredEntry>();
 
   /** Whether the Definition runs tests, whose functions a mock may replace (§10). */
   readonly mocking: boolean;
@@ -90,6 +95,7 @@ export class DefinitionTables {
       hostNativeIndex: (declaration) => this.index({ kind: 'hostNative', declaration }),
       annotationValues: (annotations) => annotationValues(this, annotations),
     });
+    this.#stencils = mocking ? undefined : new Stencils(checker, this.types);
   }
 
   /** The index of `module` in the module table, with its line starts for spans. */
@@ -200,11 +206,29 @@ export class DefinitionTables {
    * The index of `entry`, numbered the first time it is asked for, then lowered from the worklist,
    * or, a closing entry, written once the worklist is empty and again as its `any` type grows.
    */
-  index(entry: LoweredEntry): FunctionId {
-    const { identity, closedOver } = identityOf(this.#identities, entry);
-    const key = `${entry.kind}:${identity(this.#checker.typeKeys, entry)}`;
+  index(given: LoweredEntry): FunctionId {
+    const entry = this.#shared(given);
+    const { closedOver } = identityOf(this.#identities, entry);
     const queue = closedOver === undefined ? this.#pending : this.#closing;
-    return this.#numbered(key, (index) => queue.push({ ...entry, index }));
+    return this.#numbered(this.#keyOf(entry), (index) => queue.push({ ...entry, index }));
+  }
+
+  /** What tells `entry` apart from every other: its kind, then its identity within it. */
+  #keyOf(entry: LoweredEntry): string {
+    const { identity } = identityOf(this.#identities, entry);
+    return `${entry.kind}:${identity(this.#checker.typeKeys, entry)}`;
+  }
+
+  /** `entry` as it is keyed and lowered: an instance as shared (stencils.ts). */
+  #shared(entry: LoweredEntry): LoweredEntry {
+    const stencils = this.#stencils;
+    if (stencils === undefined || (entry.kind !== 'instance' && entry.kind !== 'externDefaults')) {
+      return entry;
+    }
+    return memo(this.#sharedEntries, this.#keyOf(entry), () => ({
+      ...entry,
+      instance: stencils.shared(entry.instance),
+    }));
   }
 
   /**

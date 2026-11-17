@@ -38,6 +38,7 @@ import type { FieldLoopHeader, Lambda } from '../../syntax/expressions/index.ts'
 import type { VariableDeclaration } from '../../syntax/statements/index.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 import { qualifiedNameOf, tableKey } from './names.ts';
+import { isStandIn } from './stencils.ts';
 
 /** A lambda or local function inside one instance of the top-level function holding it. */
 export interface NestedInstance {
@@ -166,13 +167,17 @@ export function instanceKey(keys: TypeKeys, instance: FunctionInstance): string 
 
 /**
  * An instance's name in the Definition (definition.md, "Names"): the declaration's, with its type
- * arguments' table keys.
+ * arguments' table keys, a stand-in spelled as the parameter it stands for (stencils.ts).
  */
 export function instanceName(checker: Checker, instance: FunctionInstance): string {
   const { declaration, typeArguments } = instance;
-  const generic =
-    typeArguments.length === 0
-      ? ''
-      : `<${typeArguments.map((type) => tableKey(checker, type)).join(', ')}>`;
+  const parameters = typeParametersOf(declaration.typeParameters);
+  const spelled = typeArguments.map((type, position) => {
+    const parameter = parameters[position];
+    return parameter !== undefined && isStandIn(checker, type)
+      ? parameter.name.text
+      : tableKey(checker, type);
+  });
+  const generic = spelled.length === 0 ? '' : `<${spelled.join(', ')}>`;
   return `${qualifiedNameOf(checker, declaration)}${generic}`;
 }

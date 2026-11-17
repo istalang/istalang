@@ -9,8 +9,11 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { mainGives } from '../../../../stdlib/prelude/prelude.test-kit.ts';
 import { stdProgramOf } from '../../../binder/bind.test-kit.ts';
-import { compiledDefinition, diagnosedAt } from '../../../compile.test-kit.ts';
+import { checkedAfterStd, compiledDefinition, diagnosedAt } from '../../../compile.test-kit.ts';
+import { idOf } from '../../../program/program.test-kit.ts';
+import type { FunctionDeclaration } from '../../../syntax/declarations/index.ts';
 import type { Call } from '../../../syntax/expressions/calls.ts';
+import { nodesUnder } from '../../../syntax/tree/index.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { checkedMain } from '../../lookup/lookup.test-kit.ts';
 import { typeText } from '../type/type-text.ts';
@@ -265,10 +268,28 @@ describe('a call checking without an expected type', () => {
   });
 });
 
-/** The instantiations `main`'s program makes of `name`, one of its functions, as they are named. */
+/**
+ * The instantiations `main`'s functions call `name`, one of them, at, as the checker resolved each
+ * call, each once: what a Definition's entry names no longer spell where instances are shared.
+ */
 function instantiationsOf(name: string, main: string): readonly string[] {
-  const { functions } = compiledDefinition(stdProgramOf({ main }), 'main');
-  return functions.map((entry) => entry.name).filter((each) => each.startsWith(`main.${name}<`));
+  const program = stdProgramOf({ main });
+  const checker = checkedAfterStd(program);
+  const module = idOf('main');
+  const tree = program.modules.get(module)?.tree;
+  const callers = (tree === undefined ? [] : nodesUnder(tree, tree.root)).filter(
+    (each): each is FunctionDeclaration => each.kind === 'FunctionDeclaration',
+  );
+  const spelled = callers
+    .flatMap((declaration) => checker.bodyOf(declaration)?.madeCalls() ?? [])
+    .flatMap(({ call }) =>
+      call.kind === 'function' &&
+      call.function.name.text === name &&
+      checker.moduleOf(call.function) === module
+        ? [`${name}<${call.typeArguments.map(typeText).join(', ')}>`]
+        : [],
+    );
+  return [...new Set(spelled)];
 }
 
 describe('what takes a call’s value, choosing inside its result', () => {
@@ -293,7 +314,7 @@ describe('what takes a call’s value, choosing inside its result', () => {
   it('is the parameter of a call it is passed to, as much as an expected type', () => {
     const main = mainOf('takeArr(pair(1, 2))');
     const { functions } = compiledDefinition(stdProgramOf({ main }), 'main');
-    expect(instantiationsOf('pair', main)).toEqual(['main.pair<|<Int,None>>']);
+    expect(instantiationsOf('pair', main)).toEqual(['pair<Int?>']);
     expect(functions.some((entry) => entry.name.includes(' as '))).toBe(false);
     expect(reportedErrors(mainOf('takeBox(makeBox(1))'))).toEqual([]);
   });
@@ -305,7 +326,7 @@ describe('what takes a call’s value, choosing inside its result', () => {
       'drop (b, t)',
       '0',
     );
-    expect(instantiationsOf('id', main)).toEqual(['main.id<Int>']);
+    expect(instantiationsOf('id', main)).toEqual(['id<Int>']);
   });
 
   it('reaches what a postponed argument gives where the call gives it at its top', () => {
