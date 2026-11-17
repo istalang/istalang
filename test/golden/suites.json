@@ -423,6 +423,7 @@
       "✓ aliasing › a value read behind a computed handle holds it when a later operand changes it in place",
       "✓ aliasing › a one-element tuple's element, read where its element is expected, holds it when a later argument changes the tuple",
       "✓ aliasing › a part of a temporary a block, if or match ends with outlives the temporary, which its end disposes",
+      "✓ aliasing › a part read out of a value a branching expression gives holds it when the value ends or its source changes first",
       "✓ aliasing › a destructuring assignment takes its value apart as it was before writing any part",
       "✓ awaitables › an awaitable starts its work only once it is awaited",
       "✓ awaitables › an awaitable waits on a future through that future's onAwait",

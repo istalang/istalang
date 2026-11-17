@@ -9,7 +9,7 @@
  *
  * - **A read's root** is the value it is read out of, at a name or through the reads it is a part
  *   of: a variable, or a computed value, which nothing else reaches, so only its release (a block
- *   ending before the part it gives is taken) changes it. Through a handle (`behind`), a computed
+ *   ending before the part it gives is taken) changes it; a value several paths give is one. Through a handle (`behind`), a computed
  *   one too, what it reaches is the handle's state, others' as well.
  * - **What may change a root:** a write into its variable, whole or in part, a `&` argument rooted
  *   at it, or its release; and, where code other than the flow's own reaches it (a cell a closure
@@ -182,13 +182,19 @@ interface Read {
   readonly parts: ValueId[];
 }
 
-/** Every read of `flow` into a temporary, by the value it reads into. */
+/**
+ * Every read of `flow` into a temporary, by the value it reads into. A temporary several paths
+ * give, an `if`'s or a `??`'s, holds what each gives it (writer.ts), so it reads nothing.
+ */
 function readsOf(flow: FlowFunction, facts: ReadFacts): ReadonlyMap<ValueId, Read> {
+  const writeCounts = usesOf(flow).writes;
   const found = new Map(
     flow.blocks.flatMap(({ operations }, block) =>
       operations.flatMap((operation, index) => {
         const read = readOf(operation);
-        return read === undefined || isVariableOf(flow, read.into)
+        return read === undefined ||
+          isVariableOf(flow, read.into) ||
+          (writeCounts.get(read.into) ?? 0) > 1
           ? []
           : [[read.into, { ...read, at: { block, index } }] as const];
       }),

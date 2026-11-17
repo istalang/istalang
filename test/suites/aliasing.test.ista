@@ -158,6 +158,23 @@ fn tailPartsOutliveTheirTemporaries(first: Bool) -> Array<String>:
   log->value.push("match gave " + fromMatch->id)
   log->value
 
+fn someBox(id: Int, log: Shared<Array<String>>) -> Box?: Box{res: new Res{id, log}}
+
+fn mergedReads(pick: Bool) -> Array<String>:
+  const log = new Shared<Array<String>>{value: []}
+  const b1 = Box{res: new Res{id: 1, log}}
+  const fromIf = if pick: (if not pick: b1 else: Box{res: new Res{id: 2, log}}).res else: b1.res
+  log->value.push("if gave " + fromIf->id)
+  const fromNullish = if pick: (someBox(3, log) ?? b1).res else: b1.res
+  log->value.push("?? gave " + fromNullish->id)
+  let b2 = Box{res: new Res{id: 4, log}}
+  const got = readId(
+    { const unused = 0; (if not pick: b1 else: b2).res }
+    { b2.res = new Res{id: 5, log}; 10 }
+  )
+  log->value.push("got " + got)
+  log->value
+
 fn swapped() -> (Int, Int):
   let swap = (10, 20)
   swap.1, swap.0 = swap
@@ -223,6 +240,10 @@ fn suite() -> Array<Test>: [
       "block gave 2"
       "match gave 3"
     ])
+  )
+  test(
+    "a part read out of a value a branching expression gives holds it when the value ends or its source changes first"
+    fn(): assertEq(mergedReads(true), ["if gave 2", "?? gave 3", "read 4", "disposed 4", "got 14"])
   )
   test(
     "a destructuring assignment takes its value apart as it was before writing any part"
