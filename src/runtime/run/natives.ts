@@ -1,20 +1,23 @@
 /**
  * Binding each extern of a program to its native as the program loads (ir-first design, decision
  * 10, the host binding): a program naming an extern no native implements is refused before any of
- * it runs.
+ * it runs. That is a fact of the program and the natives alone, found once for each pair.
  *
  * - A native takes its arguments as values; one the extern takes by `&` is a reference, whose
  *   changes it makes through its context (`changes`): in place where the value is unique, else in
  *   a copy that takes its place (lifetimes.ts).
  * - What a native gives lands in the call's register, which owns it, so a counted result is held:
  *   a native gives back a part of its argument as readily as a value it made.
- * - The context is built once per extern: what the call is and the program's types, over the
- *   run's capabilities (capabilities.ts), built once.
+ * - The context is built once per extern, as it is first called: what the call is and the
+ *   program's types, over the run's capabilities (capabilities.ts), built once. A run binds every
+ *   extern as it loads, and calls few of them.
  */
 
 import type { ExternFunction } from '../../definition/tables/functions.ts';
+import type { Definition } from '../../definition/tables/index.ts';
 import { lifetimeOf, type TypeReference } from '../../definition/tables/types.ts';
 import type { CompositeValue, Value } from '../../definition/values/values.ts';
+import { memo } from '../../foundation/structures/memo.ts';
 import { unreachable } from '../../foundation/structures/unreachable.ts';
 import type { Clock } from '../clock.ts';
 import type { LogRecord } from '../instance-state.ts';
@@ -49,16 +52,29 @@ export interface RunSeams {
 
 type Entry = (...parameters: never[]) => unknown;
 
+/** The programs found to have a native for every extern, by the natives found to implement them. */
+const implemented = new WeakMap<Natives, WeakSet<Definition>>();
+
+/** Refuses `definition` where `natives` lacks one of its externs; once for each pair. */
+function requireImplemented(definition: Definition, natives: Natives): void {
+  const programs = memo(implemented, natives, () => new WeakSet<Definition>());
+  if (!programs.has(definition)) {
+    requireNatives(definition.functions, natives);
+    programs.add(definition);
+  }
+}
+
 /** The native of each extern of `run`'s program, by its index; refuses a missing one. */
 export function bindNatives(run: Run, binding: RunSeams): (index: number) => Entry {
-  const { functions } = run.definition;
-  requireNatives(functions, binding.natives);
+  const { definition } = run;
+  const { functions } = definition;
+  requireImplemented(definition, binding.natives);
   const capabilities = capabilitiesOf(run, binding);
   return (index) => {
     const entry = functions[index] as ExternFunction;
     const native = binding.natives[entry.key] as Native;
     let current: readonly Value[] = [];
-    const context = contextOf(run, entry, { binding, capabilities, passed: () => current });
+    let context: FullNativeContext | undefined;
     const references = entry.parameters.flatMap((parameter, at) =>
       parameter.type.kind === 'reference' ? [at] : [],
     );
@@ -79,6 +95,7 @@ export function bindNatives(run: Run, binding: RunSeams): (index: number) => Ent
           : given.map((value, at) =>
               references.includes(at) ? deref(value as unknown as Reference) : value,
             );
+      context ??= contextOf(run, entry, { binding, capabilities, passed: () => current });
       try {
         const result = native(values, context);
         run.lifetimes.adopt(result, entry.result);

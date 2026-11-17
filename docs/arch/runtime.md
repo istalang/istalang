@@ -17,8 +17,8 @@ interpreter; a live run is a run that never commits.
 ## One run per instance
 
 - Every instance is a `Run` (`run/run.ts`) of its own: its objects, ready queue, timers, transients,
-  holders' counts, and the emitted program instantiated over it (`function(rt)`), so nothing one
-  instance holds is ever another's. A run's `instance` names it and says whether it is durable
+  holders' counts, and the emitted program instantiated over it (`function(rt)`, compiled once per
+  program, `run/instantiation.ts`), so nothing one instance holds is ever another's. A run's `instance` names it and says whether it is durable
   (ista) or the live run a host started.
 - Runs meet only through a `World` (`run/world.ts`): a call into a context, a spawn, a wait on an
   instance's end, each given the future it settles. What crosses is a sendable value, deep-copied

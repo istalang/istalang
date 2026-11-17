@@ -12,7 +12,8 @@ tags: [codegen, backend, frames, javascript]
 
 `src/codegen/emit.ts` turns a Definition into the body of one ES module, `function(rt)`, which each
 run instantiates over itself (docs/arch/runtime.md), so the code is emitted once per Definition and
-shared by every run. Lowering made every decision (ir-first design, target shape); codegen writes
+shared by every run. The body is compiled to a function once per emitted program
+(`run/instantiation.ts`) and instantiated per run. Lowering made every decision (ir-first design, target shape); codegen writes
 what each instruction says and nothing else.
 
 ## Entries
