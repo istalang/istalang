@@ -11,10 +11,12 @@
  * converted part by part is: a closure of the `wrapping` entry of its pair of types, capturing it.
  */
 
+import type { Argument } from '../../../../definition/instructions/calls.ts';
 import type { FunctionId, Register } from '../../../../definition/operands.ts';
 import type { CodeFunction } from '../../../../definition/tables/functions.ts';
 import type { TypeReference } from '../../../../definition/tables/types.ts';
 import { unreachable } from '../../../../foundation/structures/unreachable.ts';
+import type { MemberConversion } from '../../../checker/check.ts';
 import { type Fit, singleElement } from '../../../checker/types/fitting/fit/index.ts';
 import { resultFitBetween } from '../../../checker/types/fitting/part-pairs.ts';
 import { unfolded } from '../../../checker/types/type/computed-types.ts';
@@ -303,15 +305,7 @@ export function wrappingEntry(
   if (original === undefined) {
     unreachable('A wrapped function captures the function it calls.');
   }
-  const passed = code.parameters.map((parameter, index) => {
-    const taken = to.parameters[index];
-    const own = from.parameters[index];
-    if (taken === undefined || own === undefined || taken.reference) {
-      return code.passedOn(index);
-    }
-    const register = fittedIn(code, { value: parameter, type: taken.type }, own.type, at);
-    return { kind: 'value' as const, register };
-  });
+  const passed = fittedArguments(code, { called: to, met: from }, at);
   const called = emitCall(
     code,
     { span: at.span, callee: { kind: 'value', register: original }, arguments: passed },
@@ -334,21 +328,50 @@ function returnedAs(
   at: ConversionSite,
 ): Register {
   const result = resultFitBetween(code.checker, from, to);
-  switch (result.kind) {
-    case 'value':
-      return fittedIn(code, { value: called, type: from.result }, to.result, at);
-    case 'resolved':
-      return fittedIn(code, { value: called, type: result.value }, result.into, at);
-    case 'awaited': {
-      const how = rebuildingIn(code, applyingIn(at));
-      const { value, into } = result;
-      return convertedFuture(code, called, { value, into, type: to.result }, how);
-    }
-    default: {
-      const unhandled: never = result;
-      return unhandled;
-    }
+  if (result.kind !== 'awaited') {
+    return fittedResult(code, called, { met: from, called: to }, at);
   }
+  const how = rebuildingIn(code, applyingIn(at));
+  const { value, into } = result;
+  return convertedFuture(code, called, { value, into, type: to.result }, how);
+}
+
+/**
+ * What an entry standing for a call of `called` passes on, from its parameters past the first
+ * `skipped`, to a function of type `met`: each fitted into what `met` takes as the checker fits
+ * them, a `&` passed on as it is, since it never converts.
+ */
+export function fittedArguments(
+  code: SynthesizedCode,
+  { called, met }: MemberConversion<FunctionType | undefined>,
+  at: ConversionSite,
+  skipped = 0,
+): Argument[] {
+  return code.parameters.slice(skipped).map((value, offset) => {
+    const index = skipped + offset;
+    const given = called?.parameters[index];
+    const taken = met?.parameters[index];
+    if (given === undefined || taken === undefined || given.reference) {
+      return code.passedOn(index);
+    }
+    return { kind: 'value', register: fittedIn(code, { value, type: given.type }, taken.type, at) };
+  });
+}
+
+/**
+ * `result`, what a function of type `met` gave, converted into what a call of `called` gives, as
+ * the checker fits the two functions' results: a future's value where the call awaited it already.
+ */
+export function fittedResult(
+  code: SynthesizedCode,
+  result: Register,
+  { met, called }: MemberConversion<FunctionType>,
+  at: ConversionSite,
+): Register {
+  const fit = resultFitBetween(code.checker, met, called);
+  return fit.kind === 'value'
+    ? fittedIn(code, { value: result, type: met.result }, called.result, at)
+    : fittedIn(code, { value: result, type: fit.value }, fit.into, at);
 }
 
 /** `type`, whose value the checker converted into a shape, so a nominal struct. */

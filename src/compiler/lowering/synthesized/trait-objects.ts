@@ -29,12 +29,10 @@ import type { Argument } from '../../../definition/instructions/calls.ts';
 import type { Register } from '../../../definition/operands.ts';
 import type { FunctionDefinition } from '../../../definition/tables/functions.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
-import type { MemberConversion } from '../../checker/check.ts';
 import type { RequiredField } from '../../checker/surface/checked-field.ts';
-import { resultFitBetween } from '../../checker/types/fitting/part-pairs.ts';
 import { substitute } from '../../checker/types/parts/substitution.ts';
 import { kindOfFunction } from '../../checker/types/type/function-kinds.ts';
-import type { AnyType, FunctionType, Type } from '../../checker/types/type/index.ts';
+import type { AnyType, Type } from '../../checker/types/type/index.ts';
 import { awaitedOf } from '../../checker/types/type/well-known.ts';
 import { baseOf } from '../../checker/types/unions/union-members.ts';
 import { hasOneValue } from '../../checker/types/unions/unions.ts';
@@ -45,9 +43,8 @@ import {
   resultOfCall,
 } from '../calls/closed-calls.ts';
 import type { CodeContext } from '../context.ts';
-import { fittedIn } from '../functions/fits/index.ts';
+import { fittedArguments, fittedIn, fittedResult } from '../functions/fits/index.ts';
 import { codeModeOf } from '../functions/modes.ts';
-import type { ConversionSite } from '../tables/instances.ts';
 import { tableKey } from '../tables/names.ts';
 import { convertedIntoAny } from '../values/into-any.ts';
 import { readRequiredField } from '../values/required-fields.ts';
@@ -96,43 +93,22 @@ export function dispatchEntry(lowering: Lowering, dispatch: Dispatch): FunctionD
       );
     }
     const signatures = checker.traitObjects.memberSignatures(through, constraint, type, dispatch);
-    const passed = code.parameters.slice(1).map((value, index) => {
-      const called = signatures?.called.parameters[index + 1];
-      const met = signatures?.met.parameters[index + 1];
-      if (called === undefined || met === undefined || called.reference) {
-        return code.passedOn(index + 1);
-      }
-      const register = fittedIn(code, { value, type: called.type }, met.type, at);
-      return { kind: 'value' as const, register };
-    });
+    const passed = fittedArguments(
+      code,
+      { called: signatures?.called, met: signatures?.met },
+      at,
+      1,
+    );
     const self = memberReceiver(code, switched, { on, type, variant, references });
     const closed = closeWitness(witness, dispatch, checker);
     const call = code.call(closed, [self, ...passed]);
     const given = givesFuture ? code.await(call, resultOfCall(checker, closed)) : call;
-    code.return(signatures === undefined ? given : convertedResult(code, given, signatures, at));
+    code.return(signatures === undefined ? given : fittedResult(code, given, signatures, at));
   });
   const generic = dispatch.typeArguments.map((type) => tableKey(checker, type));
   const name = `${tableKey(checker, on)}.${required.name.text}${generic.length === 0 ? '' : `<${generic.join(', ')}>`}`;
   const header = tables.headerAt(name, checker.moduleOf(required), required.name.span);
   return code.entry(header);
-}
-
-/**
- * `result`, what a member's function of type `met` gave, converted into what a call of `called`
- * gives, as the checker fits the two functions' results: an async one's awaited already, so
- * converted as its future's value (§3.14).
- */
-function convertedResult(
-  code: SynthesizedCode,
-  result: Register,
-  { met, called }: MemberConversion<FunctionType>,
-  at: ConversionSite,
-): Register {
-  const fit = resultFitBetween(code.checker, met, called);
-  if (fit.kind === 'value') {
-    return fittedIn(code, { value: result, type: met.result }, called.result, at);
-  }
-  return fittedIn(code, { value: result, type: fit.value }, fit.into, at);
 }
 
 /** The entry converting a value of the `any` type `from` into `to`, whose constraints it has. */
