@@ -366,6 +366,14 @@ export function panicOf(error: unknown): Panic | undefined {
   return limit === undefined ? undefined : new Panic(limit, { cause: error });
 }
 
+/** What V8's RangeError says once the host's stack runs out. */
+const stackExhausted = 'Maximum call stack size exceeded';
+
+/** Whether `error` is the host's stack running out, which the recursion panic stands for (§5). */
+export function exhaustsStack(error: unknown): boolean {
+  return error instanceof RangeError && error.message === stackExhausted;
+}
+
 /**
  * What each limit's RangeError says, as V8 words it, and what the panic says instead: a string, an
  * array or an integer larger than JavaScript can hold is a limit, not a bug (§3.12). The engine
@@ -377,5 +385,5 @@ const limits = new Map([
   ['Invalid array length', 'The array would be longer than the runtime can hold.'],
   ['Maximum BigInt size exceeded', 'The integer would be larger than the runtime can hold.'],
   // Compiled code calls on the host's stack: recursion past it is the language's limit (§5).
-  ['Maximum call stack size exceeded', 'A call nests deeper than the runtime allows.'],
+  [stackExhausted, 'A call nests deeper than the runtime allows.'],
 ]);

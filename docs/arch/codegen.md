@@ -30,7 +30,9 @@ what each instruction says and nothing else.
   shape (design decision 3).
 - **Recursion** has no depth counter: the host's stack decides, and the run maps a stack overflow
   to the one panic, `A call nests deeper than the runtime allows.` (`runtime/natives.ts`,
-  `panicOf`); the spec's floor is 1,000 calls.
+  `panicOf`); the spec's floor is 1,000 calls. Its trace starts at the innermost frame standing
+  at a `call` (`run/traces.ts`), since the stack runs out wherever the depth the run began at puts
+  it in the cycle, a helper an instruction calls included.
 
 ## Lifetimes per register
 

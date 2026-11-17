@@ -14,12 +14,16 @@
  *   it: it runs none of its own code, so it shows none.
  * - A panic is a thrown `Panic`, or a host limit `panicOf` names (a stack overflow is the recursion
  *   panic); anything else thrown is a bug.
+ * - The recursion panic's trace starts at the call that nested too deep, the innermost frame
+ *   standing at a `call`: the host's stack runs out anywhere in the cycle, a runtime helper an
+ *   instruction calls included, so its innermost frame alone would depend on the stack's depth when
+ *   the run began, which a segment run again doesn't share (§10).
  */
 
 import type { Definition } from '../../definition/definition.ts';
 import type { CodeFunction } from '../../definition/tables/functions.ts';
 import { callerTraceText, type TracedFrame, traceText } from '../../definition/traces.ts';
-import { panicOf, wholeStack } from '../natives.ts';
+import { exhaustsStack, panicOf, wholeStack } from '../natives.ts';
 
 /** A stack frame's location: where it is, then its line and column. */
 const frameLocation = /(?<where>[^\s(@]+):(?<line>\d+):\d+\)?\s*$/u;
@@ -52,7 +56,13 @@ export class Traces {
       throw error;
     }
     const cause = panic.cause instanceof Error ? panic.cause : panic;
-    return { message: panic.message, trace: panic.trace ?? this.#of(cause.stack) };
+    if (panic.trace !== undefined) {
+      return { message: panic.message, trace: panic.trace };
+    }
+    const located = this.#located(cause.stack);
+    const call = exhaustsStack(cause) ? located.findIndex(({ calling }) => calling) : -1;
+    const frames = (call < 0 ? located : located.slice(call)).map(({ frame }) => frame);
+    return { message: panic.message, trace: traceText(this.#definition, frames) };
   }
 
   /** Where every running frame is, innermost first, as an `Error`'s `trace` reads (§3.12). */
@@ -73,14 +83,19 @@ export class Traces {
   }
 
   #frames(stack: string | undefined): TracedFrame[] {
+    return this.#located(stack).map(({ frame }) => frame);
+  }
+
+  /** The program's frames of `stack`, innermost first, each with whether it stands at a `call`. */
+  #located(stack: string | undefined): LocatedFrame[] {
     return locations(stack).flatMap(({ where, line }) => {
-      const frame = where === this.#where ? this.#frameAt(line - this.#shift) : undefined;
-      return frame === undefined ? [] : [frame];
+      const located = where === this.#where ? this.#frameAt(line - this.#shift) : undefined;
+      return located === undefined ? [] : [located];
     });
   }
 
   /** The frame standing at program line `line` (1-based), if it runs an instruction of its own. */
-  #frameAt(line: number): TracedFrame | undefined {
+  #frameAt(line: number): LocatedFrame | undefined {
     const [index, pc] = this.#lines[line - 1] ?? [];
     const entry = index === undefined ? undefined : this.#definition.functions[index];
     if (entry?.kind !== 'code' || pc === undefined) {
@@ -90,13 +105,20 @@ export class Traces {
     if (instruction?.kind === 'mocked') {
       return undefined;
     }
-    return {
+    const frame = {
       name: entry.name,
       module: entry.module,
       offset: instruction?.span.start ?? entry.span.start,
       inPrologue: pc < bodyStart(entry),
     };
+    return { frame, calling: instruction?.kind === 'call' };
   }
+}
+
+/** A program frame on the JS stack, and whether it stands at a `call`. */
+interface LocatedFrame {
+  readonly frame: TracedFrame;
+  readonly calling: boolean;
 }
 
 /** Where `entry`'s body begins: past its last default's, or at its start without one. */

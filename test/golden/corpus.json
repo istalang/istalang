@@ -27,7 +27,7 @@
     "frame": "at contexts/constant-read-while-made.sneaky (contexts/constant-read-while-made.ista:20:1)"
   },
   "contexts/constant-reads-itself.ista": {
-    "frame": "at contexts/constant-reads-itself.looped (contexts/constant-reads-itself.ista:17:1)"
+    "frame": "at contexts/constant-reads-itself.looped (contexts/constant-reads-itself.ista:17:26)"
   },
   "holders/live-eager-panic.ista": {
     "frame": "at holders/live-eager-panic.inner (holders/live-eager-panic.ista:9:3)"
