@@ -248,7 +248,7 @@ export class FlowWriter {
   /** Makes `register` `value`'s; a variable's, or a value read twice, is copied where taken. */
   bind(value: ValueId, register: Register): void {
     this.#registers.set(value, register);
-    if (this.valueOf(value).kind === 'variable' || (this.#uses.reads.get(value) ?? 0) > 1) {
+    if (this.valueOf(value).kind === 'variable' || (this.#uses.reads.get(value)?.length ?? 0) > 1) {
       this.context.code.pin(register);
     }
   }

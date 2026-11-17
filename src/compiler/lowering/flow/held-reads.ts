@@ -30,9 +30,9 @@ import {
   type Operation,
   transientsOf,
   type ValueId,
-  valuesReadBy,
 } from '../../checker/surface/flow-ir.ts';
 import { ownEntryOf } from '../tables/own-entries.ts';
+import { type FlowPosition, usesOf } from './uses.ts';
 import type { FlowWriter } from './writer.ts';
 
 /** What deciding a flow's held reads needs to know beyond the flow. */
@@ -109,23 +109,17 @@ interface Root {
   readonly reachable: boolean;
 }
 
-/** An operation of a flow, or its block's exit (`index` past the last operation). */
-interface Position {
-  readonly block: BlockId;
-  readonly index: number;
-}
-
 /** The reads of `flow` that hold their value, each the value it reads into. */
 export function heldReads(flow: FlowFunction, facts: ReadFacts): ReadonlySet<ValueId> {
   const reads = readsOf(flow, facts);
-  const uses = usesOf(flow);
+  const uses = usesOf(flow).reads;
   const graph = graphOf(flow);
   const judging = { ...facts, isVariable: (value: ValueId) => isVariableOf(flow, value) };
   const held = new Set<ValueId>();
   /** Where each read is used, itself or through a part of it holding nothing. */
-  const lasting = new Map<ValueId, readonly Position[]>();
+  const lasting = new Map<ValueId, readonly FlowPosition[]>();
   // Deciding a read decides the parts read out of it first, as they may make it last.
-  const decided = (value: ValueId, read: Read): readonly Position[] =>
+  const decided = (value: ValueId, read: Read): readonly FlowPosition[] =>
     memo(lasting, value, () => {
       const used = [
         ...(uses.get(value) ?? []),
@@ -183,7 +177,7 @@ function reached(starts: readonly BlockId[], next: (block: BlockId) => readonly 
 
 /** A read of a flow: where it is, its root, and the reads of parts of it, which borrow from it. */
 interface Read {
-  readonly at: Position;
+  readonly at: FlowPosition;
   readonly root: Root;
   readonly parts: ValueId[];
 }
@@ -237,32 +231,6 @@ function readOf(
   return undefined;
 }
 
-/** Where each value of `flow` is used: an operation reading it, or an exit testing or returning it. */
-function usesOf(flow: FlowFunction): ReadonlyMap<ValueId, readonly Position[]> {
-  const uses = new Map<ValueId, Position[]>();
-  const used = (value: ValueId, at: Position) => memo(uses, value, () => []).push(at);
-  for (const [block, { operations, exit }] of flow.blocks.entries()) {
-    for (const [index, operation] of operations.entries()) {
-      if (operation.op !== 'release' && operation.op !== 'keep') {
-        for (const value of valuesReadBy(operation)) {
-          used(value, { block, index });
-        }
-      }
-    }
-    for (const value of exitReads(exit)) {
-      used(value, { block, index: operations.length });
-    }
-  }
-  return uses;
-}
-
-function exitReads(exit: Exit): readonly ValueId[] {
-  if (exit.kind === 'branch' && 'value' in exit.test) {
-    return [exit.test.value];
-  }
-  return exit.kind === 'return' && exit.value !== undefined ? [exit.value] : [];
-}
-
 /**
  * Whether a path from the read at `at` meets an operation `changing` finds, then a use of it in
  * `used`, without reaching the read again; a call that changes it while using it counts. Only the
@@ -270,10 +238,10 @@ function exitReads(exit: Exit): readonly ValueId[] {
  */
 function changedBeforeUse(
   { flow, predecessors }: Graph,
-  { at, used }: { readonly at: Position; readonly used: readonly Position[] },
+  { at, used }: { readonly at: FlowPosition; readonly used: readonly FlowPosition[] },
   changing: (operation: Operation) => boolean,
 ): boolean {
-  const key = ({ block, index }: Position) => `${String(block)}:${String(index)}`;
+  const key = ({ block, index }: FlowPosition) => `${String(block)}:${String(index)}`;
   const usedAt = new Set(used.map(key));
   if (usedAt.size === 0) {
     return false;
@@ -313,7 +281,7 @@ function runsWhileUsing(operation: Operation | undefined): boolean {
 }
 
 /** Where control goes from `position`: the next operation, or where its block's exit goes. */
-function successors(flow: FlowFunction, { block, index }: Position): readonly Position[] {
+function successors(flow: FlowFunction, { block, index }: FlowPosition): readonly FlowPosition[] {
   const current = flow.blocks[block];
   if (current === undefined) {
     return [];
