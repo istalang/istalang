@@ -24,11 +24,11 @@
  * rest's.
  *
  * A module's functions are compared with each other and with the prelude's of the same name, which
- * they join (§3.13), a private one of the prelude's being no other module's to join; a static function with the others declared on what its owner names, as
+ * they join (§3.13): what the prelude exports, never a private function or an import of its own; a
+ * static function with the others declared on what its owner names, as
  * types/written/named-types.ts keys it, so an alias's are its type's (§3.17). A clash is reported
  * at the later declaration.
  */
-import { isPrivate } from '../../../../../foundation/language/naming.ts';
 import { addToGroup } from '../../../../../foundation/structures/groups.ts';
 import { memo } from '../../../../../foundation/structures/memo.ts';
 import { unreachable } from '../../../../../foundation/structures/unreachable.ts';
@@ -93,12 +93,12 @@ function preludeOverloads(
   module: ModuleId,
   declaration: FunctionDeclaration,
 ): readonly FunctionDeclaration[] {
-  const { text } = declaration.name;
-  return declaration.owner === undefined &&
-    module !== checker.inputs.role('prelude') &&
-    !isPrivate(text)
-    ? checker.languageFunctions('prelude', text)
-    : [];
+  const prelude = checker.inputs.role('prelude');
+  if (declaration.owner !== undefined || prelude === undefined || module === prelude) {
+    return [];
+  }
+  const exported = checker.bindings.exportsOf(prelude).get(declaration.name.text);
+  return exported?.kind === 'functions' ? checker.bindings.overloadsOf(exported) : [];
 }
 
 /**
