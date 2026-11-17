@@ -1,5 +1,5 @@
 /**
- * Completion scenarios LI of docs/work/completion/ (struct and variant literals), one test each.
+ * Completion scenarios LI of docs/work/done/completion/ (struct and variant literals), one test each.
  * A test named `<ID> <title>` pinned with `fails` is a scenario the server does not meet yet
  * (completion-scenarios.test-kit.ts).
  */

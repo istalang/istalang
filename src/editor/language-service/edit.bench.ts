@@ -2,7 +2,7 @@
  * How long an edit takes to reach an editor as diagnostics, measured with `npm run bench` and kept
  * out of `npm run verify`, as the parser's speed is (parse.bench.ts).
  *
- * The budget is docs/work/m6-m7/incremental-checking.md's (Acceptance, 7A.7): the median of 30
+ * The budget is docs/work/done/m6-m7/incremental-checking.md's (Acceptance, 7A.7): the median of 30
  * edits inside one function's body, from the new text to the edited module's diagnostics, on an
  * Apple M2 Max, is at most 5 ms for a 246-line module and 15 ms for a 2,098-line one. The modules
  * are project test modules over the shipped std: `prelude.test.ista`, and `decimal.test.ista` seven
@@ -10,7 +10,7 @@
  * editor's does, and changes a call's argument back and forth, so every iteration is an edit.
  *
  * A cold open is timed too: a new workspace's first diagnostics of the module, which check every
- * std body its functions reach (static lifetimes' summaries, docs/work/static-lifetimes/design.md
+ * std body its functions reach (static lifetimes' summaries, docs/work/done/static-lifetimes/design.md
  * §8). It has no budget of its own; the rule's share of both is design.md §8's, measured paired
  * against the rule off.
  *

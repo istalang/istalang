@@ -1,5 +1,5 @@
 /**
- * The scope protocol (docs/work/variance-inference/i2-scope.md §2): how each kind of expression
+ * The scope protocol (docs/work/done/variance-inference/i2-scope.md §2): how each kind of expression
  * stands toward the constraint scope it is checked in, one entry per kind, so a kind added to the
  * syntax tree fails to compile until it says. BodyScopes places an expression by it; what reads a
  * part settled instead (a callee, a condition, a subject) says so where it reads it

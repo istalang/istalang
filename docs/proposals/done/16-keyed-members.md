@@ -111,7 +111,7 @@ each read tracked field by field.
 
 ## Its first user
 
-FormBuilder (`docs/work/computed/design.md`):
+FormBuilder (`docs/work/done/computed/design.md`):
 - **The engine** declares `GroupScope<S>` and its keyed `index`.
 - **FormNode** gains `type Scope`, what an expression's read of the node gives, and `fn scope`:
   - every group's is its `GroupScope`, a mounted form's included;

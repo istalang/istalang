@@ -386,5 +386,5 @@ After the repository's rewrite (implementation note 9), every program that compi
 17. **`spawn` is no keyword,** but a runtime function in the deferred form, as `defer` is a prelude one.
 18. **Defaults are part of the function,** computed at the start of its call, as in JavaScript and Kotlin. They never affect the caller, and a deferred call computes them when it runs.
 19. **The language is separate from the runtime.** The compiler checks everything, the runtime contract is fixed, and a backend implements futures as it needs. Starting persistent work from live code, and every other runtime mechanism, is proposal 9's.
-20. **Conversions are subtyping** composed through variance, and `Fn`'s written `Kind` and `Send` parameters keep a higher-order function's mark and sendability (tracker F28, `docs/work/variance-inference/design.md` §7).
+20. **Conversions are subtyping** composed through variance, and `Fn`'s written `Kind` and `Send` parameters keep a higher-order function's mark and sendability (tracker F28, `docs/work/done/variance-inference/design.md` §7).
 21. **One function type, `Fn<Args, Result, Kind = "simple", Send = "plain">`,** `Args` a tuple, every spelling its sugar. The prelude has `Mark = "simple" | "live" | "ista"`, for data kinds and code marks, `Persistence`, its kinded subset, and `Sendability = "sendable" | "plain"`.

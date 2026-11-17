@@ -10,7 +10,7 @@ tags: [form-builder, alignment, specification, compiler]
 
 # Form Builder — Istalang Alignment Report
 
-**Archived.** This report validated the first runtime, `forms.ista`, which the computed runtime (`forms/`, `docs/work/computed/design.md`) replaced; its references to `forms.ista`, tasks, `ScopedView` and the spec's §8 numbering are to that version.
+**Archived.** This report validated the first runtime, `forms.ista`, which the computed runtime (`forms/`, `docs/work/done/computed/design.md`) replaced; its references to `forms.ista`, tasks, `ScopedView` and the spec's §8 numbering are to that version.
 
 Validation of `examples/FormBuilder` (`forms.ista`, `order.ista`, `supplier.ista`, `generate.ts`, `order.form.json`, `supplier.form.json`, `order.gen.ista`, `supplier.gen.ista`, and `form-builder-spec.md`) against the Istalang specification (`docs/spec.md`) and compiler (`ista check`).
 

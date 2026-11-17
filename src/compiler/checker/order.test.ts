@@ -1,6 +1,6 @@
 /**
  * A checker's answers are a function of its program, whatever was asked before them
- * (docs/work/m6-m7/incremental-checking.md, 7A.3), over hand-written programs: a cycle answers
+ * (docs/work/done/m6-m7/incremental-checking.md, 7A.3), over hand-written programs: a cycle answers
  * alike whichever member is asked first, and reports are made only inside entries. The sweep over
  * the corpus is order.sweep.ts.
  */

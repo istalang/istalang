@@ -80,7 +80,7 @@ function validEncoded(definition: Definition): EncodedDefinition {
 /**
  * The encoded Definition of the program rooted at `main`, with every std module, though static
  * lifetimes rejects its cycles (design.md §7): lowering reads no verdict of the rule, so tests run
- * such programs anyway, those the rule over-rejects (docs/work/static-lifetimes/findings.md).
+ * such programs anyway, those the rule over-rejects (docs/work/done/static-lifetimes/findings.md).
  * Throws at any other error.
  */
 export function encodedDespiteCycles(main: string): EncodedDefinition {

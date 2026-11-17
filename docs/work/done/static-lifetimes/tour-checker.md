@@ -53,7 +53,7 @@ rules are in [design.md](design.md) and the phases in [plan.md](plan.md). The un
   - The units are composed in `wiring/program/program-checker.ts` (`new Expansion(this)`).
   - The analysis joins `ModuleRules` the same way.
 - **Entries:** `checker.entries.table({name, compute, equal})` (`EntryTable`,
-  `src/foundation/structures/entries/index.ts`; `docs/work/m6-m7/incremental-checking.md` §1). The
+  `src/foundation/structures/entries/index.ts`; `docs/work/done/m6-m7/incremental-checking.md` §1). The
   cutoff compares an entry's value with `equal`.
   - Name everything by its body and its position in that body's IR, never by the syntax node: an
     edit makes new nodes for the edited body, and a node-keyed value is never equal.

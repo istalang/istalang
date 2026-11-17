@@ -1,6 +1,6 @@
 /**
  * Checkers made revision after revision of an edited program, each from the checker before it
- * (docs/work/m6-m7/incremental-checking.md, 7A.4, 7A.7), for the properties holding them to
+ * (docs/work/done/m6-m7/incremental-checking.md, 7A.4, 7A.7), for the properties holding them to
  * checkers made afresh, and to what they check themselves.
  *
  * Every run of a property starts from one first revision, checked once: a checker made from an

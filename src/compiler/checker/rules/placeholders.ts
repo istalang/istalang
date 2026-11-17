@@ -1,5 +1,5 @@
 /**
- * Placeholders of a constraint scope (docs/work/variance-inference/i2-scope.md §3): a variable no
+ * Placeholders of a constraint scope (docs/work/done/variance-inference/i2-scope.md §3): a variable no
  * declaration introduces, standing for the type of an expression the scope checks once it knows
  * what is expected of it (../constructs/expressions/postponed.ts), or of what several producers
  * agree on (open-agreement.ts).

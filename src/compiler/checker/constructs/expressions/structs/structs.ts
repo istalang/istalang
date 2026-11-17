@@ -238,7 +238,7 @@ function declaredShape(
 
 /**
  * A `struct{…}` of `shape` in a constraint scope that doesn't know yet what it builds
- * (docs/work/variance-inference/i2-scope.md §3): a placeholder of the scope, bounded below by its
+ * (docs/work/done/variance-inference/i2-scope.md §3): a placeholder of the scope, bounded below by its
  * shape, marked as one, and above by what it is `expected` to be, so a call choosing sees its
  * fields' types and it settles on a struct its fields give where one is expected (§3.1). The scope builds it once it knows what is expected of
  * it, of its fields as they were checked, so a field the scope postponed is told what it is

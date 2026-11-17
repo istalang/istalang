@@ -72,4 +72,4 @@ frame never waits in memory and a commit never lands mid-call.
   instructions become calls), mocks (a mocked function is called through the table) and spans for
   traces.
 - **Proposal 8's runtime keeps this open:** its live futures are promise-backed and ride the
-  host's event loop (`docs/work/async-kinds/phases.md`, R1b).
+  host's event loop (`docs/work/done/async-kinds/phases.md`, R1b).

@@ -1,7 +1,7 @@
 ---
 description: v0.1 toolchain plan — process, milestones and phases from scanner to packages; read before forking or reviewing any phase
 owner: tech-lead
-status: active
+status: done
 applies_to: istalang
 last_verified: 2026-10-24
 last_updated: 2026-10-29

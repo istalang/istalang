@@ -9,7 +9,7 @@
  * module's items and a trait's members, come after the rest, in the order their field lists them.
  *
  * A function's body is the one child not in a field: the tree holds it, so a declaration's node can
- * outlive an edit of its body (docs/work/m6-m7/incremental-checking.md). Traversal therefore takes
+ * outlive an edit of its body (docs/work/done/m6-m7/incremental-checking.md). Traversal therefore takes
  * the tree, and a function's children are its fields' and then its body. A walk that reaches bodies
  * its own way, as checking does through the reads it records, takes a node's field children alone.
  *

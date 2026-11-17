@@ -1,5 +1,5 @@
 /**
- * The completion scenario catalogue (docs/work/completion/scenarios.md) as tests: one `it` per
+ * The completion scenario catalogue (docs/work/done/completion/scenarios.md) as tests: one `it` per
  * scenario, named `<ID> <title>` so `vitest -t "TL-01 "` runs one. A scenario is data: a snippet
  * with the cursor marked `‸`, the request that asks for the list, what the list must hold, and the
  * place the service reads at the cursor (editor/language-service/completion/place.ts), tested apart

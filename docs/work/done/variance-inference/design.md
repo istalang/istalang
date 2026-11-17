@@ -11,7 +11,7 @@ tags: [design, checker, inference, variance, conversions, lowering, f25]
 # Identity, variance and inference — design
 
 Decided by the human on 2026-11-08; the plan is `plan.md`. This replaces tracker F25's options
-and the analysis in `docs/work/proposals/f25-expected-type-first.md`.
+and the analysis in `docs/work/done/proposals/f25-expected-type-first.md`.
 
 **Goals, in priority order:**
 1. Nothing surprises a user coming from TypeScript, Kotlin, Swift, C# or Rust.

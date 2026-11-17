@@ -10,7 +10,7 @@ tags: [proposal, checker, inference, generics, calls, f25]
 
 # F25: the expected type first
 
-> Superseded on 2026-11-08 by `docs/work/variance-inference/` (constraint-based inference with variance); kept for its prototype evidence.
+> Superseded on 2026-11-08 by `docs/work/done/variance-inference/` (constraint-based inference with variance); kept for its prototype evidence.
 
 Today the arguments of a generic call bind its type parameters first. The expected type fills only
 what they leave open, at instantiation (`conformance/conformance.ts` `instantiateAt`), after

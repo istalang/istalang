@@ -16,7 +16,7 @@
  * - A closure's `Send` joins its captures' (`capturedSend`), a captured `let` as the cell it lives
  *   in. A sendability variable passes through a captured function of it, so a wrapper keeps the
  *   sendability of what it wraps; any other level beside it joins to `plain`.
- * - **Relevance** (static lifetimes, docs/work/static-lifetimes/design.md §5.1) is whether a value
+ * - **Relevance** (static lifetimes, docs/work/done/static-lifetimes/design.md §5.1) is whether a value
  *   may reach a disposable, the most any part it holds says: a part inert itself says no; one
  *   known only per instantiation, a type parameter or a computed type its constraints don't make
  *   disposable, says it depends; any other says yes. A function whose `Send` is a variable says

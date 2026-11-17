@@ -1,5 +1,5 @@
 /**
- * Completion scenarios RB-10 to RB-13 and VC-01 to VC-03 of docs/work/completion/: the ones about
+ * Completion scenarios RB-10 to RB-13 and VC-01 to VC-03 of docs/work/done/completion/: the ones about
  * the protocol (positions past the end, unknown, burst-edited and untitled documents) and the VS
  * Code extension's settings, which no snippet can state. The extension's word pattern is JSON that
  * can't import the scanner, so VC-03 holds it to the scanner's identifiers. A test named `<ID>

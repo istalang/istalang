@@ -1,5 +1,5 @@
 /**
- * Entities outlive an edit that leaves their nodes alike (entities.ts; docs/work/m6-m7/
+ * Entities outlive an edit that leaves their nodes alike (entities.ts; docs/work/done/m6-m7/
  * incremental-checking.md, 7A.7): after an edit inside one function's body, every name outside that
  * body denotes the very entity it did before, over the corpus programs and std test modules.
  */

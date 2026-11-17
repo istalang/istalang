@@ -96,7 +96,7 @@ holds: a list its rows, a variant its cases, a hidden node the node it hides.
 
 ## Its first user
 
-FormBuilder (`docs/work/computed/design.md`): each model node's static `make` (`Field`, `Hidden`,
+FormBuilder (`docs/work/done/computed/design.md`): each model node's static `make` (`Field`, `Hidden`,
 `List`, `Variant`, `Group`) builds it from its type and optional data. Every generated factory and
 row maker goes, and so does `List.make`'s row closure, since a list's rows are `R.make`. With
 proposal 16, the generated module keeps the model types, the view and its expressions.

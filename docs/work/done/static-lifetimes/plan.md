@@ -1,7 +1,7 @@
 ---
 description: plan for static lifetimes — process, five checker phases (C1 flow IR and witness closing, C2 annotations, C3 the analysis, C4 the editor's cost, C5 lowering on the IR, dropped) and five runtime phases (R1 edges and oracle, R2 seams and identity, R3 counting, R4 amortized walks, R5 in-place values), with scope, acceptance, order, shared surfaces and diagnostic ranges; read before forking, planning or examining a static-lifetimes phase
 owner: tech-lead
-status: proposed
+status: done
 applies_to: istalang
 last_verified: 2026-11-12
 last_updated: 2026-11-13

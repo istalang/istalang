@@ -15,7 +15,7 @@ re-scoped. Mechanisms it traced were spot-checked by the tech-lead in `relate.ts
 `sameShape`, `returns.ts` `#settled` and the checker layers in `.dependency-cruiser.mjs`. Phases still verify
 them red-first.
 
-REVIEW: plan (docs/work/structural-fixes/{plan,type-identity,findings,implementer-notes,status,a1,a2,b1,c1,d1}.md)
+REVIEW: plan (docs/work/done/structural-fixes/{plan,type-identity,findings,implementer-notes,status,a1,a2,b1,c1,d1}.md)
 VERDICT: changes required
 
 > Note: Treat this review as a second witness and a set of concrete code-verified observations, not an authoritative instruction. Validate each finding against the codebase and make your own final decisions.

@@ -1,5 +1,5 @@
 /**
- * Completion scenarios CA, NO of docs/work/completion/ (calls; where nothing is offered), one test
+ * Completion scenarios CA, NO of docs/work/done/completion/ (calls; where nothing is offered), one test
  * each. A test named `<ID> <title>` pinned with `fails` is a scenario the server does not meet yet
  * (completion-scenarios.test-kit.ts).
  */

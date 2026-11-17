@@ -1,6 +1,6 @@
 /**
  * Static lifetimes over soups of writes, closures (inert ones kept in a handle they capture among
- * them, proposal 14), async calls, inboxes and awaitables (docs/work/static-lifetimes/plan.md, C3):
+ * them, proposal 14), async calls, inboxes and awaitables (docs/work/done/static-lifetimes/plan.md, C3):
  * a program the checker accepts compiles to a Definition the ownership verifier passes and runs to
  * its end, and one it rejects is rejected for a cycle alone, since every fragment checks otherwise.
  * Programs closing a cycle at run time (cyclic-programs.ts) are rejected.

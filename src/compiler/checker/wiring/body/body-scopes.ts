@@ -1,5 +1,5 @@
 /**
- * A body's constraint scopes (docs/work/variance-inference/i2-scope.md, constraint-scope.ts): which
+ * A body's constraint scopes (docs/work/done/variance-inference/i2-scope.md, constraint-scope.ts): which
  * one is current, and in which one each expression is checked, as the scope protocol places it
  * (scope-protocol.ts). BodyChecker checks and records; this decides the scope that happens in.
  *

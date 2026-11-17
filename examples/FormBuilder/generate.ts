@@ -5,7 +5,7 @@
 // localization), and finding whether an expression names a single-field row's variable, which
 // the closure then reads off the row as it runs.
 //
-// Output, per form and per local def (docs/work/computed/design.md):
+// Output, per form and per local def (docs/work/done/computed/design.md):
 //   a params struct and a ctx struct;
 //   a model struct (one node per path), which forms/ makes on a graph from its type;
 //   a view function building the view at a place, every expression a closure over what it sees:

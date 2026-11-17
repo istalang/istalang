@@ -1,4 +1,4 @@
-# A form's data: one node per path, holding its values (docs/work/computed/design.md).
+# A form's data: one node per path, holding its values (docs/work/done/computed/design.md).
 #
 # - Every value is pulled: a field's value, a hidden node's visibility and a list's rows are
 #   computeds of the graph, so nothing writes while a view is read. Only events set sources,

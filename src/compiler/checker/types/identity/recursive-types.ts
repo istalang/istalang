@@ -14,7 +14,7 @@
  *   unreduced while that use is a placeholder, which decides nothing. Once the group has closed,
  *   each one built from a node is reduced, joins the group as a body of its own, and the group
  *   closes again, so no graph keeps a computed type its own nodes decide (stage 2 of
- *   docs/work/proposals/p5-equi-recursive-identity.md).
+ *   docs/work/done/proposals/p5-equi-recursive-identity.md).
  * - A node is labelled with the alias it reads as: the group's own alias holding it, else the label
  *   of the node it copied; one made only to break a cycle has none. A label identifies nothing.
  * - A recursive type's parts replaced (substitution, `mapRecursive`) closes its graph again from

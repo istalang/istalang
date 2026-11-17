@@ -340,7 +340,7 @@ Its rules:
 
 ## 6. The runtime
 
-`forms/` is the runtime, on `computed.ista`; `docs/work/computed/design.md` gives its design. This section summarizes it.
+`forms/` is the runtime, on `computed.ista`; `docs/work/done/computed/design.md` gives its design. This section summarizes it.
 
 ### 6.1 The model
 

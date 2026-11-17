@@ -1,5 +1,5 @@
 ---
-description: joint review of proposals 12 (variadic tuples), 16 (keyed members) and 17 (field loops over a type) against each other, the spec and the code — consistency fixes, simplifications for the human (D1–D5), cohesion refactors and where each lands, with the code evidence; read before approving or implementing any phase of docs/work/keyed-members-type-loops/plan.md
+description: joint review of proposals 12 (variadic tuples), 16 (keyed members) and 17 (field loops over a type) against each other, the spec and the code — consistency fixes, simplifications for the human (D1–D5), cohesion refactors and where each lands, with the code evidence; read before approving or implementing any phase of docs/work/done/keyed-members-type-loops/plan.md
 owner: tech-lead
 status: active
 applies_to: istalang

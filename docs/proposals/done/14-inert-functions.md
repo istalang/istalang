@@ -36,7 +36,7 @@ no disposable at all.
       m->emitter.on(bump)       # 5721: a cycle holding Emitter, "which reaches a disposable"
   ```
 
-- **Computeds** (`docs/work/computed/design.md`, tracker F33). The library keeps each computed's
+- **Computeds** (`docs/work/done/computed/design.md`, tracker F33). The library keeps each computed's
   `refresh` closure in its `Dependency`. As written, it gets three 5722 errors: at the transient's
   restore, at `refresh`, and at `read`. Typing `refresh` as a `sendable fn` alone clears all
   three, which shows the plain function is the only cause. But `refresh` must capture a `Shared`
@@ -157,7 +157,7 @@ over-rejections), and tracker F33.
 
 ## Its first user
 
-The computed library (`docs/work/computed/design.md`) keeps its design:
+The computed library (`docs/work/done/computed/design.md`) keeps its design:
 - `refresh: inert fn(Dependency) -> Unit`;
 - `eval: inert fn() -> T`, with `Computed<T is Inert>`;
 - the version check that stops an update at an equal result.

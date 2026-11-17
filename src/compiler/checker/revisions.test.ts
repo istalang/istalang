@@ -1,5 +1,5 @@
 /**
- * A checker made after an earlier snapshot's (docs/work/m6-m7/incremental-checking.md, 7A.4,
+ * A checker made after an earlier snapshot's (docs/work/done/m6-m7/incremental-checking.md, 7A.4,
  * 7A.7), over hand-written programs: each revision answers as a checker made afresh after edits of
  * an imported module and of what a type depends on; after an edit of a module nothing imports, it
  * checks no body outside that module, and never a std body again; and after an edit inside one body

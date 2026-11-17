@@ -1,6 +1,6 @@
 /**
  * A checker's answers are a function of its program, whatever was asked before them
- * (docs/work/m6-m7/incremental-checking.md, 7A.3): over every corpus program and std test module,
+ * (docs/work/done/m6-m7/incremental-checking.md, 7A.3): over every corpus program and std test module,
  * the modules of `names/`, a cycle across two modules and the std modules themselves, asking the
  * modules in a random order after random lookups and bodies gives each module what asking in load
  * order gives; and every checker keys a type alike. It runs in slices, the

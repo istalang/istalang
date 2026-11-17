@@ -1,5 +1,5 @@
 /**
- * A module's check, and the diagnostics derived from it (docs/work/m6-m7/incremental-checking.md
+ * A module's check, and the diagnostics derived from it (docs/work/done/m6-m7/incremental-checking.md
  * §3). The check reads each top-level item's check, then the rules over the module as a whole:
  * clashes among its functions, endless expansion, the constraint checks noted for it by everything
  * it read, and the cycles static lifetimes rejects. Each is an entry, so a lookup can read one

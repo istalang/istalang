@@ -1,6 +1,6 @@
 /**
  * The corpus programs, each stating what it must do, so every phase that compiles or runs whole
- * programs reads them here and a new program is picked up by all of them (docs/work/toolchain-v0.1/
+ * programs reads them here and a new program is picked up by all of them (docs/work/done/toolchain-v0.1/
  * m3-slices.md, "Corpus format").
  *
  * - Programs live in `test/corpus/<topic>/…`, one module each, read recursively.

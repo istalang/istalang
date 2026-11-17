@@ -1,5 +1,5 @@
 /**
- * A constraint scope (docs/work/variance-inference/i2-scope.md): the one system of variables the
+ * A constraint scope (docs/work/done/variance-inference/i2-scope.md): the one system of variables the
  * generic calls and literals of an outermost expression infer in, the members that joined it, and
  * the records waiting for it to settle. The body's scopes hold the current one (body-scopes.ts);
  * what opened it settles it on every path, so no member is ever left unsettled.

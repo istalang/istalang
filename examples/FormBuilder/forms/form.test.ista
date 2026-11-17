@@ -1,6 +1,6 @@
 # The forms core on small forms of its own: what the order form doesn't use (defaults, computed
 # values and rows, a node two views write, variant tags, search) behaves as a pull: derived on
-# read, never written while a view is read (docs/work/computed/design.md).
+# read, never written while a view is read (docs/work/done/computed/design.md).
 
 import Suite, Test, test, assertEq from 'testing'
 import Graph from '../computed'

@@ -1,5 +1,5 @@
 /**
- * A checker made after an earlier snapshot's (docs/work/m6-m7/incremental-checking.md, 7A.4): over
+ * A checker made after an earlier snapshot's (docs/work/done/m6-m7/incremental-checking.md, 7A.4): over
  * random edit sequences on corpus programs and std test modules, each revision answers every
  * module's diagnostics and every query at every node of every module the test owns as a checker
  * made afresh does. It runs in slices, the `revisions-<n>.sweep.test.ts` beside it
