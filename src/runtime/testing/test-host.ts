@@ -4,17 +4,15 @@
  * except a host type's `dispose`, which does nothing: a test has nothing of its host's to release.
  */
 
-import type { Definition } from '../../definition/definition.ts';
+import type { Definition } from '../../definition/tables/index.ts';
+import { disposeOf, isResourceType } from '../../definition/tables/types.ts';
 import { type Native, type Natives, Panic } from '../natives.ts';
 
 /** A native for each extern of `definition` that `natives` lack (the banner). */
 export function unmockedExterns(definition: Definition, natives: Natives): Natives {
+  const { types } = definition;
   const releasing = new Set(
-    definition.types.flatMap((entry) =>
-      entry.kind === 'extern' && entry.role === undefined && entry.dispose !== undefined
-        ? [entry.dispose]
-        : [],
-    ),
+    types.flatMap((_, type) => (isResourceType(types, type) ? [disposeOf(types, type)] : [])),
   );
   const nothing: Native = () => null;
   return Object.fromEntries(

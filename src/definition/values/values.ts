@@ -159,7 +159,7 @@ interface ClosureOf<Child> {
   function: number;
   captures: Child[];
 }
-interface ExternValue {
+export interface ExternValue {
   kind: 'extern';
   type: number;
   payload: unknown;
@@ -250,6 +250,11 @@ export type CompositeValue = Exclude<Value, null | boolean | string | bigint | n
  */
 export function samePayload(first: unknown, second: unknown): boolean {
   return first === second || encodeJson(first) === encodeJson(second);
+}
+
+/** A value of extern type entry `type`, holding `payload`. */
+export function externValue(type: number, payload: unknown): ExternValue {
+  return { kind: 'extern', type, payload };
 }
 
 /** A handle to heap object `object`. */

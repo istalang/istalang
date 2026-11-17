@@ -20,7 +20,8 @@ import { loadHostModule } from '../../../src/cli/host-module.ts';
 import type { EmittedProgram } from '../../../src/codegen/emit.ts';
 import { compileProgram, diagnose } from '../../../src/compiler/compile.ts';
 import { type ModuleId, moduleIdOf, type Program } from '../../../src/compiler/program/program.ts';
-import { type Definition, encodeDefinition } from '../../../src/definition/definition.ts';
+import { encodeDefinition } from '../../../src/definition/definition.ts';
+import type { Definition } from '../../../src/definition/tables/index.ts';
 import { isError } from '../../../src/foundation/diagnostics/diagnostic.ts';
 import { tempProject } from '../../../src/project/project.test-kit.ts';
 import { loadProject } from '../../../src/project/project.ts';
@@ -164,7 +165,7 @@ export async function observeCompiled(
   const observed = await shownByRun(definition, host, start, readBack);
   const { ending: ended } = observed;
   return 'frame' in ended
-    ? { ...observed, ending: { ...ended, frame: relativeFrame(program.directory, ended.frame) } }
+    ? { ...observed, ending: { ...ended, frame: relativeLocation(program.directory, ended.frame) } }
     : observed;
 }
 
@@ -196,12 +197,12 @@ export async function runSuite(project: SuiteProject, paths: readonly string[]):
 
 /** `trace`'s innermost frame of the program's own, its file named relative to `directory`. */
 export function frameIn(directory: string, trace: string): string {
-  return relativeFrame(directory, innermostOwnFrame(trace));
+  return relativeLocation(directory, innermostOwnFrame(trace));
 }
 
-/** `frame`, a trace's, its file named relative to `directory`. */
-function relativeFrame(directory: string, frame: string): string {
-  return frame.replace(pathToFileURL(directory).href, '');
+/** `located`, a trace's frame or a location in code, its file named relative to `directory`. */
+export function relativeLocation(directory: string, located: string): string {
+  return located.replace(pathToFileURL(directory).href, '');
 }
 
 /** The externs `program`'s host module implements, loaded afresh; none without one. */

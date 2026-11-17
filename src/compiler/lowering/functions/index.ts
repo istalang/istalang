@@ -26,7 +26,7 @@
 import type { FunctionId, Register } from '../../../definition/operands.ts';
 import type { CodeFunction } from '../../../definition/tables/functions.ts';
 import type { Value } from '../../../definition/values/values.ts';
-import { wellKnown } from '../../../foundation/language/well-known/index.ts';
+import { type Persistence, wellKnown } from '../../../foundation/language/well-known/index.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { Checker } from '../../checker/check.ts';
 import type { CheckedBody } from '../../checker/surface/checked-body.ts';
@@ -47,7 +47,6 @@ import type { Block } from '../../syntax/statements/index.ts';
 import type { NodeOf } from '../../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 import { type ClosedCall, closeCallWithin } from '../calls/closed-calls.ts';
-import type { WaitingMode } from '../calls/waits.ts';
 import { awaitFuture } from '../calls/waits.ts';
 import type { FunctionContext } from '../context.ts';
 import { VariableRegisters } from '../flow/variables.ts';
@@ -163,7 +162,7 @@ class FunctionLowering implements EntryContext {
       : noSubstitution;
   }
 
-  waitingMode(): WaitingMode {
+  waitingMode(): Persistence {
     const { mode } = this.frame;
     return mode === 'simple'
       ? unreachable(`Simple code waits in ${this.frame.header.name}.`)

@@ -22,6 +22,7 @@ import type { FunctionId, Register } from '../../../definition/operands.ts';
 import type { CodeFunction, CodeMode } from '../../../definition/tables/functions.ts';
 import type { TypeReference } from '../../../definition/tables/types.ts';
 import type { Value } from '../../../definition/values/values.ts';
+import type { Persistence } from '../../../foundation/language/well-known/index.ts';
 import { resultVariants } from '../../../foundation/language/well-known/variants.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { Checker } from '../../checker/check.ts';
@@ -29,7 +30,7 @@ import type { AnonymousStructType, NominalType, Type } from '../../checker/types
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 import { type ClosedCall, resultOfCall } from '../calls/closed-calls.ts';
 import { emitCall, emitFunctionCall, referenceTo } from '../calls/emit-call.ts';
-import { awaitFuture, type WaitingMode } from '../calls/waits.ts';
+import { awaitFuture } from '../calls/waits.ts';
 import type { CodeContext } from '../context.ts';
 import { CodeWriter } from '../functions/code-writer.ts';
 import { emitConstant } from '../tables/constants.ts';
@@ -79,7 +80,7 @@ export class SynthesizedCode implements CodeContext {
     return this.tables.types.reference(type);
   }
 
-  waitingMode(): WaitingMode {
+  waitingMode(): Persistence {
     return this.mode === 'simple' ? unreachable('Synthesized simple code waits.') : this.mode;
   }
 

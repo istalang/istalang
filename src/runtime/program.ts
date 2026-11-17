@@ -12,9 +12,9 @@
  */
 
 import { type EmittedProgram, emitProgram } from '../codegen/emit.ts';
-import type { Definition, KeyedDefinition } from '../definition/definition.ts';
-import { jsonText, jsonTypeOf, plainOfJson } from '../definition/values/json-values.ts';
-import type { Value } from '../definition/values/values.ts';
+import type { KeyedDefinition } from '../definition/definition.ts';
+import type { Definition } from '../definition/tables/index.ts';
+import { jsonTypeOf, plainOfJson } from '../definition/values/json-values.ts';
 import { memo } from '../foundation/structures/memo.ts';
 import { type HostExterns, withHost } from './boundary/host-natives.ts';
 import type { Clock } from './clock.ts';
@@ -92,7 +92,8 @@ export async function startLive(
     },
     () => (readBack === undefined ? program : { ...program, emitted: readBack() }),
   );
-  const { state, logs: own } = await deployed(world, program).start(start.instance ?? 'run', {
+  const started = deployed(world, program);
+  const { state, logs: own } = await started.start(start.instance ?? 'run', {
     ...(start.key === undefined ? {} : { function: start.key }),
     ...(start.arguments === undefined ? {} : { arguments: start.arguments }),
     ...(start.crashEveryAwait === undefined ? {} : { crashEveryAwait: start.crashEveryAwait }),
@@ -100,16 +101,18 @@ export async function startLive(
   logs.push(...own);
   switch (state.kind) {
     case 'finished':
-      return { end: finished(definition, state.encoded ?? state.outcome), logs };
+      return {
+        end: {
+          kind: 'finished',
+          outcome: plainOfJson(state.encoded ?? state.outcome, jsonTypeOf(definition.types)),
+          text: started.outcomeText(state),
+        },
+        logs,
+      };
     case 'panicked':
     case 'terminated':
       return { end: { kind: 'panicked', message: state.message, trace: state.trace }, logs };
     default:
       return { end: { kind: 'unsettled' }, logs };
   }
-}
-
-function finished(definition: Definition, outcome: Value): LiveEnd {
-  const shape = jsonTypeOf(definition.types);
-  return { kind: 'finished', outcome: plainOfJson(outcome, shape), text: jsonText(outcome, shape) };
 }

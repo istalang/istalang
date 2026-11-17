@@ -9,14 +9,10 @@
  *   program of one module around entries.
  */
 
-import {
-  type Definition,
-  type EncodedDefinition,
-  encodeDefinition,
-  type KeyedDefinition,
-} from './definition.ts';
+import { type EncodedDefinition, encodeDefinition, type KeyedDefinition } from './definition.ts';
 import type { Instruction } from './instructions/instruction.ts';
 import type { CodeFunction, CodeMode, FunctionDefinition } from './tables/functions.ts';
+import type { Definition } from './tables/index.ts';
 
 /** Where hand-written code stands: nowhere in a source. */
 export const noSpan = { start: 0, end: 0 };

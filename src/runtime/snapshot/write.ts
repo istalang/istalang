@@ -12,7 +12,7 @@
 
 import { bytesToHex } from '@noble/hashes/utils.js';
 import { replacingParts } from '../../definition/values/replacing.ts';
-import { depthOf, maximumDepth, type Value } from '../../definition/values/values.ts';
+import { depthOf, handleTo, maximumDepth, type Value } from '../../definition/values/values.ts';
 import { unreachable } from '../../foundation/structures/unreachable.ts';
 import type { Instance } from '../run/instances.ts';
 import { Cell } from '../run/objects/cell.ts';
@@ -62,7 +62,7 @@ export function snapshotOf(run: Run, written: Written): Snapshot {
       throw new TooDeep(depth);
     }
     return replacingParts(value, (part) =>
-      part instanceof RunObject ? { kind: 'handle', object: named(part) } : undefined,
+      part instanceof RunObject ? handleTo(named(part)) : undefined,
     );
   };
   const state = run.persisted();

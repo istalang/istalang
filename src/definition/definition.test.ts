@@ -7,13 +7,13 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { compiledEncoded } from '../compiler/compile.test-kit.ts';
 import {
-  type Definition,
   embeddedDefinition,
   embeddedText,
   encodeDefinition,
   readDefinition,
 } from './definition.ts';
 import { FormatError } from './formats/format.ts';
+import type { Definition } from './tables/index.ts';
 import { valueArbitrary } from './values/values.test-kit.ts';
 
 const {

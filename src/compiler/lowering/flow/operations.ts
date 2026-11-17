@@ -20,7 +20,7 @@
 
 import type { Argument as DefinitionArgument } from '../../../definition/instructions/calls.ts';
 import type { Register } from '../../../definition/operands.ts';
-import { wellKnown } from '../../../foundation/language/well-known/index.ts';
+import { type Persistence, wellKnown } from '../../../foundation/language/well-known/index.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import { type ConstantForm, literalTypeForm } from '../../checker/surface/constant-form.ts';
 import type { Argument, Operation, ValueId } from '../../checker/surface/flow-ir.ts';
@@ -33,14 +33,7 @@ import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 import { type ClosedCall, calledParameters, substitutionOfCall } from '../calls/closed-calls.ts';
 import { emitCall, emitFunctionCall } from '../calls/emit-call.ts';
 import { packElementsOf } from '../calls/packs.ts';
-import {
-  caseResolver,
-  caseValue,
-  openWait,
-  parked,
-  type WaitingMode,
-  waitRegisters,
-} from '../calls/waits.ts';
+import { caseResolver, caseValue, openWait, parked, waitRegisters } from '../calls/waits.ts';
 import { nestedSpanOf } from '../functions/bodies.ts';
 import { constantValue } from '../tables/constants.ts';
 import { ownEntryOf } from '../tables/own-entries.ts';
@@ -368,7 +361,7 @@ function awaitedBy(
  * gives once it settles, `T`, and the kind its wait waits in, `K` (proposal 8, Rule 5), which code
  * that never parks, a `select` with an `else`, has of its awaitable.
  */
-function resolverArguments(writer: FlowWriter, closed: ClosedCall): readonly [Type, WaitingMode] {
+function resolverArguments(writer: FlowWriter, closed: ClosedCall): readonly [Type, Persistence] {
   const { checker } = writer.context;
   const done = calledParameters(checker, closed)[1]?.type;
   const resolver =

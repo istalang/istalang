@@ -16,7 +16,7 @@
 
 import { isResourceType, type TypeReference } from '../../definition/tables/types.ts';
 import { replacingParts } from '../../definition/values/replacing.ts';
-import type { Value } from '../../definition/values/values.ts';
+import { type ExternValue, externValue, type Value } from '../../definition/values/values.ts';
 import { Panic } from '../natives.ts';
 import { Future } from './objects/future.ts';
 import type { MockObject } from './objects/mock-object.ts';
@@ -144,10 +144,10 @@ function arrived(caller: Run, value: Value, within: boolean): Value {
  * `value` crossing between a caller and a mock, rebuilt: each host value in it, as its host's JSON,
  * made what `hosted` makes it; any other handle kept `within` one instance, else refused (§10).
  */
-function crossing(value: Value, within: boolean, hosted: (part: HostJson) => Value): Value {
+function crossing(value: Value, within: boolean, hosted: (part: ExternValue) => Value): Value {
   return replacingParts(value, (part) => {
     if (part instanceof Resource) {
-      return hosted({ kind: 'extern', type: part.type, payload: part.payload });
+      return hosted(externValue(part.type, part.payload));
     }
     if (part instanceof RunObject) {
       if (within) {
@@ -159,11 +159,8 @@ function crossing(value: Value, within: boolean, hosted: (part: HostJson) => Val
   });
 }
 
-/** A host value as its host has it: its extern type and its JSON. */
-type HostJson = Extract<Value, { readonly kind: 'extern' }>;
-
 /** A host value left as its host's JSON. */
-function hostJson(part: HostJson): Value {
+function hostJson(part: ExternValue): Value {
   return part;
 }
 

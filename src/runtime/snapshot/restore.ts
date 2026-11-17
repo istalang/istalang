@@ -11,13 +11,13 @@
  *   holder it is read under. A disposed object holds nothing, its disposal having let go of it.
  */
 
-import type { Definition } from '../../definition/definition.ts';
 import {
   type CodeFunction,
   parkAt,
   startsExecution,
   transientRegistersOf,
 } from '../../definition/tables/functions.ts';
+import type { Definition } from '../../definition/tables/index.ts';
 import { lifetimeOf } from '../../definition/tables/types.ts';
 import { replacingParts } from '../../definition/values/replacing.ts';
 import type { Value } from '../../definition/values/values.ts';

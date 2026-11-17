@@ -11,7 +11,7 @@
  *   deep, as the start ends.
  */
 
-import type { Tables } from '../../definition/tables/index.ts';
+import type { Definition } from '../../definition/tables/index.ts';
 import {
   JsonError,
   jsonOfPlain,
@@ -21,9 +21,9 @@ import {
 import type { Value } from '../../definition/values/values.ts';
 import { Refusal } from '../refusal.ts';
 
-type Startable = Pick<Tables, 'functions' | 'starts' | 'purpose'>;
+type Startable = Pick<Definition, 'functions' | 'starts' | 'purpose'>;
 
-type Start = Tables['starts'][number];
+type Start = Definition['starts'][number];
 
 /** The start of the function `key` names, or `main`'s; refused when `count` doesn't fit. */
 export function startOf(program: Startable, key: string | undefined, count: number): Start {
@@ -42,12 +42,12 @@ export function startOf(program: Startable, key: string | undefined, count: numb
 }
 
 /** A host's JSON as a `Json` value; refused when it holds what JSON can't. */
-export function jsonIn(program: Pick<Tables, 'types'>, json: unknown): Value {
+export function jsonIn(program: Pick<Definition, 'types'>, json: unknown): Value {
   return refusingUnfit('unfitJson', () => jsonOfPlain(json, jsonTypeOf(program.types)));
 }
 
 /** Refuses `outcome`, a start's encoded `Json`, when JSON can't hold it. */
-export function checkJsonOut(program: Pick<Tables, 'types'>, outcome: Value): void {
+export function checkJsonOut(program: Pick<Definition, 'types'>, outcome: Value): void {
   refusingUnfit('noJsonForm', () => plainOfJson(outcome, jsonTypeOf(program.types)));
 }
 

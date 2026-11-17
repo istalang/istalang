@@ -9,11 +9,11 @@
  */
 
 import {
-  type Definition,
   type EncodedDefinition,
   encodeDefinition,
   requireValid,
 } from '../definition/definition.ts';
+import type { Definition } from '../definition/tables/index.ts';
 import { isError } from '../foundation/diagnostics/diagnostic.ts';
 import { memo } from '../foundation/structures/memo.ts';
 import { stdProgramOf } from './binder/bind.test-kit.ts';

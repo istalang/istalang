@@ -10,9 +10,9 @@
  * accepted, so it reports nothing; anything it can't lower is a bug in an earlier phase and throws.
  */
 
-import type { Definition } from '../../definition/definition.ts';
 import type { FunctionId } from '../../definition/operands.ts';
 import type { FunctionDefinition } from '../../definition/tables/functions.ts';
+import type { Definition } from '../../definition/tables/index.ts';
 import { languageModules, runtimeModule } from '../../foundation/language/well-known/index.ts';
 import { jobFunctions } from '../../foundation/language/well-known/jobs.ts';
 import { testingFunctions } from '../../foundation/language/well-known/testing.ts';

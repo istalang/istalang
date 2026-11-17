@@ -20,11 +20,8 @@ import process from 'node:process';
 import { bindProgram } from '../../src/compiler/binder/bind.ts';
 import { compileProgram, compileTests, diagnose } from '../../src/compiler/compile.ts';
 import type { Program } from '../../src/compiler/program/program.ts';
-import {
-  type Definition,
-  type EncodedDefinition,
-  encodeDefinition,
-} from '../../src/definition/definition.ts';
+import { type EncodedDefinition, encodeDefinition } from '../../src/definition/definition.ts';
+import type { Definition } from '../../src/definition/tables/index.ts';
 import { realTime } from '../../src/runtime/clock.ts';
 import { createRuntime } from '../../src/runtime/host/index.ts';
 import { memoryStore } from '../../src/runtime/store.ts';

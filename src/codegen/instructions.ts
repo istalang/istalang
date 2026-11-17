@@ -21,7 +21,11 @@ import {
 } from '../definition/instructions/instruction.ts';
 import type { Place } from '../definition/instructions/places.ts';
 import type { Register } from '../definition/operands.ts';
-import type { CodeFunction, FunctionDefinition } from '../definition/tables/functions.ts';
+import {
+  type CodeFunction,
+  type FunctionDefinition,
+  transientRegistersOf,
+} from '../definition/tables/functions.ts';
 import type { TypeDefinition } from '../definition/tables/types.ts';
 import { disposeOf, lifetimeOf } from '../definition/tables/types.ts';
 import type { Value } from '../definition/values/values.ts';
@@ -220,9 +224,7 @@ const emitters: Handlers<EntryScope, Instruction, [], string> = {
     `${register(i.dst)} = ${primitiveExpressions[i.op](i.operands.map(register))};`,
   newCell: (scope, i) => {
     const counted = lifetime(scope, i.dst) === 'counted';
-    const shared = scope.entry.instructions.some(
-      (each) => each.kind === 'transient' && each.dst === i.dst,
-    );
+    const shared = transientRegistersOf(scope.entry).includes(i.dst);
     const type = scope.entry.registers[i.dst]?.type;
     const dispose = type?.kind === 'named' ? disposeOf(scope.types, type.type) : undefined;
     const made_ = `${register(i.dst)} = cell(${register(i.value)}, ${counted}${dispose === undefined ? '' : `, ${dispose}`});${movedOut(scope, i)}`;
@@ -306,12 +308,8 @@ const emitters: Handlers<EntryScope, Instruction, [], string> = {
 
 /** Before a `return`: the transients this call shared stop being shared with calls nested later. */
 function transientEnds(scope: EntryScope): string {
-  return scope.entry.instructions
-    .flatMap((each) =>
-      each.kind === 'transient'
-        ? [`unshareTransient(${scope.index}, ${each.dst}, ${register(each.dst)}); `]
-        : [],
-    )
+  return transientRegistersOf(scope.entry)
+    .map((each) => `unshareTransient(${scope.index}, ${each}, ${register(each)}); `)
     .join('');
 }
 

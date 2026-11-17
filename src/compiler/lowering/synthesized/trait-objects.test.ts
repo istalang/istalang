@@ -11,7 +11,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { corpusDirectory } from '../../../../test/corpus/programs.ts';
-import type { Definition } from '../../../definition/definition.ts';
+import type { Definition } from '../../../definition/tables/index.ts';
 import { startToEnd, testRuntime } from '../../../runtime/runtime.test-kit.ts';
 import { stdProgramOf } from '../../binder/bind.test-kit.ts';
 import { compiledDefinition, compiledEncoded } from '../../compile.test-kit.ts';

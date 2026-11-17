@@ -12,7 +12,7 @@
 import fc from 'fast-check';
 import { expect } from 'vitest';
 import { type EmittedProgram, emitProgram } from '../../../src/codegen/emit.ts';
-import type { Definition } from '../../../src/definition/definition.ts';
+import type { Definition } from '../../../src/definition/tables/index.ts';
 import { observeCompiled } from '../../golden/pipeline/index.ts';
 import type { ProgramSubject } from '../../golden/subjects.ts';
 import { type Check, compiledOf, observedOf } from '../swept.ts';

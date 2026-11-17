@@ -13,7 +13,7 @@ tags: [reuse, values, equality, maps, json, natives, runtime]
 ## Units
 
 - narrow a `Value` to composite, array, map or closure → `isComposite`, `elementsOf`, `mapValueOf`, `handleTarget`, `closureOf` (`src/definition/values/values.ts`)
-- make a handle to a heap object → `handleTo` (`src/definition/values/values.ts`)
+- make a handle to a heap object, or a value of an extern type holding its payload → `handleTo`, `externValue` (`src/definition/values/values.ts`)
 - read or replace a composite's children or depth, or get the maximum persisted value depth → `childValues`, `withChildValues`, `depthOf`, `maximumDepth`, `samePayload` (`src/definition/values/values.ts`)
 - rebuild a value with some of its parts replaced, at any depth, on a stack of its own → `replacingParts` (`src/definition/values/replacing.ts`)
 - read or build a struct `Value` by declared name → `fieldValueOf`, `structOf` (`src/definition/values/declared-values.ts`)
@@ -40,7 +40,7 @@ tags: [reuse, values, equality, maps, json, natives, runtime]
 ## One-way rules
 
 - Build and read structs, variants, `Optional`, `Result` and `Error` by declared name (`declared-values.ts`, `values/arguments.ts`, `values/results.ts`), never by positional index.
-- Narrow closures with `closureOf` and handles with `handleTarget`, and make handles with `handleTo` (`src/definition/values/values.ts`), never with ad-hoc `isComposite(v) && v.kind === ...` checks or `{ kind: 'handle', … }` literals.
+- Narrow closures with `closureOf` and handles with `handleTarget`, and make handles with `handleTo` and extern values with `externValue` (`src/definition/values/values.ts`), never with ad-hoc `isComposite(v) && v.kind === ...` checks or `{ kind: 'handle' | 'extern', … }` literals.
 - Values are immutable to everything but `Lifetimes.owned` (`src/runtime/run/lifetimes.ts`) and `mapOf`'s own build: never mutate `fields`, `elements`, `entries` or `captures` elsewhere; write what `owned` gives, or rebuild with `withChildValues`.
 - Data keyed by a node's identity (summaries, hashes, maps' tables, the JSON written of it, the host's object of it) is forgotten by `Lifetimes.owned` as it gives a node to change in place: a new cache keyed by a composite joins it there, and a cache keeping values holds them for good (`WrittenJson`, which shares them).
 - A composite is shared by identity: a copy, a part a rebuild kept, a constant every instance reads, and a value in a snapshot restored twice in memory can be one object. Data keyed by a composite's identity (a `WeakMap`, as `values.ts`'s summaries) describes the value wherever it is; what describes one place or one instance's use of it is kept per instance, never on the value.

@@ -5,7 +5,6 @@
  */
 
 import { readFileSync } from 'node:fs';
-import { pathToFileURL } from 'node:url';
 import { type EncodedDefinition, encodeDefinition } from '../../../src/definition/definition.ts';
 import { ManualClock } from '../../../src/runtime/clock.ts';
 import { createRuntime, type Runtime } from '../../../src/runtime/host/index.ts';
@@ -16,7 +15,7 @@ import { type InstanceStore, memoryStore } from '../../../src/runtime/store.ts';
 import { stdNatives } from '../../../src/stdlib/natives.ts';
 import { logLine, withoutEmpty } from '../observation.ts';
 import type { Scenario } from '../scenarios.ts';
-import { compiledAt, frameIn, hostOf, recording } from './index.ts';
+import { compiledAt, frameIn, hostOf, recording, relativeLocation } from './index.ts';
 
 /** What each step of `scenario` showed, in order (scenarios.ts). */
 export async function observeScenario(scenario: Scenario): Promise<readonly unknown[]> {
@@ -124,11 +123,10 @@ function inspectionShown(
   instance: string,
   { state, waitingAt }: Inspection,
 ): Record<string, unknown> {
-  const relative = pathToFileURL(world.directory).href;
   return {
     ...stateShown(world, instance, state),
     waitingAt: waitingAt.map(({ waypoint, location }) =>
-      withoutEmpty({ waypoint, location: location.replace(relative, '') }),
+      withoutEmpty({ waypoint, location: relativeLocation(world.directory, location) }),
     ),
   };
 }

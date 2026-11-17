@@ -13,7 +13,7 @@ import { z } from 'zod';
 import { encodeJson } from '../../../definition/formats/codec.ts';
 import type { FunctionId } from '../../../definition/operands.ts';
 import type { FunctionDefinition } from '../../../definition/tables/functions.ts';
-import type { Purpose, Tables } from '../../../definition/tables/index.ts';
+import type { Definition, Purpose } from '../../../definition/tables/index.ts';
 import { type Value, value } from '../../../definition/values/values.ts';
 import { memo } from '../../../foundation/structures/memo.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
@@ -109,7 +109,7 @@ export type EntryHeader = Pick<FunctionDefinition, 'name' | 'module' | 'span' | 
 export class DefinitionTables {
   readonly #checker: Checker;
   readonly types: TypeTable;
-  readonly #modules: (Tables['modules'][number] & { readonly id: ModuleId })[] = [];
+  readonly #modules: (Definition['modules'][number] & { readonly id: ModuleId })[] = [];
   readonly #moduleIndexes = new Map<ModuleId, number>();
   readonly #constants: Value[] = [];
   readonly #constantIndexes = new Map<string, number>();
@@ -119,7 +119,7 @@ export class DefinitionTables {
   readonly #closing: (ClosingEntry & { readonly index: FunctionId })[] = [];
   /** How many variants its `any` type had when each closing entry was last written. */
   readonly #writtenFor = new Map<FunctionId, number>();
-  readonly #starts: Tables['starts'][number][] = [];
+  readonly #starts: Definition['starts'][number][] = [];
 
   /** Whether the Definition runs tests, whose functions a mock may replace (§10). */
   readonly mocking: boolean;
@@ -379,7 +379,7 @@ export class DefinitionTables {
   }
 
   /** The finished tables, every referenced function lowered, for `purpose`. */
-  finish(purpose: Purpose): Tables {
+  finish(purpose: Purpose): Definition {
     const functions = this.#functions.map((entry, index) => {
       if (entry === undefined) {
         unreachable(`Function ${index} was referenced but never lowered.`);

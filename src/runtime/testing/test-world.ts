@@ -19,9 +19,9 @@
  */
 
 import type { EmittedProgram } from '../../codegen/emit.ts';
-import type { Definition } from '../../definition/definition.ts';
 import type { TypeId } from '../../definition/operands.ts';
-import type { Value } from '../../definition/values/values.ts';
+import type { Definition } from '../../definition/tables/index.ts';
+import { externValue, type Value } from '../../definition/values/values.ts';
 import { jobWaypoint } from '../../foundation/language/well-known/jobs.ts';
 import type { Clock } from '../clock.ts';
 import { DurableWorld } from '../host/durable-world.ts';
@@ -153,7 +153,7 @@ class TestHost implements TestingWorld {
 
   readonly handle = (type: TypeId): Value => {
     this.#handles += 1;
-    return { kind: 'extern', type, payload: `testing.handle/${String(this.#handles)}` };
+    return externValue(type, `testing.handle/${String(this.#handles)}`);
   };
 
   /** Settles every wait whose condition holds; whether any did. */

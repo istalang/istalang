@@ -16,8 +16,8 @@
  *   starts; a start of the other kind is a lowering bug.
  */
 
-import type { Definition } from '../../definition/definition.ts';
 import type { CodeFunction } from '../../definition/tables/functions.ts';
+import type { Definition } from '../../definition/tables/index.ts';
 import type { Value } from '../../definition/values/values.ts';
 import { mayCall } from '../../foundation/language/call-rule.ts';
 import { unreachable } from '../../foundation/structures/unreachable.ts';

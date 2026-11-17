@@ -20,13 +20,13 @@ import { mayCall } from '../../foundation/language/call-rule.ts';
 import type { Mark } from '../../foundation/language/well-known/index.ts';
 import { endsBlock, type Instruction, operandsOf } from '../instructions/instruction.ts';
 import type { CodeFunction } from '../tables/functions.ts';
-import type { Purpose, Tables } from '../tables/index.ts';
+import type { Definition, Purpose } from '../tables/index.ts';
 import { ownershipIssues } from './ownership.ts';
 import { partIssues } from './parts.ts';
 import { outsideIssue, referenceIssues } from './references.ts';
 
 /** Every way `definition` breaks the rules above, each a message naming where. */
-export function validationIssues(definition: Tables): readonly string[] {
+export function validationIssues(definition: Definition): readonly string[] {
   const issues: string[] = [...referenceIssues(definition), ...startIssues(definition)];
   const { functions } = definition;
   for (const { function: called, caller, where } of purposeCalls(definition.purpose)) {
@@ -48,7 +48,7 @@ export function validationIssues(definition: Tables): readonly string[] {
   return issues;
 }
 
-function codeIssues(entry: CodeFunction, where: string, definition: Tables): readonly string[] {
+function codeIssues(entry: CodeFunction, where: string, definition: Definition): readonly string[] {
   const issues: string[] = [];
   const { instructions, registers } = entry;
   instructions.forEach((each, pc) => {
@@ -88,7 +88,7 @@ function atInstruction(where: string, pc: number, { kind }: Instruction): string
 }
 
 /** Starts a host can't tell apart by key, and a `main` naming none. */
-function startIssues({ starts, purpose }: Tables): readonly string[] {
+function startIssues({ starts, purpose }: Definition): readonly string[] {
   const keys = starts.map(({ key }) => key);
   const repeated = keys.filter((key, at) => keys.indexOf(key) !== at);
   const main = purpose.kind === 'program' ? purpose.main : undefined;

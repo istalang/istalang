@@ -15,7 +15,7 @@ import { typeText } from '../src/compiler/checker/types/type/type-text.ts';
 import { compiledDefinition } from '../src/compiler/compile.test-kit.ts';
 import { idOf } from '../src/compiler/program/program.test-kit.ts';
 import type { FunctionDeclaration } from '../src/compiler/syntax/declarations/index.ts';
-import type { Definition } from '../src/definition/definition.ts';
+import type { Definition } from '../src/definition/tables/index.ts';
 import { completionsAt } from '../src/editor/language-service/completion/index.ts';
 import { hoverAt } from '../src/editor/language-service/hover.ts';
 import { programAt } from '../src/editor/language-service/language-service.test-kit.ts';

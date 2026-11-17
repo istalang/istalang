@@ -4,9 +4,9 @@
  * a commit that fails names the await it would have committed at.
  */
 
-import type { Definition } from '../../definition/definition.ts';
 import type { Label } from '../../definition/operands.ts';
 import { parkAt } from '../../definition/tables/functions.ts';
+import type { Definition } from '../../definition/tables/index.ts';
 import { locationOf } from '../../definition/traces.ts';
 import type { WaitingPoint } from '../instance-state.ts';
 import type { Resident } from './resident.ts';

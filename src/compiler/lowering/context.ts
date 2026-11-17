@@ -10,6 +10,7 @@
 
 import type { FunctionId, Register } from '../../definition/operands.ts';
 import type { Value } from '../../definition/values/values.ts';
+import type { Persistence } from '../../foundation/language/well-known/index.ts';
 import type { Checker } from '../checker/check.ts';
 import type { CheckedBody } from '../checker/surface/checked-body.ts';
 import type { ResolvedCall } from '../checker/surface/resolved-call.ts';
@@ -22,7 +23,6 @@ import type { Lambda } from '../syntax/expressions/index.ts';
 import type { NodeOf } from '../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../syntax/tree/positions.ts';
 import type { ClosedCall } from './calls/closed-calls.ts';
-import type { WaitingMode } from './calls/waits.ts';
 import type { VariableRegisters } from './flow/variables.ts';
 import type { CodeWriter } from './functions/code-writer.ts';
 import type { FieldPassStep } from './tables/instances.ts';
@@ -69,7 +69,7 @@ export interface FunctionContext {
    */
   readonly substitution: () => Substitution;
   /** The kind of the entry's code, which only waits as live or ista code (proposal 8, Rule 2). */
-  readonly waitingMode: () => WaitingMode;
+  readonly waitingMode: () => Persistence;
   /** The entry's code: registers, instructions and labels. */
   readonly code: CodeWriter;
   readonly variables: VariableRegisters;

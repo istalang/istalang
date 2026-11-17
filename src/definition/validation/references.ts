@@ -11,7 +11,7 @@
 
 import { pushAll } from '../../foundation/structures/stack.ts';
 import type { FunctionDefinition } from '../tables/functions.ts';
-import type { Tables } from '../tables/index.ts';
+import type { Definition } from '../tables/index.ts';
 import { type Field, type TypeDefinition, type TypeReference, typesIn } from '../tables/types.ts';
 import { childValues, isComposite, type Value } from '../values/values.ts';
 
@@ -48,7 +48,7 @@ export function outsideIssue(
 }
 
 /** Every way `definition`'s tables break the rules above, each naming where. */
-export function referenceIssues(definition: Tables): readonly string[] {
+export function referenceIssues(definition: Definition): readonly string[] {
   const sizes: Record<Table, number> = {
     type: definition.types.length,
     function: definition.functions.length,
@@ -74,7 +74,7 @@ export function referenceIssues(definition: Tables): readonly string[] {
   );
 }
 
-function holdingsOf(definition: Tables): readonly Holding[] {
+function holdingsOf(definition: Definition): readonly Holding[] {
   return [
     ...definition.types.flatMap((entry, at) =>
       typeHoldings(entry, `type ${String(at)} (${entry.name})`),

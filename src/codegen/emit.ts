@@ -12,7 +12,7 @@
  * - Emitting is one pass over the IR, cheap beside checking and lowering, so nothing is cached.
  */
 
-import type { Definition } from '../definition/definition.ts';
+import type { Definition } from '../definition/tables/index.ts';
 import { runsOnFrames } from './calling-convention.ts';
 import { emitEntry } from './entry.ts';
 

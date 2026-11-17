@@ -20,8 +20,8 @@
  *   the run began, which a segment run again doesn't share (§10).
  */
 
-import type { Definition } from '../../definition/definition.ts';
 import type { CodeFunction } from '../../definition/tables/functions.ts';
+import type { Definition } from '../../definition/tables/index.ts';
 import { callerTraceText, type TracedFrame, traceText } from '../../definition/traces.ts';
 import { exhaustsStack, panicOf, wholeStack } from '../natives.ts';
 

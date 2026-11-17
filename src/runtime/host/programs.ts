@@ -15,7 +15,8 @@
  */
 
 import { emitProgram } from '../../codegen/emit.ts';
-import type { Definition, KeyedDefinition } from '../../definition/definition.ts';
+import type { KeyedDefinition } from '../../definition/definition.ts';
+import type { Definition } from '../../definition/tables/index.ts';
 import { jsonText, jsonTypeOf } from '../../definition/values/json-values.ts';
 import type { Value } from '../../definition/values/values.ts';
 import { checkJsonOut, jsonIn, startOf } from '../boundary/starts.ts';

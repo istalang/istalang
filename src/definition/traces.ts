@@ -9,7 +9,7 @@
  */
 
 import { positionIn } from '../foundation/text/line-map.ts';
-import type { Tables } from './tables/index.ts';
+import type { Definition } from './tables/index.ts';
 
 /** What a trace reads of a frame: its function, where it stands, and whether in its prologue. */
 export interface TracedFrame {
@@ -22,7 +22,7 @@ export interface TracedFrame {
 }
 
 /** What locating an offset reads of a program: its modules' line starts. */
-type Located = Pick<Tables, 'modules'>;
+type Located = Pick<Definition, 'modules'>;
 
 /** The trace of `frames`, innermost first. */
 export function traceText(program: Located, frames: readonly TracedFrame[]): string {

@@ -5,7 +5,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { codeEntry, noSpan, programOf } from '../definition.test-kit.ts';
-import type { Definition } from '../definition.ts';
+import type { Definition } from '../tables/index.ts';
 import type { TypeDefinition } from '../tables/types.ts';
 import type { Value } from '../values/values.ts';
 import { validationIssues } from './index.ts';

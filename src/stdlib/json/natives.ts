@@ -26,7 +26,7 @@ import {
   jsonTypeOf,
   plainOfJson,
 } from '../../definition/values/json-values.ts';
-import { handleTarget, type Value } from '../../definition/values/values.ts';
+import { externValue, handleTarget, type Value } from '../../definition/values/values.ts';
 import { codecHelpers } from '../../foundation/language/well-known/codecs.ts';
 import { wellKnown } from '../../foundation/language/well-known/index.ts';
 import { unreachable } from '../../foundation/structures/unreachable.ts';
@@ -88,6 +88,6 @@ export const jsonNatives = (
     const payload = plainOfJson(given(value), jsonTypeOf(context.types));
     return isResourceType(context.types, type)
       ? context.resources.create(type, payload)
-      : { kind: 'extern', type, payload };
+      : externValue(type, payload);
   },
 });

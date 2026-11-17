@@ -17,7 +17,8 @@
 import { sha256 } from '@noble/hashes/sha2.js';
 import { utf8ToBytes } from '@noble/hashes/utils.js';
 import { emitProgram } from '../../codegen/emit.ts';
-import type { Definition, KeyedDefinition } from '../../definition/definition.ts';
+import type { KeyedDefinition } from '../../definition/definition.ts';
+import type { Definition } from '../../definition/tables/index.ts';
 import { fieldValueOf } from '../../definition/values/declared-values.ts';
 import { elementsOf, type Value } from '../../definition/values/values.ts';
 import { unreachable } from '../../foundation/structures/unreachable.ts';

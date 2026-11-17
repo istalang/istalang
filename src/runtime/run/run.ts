@@ -17,7 +17,7 @@
 
 import { runsOnFrames } from '../../codegen/calling-convention.ts';
 import type { EmittedProgram } from '../../codegen/emit.ts';
-import type { Definition } from '../../definition/definition.ts';
+import type { Definition } from '../../definition/tables/index.ts';
 import { disposeOf } from '../../definition/tables/types.ts';
 import { mapOf, valuesEqual } from '../../definition/values/equality.ts';
 import type { Value } from '../../definition/values/values.ts';

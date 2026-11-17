@@ -13,10 +13,10 @@
  *   the entry, so no jump target moves.
  */
 
-import type { Definition } from '../definition.ts';
 import { type Instruction, operandsOf, successorsOf } from '../instructions/instruction.ts';
 import type { Register } from '../operands.ts';
 import type { CodeFunction } from '../tables/functions.ts';
+import type { Definition } from '../tables/index.ts';
 import { ownershipIssues, owningBefore } from './ownership.ts';
 
 /** How a mutant breaks the code it was made of. */

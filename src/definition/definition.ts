@@ -16,14 +16,11 @@
  *   toolchain's own output is trusted, encoded once and not read back.
  */
 
-import type { z } from 'zod';
 import { base64Of, bytesOfBase64 } from '../foundation/text/base64.ts';
 import { contentHash, defineBinaryFormat } from './formats/binary-format.ts';
 import { FormatError } from './formats/format.ts';
-import { tables } from './tables/index.ts';
+import { type Definition, tables } from './tables/index.ts';
 import { validationIssues } from './validation/index.ts';
-
-export type Definition = z.output<typeof tables>;
 
 const name = 'istalang-definition';
 

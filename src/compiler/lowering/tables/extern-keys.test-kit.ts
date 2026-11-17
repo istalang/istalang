@@ -8,7 +8,7 @@
  */
 
 import { readFileSync, writeFileSync } from 'node:fs';
-import type { Definition } from '../../../definition/definition.ts';
+import type { Definition } from '../../../definition/tables/index.ts';
 import { compareOrdered } from '../../../foundation/language/order.ts';
 import { stdExterns } from '../../../stdlib/std-externs.test-kit.ts';
 

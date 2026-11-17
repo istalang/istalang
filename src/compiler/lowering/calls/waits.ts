@@ -22,7 +22,7 @@ import {
   awaitFunction,
   waitFunctions,
 } from '../../../foundation/language/well-known/implicit-calls.ts';
-import { wellKnown } from '../../../foundation/language/well-known/index.ts';
+import { type Persistence, wellKnown } from '../../../foundation/language/well-known/index.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { NominalType, Type } from '../../checker/types/type/index.ts';
 import { intType, literalType } from '../../checker/types/type/primitives.ts';
@@ -35,18 +35,15 @@ import { insideOptional, noneOf } from '../values/optionals.ts';
 import { construct } from '../values/struct-values.ts';
 import { emitCall } from './emit-call.ts';
 
-/** The kind of code waiting: its waits are of its kind (proposal 8, Rule 2). */
-export type WaitingMode = 'live' | 'ista';
-
 /** A wait being written: its register, its kind, and each case's shared value, by position. */
 export interface OpenWait {
   readonly wait: Register;
-  readonly mode: WaitingMode;
+  readonly mode: Persistence;
   readonly cases: { readonly shared: Register; readonly type: Type }[];
 }
 
 /** A new wait of the running call, of `mode`. */
-export function openWait(context: CodeContext, mode: WaitingMode, span: AnchoredSpan): OpenWait {
+export function openWait(context: CodeContext, mode: Persistence, span: AnchoredSpan): OpenWait {
   const { code, tables } = context;
   const call = wellKnownTypeOf(context, wellKnown.call, []);
   const handle = code.borrow(tables.types.reference(call));
@@ -174,7 +171,7 @@ export function awaitFuture(
     future,
     type,
     mode,
-  }: { readonly future: Register; readonly type: Type; readonly mode: WaitingMode },
+  }: { readonly future: Register; readonly type: Type; readonly mode: Persistence },
   span: AnchoredSpan,
 ): Register {
   const { checker, tables, code } = context;

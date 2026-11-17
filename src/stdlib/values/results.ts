@@ -13,7 +13,7 @@ import {
   structOf,
   typeArgumentOf,
 } from '../../definition/values/declared-values.ts';
-import type { Value } from '../../definition/values/values.ts';
+import { externValue, type Value } from '../../definition/values/values.ts';
 import { unreachable } from '../../foundation/structures/unreachable.ts';
 import type { NativeContext } from '../../runtime/natives.ts';
 
@@ -29,7 +29,7 @@ export function resultStruct(context: NativeContext, fields: NamedFields): Value
 
 /** A value of the extern type the extern declares as its result, holding `payload`. */
 export function resultExtern(context: NativeContext, payload: unknown): Value {
-  return externOf(declaredResult(context), payload);
+  return externValue(declaredResult(context), payload);
 }
 
 /** A struct of the item type of the array the extern declares as its result. */
@@ -39,15 +39,10 @@ export function itemStruct(context: NativeContext, fields: NamedFields): Value {
 
 /** A value of the item type, an extern one, of the array the extern declares as its result. */
 export function itemExtern(context: NativeContext, payload: unknown): Value {
-  return externOf(resultTypeArgument(context, 0), payload);
+  return externValue(resultTypeArgument(context, 0), payload);
 }
 
 /** Type argument `position` of the extern's declared result, a declared type: `T` of `Array<T>`. */
 export function resultTypeArgument(context: NativeContext, position: number): TypeId {
   return typeArgumentOf(context.types, declaredResult(context), position);
-}
-
-/** A value of extern type entry `type`, holding `payload`. */
-function externOf(type: TypeId, payload: unknown): Value {
-  return { kind: 'extern', type, payload };
 }

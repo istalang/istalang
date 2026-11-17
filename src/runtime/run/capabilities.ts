@@ -15,7 +15,7 @@
  */
 
 import { outcomeEncoderOf } from '../../definition/tables/types.ts';
-import type { Value } from '../../definition/values/values.ts';
+import { externValue, type Value } from '../../definition/values/values.ts';
 import { unreachable } from '../../foundation/structures/unreachable.ts';
 import type { Clock } from '../clock.ts';
 import type { LogRecord } from '../instance-state.ts';
@@ -62,7 +62,7 @@ export function capabilitiesOf(run: Run, seams: CapabilitySeams): NativeCapabili
       spawn: (closure, type, options) => {
         const encoder = outcomeEncoderOf(run.definition.types, type);
         const payload = run.world.spawn(run, closure, { options, encoder });
-        return { kind: 'extern', type, payload } as Value;
+        return externValue(type, payload);
       },
       ended: (name) => run.watchEnd(name) as unknown as Value,
     },
@@ -119,7 +119,7 @@ function weakSideOf(run: Run): WithWeakSide['weak'] {
 
 function contextsOf(run: Run): NativeContexts {
   return {
-    hostStore: (type) => ({ kind: 'extern', type, payload: 'host' }) as Value,
+    hostStore: (type) => externValue(type, 'host'),
     open: (_store, type) => {
       const future = new Future(run.newId());
       run.world.open(run, future, (opener, runtime) => {

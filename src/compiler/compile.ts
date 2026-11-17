@@ -10,7 +10,7 @@
  * know which to clear.
  */
 
-import type { Definition } from '../definition/definition.ts';
+import type { Definition } from '../definition/tables/index.ts';
 import {
   compareDiagnostics,
   type Diagnostic,

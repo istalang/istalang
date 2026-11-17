@@ -61,4 +61,5 @@ export const tables = z.strictObject({
   purpose,
 });
 
-export type Tables = z.output<typeof tables>;
+/** The whole compiled program (../definition.ts): its tables, referring to each other by index. */
+export type Definition = z.output<typeof tables>;
