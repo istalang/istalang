@@ -156,7 +156,8 @@ export class Run {
       runDispose: (index, disposed) =>
         this.lifetimes.apart(() => this.lifetimes.letGo(this.call(index, [disposed]) as Value)),
       passesPanics: () => this.lifetimes.passesPanics,
-      callValue: (closure) => this.callValue(closure, []),
+      callApart: (closure) =>
+        this.lifetimes.apart(() => this.lifetimes.letGo(this.callValue(closure, []) as Value)),
       letGo: (...values) => this.lifetimes.letGo(...values),
       letGoAtOnce: (...values) => this.lifetimes.apart(() => this.lifetimes.letGo(...values)),
       stop: (execution) => this.executions.stop(execution),

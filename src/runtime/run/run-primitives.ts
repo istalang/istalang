@@ -4,11 +4,10 @@
  * `WithRun`). Every backend implements these; the std's other natives reach the run only through
  * the other capabilities they are given (capabilities.ts).
  *
- * - A future keeps the callbacks waiting on it, and the run calls them in the order they were
- *   registered as it settles (`Run.settle`, §6). Each comes with what says what its
- *   resolver stands for: one that can't decide any more is dropped as another comes or is asked
- *   about, and a future one of those lost on, with nothing waiting on it, is given up on, which a
- *   slot passes over (§6, §8). A withdrawn one, a `select`'s that didn't wait, gives up on nothing.
+ * - A pending future keeps what waits on it as the prelude keeps it (`waiting`, prelude.ista
+ *   `_Waiters`): the run calls it as the future settles (`Run.settle`, §6), or, as code its disposal
+ *   runs, as it is disposed first. Which resolvers wait, in what order, and which can still decide
+ *   are the prelude's.
  * - A future widened is followed by one of its own (`following`, following.ts), which settles as
  *   it does with its value converted, so a widened call's future is the call's own and the future
  *   it follows stays as it is for whatever else reaches it.
@@ -24,24 +23,16 @@
 import type { Value } from '../../definition/values/values.ts';
 import { convertedFollowing, follow } from './following.ts';
 import type { Execution } from './objects/execution.ts';
-import { closuresOf, Future, type Waiting } from './objects/future.ts';
+import { Future, type Waiting, waitingValues } from './objects/future.ts';
 import type { Run } from './run.ts';
-
-/** A callback registered on a future, with what decides it (prelude.ista `_onSettled`). */
-interface Registered {
-  readonly callback: Value;
-  readonly standing: Value;
-  readonly cancelled: Value;
-}
 
 /** The run's primitives; a future and a call are given and taken as their handles. */
 export interface RunPrimitives {
   readonly settled: (future: Value) => boolean;
   readonly valueOf: (future: Value) => Value;
-  readonly onSettled: (future: Value, registered: Registered) => void;
-  /** Whether `future` was given up on: a case waiting on it lost and nothing waits any more. */
-  readonly givenUp: (future: Value) => boolean;
-  readonly onAwaited: (future: Value, callback: Value) => void;
+  /** The prelude's record of what waits on `future`, once something came to; none before. */
+  readonly waitersOf: (future: Value) => Value | undefined;
+  readonly wait: (future: Value, waiting: Waiting) => void;
   /** Settles each of the `Array` `futures` with `value`, together. */
   readonly settleAll: (futures: Value, value: Value) => void;
   readonly pendingFuture: () => Value;
@@ -67,47 +58,17 @@ export function runPrimitivesOf(run: Run): RunPrimitives {
   return { ...futurePrimitives(run), ...conversionPrimitives(run), ...callPrimitives(run) };
 }
 
-/**
- * Where a callback's resolver stands, as its `standing` gives it (prelude.ista `_standingOf`): it
- * may still decide, it lost, or it was withdrawn by a `select` that didn't wait (§8).
- */
-const standingCodes = { mayDecide: 0n, lost: 1n, withdrawn: 2n } as const;
-
-/** What futures, their callbacks and their settling stand on. */
+/** What futures, what waits on them and their settling stand on. */
 function futurePrimitives(run: Run) {
-  /** `waited`'s callbacks whose resolvers may still decide, letting go of the others. */
-  const live = (waited: Future): Waiting[] =>
-    waited.callbacks.filter((waiting) => {
-      const standing = run.callValue(waiting.standing, []);
-      const mayDecide = standing === standingCodes.mayDecide;
-      if (!mayDecide) {
-        waited.lost ||= standing === standingCodes.lost;
-        run.lifetimes.letGo(...closuresOf(waiting));
-      }
-      return mayDecide;
-    });
   return {
     settled: (given: Value) => futureOf(given).settled,
     valueOf: (given: Value) => futureOf(given).value,
-    onSettled: (given: Value, { callback, standing, cancelled }: Registered) => {
-      const waited = futureOf(given);
-      const added: Waiting = { callback, standing, cancelled };
-      for (const closure of closuresOf(added)) {
-        run.lifetimes.hold(closure);
+    waitersOf: (given: Value) => futureOf(given).waiting?.waiters,
+    wait: (given: Value, waiting: Waiting) => {
+      for (const value of waitingValues(waiting)) {
+        run.lifetimes.hold(value);
       }
-      waited.callbacks = [...live(waited), added];
-      for (const awaited of [...waited.onAwaited]) {
-        run.lifetimes.letGo(run.callValue(awaited, []) as Value);
-      }
-    },
-    givenUp: (given: Value) => {
-      const waited = futureOf(given);
-      waited.callbacks = live(waited);
-      return waited.lost && !waited.settled && waited.callbacks.length === 0;
-    },
-    onAwaited: (given: Value, callback: Value) => {
-      run.lifetimes.hold(callback);
-      futureOf(given).onAwaited.push(callback);
+      futureOf(given).waiting = waiting;
     },
     settleAll: (given: Value, value: Value) => {
       const futures = (given as { readonly elements: readonly Value[] }).elements.map(futureOf);

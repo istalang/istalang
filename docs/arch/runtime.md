@@ -41,23 +41,29 @@ interpreter; a live run is a run that never commits.
 ## What the run does and what the prelude does
 
 Decision 6 of the ir-first design gives the run primitives only (`run/run-primitives.ts`, the `run`
-capability the prelude's natives call): futures that settle once and call their callbacks in the
-order they were registered (spec §6, FIFO: no resolver ranks), park and unpark of an execution, `_later` (enqueue a closure call), timers, weak references,
-cells, stopping a disposed call and the `disposing()` priority resume. The run still keeps more than
+capability the prelude's natives call): futures that settle once and call what the prelude keeps
+waiting on them (`_wait`), park and unpark of an execution, `_later` (enqueue a closure call),
+timers, weak references, cells, stopping a disposed call and the `disposing()` priority resume. The run still keeps more than
 that in TypeScript until moving it is measured (tracker Q59), each a service a backend ports too:
 futures settling together as one event (`run/settling.ts`), timers grouped by when they come due
 (`run/timers.ts`, `Run.fireDue`), the `disposed()` and `disposing()` watches (`Run.disposedOf`,
-`Executions.disposingOf`), the watches on an instance's end (`run/end-watches.ts`), giving up on a
-case nothing waits on any more (`Future.lost`, read through `_standing`), a widened call's future
+`Executions.disposingOf`), the watches on an instance's end (`run/end-watches.ts`), a widened call's future
 following the call's (`run/following.ts`, the `following` primitive `_converted` calls), and the
 mock registry (`run/mocks.ts`). Everything else above the primitives is Istalang in the prelude:
 
-- **Futures** are run objects; `onAwait` registers a callback with a `standing` probe
-  (`_standing`: pending, lost, or withdrawn) and what cancels its resolver if the future is disposed
-  first. Every future a resolver is registered on resolves it as `tryResolve` does: the first
-  decides. An event calls its futures' callbacks future by future in its order, each future's in
-  registration order, deciding at once, so a race's losers take nothing and the `disposing()`
-  case can still win while its future settles. What settling a set of futures settles in turn (a
+- **Futures** are run objects carrying what waits on them as the prelude keeps it, a `_Waiters`
+  record made as something first comes to wait (`_waitersMade`, the `_wait` primitive): the
+  resolvers registered, in order, whether a case waiting on it lost, what runs each time something
+  comes to wait (`_whenAwaited`) and what it keeps until it settles (`_keeps`). `onAwait` drops the
+  resolvers that can't decide any more as it registers one (`_standingResolvers`, by `_standing`:
+  pending, lost, or withdrawn), and `_givenUp` reads a future a case lost on with nothing left to
+  decide as given up. The run calls the record's `arrived` as the future settles, each resolver
+  deciding as `tryResolve` does, the first deciding, and its `disposed` as the future is disposed
+  first, as code its disposal runs (§7), cancelling each and letting go at once of what it kept. An
+  event calls its futures' records future by future in its order, each future's resolvers in
+  registration order, deciding at once, so a race's losers take nothing and the `disposing()` case
+  can still win while its future settles. A `disposed()` or `disposing()` watch's future, which
+  nothing holds between two waits on it, is made anew once disposed (`watchFuture`). What settling a set of futures settles in turn (a
   future following another, as a mock's answer does) settles together after it
   (`Run.settleTogether`). A widened call's future follows the call's (`run/following.ts`, prelude
   `_converted`, spec §3.14): it settles together with it, its value converted, holds it until then,
@@ -81,7 +87,7 @@ mock registry (`run/mocks.ts`). Everything else above the primitives is Istalang
   a waiting put's value sits in an `_Offer` its future alone holds, the queue reaching it weakly,
   so the value goes as the put settles or is let go of, a `select`'s loser included (spec §7, §8);
   one given up on (every case awaiting it lost) is passed over, and served where it stands once
-  awaited again (`_onAwaited`). Reads at the head are one event and a take after them the next, so
+  awaited again (`_whenAwaited`). Reads at the head are one event and a take after them the next, so
   a `select` the reads decide has cancelled a losing take before it is reached. `put`, `take` and
   `read` carry `@Keeps` (below).
 - **Instance ends** cross as a plain `(Array<R>, String, String)` ending; `Instance.result()` and

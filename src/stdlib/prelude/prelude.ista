@@ -26,10 +26,10 @@ extern shared struct WeakRef<T is Disposable>
 type Mark = "simple" | "live" | "ista"
 type Persistence = "live" | "ista"
 # A future (§3.3) is what an async call, a timer or a host gives: the run's object, which settles
-# once and then calls what waits on it, in the order it was registered (§6). It holds
-# its value and what waits on it, as a callback's chain is held from its futures up (spec §7); a
-# call's future also holds its call, which belongs to the language.
-@Holds<(T, Fn<(T,), Unit, K>, Fn<(), Int, K>, Fn<(), Unit, K>)>
+# once. What waits on it is the prelude's (`_Waiters`), which the run calls as it settles or is
+# disposed first. It holds its value and what waits on it, as a callback's chain is held from its
+# futures up (spec §7); a call's future also holds its call, which belongs to the language.
+@Holds<(T, _Waiters<T, K>, Fn<(T,), Unit, K>, Fn<(), Unit, K>)>
 extern shared struct Future<T, K in Persistence>:
   type Mode = K
 
@@ -52,8 +52,88 @@ K fn onAwait<T, K in Persistence>(self: Future<T, K>, done: Resolver<T, K>):
   if _registered(_decidedBy(resolution)) is _Call as waiting: _awaiting(waiting, holding)
   if _settled(self): drop _decides(done, _valueOf(self))
   else:
-    K fn arrived(value: T): drop _decides(done, value)
-    _onSettled(self, arrived, _standingOf(resolution), _cancellerOf(resolution))
+    const waiters = _registeredOn(self, done)
+    for awaited in waiters->awaited: awaited()
+
+# Registers `done` on `future`, dropping those registered before it that can't decide any more;
+# what waits on `future`. `done` itself is never dropped as it comes: a case on its call's
+# `disposing()` may win though another case decided its wait first (§7, `_overrides`).
+@Keeps{["future": ["done"]]}
+K fn _registeredOn<T, K in Persistence>(future: Future<T, K>, done: Resolver<T, K>) -> _Waiters<T, K>:
+  const waiters = _waitersMade(future)
+  # Pushed before pruning: what pruning reads back through weak references, the analysis of
+  # lifetimes takes to reach anything of its type, `done` among them (§7).
+  waiters->resolvers.push(done)
+  _pruned(waiters, waiters->resolvers.length() - 1)
+  waiters
+
+# What waits on a pending future (`_waitersMade`): the resolvers registered on it, in order, those
+# that can't decide any more dropped as another comes or the future is asked about (`_pruned`);
+# whether a case waiting on it lost; what runs each time something comes to
+# wait on it; and what it keeps until it settles or is disposed.
+shared struct _Waiters<T, K in Persistence>:
+  resolvers: Array<Resolver<T, K>> = []
+  lost: Bool = false
+  awaited: Array<Fn<(), Unit, K>> = []
+  kept: Array<Fn<(), Unit, K>> = []
+
+# What waits on `future`, made as something first comes to wait on it: the run calls it as the
+# future settles, each resolver deciding with its value in the order registered (§6), or as it is
+# disposed first, each resolver cancelled and what it kept let go of at once (§7).
+K fn _waitersMade<T, K in Persistence>(future: Future<T, K>) -> _Waiters<T, K>:
+  const found = _waitersOf(future)
+  if found.length() == 1: return found[0]
+  const waiters = new _Waiters<T, K>{}
+  K fn arrived(value: T):
+    const resolvers = waiters->resolvers
+    _emptied(waiters)
+    for resolver in resolvers: drop _decides(resolver, value)
+  K fn disposed():
+    const resolvers = waiters->resolvers
+    _emptied(waiters)
+    for resolver in resolvers: _cancel(resolver->resolution)
+  _wait(future, waiters, arrived, disposed)
+  waiters
+
+# Lets go of what `waiters` held for its future, which settled or was disposed.
+K fn _emptied<T, K in Persistence>(waiters: _Waiters<T, K>):
+  waiters->resolvers = []
+  waiters->awaited = []
+  waiters->kept = []
+
+# Drops the resolvers registered on `waiters`' future before position `end` that can't decide any
+# more: one that lost marks the future as one a case lost on (§8), and one withdrawn gives up on
+# nothing. In place, as a pruned copy written back would hold what it was read from, which the
+# analysis of lifetimes can't tell from a cycle (§7).
+K fn _pruned<T, K in Persistence>(waiters: _Waiters<T, K>, end: Int):
+  let index = end
+  while index > 0:
+    index -= 1
+    match _standing(waiters->resolvers[index]->resolution):
+      case MayDecide: ()
+      case Lost:
+        waiters->lost = true
+        waiters->resolvers[index..index + 1] = []
+      case Withdrawn: waiters->resolvers[index..index + 1] = []
+
+# Whether `future` was given up on: pending, a case waiting on it lost, and nothing that may still
+# decide waits on it, so a slot passes it over (§8).
+K fn _givenUp<T, K in Persistence>(future: Future<T, K>) -> Bool:
+  const found = _waitersOf(future)
+  if _settled(future) or found.length() == 0: return false
+  const waiters = found[0]
+  _pruned(waiters, waiters->resolvers.length())
+  waiters->lost and waiters->resolvers.length() == 0
+
+# Has `run` run each time something comes to wait on `future`, while it is pending.
+@Keeps{["future": ["run"]]}
+K fn _whenAwaited<T, K in Persistence>(future: Future<T, K>, run: Fn<(), Unit, K>):
+  _waitersMade(future)->awaited.push(run)
+
+# Has `future` hold `kept` until it settles, or let go of it at once as it is disposed first.
+@Keeps{["future": ["kept"]]}
+K fn _keeps<T, K in Persistence>(future: Future<T, K>, kept: Fn<(), Unit, K>):
+  _waitersMade(future)->kept.push(kept)
 
 # One wait's one-shot resolver (Rule 5). A second `resolve` panics, and `tryResolve` says whether it
 # decided the wait, for races; once another case decided it, neither decides anything, and it is
@@ -118,26 +198,11 @@ K fn _standing<K in Persistence>(resolution: _Resolution<K>) -> _Standing:
     case At(done): _standing(done)
     case Callback: MayDecide
 
-# What a future `resolution` is registered on asks of where it stands, as the run reads it: 0 while
-# it may still decide, 1 once it lost, 2 once withdrawn (run/run-primitives.ts `standingCodes`).
-K fn _standingOf<K in Persistence>(resolution: _Resolution<K>) -> Fn<(), Int, K>:
-  K fn standing() -> Int:
-    match _standing(resolution):
-      case MayDecide: 0
-      case Lost: 1
-      case Withdrawn: 2
-  standing
-
 # The wait `resolution`, a case's, decides, while its waiter holds it; none for any other.
 K fn _caseWait<K in Persistence>(resolution: _Resolution<K>) -> _Wait<K>?:
   match resolution->decides:
     case Case(weak, _): _waitOf(weak)
     case _: none
-
-# What a future `resolution` is registered on runs if it is disposed first: it cancels `resolution`.
-K fn _cancellerOf<K in Persistence>(resolution: _Resolution<K>) -> Fn<(), Unit, K>:
-  K fn cancelled(): _cancel(resolution)
-  cancelled
 
 # Notes that `deciding`, what a resolver comes down to deciding (`_decidedBy`), is registered on
 # something, itself or through `Resolver.at` ones; the call of its wait, for a case's, which holds
@@ -369,23 +434,19 @@ K fn _decided<K in Persistence>(wait: _Wait<K>) -> Int:
 extern K fn _settled<T, K in Persistence>(future: Future<T, K>) -> Bool
 @_Parametric
 extern K fn _valueOf<T, K in Persistence>(future: Future<T, K>) -> T
-# `callback` waits on `future` while its resolver may still decide, as `standing` says
-# (`_standing`): one that can't is dropped, and a future such ones waited on, one of them having
-# lost, and nothing waits on now is given up on. `cancelled` runs if `future` is disposed first.
-@Keeps{["future": ["callback", "standing", "cancelled"]]}
+# What waits on `future`, pending, once something came to wait on it (`_wait`): none or one.
 @_Parametric
-extern K fn _onSettled<T, K in Persistence>(
+extern K fn _waitersOf<T, K in Persistence>(future: Future<T, K>) -> Array<_Waiters<T, K>>
+# Has `future` keep `waiters` until it settles, calling `arrived` with its value then, or `disposed`
+# as it is disposed first, as code its disposal runs: what that lets go of is disposed at once (§7).
+@Keeps{["future": ["waiters", "arrived", "disposed"]]}
+@_Parametric
+extern K fn _wait<T, K in Persistence>(
   future: Future<T, K>
-  callback: Fn<(T,), Unit, K>
-  standing: Fn<(), Int, K>
-  cancelled: Fn<(), Unit, K>
+  waiters: _Waiters<T, K>
+  arrived: Fn<(T,), Unit, K>
+  disposed: Fn<(), Unit, K>
 )
-@_Parametric
-extern K fn _givenUp<T, K in Persistence>(future: Future<T, K>) -> Bool
-# `callback` runs each time something comes to wait on `future`.
-@Keeps{["future": ["callback"]]}
-@_Parametric
-extern K fn _onAwaited<T, K in Persistence>(future: Future<T, K>, callback: Fn<(), Unit, K>)
 @_Parametric
 extern K fn _pendingFuture<T, K in Persistence>() -> Future<T, K>
 # A future of `U` following `future`, a `T`'s, as a function widened gives it (§3.14): it settles as
@@ -475,8 +536,8 @@ ista fn put<T>(self: Slot<T>, value: T) -> Future<Unit, "ista">:
   else:
     const offer = new _Offer<T>{value}
     self->waiting.push(Put(WeakRef(future), WeakRef(offer)))
-    _onAwaited(future, _serving(self))
-    _onAwaited(future, _keeping(offer))
+    _whenAwaited(future, _serving(self))
+    _keeps(future, _keeping(offer))
   future
 
 # The value a waiting put fills its slot with, held by the put's future alone (`_keeping`), so the
@@ -487,7 +548,7 @@ shared struct _Offer<T>:
 
 ista fn dispose<T>(self: _Offer<T>): ()
 
-# What keeps `offer` while its put waits: run as the put is awaited, it does nothing.
+# What keeps `offer` while its put waits; never called.
 ista fn _keeping<T>(offer: _Offer<T>) -> Fn<(), Unit, "ista">:
   ista fn kept(): _ = offer
   kept
@@ -503,7 +564,7 @@ ista fn take<T>(self: Slot<T>) -> Future<T, "ista">:
     _serve(self)
   else:
     self->waiting.push(Take(WeakRef(future)))
-    _onAwaited(future, _serving(self))
+    _whenAwaited(future, _serving(self))
   future
 
 # Gives the slot's value once it is full, leaving it there.
@@ -513,7 +574,7 @@ ista fn read<T>(self: Slot<T>) -> Future<T, "ista">:
   if self->contents.length() == 1: _settle(future, self->contents[0])
   else:
     self->waiting.push(Read(WeakRef(future)))
-    _onAwaited(future, _serving(self))
+    _whenAwaited(future, _serving(self))
   future
 
 # What serves `slot`, run as an operation's future is awaited: one given up on is passed over, and

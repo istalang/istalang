@@ -37,11 +37,8 @@ const register = z.union([
   z.null(),
 ]);
 
-const waiting = z.strictObject({
-  callback: value,
-  standing: value,
-  cancelled: value,
-});
+/** What waits on a pending future, as the prelude keeps it (run/objects/future.ts `Waiting`). */
+const waiting = z.strictObject({ waiters: value, arrived: value, disposed: value });
 
 /** What every object states: its id, and whether it was disposed, which nothing undoes (§7). */
 const identity = { id: objectId, disposed: z.literal(true).optional() };
@@ -59,9 +56,7 @@ const object = z.discriminatedUnion('kind', [
     ...identity,
     settled: z.boolean(),
     value,
-    callbacks: z.array(waiting),
-    lost: z.boolean(),
-    onAwaited: z.array(value),
+    waiting: waiting.optional(),
     /** The future it follows, until that settles, and the closure converting its value. */
     follows: z.strictObject({ future: objectId, converter: value }).optional(),
   }),

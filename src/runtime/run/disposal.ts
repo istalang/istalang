@@ -5,8 +5,9 @@
  * - A **cell** of a shared struct runs its declared `dispose`, then lets go of its value.
  * - A declared `dispose` is code a disposal runs: what it lets go of, its own locals included, is
  *   disposed in rounds of its own as it returns, before what the disposed value held (§7).
- * - A **future** cancels what a host was to fill and the resolvers waiting on it (§6), stops its
- *   call (executions.ts), and lets go of what waits on it and of its value. One following another
+ * - A **future** cancels what a host was to fill, and runs what waits on it as code its disposal
+ *   runs (§6: its resolvers cancelled), stops its call (executions.ts), and lets go of what waits on
+ *   it and of its value. One following another
  *   (following.ts) lets go of that at once, so the call it follows stops as its own future's
  *   disposal would stop it.
  * - A **resource** is forgotten, and released: by the runtime, where its
@@ -24,7 +25,7 @@ import type { Disposer } from './lifetimes.ts';
 import type { Mocks } from './mocks.ts';
 import { Cell } from './objects/cell.ts';
 import type { Execution } from './objects/execution.ts';
-import { closuresOf, Future } from './objects/future.ts';
+import { Future, waitingValues } from './objects/future.ts';
 import { MockObject } from './objects/mock-object.ts';
 import { Resource } from './objects/resource.ts';
 import type { RunObject } from './objects/run-object.ts';
@@ -45,8 +46,8 @@ export interface DisposalSeams {
   readonly runDispose: (index: number, disposed: Value) => void;
   /** Whether a dispose's panic is passed over now (`Lifetimes.disposingPastPanics`). */
   readonly passesPanics: () => boolean;
-  /** Calls the closure `closure` with nothing; what it gives. */
-  readonly callValue: (closure: Value) => unknown;
+  /** Calls the closure `closure` with nothing, as code a disposal runs, its let-gos apart (§7). */
+  readonly callApart: (closure: Value) => void;
   readonly letGo: (...values: (Value | undefined)[]) => void;
   /** Lets go of `values` apart from the round, disposing at once what loses its last holder. */
   readonly letGoAtOnce: (...values: (Value | undefined)[]) => void;
@@ -103,13 +104,14 @@ function runDispose(seams: DisposalSeams, index: number, disposed: Value): void 
 }
 
 function releasedByFuture(future: Future, seams: DisposalSeams): readonly Value[] {
-  const waiting = future.callbacks.splice(0);
+  const { waiting } = future;
+  future.waiting = undefined;
   if (!future.settled) {
     for (const cancel of future.cancels.splice(0)) {
       cancel();
     }
-    for (const { cancelled } of waiting) {
-      seams.letGo(seams.callValue(cancelled) as Value);
+    if (waiting !== undefined) {
+      seams.callApart(waiting.disposed);
     }
   }
   if (future.execution !== undefined) {
@@ -120,8 +122,7 @@ function releasedByFuture(future: Future, seams: DisposalSeams): readonly Value[
     seams.letGoAtOnce(following.future as unknown as Value);
   }
   const held = [
-    ...waiting.flatMap(closuresOf),
-    ...future.onAwaited.splice(0),
+    ...(waiting === undefined ? [] : waitingValues(waiting)),
     ...(following === undefined ? [] : [following.converter]),
   ];
   return future.settled ? [future.value, ...held] : held;

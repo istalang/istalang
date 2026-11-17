@@ -139,27 +139,7 @@ function fieldsOf(object: RunObject, { named, persisted }: Naming): PersistedObj
     };
   }
   if (object instanceof Future) {
-    return {
-      kind: 'future',
-      id,
-      settled: object.settled,
-      value: persisted(object.value),
-      callbacks: object.callbacks.map(({ callback, standing, cancelled }) => ({
-        callback: persisted(callback),
-        standing: persisted(standing),
-        cancelled: persisted(cancelled),
-      })),
-      lost: object.lost,
-      onAwaited: object.onAwaited.map(persisted),
-      ...(object.follows === undefined
-        ? {}
-        : {
-            follows: {
-              future: named(object.follows.future),
-              converter: persisted(object.follows.converter),
-            },
-          }),
-    };
+    return futureOf(object, { named, persisted });
   }
   if (object instanceof Execution) {
     return executionOf(object, { named, persisted });
@@ -190,6 +170,29 @@ function fieldsOf(object: RunObject, { named, persisted }: Naming): PersistedObj
     };
   }
   throw new Error(`A run object of no kind a snapshot knows, ${id}, is written.`);
+}
+
+/** `future` as a snapshot writes it, with what waits on it while it is pending. */
+function futureOf(future: Future, { named, persisted }: Naming): PersistedObject {
+  const { waiting, follows } = future;
+  return {
+    kind: 'future',
+    id: future.object,
+    settled: future.settled,
+    value: persisted(future.value),
+    ...(waiting === undefined
+      ? {}
+      : {
+          waiting: {
+            waiters: persisted(waiting.waiters),
+            arrived: persisted(waiting.arrived),
+            disposed: persisted(waiting.disposed),
+          },
+        }),
+    ...(follows === undefined
+      ? {}
+      : { follows: { future: named(follows.future), converter: persisted(follows.converter) } }),
+  };
 }
 
 /**

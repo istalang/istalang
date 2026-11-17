@@ -1,6 +1,6 @@
 /**
- * Settling futures (§6): futures one event settles together call every callback waiting on any of
- * them at once, future by future in the event's order, each future's in the order they were added.
+ * Settling futures (§6): futures one event settles together call what waits on each of them (its
+ * `waiting`, as the prelude keeps it) at once, future by future in the event's order.
  * A future following one of them (following.ts) settles with them, its value converted.
  * Then the run's own listeners hear each value, such as a call into a context waiting on its
  * invocation's future; what they settle meanwhile settles together after them, as futures following
@@ -11,7 +11,7 @@ import type { Value } from '../../definition/values/values.ts';
 import { unreachable } from '../../foundation/structures/unreachable.ts';
 import { convertedFollowing, unfollowed } from './following.ts';
 import type { Lifetimes } from './lifetimes.ts';
-import type { Future } from './objects/future.ts';
+import { type Future, type Waiting, waitingValues } from './objects/future.ts';
 
 /** Each future with the value it settles with, which it holds. */
 export type Settling = readonly (readonly [Future, Value])[];
@@ -28,7 +28,7 @@ export class Settler {
     this.#lifetimes = lifetimes;
   }
 
-  /** Settles each future with its value, calling the callbacks waiting on them. */
+  /** Settles each future with its value, calling what waits on them. */
   settleTogether(settling: Settling): void {
     if (this.#following !== undefined) {
       this.#following.push(...settling);
@@ -59,17 +59,16 @@ export class Settler {
    * `followed`; what waited.
    */
   #waitingOn(settling: Settling, followed: Value[]): Waited[] {
-    const waiting: Waited[] = [];
+    const waited: Waited[] = [];
     const settled = [...settling];
     for (const [future, value] of settled) {
       if (!future.settled) {
         future.settled = true;
         future.value = value;
-        for (const { callback, standing, cancelled } of future.callbacks.splice(0)) {
-          waiting.push({ callback, value });
-          this.#lifetimes.letGo(standing, cancelled);
+        if (future.waiting !== undefined) {
+          waited.push({ waiting: future.waiting, value });
+          future.waiting = undefined;
         }
-        this.#lifetimes.letGo(...future.onAwaited.splice(0));
         for (const follower of [...future.followers]) {
           const { converter } =
             unfollowed(follower) ?? unreachable('A follower follows its future.');
@@ -81,19 +80,19 @@ export class Settler {
         }
       }
     }
-    return waiting;
+    return waited;
   }
 
-  #called(waiting: readonly Waited[]): void {
-    for (const { callback, value } of waiting) {
-      this.#lifetimes.letGo(this.#call(callback, value) as Value);
-      this.#lifetimes.letGo(callback);
+  #called(waited: readonly Waited[]): void {
+    for (const { waiting, value } of waited) {
+      this.#lifetimes.letGo(this.#call(waiting.arrived, value) as Value);
+      this.#lifetimes.letGo(...waitingValues(waiting));
     }
   }
 }
 
-/** A callback waiting on a settled future, with the value it is called with. */
+/** What waited on a settled future, with the value it is called with. */
 interface Waited {
-  readonly callback: Value;
+  readonly waiting: Waiting;
   readonly value: Value;
 }

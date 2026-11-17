@@ -29,7 +29,7 @@ import type { InstanceEnd } from '../run/instances.ts';
 import { hearsNothing, type Invocation } from '../run/invocations.ts';
 import { Cell } from '../run/objects/cell.ts';
 import { Execution, type Frame } from '../run/objects/execution.ts';
-import { closuresOf, Future } from '../run/objects/future.ts';
+import { Future, waitingValues } from '../run/objects/future.ts';
 import { MockObject } from '../run/objects/mock-object.ts';
 import { Reference, type Step } from '../run/objects/reference.ts';
 import { Resource } from '../run/objects/resource.ts';
@@ -202,21 +202,20 @@ const fillers: Handlers<Filling, PersistedObject, [], void> = {
     const future = object(persisted.id) as Future;
     future.settled = persisted.settled;
     future.value = restored(persisted.value);
-    future.lost = persisted.lost;
-    future.callbacks = persisted.callbacks.map(({ callback, standing, cancelled }) => ({
-      callback: restored(callback),
-      standing: restored(standing),
-      cancelled: restored(cancelled),
-    }));
-    future.onAwaited.push(...persisted.onAwaited.map(restored));
+    if (persisted.waiting !== undefined) {
+      future.waiting = {
+        waiters: restored(persisted.waiting.waiters),
+        arrived: restored(persisted.waiting.arrived),
+        disposed: restored(persisted.waiting.disposed),
+      };
+    }
     if (persisted.follows !== undefined) {
       const followed = object(persisted.follows.future) as Future;
       follow(future, { future: followed, converter: restored(persisted.follows.converter) });
     }
     const held = [
       ...(future.settled ? [future.value] : []),
-      ...future.callbacks.flatMap(closuresOf),
-      ...future.onAwaited,
+      ...(future.waiting === undefined ? [] : waitingValues(future.waiting)),
       ...(future.follows === undefined
         ? []
         : [future.follows.future as unknown as Value, future.follows.converter]),
