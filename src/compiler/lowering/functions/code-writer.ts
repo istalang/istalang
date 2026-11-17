@@ -89,6 +89,11 @@ export class CodeWriter {
     return this.#registers.length;
   }
 
+  /** The registers allocated since there were `first`, in order. */
+  registersSince(first: number): readonly Register[] {
+    return Array.from({ length: this.#registers.length - first }, (_, at) => first + at);
+  }
+
   typeOf(register: Register): TypeReference {
     return this.#registers[register]?.type ?? unreachable(`No register ${register}.`);
   }
@@ -99,19 +104,6 @@ export class CodeWriter {
 
   emit(instruction: WrittenInstruction): void {
     this.#instructions.push(instruction);
-  }
-
-  /** Runs `write`; what it gave, and the registers allocated meanwhile, in order. */
-  allocating<Result>(write: () => Result): {
-    readonly result: Result;
-    readonly registers: readonly Register[];
-  } {
-    const first = this.#registers.length;
-    const result = write();
-    return {
-      result,
-      registers: Array.from({ length: this.#registers.length - first }, (_, at) => first + at),
-    };
   }
 
   /** A fresh register owning another holder of `src`'s value. */

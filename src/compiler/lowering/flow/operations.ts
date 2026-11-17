@@ -87,7 +87,7 @@ export const operationWriters: {
     const { code } = writer.context;
     const { span } = site;
     for (const value of values) {
-      const list = writer.listOf(until, writer.typeOf(value));
+      const list = writer.holdLists.listOf(writer.context, until, writer.typeOf(value), span);
       const longer = code.allocate(code.typeOf(list));
       const item = code.copy(writer.registerOf(value), span);
       code.emit({

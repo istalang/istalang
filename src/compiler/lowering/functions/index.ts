@@ -90,7 +90,7 @@ export function instanceLowering(
   const lowered = loweredInstance(lowering, instance);
   return lowered === undefined
     ? undefined
-    : new FunctionLowering(lowered, instanceFrame(lowered, instance));
+    : FunctionLowering.of(lowered, instanceFrame(lowered, instance));
 }
 
 /**
@@ -103,7 +103,7 @@ export function builtLowering(
   awaited?: Type,
 ): FunctionLowering {
   const owner = { kind: 'function', instance } as const;
-  return new FunctionLowering(
+  return FunctionLowering.of(
     { ...lowering, owner, body: undefined },
     builtFrame(lowering, instance, awaited),
   );
@@ -116,7 +116,7 @@ export function accessorLowering(
 ): FunctionLowering {
   const owner = { kind: 'contextConstant', declaration } as const;
   const body = lowering.checker.contextConstants.bodyOf(declaration);
-  return new FunctionLowering(
+  return FunctionLowering.of(
     { ...lowering, owner, body },
     accessorFrame(lowering, declaration, body.result),
   );
@@ -125,7 +125,15 @@ export function accessorLowering(
 /** The lowering of a nested function's entry, read through its owner's body (§3.14). */
 export function nestedLowering(lowering: Lowering, nested: NestedInstance): FunctionLowering {
   const lowered = loweredNested(lowering, nested.owner);
-  return new FunctionLowering(lowered, nestedFrame(lowered, nested));
+  return FunctionLowering.of(lowered, nestedFrame(lowered, nested));
+}
+
+/** What every context lowering one entry shares, whatever it reads: the frame and the code. */
+interface EntryState extends Lowering {
+  readonly module: ModuleId;
+  readonly frame: Frame;
+  readonly code: CodeWriter;
+  readonly variables: VariableRegisters;
 }
 
 class FunctionLowering implements EntryContext {
@@ -134,22 +142,37 @@ class FunctionLowering implements EntryContext {
   readonly module: ModuleId;
   readonly frame: Frame;
   readonly code: CodeWriter;
-  readonly variables = new VariableRegisters();
+  readonly variables: VariableRegisters;
+  readonly #state: EntryState;
   #layout: readonly FrameSlot[] | undefined;
-  /**
-   * The body as the prologue or the pass of the field loops being lowered reads it, and what owns
-   * it so.
-   */
-  #reading: BodyReading;
+  /** The body as the entry, its prologue or a pass of its field loops reads it, and its owner. */
+  readonly #reading: BodyReading;
 
-  constructor(lowered: Lowering & BodyReading, frame: Frame) {
+  /** The lowering of the entry `lowered` owns, laid out as `frame`. */
+  static of(lowered: Lowering & BodyReading, frame: Frame): FunctionLowering {
     const { checker, tables, owner, body } = lowered;
-    this.checker = checker;
-    this.tables = tables;
-    this.module = checker.moduleOf(ownerDeclaration(owner));
-    this.#reading = { owner, body };
-    this.frame = frame;
-    this.code = new CodeWriter(tables.types.reference(frame.result));
+    const entry: EntryState = {
+      checker,
+      tables,
+      module: checker.moduleOf(ownerDeclaration(owner)),
+      frame,
+      code: new CodeWriter(tables.types.reference(frame.result)),
+      variables: new VariableRegisters(),
+    };
+    return new FunctionLowering(entry, { owner, body });
+  }
+
+  private constructor(entry: EntryState, reading: BodyReading) {
+    ({
+      checker: this.checker,
+      tables: this.tables,
+      module: this.module,
+      frame: this.frame,
+      code: this.code,
+      variables: this.variables,
+    } = entry);
+    this.#state = entry;
+    this.#reading = reading;
   }
 
   substitution(): Substitution {
@@ -177,32 +200,24 @@ class FunctionLowering implements EntryContext {
     return this.#reading.owner;
   }
 
-  inFieldPasses<Written>(passes: readonly FieldPassStep[], write: () => Written): Written {
+  inFieldPasses(passes: readonly FieldPassStep[]): FunctionLowering {
     if (passes.length === 0) {
-      return write();
+      return this;
     }
     const { owner } = this.#reading;
     const within = { ...owner, passes: [...(owner.passes ?? []), ...passes] };
-    return this.#readingAs({ owner: within, body: passedBody(this.body, passes) }, write);
+    return new FunctionLowering(this.#state, {
+      owner: within,
+      body: passedBody(this.body, passes),
+    });
   }
 
-  inDefaults<Lowered>(lower: () => Lowered): Lowered {
+  inDefaults(): FunctionLowering {
     const { owner } = this.#reading;
     if (owner.kind !== 'function') {
       unreachable('Only a function instance has defaults to compute.');
     }
-    return this.#readingAs(defaultsReading(this.checker, owner.instance), lower);
-  }
-
-  /** Runs `lower` reading `reading`, then reads what it read before; what `lower` gives. */
-  #readingAs<Lowered>(reading: BodyReading, lower: () => Lowered): Lowered {
-    const outer = this.#reading;
-    this.#reading = reading;
-    try {
-      return lower();
-    } finally {
-      this.#reading = outer;
-    }
+    return new FunctionLowering(this.#state, defaultsReading(this.checker, owner.instance));
   }
 
   /** The code entry for a function instance, whose body is `block`. */

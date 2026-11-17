@@ -59,13 +59,10 @@ export interface FunctionContext {
    */
   readonly fitted: (value: Register, type: Type, fit: Fit, site: NodeOf<string>) => Register;
   /**
-   * Runs `write` inside the field loops' `passes`, outermost first (§4): its calls closed with their
-   * keys bound and its nested functions keyed there; what it gives.
+   * This context inside the field loops' `passes`, outermost first (§4): writing the same code, its
+   * calls closed with their keys bound and its nested functions keyed there.
    */
-  readonly inFieldPasses: <Written>(
-    passes: readonly FieldPassStep[],
-    write: () => Written,
-  ) => Written;
+  readonly inFieldPasses: (passes: readonly FieldPassStep[]) => FunctionContext;
   /** `call`, as the checker resolved it, closed here (calls/closed-calls.ts). */
   readonly closed: (call: ResolvedCall) => ClosedCall;
   /** The function-table entry of a lambda or local function in this body (§3.14). */

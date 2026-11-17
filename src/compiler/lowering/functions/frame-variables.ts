@@ -38,8 +38,8 @@ import type { Frame } from './frames.ts';
 export interface EntryContext extends FunctionContext {
   readonly frame: Frame;
   readonly owner: BodyOwner;
-  /** Runs `lower` reading the function's defaults, as checked apart from its body; what it gives. */
-  readonly inDefaults: <Lowered>(lower: () => Lowered) => Lowered;
+  /** This context reading the function's defaults, as checked apart from its body. */
+  readonly inDefaults: () => FunctionContext;
 }
 
 /** A parameter of a frame, with the element types it takes as parameters when it is a pack's. */
@@ -172,10 +172,9 @@ function computeLeftOut(
   if (defaultValue === undefined) {
     code.emit({ kind: 'array', span, dst: owned, elements: [] });
   } else {
-    context.inDefaults(() => {
-      const end = { kind: 'into', into: owned } as const;
-      writeFlow(context, context.body.flowOf(defaultValue), { parameters: before, end });
-    });
+    const defaults = context.inDefaults();
+    const end = { kind: 'into', into: owned } as const;
+    writeFlow(defaults, defaults.body.flowOf(defaultValue), { parameters: before, end });
   }
   code.jump(done, span);
   code.place(given);

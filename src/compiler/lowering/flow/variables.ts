@@ -27,7 +27,9 @@ import { successorsOf } from '../../checker/surface/flow-ir.ts';
 import { substitute } from '../../checker/types/parts/substitution.ts';
 import type { Type } from '../../checker/types/type/index.ts';
 import type { Identifier } from '../../syntax/tree/node.ts';
+import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 import type { FunctionContext } from '../context.ts';
+import type { CodeWriter } from '../functions/code-writer.ts';
 
 /** The register each variable of one entry lives in, by its declaring name and type. */
 export class VariableRegisters {
@@ -193,4 +195,31 @@ export function declaringWrites(flow: FlowFunction): ReadonlySet<Operation> {
     }
   }
   return declaring;
+}
+
+/** A write of a variable living in a cell: what it writes, and whether it makes the cell anew. */
+interface CellWrite {
+  readonly cell: Register;
+  readonly produced: Register;
+  readonly declares: boolean;
+}
+
+/** Writes `produced` into the variable living in `cell`: into a new cell where the write makes it. */
+export function writeCell(
+  code: CodeWriter,
+  { cell, produced, declares }: CellWrite,
+  span: AnchoredSpan,
+): void {
+  const value = code.take(produced, span);
+  if (declares) {
+    code.letGo([cell], span);
+    code.emit({ kind: 'newCell', span, dst: cell, value });
+    return;
+  }
+  code.emit({
+    kind: 'store',
+    span,
+    place: { root: { kind: 'cell', register: cell }, path: [] },
+    value,
+  });
 }

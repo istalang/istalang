@@ -14,12 +14,10 @@
  *   a variable lets go of what it held first. A value's release lets go of its register and of
  *   what its operation allocated beside it (`extras`), which nothing else took.
  * - **A flow returns** from the entry; a default's or an initializer's written inline gives its
- *   value instead (`FlowEnd`), where its root returns it, then goes on past it. As a return
- *   releases everything, it then lets go of everything it made but what its `hold`s keep for the
- *   function, which the entry's return lets go of: once it has given its value, so what that
- *   disposes may read a context constant made of it (§3.4).
+ *   value instead, where its root returns it, then goes on past it (flow-end.ts).
  * - **Each block is written inside the passes of the field loops it is in** (§4), so its calls
- *   close and its nested functions are keyed there.
+ *   close and its nested functions are keyed there: through a context of its own, derived from the
+ *   flow's for those passes (`FunctionContext.inFieldPasses`), never one swapped in and back.
  */
 
 import type { Place } from '../../../definition/instructions/places.ts';
@@ -35,13 +33,14 @@ import type {
   ValueId,
 } from '../../checker/surface/flow-ir.ts';
 import type { Type } from '../../checker/types/type/index.ts';
-import type { LabelledScope } from '../../syntax/statements/index.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 import type { FunctionContext, TypedValue } from '../context.ts';
 import type { Label } from '../functions/code-writer.ts';
 import { exitWriters } from './exits.ts';
+import { type FlowEnd, givenInline } from './flow-end.ts';
 import { FlowWaits } from './flow-waits.ts';
 import { heldReads, readFactsOf } from './held-reads.ts';
+import { HoldLists } from './hold-lists.ts';
 import { type FlowLayout, layoutOf } from './layout.ts';
 import { operationWriters } from './operations.ts';
 import { type FlowUses, usesOf } from './uses.ts';
@@ -51,22 +50,8 @@ import {
   knownVariableRegister,
   variableRegister,
   variableType,
+  writeCell,
 } from './variables.ts';
-
-/**
- * How a flow's root gives its value: by returning from the entry; or, written inline, into a
- * register, made the instance's context constant `name` where it is that constant's initializer,
- * at its declaration's `span`.
- */
-type FlowEnd =
-  | { readonly kind: 'return' }
-  | { readonly kind: 'into'; readonly into: Register }
-  | {
-      readonly kind: 'contextConstant';
-      readonly into: Register;
-      readonly name: string;
-      readonly span: AnchoredSpan;
-    };
 
 /** Writes `flow`, its parameters in `parameters`, its root's value given as `end` says. */
 export function writeFlow(
@@ -82,7 +67,10 @@ export function writeFlow(
 }
 
 export class FlowWriter {
-  readonly context: FunctionContext;
+  /** The flow's own context, outside every field pass. */
+  readonly #context: FunctionContext;
+  /** Each block's context: the flow's, inside the field passes the block runs in (§4). */
+  readonly #contexts = new Map<BlockId, FunctionContext>();
   readonly flow: FlowFunction;
   readonly end: FlowEnd;
   readonly #layout: FlowLayout;
@@ -96,8 +84,7 @@ export class FlowWriter {
   /** Where what each held variable holds is kept until (§7). */
   readonly #uses: FlowUses;
   readonly waits = new FlowWaits();
-  /** The arrays what `hold`s keep is kept in, by scope and type. */
-  readonly #lists = new Map<LabelledScope | 'function', Map<string, Register>>();
+  readonly holdLists = new HoldLists();
   /** The reads that hold their value (held-reads.ts), decided before the flow is written. */
   #held: ReadonlySet<ValueId> = new Set();
   /** The writes of a variable living in a cell that make its cell (variables.ts). */
@@ -109,7 +96,7 @@ export class FlowWriter {
   readonly #after: Label;
 
   constructor(context: FunctionContext, flow: FlowFunction, end: FlowEnd) {
-    this.context = context;
+    this.#context = context;
     this.flow = flow;
     this.end = end;
     this.#after = context.code.newLabel();
@@ -118,54 +105,46 @@ export class FlowWriter {
     this.#uses = usesOf(flow);
   }
 
+  /** The context the block being written reads (`#contexts`). */
+  get context(): FunctionContext {
+    const block = this.#block;
+    return memo(this.#contexts, block, () =>
+      this.#context.inFieldPasses(this.#layout.passesOf(block)),
+    );
+  }
+
   write(): void {
-    const first = this.context.code.registerCount;
+    const { code } = this.#context;
+    const first = code.registerCount;
     const { order } = this.#layout;
     this.#held = heldReads(this.flow, readFactsOf(this));
     for (const [value, until] of this.#uses.kept) {
-      this.listOf(until, this.typeOf(value));
+      this.holdLists.listOf(this.context, until, this.typeOf(value), this.flow.root.span);
     }
     for (const [position, block] of order.entries()) {
       this.#block = block;
       this.#next = order[position + 1];
-      this.context.code.place(this.labelOf(block));
-      this.#started.set(block, this.context.code.registerCount);
-      this.context.inFieldPasses(this.#layout.passesOf(block), () =>
-        this.#writeBlock(this.flow.blocks[block] as FlowBlock),
-      );
+      code.place(this.labelOf(block));
+      this.#started.set(block, code.registerCount);
+      this.#writeBlock(this.flow.blocks[block] as FlowBlock);
     }
-    this.context.code.place(this.#after);
+    code.place(this.#after);
     if (this.end.kind !== 'return') {
-      this.#given(this.end, first);
+      const kept = this.holdLists.keptUntil('function');
+      givenInline(code, this.end, { first, kept }, this.flow.root.span);
     }
     const last = this.flow.blocks[order.at(-1) ?? 0]?.exit;
     if (this.end.kind === 'return' && last?.kind === 'stop') {
-      this.context.code.emit({ kind: 'unreachable', span: this.flow.root.span });
+      code.emit({ kind: 'unreachable', span: this.flow.root.span });
     }
-  }
-
-  /**
-   * Where the root has given its value into `end`: the context constant made of it, then every
-   * register made since `first` let go of, but the lists what `hold`s keep for the function.
-   */
-  #given(end: Exclude<FlowEnd, { readonly kind: 'return' }>, first: number): void {
-    const { code } = this.context;
-    const { span } = this.flow.root;
-    if (end.kind === 'contextConstant') {
-      code.emit({ kind: 'makeContextConstant', span: end.span, name: end.name, value: end.into });
-    }
-    const kept = new Set(this.#lists.get('function')?.values());
-    const made = Array.from({ length: code.registerCount - first }, (_, at) => first + at);
-    code.letGo(
-      made.filter((register) => register !== end.into && !kept.has(register)),
-      span,
-    );
   }
 
   #writeBlock({ operations, exit }: FlowBlock): void {
     for (const operation of operations) {
       const { code } = this.context;
-      const { registers } = code.allocating(() => writerOf(operation)(this, operation));
+      const first = code.registerCount;
+      writerOf(operation)(this, operation);
+      const registers = code.registersSince(first);
       const own = 'into' in operation ? operation.into : undefined;
       const value = own === undefined ? undefined : this.#knownRegister(own);
       const extras = registers.filter(
@@ -283,12 +262,8 @@ export class FlowWriter {
       return;
     }
     if (flowValue.inCell) {
-      this.writeCell(
-        register,
-        produced,
-        span,
-        operation !== undefined && this.declaring.has(operation),
-      );
+      const declares = operation !== undefined && this.declaring.has(operation);
+      writeCell(code, { cell: register, produced, declares }, span);
       return;
     }
     code.letGo([register], span);
@@ -324,29 +299,12 @@ export class FlowWriter {
     code.emit({ kind: 'move', span, dst: register, src: taken });
   }
 
-  /** Writes `produced` into the variable living in the cell `cell`: a new cell where it is made. */
-  writeCell(cell: Register, produced: Register, span: AnchoredSpan, declares: boolean): void {
-    const { code } = this.context;
-    const value = code.take(produced, span);
-    if (declares) {
-      code.letGo([cell], span);
-      code.emit({ kind: 'newCell', span, dst: cell, value });
-    } else {
-      code.emit({
-        kind: 'store',
-        span,
-        place: { root: { kind: 'cell', register: cell }, path: [] },
-        value,
-      });
-    }
-  }
-
   /** The registers `values` end: each one's and its extras, a held one's lists where it ends. */
   registersEnding(values: readonly ValueId[]): readonly Register[] {
     const registers = values.flatMap((value) => {
       const until = this.#uses.kept.get(value);
       if (until !== undefined) {
-        return until === 'function' ? [] : [...(this.#lists.get(until)?.values() ?? [])];
+        return until === 'function' ? [] : this.holdLists.keptUntil(until);
       }
       if (this.#aliases.has(value)) {
         return [];
@@ -364,29 +322,9 @@ export class FlowWriter {
   release(registers: readonly Register[], span: AnchoredSpan): void {
     const { code } = this.context;
     code.letGo(registers, span);
-    for (const list of registers.filter((register) => this.#isList(register))) {
+    for (const list of registers.filter((register) => this.holdLists.has(register))) {
       code.emit({ kind: 'array', span, dst: list, elements: [] });
     }
-  }
-
-  /** The array what `hold`s keep of `type` until `until` ends is kept in (§7). */
-  listOf(until: LabelledScope | 'function', type: Type): Register {
-    const lists = this.#lists.get(until) ?? new Map<string, Register>();
-    this.#lists.set(until, lists);
-    const key = this.context.checker.typeKeys.typeKey(type);
-    const known = lists.get(key);
-    if (known !== undefined) {
-      return known;
-    }
-    const { checker, tables, code } = this.context;
-    const arrayType = checker.wellKnownType({ module: 'prelude', name: 'Array' }, [type]);
-    const list = code.allocate(
-      tables.types.reference(arrayType ?? unreachable('The prelude has arrays.')),
-    );
-    code.pin(list);
-    lists.set(key, list);
-    code.emit({ kind: 'array', span: this.flow.root.span, dst: list, elements: [] });
-    return list;
   }
 
   // Blocks.
@@ -405,9 +343,11 @@ export class FlowWriter {
     const started = this.#started.get(target);
     if (started !== undefined) {
       const { code, variables } = this.context;
-      const turns = Array.from({ length: code.registerCount - started }, (_, at) => started + at);
+      const turns = code.registersSince(started);
       code.letGo(
-        turns.filter((register) => !(variables.isVariable(register) || this.#isList(register))),
+        turns.filter(
+          (register) => !(variables.isVariable(register) || this.holdLists.has(register)),
+        ),
         span,
       );
     }
@@ -419,11 +359,6 @@ export class FlowWriter {
   /** Jumps to `block` from code written before the next block begins, as a landing is. */
   jumpTo(block: BlockId, span: AnchoredSpan): void {
     this.context.code.jump(this.labelOf(block), span);
-  }
-
-  /** Whether `register` keeps what `hold`s keep. */
-  #isList(register: Register): boolean {
-    return [...this.#lists.values()].some((lists) => [...lists.values()].includes(register));
   }
 
   /** Where the field loop whose top is being written goes first. */
