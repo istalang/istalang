@@ -16,3 +16,4 @@
 - [Few big phases](feedback_few-big-phases.md) — rewrites: one late-tested phase over many small ones keeping deleted code green
 - [Agents merge themselves](feedback_agents-merge-themselves.md) — partitions rebase and ff the integration branch; no idle integrator
 - [Expert for tasks](feedback_expert-for-tasks.md) — cold agents doing work are `--agent expert`; `dev` only plans big tasks
+- [Reuse examiners](feedback_reuse-examiners.md) — re-review/QA to the same examiners; findings back to the fixer of that area

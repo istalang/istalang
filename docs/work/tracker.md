@@ -37,7 +37,7 @@ tags: [tracker]
 
 ## Filed
 
-Open items only: an item is removed once it is resolved; git history keeps it. Each group numbers its own items and keeps counting up: the next ids are F38, P54, Q59, B115. Items filed before 2026-10-28 shared one `D` series; older docs and git history keep the closed `D` ids.
+Open items only: an item is removed once it is resolved; git history keeps it. Each group numbers its own items and keeps counting up: the next ids are F39, P56, Q59, B121. Items filed before 2026-10-28 shared one `D` series; older docs and git history keep the closed `D` ids.
 
 Size: easy (one short, local change), medium (several files or a design choice inside one layer), big (cross-layer, or a decision first). Depends on: what must happen first, or "none" when it can be done now.
 
@@ -75,6 +75,7 @@ Language or toolchain features deferred by decision, not defects.
 | F35 | Full async panic traces in the JS backend: after an `await`, a trace holds only the frames since the call resumed, read off the JavaScript stack. A full trace needs a caller link on every live async call, paid on the hot path. | medium | js-codegen P1 | js-codegen review 2026-11-15 |
 | F36 | A keyed read (`d.city`, proposal 16) denotes its `index` call alone. Go-to-definition and rename could also reach the field its key names, as a String key does (`lookup/key-denotations.ts`), once the denotation contract says how the call and the field share one name (hover, `declarationsOf`, `lookup.sweep.test.ts`). | medium | proposal 16 | keyed-members-type-loops plan review 2026-11-15 |
 | F37 | Completion after `S[K].` (a type indexed by a key written before `.`, proposal 17) offers no static functions, as completion after a type parameter's `.` does; offer them through the field type the call reads as its owner (`namedType`, `completion/places/member.ts`). | low | proposal 17 | keyed-members-type-loops P17 review 2026-11-15 |
+| F38 | An `internal` visibility between `_` (private to its module) and public: names std modules (and later a package's modules) share without user programs seeing them. Today `endings.resultOfEnding` is public in a module nobody imports by default, which stands in for it. | medium | none | ir-first R1 2026-11-17 |
 
 ### Performance (P)
 
