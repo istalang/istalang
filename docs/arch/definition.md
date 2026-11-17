@@ -27,7 +27,9 @@ carries one carries an `EncodedDefinition` (value, bytes, hash) or the text a bu
 there. The toolchain's own output is trusted: encoded once, never read back or validated again.
 Validation runs where bytes come from outside it, a store or a file (`readDefinition`), and as an
 assertion in the compile test kit. Validation checks every index lands in its table, in code and
-in the tables alike (`validation/references.ts`), refuses a handle in a constant or annotation,
+in the tables alike (`validation/references.ts`), and every part code steps into, a field, a
+variant, a tuple's element or a `switch`'s targets, among its type's (`validation/parts.ts`);
+it refuses a start key shared by two starts or a `main` naming none, a handle in a constant or annotation,
 holds the entries a purpose names to the call rule (a test's runner and suites ista code calls,
 the job server live code calls), and runs
 the ownership verifier (`validation/ownership.ts`), which judges each instruction on its last visit

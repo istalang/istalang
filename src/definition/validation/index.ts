@@ -4,6 +4,8 @@
  *
  * - Every index lands in its table: the tables' own references to each other (./references.ts),
  *   a code entry's operands (registers, labels, types, functions, constants) and the purpose's.
+ *   Every part code steps into lands among its type's parts (./parts.ts).
+ * - The purpose's `main` names a start, and no two starts share a key: a host starts one by key.
  * - Every code entry ends where no path runs off its end, and one `wrapping` a function value
  *   captures it, as a start follows it there (§10).
  * - The call rule (foundation/language/call-rule.ts) over the entries the purpose names, which the
@@ -16,15 +18,16 @@
 
 import { mayCall } from '../../foundation/language/call-rule.ts';
 import type { Mark } from '../../foundation/language/well-known/index.ts';
-import { endsBlock, operandsOf } from '../instructions/instruction.ts';
+import { endsBlock, type Instruction, operandsOf } from '../instructions/instruction.ts';
 import type { CodeFunction } from '../tables/functions.ts';
 import type { Purpose, Tables } from '../tables/index.ts';
 import { ownershipIssues } from './ownership.ts';
+import { partIssues } from './parts.ts';
 import { outsideIssue, referenceIssues } from './references.ts';
 
 /** Every way `definition` breaks the rules above, each a message naming where. */
 export function validationIssues(definition: Tables): readonly string[] {
-  const issues: string[] = [...referenceIssues(definition)];
+  const issues: string[] = [...referenceIssues(definition), ...startIssues(definition)];
   const { functions } = definition;
   for (const { function: called, caller, where } of purposeCalls(definition.purpose)) {
     const outside = outsideIssue('function', called, functions.length);
@@ -54,7 +57,7 @@ function codeIssues(entry: CodeFunction, where: string, definition: Tables): rea
       for (const index of indices) {
         const outside = outsideIssue(what, index, size, of);
         if (outside !== undefined) {
-          issues.push(`${where} at ${String(pc)} (${each.kind}): ${outside}`);
+          issues.push(`${atInstruction(where, pc, each)}: ${outside}`);
         }
       }
     };
@@ -64,6 +67,11 @@ function codeIssues(entry: CodeFunction, where: string, definition: Tables): rea
     within('type', operands.types, definition.types.length);
     within('constant', operands.constants, definition.constants.length);
   });
+  issues.push(
+    ...partIssues(entry, definition.types, (pc, instruction) =>
+      atInstruction(where, pc, instruction),
+    ),
+  );
   const last = instructions.at(-1);
   if (last !== undefined && !endsBlock(last)) {
     issues.push(`${where}: its last instruction, ${last.kind}, runs off the end.`);
@@ -72,6 +80,22 @@ function codeIssues(entry: CodeFunction, where: string, definition: Tables): rea
     issues.push(`${where}: it wraps a function value, yet captures none.`);
   }
   return issues;
+}
+
+/** Where instruction `pc` of the entry at `where` is, for an issue. */
+function atInstruction(where: string, pc: number, { kind }: Instruction): string {
+  return `${where} at ${String(pc)} (${kind})`;
+}
+
+/** Starts a host can't tell apart by key, and a `main` naming none. */
+function startIssues({ starts, purpose }: Tables): readonly string[] {
+  const keys = starts.map(({ key }) => key);
+  const repeated = keys.filter((key, at) => keys.indexOf(key) !== at);
+  const main = purpose.kind === 'program' ? purpose.main : undefined;
+  return [
+    ...[...new Set(repeated)].map((key) => `start ${key}: another start has its key.`),
+    ...(main === undefined || keys.includes(main) ? [] : [`main: no start has key ${main}.`]),
+  ];
 }
 
 /** The entries `purpose` names, each with the mark of the code calling it and where it is named. */
