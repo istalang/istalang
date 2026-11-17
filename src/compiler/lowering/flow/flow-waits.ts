@@ -28,7 +28,6 @@ import { substitute } from '../../checker/types/parts/substitution.ts';
 import type { Type } from '../../checker/types/type/index.ts';
 import { intType } from '../../checker/types/type/primitives.ts';
 import { wellKnownArguments } from '../../checker/types/type/well-known.ts';
-import type { Await, Select } from '../../syntax/expressions/index.ts';
 import { selectCasesOf } from '../../syntax/expressions/readings.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 import { type ClosedCall, calledParameters, substitutionOfCall } from '../calls/closed-calls.ts';
@@ -44,9 +43,17 @@ import {
 import { waypointAt } from './waypoints.ts';
 import type { FlowWriter } from './writer.ts';
 
-/** A wait of the flow: the `await` or `select` waiting, and its cases' futures, in order. */
+/**
+ * Where the flow waits: an `await`'s `suspend` or a `select`'s test. Not their syntax node, which
+ * a field loop writes once per field (§3.16), each copy a wait of its own.
+ */
+type WaitSite =
+  | Extract<Operation, { readonly op: 'suspend' }>
+  | Extract<BranchTest, { readonly kind: 'select' }>;
+
+/** A wait of the flow: where it waits, and its cases' futures, in order. */
 interface FlowWait {
-  readonly node: Await | Select;
+  readonly site: WaitSite;
   readonly futures: readonly ValueId[];
 }
 
@@ -57,7 +64,7 @@ interface WaitedIn {
 }
 
 export class FlowWaits {
-  readonly #waits = new Map<Await | Select, FlowWait>();
+  readonly #waits = new Map<WaitSite, FlowWait>();
   readonly #cases = new Map<ValueId, WaitedIn>();
   readonly #opened = new Map<FlowWait, OpenWait>();
   /** What each future gave once it settled, in the register owning it. */
@@ -67,17 +74,17 @@ export class FlowWaits {
     for (const { operations, exit } of flow.blocks) {
       for (const operation of operations) {
         if (operation.op === 'suspend' && operation.site.kind === 'Await') {
-          this.#add({ node: operation.site, futures: operation.awaited });
+          this.#add({ site: operation, futures: operation.awaited });
         }
       }
       if (exit.kind === 'branch' && exit.test.kind === 'select') {
-        this.#add({ node: exit.test.node, futures: exit.test.futures });
+        this.#add({ site: exit.test, futures: exit.test.futures });
       }
     }
   }
 
   #add(wait: FlowWait): void {
-    this.#waits.set(wait.node, wait);
+    this.#waits.set(wait.site, wait);
     for (const [position, future] of wait.futures.entries()) {
       if (this.#cases.has(future)) {
         unreachable(`The future ${future} is waited on by two waits.`);
@@ -96,11 +103,13 @@ export class FlowWaits {
     return { open: memo(this.#opened, wait, open), position };
   }
 
-  /** The wait `node` waits on, opened by its cases, and its cases' futures, in order. */
-  waitOf(node: Await | Select): { readonly open: OpenWait; readonly futures: readonly ValueId[] } {
-    const wait = this.#waits.get(node) ?? unreachable(`No wait at ${node.span.from}.`);
-    const open =
-      this.#opened.get(wait) ?? unreachable(`No case opened the wait at ${node.span.from}.`);
+  /** The wait at `site`, opened by its cases, and its cases' futures, in order. */
+  waitOf(
+    site: WaitSite,
+    span: AnchoredSpan,
+  ): { readonly open: OpenWait; readonly futures: readonly ValueId[] } {
+    const wait = this.#waits.get(site) ?? unreachable(`No wait at ${span.from}.`);
+    const open = this.#opened.get(wait) ?? unreachable(`No case opened the wait at ${span.from}.`);
     return { open, futures: wait.futures };
   }
 
@@ -163,15 +172,16 @@ function resolverArguments(writer: FlowWriter, closed: ClosedCall): readonly [Ty
 /** An `await` (`suspend` at one): parks until its case decides its wait, then takes its value. */
 export function awaited(
   writer: FlowWriter,
-  { site }: Extract<Operation, { readonly op: 'suspend' }>,
+  suspend: Extract<Operation, { readonly op: 'suspend' }>,
 ) {
+  const { site } = suspend;
   if (site.kind !== 'Await') {
     return;
   }
   const { context } = writer;
   const { code } = context;
   const { span } = site;
-  const { open, futures } = writer.waits.waitOf(site);
+  const { open, futures } = writer.waits.waitOf(suspend, span);
   code.letGo([parked(context, open, { waypoint: waypointAt(context, site), span })], span);
   futures.forEach((future, position) => {
     writer.waits.give(future, caseValue(context, open, position, span));
@@ -182,9 +192,10 @@ export function awaited(
 /** A `select` (the banner): goes on to the block of the case decided, `to`'s last its `else`'s. */
 export function selected(
   writer: FlowWriter,
-  { node, holds }: Extract<BranchTest, { readonly kind: 'select' }>,
+  test: Extract<BranchTest, { readonly kind: 'select' }>,
   to: readonly BlockId[],
 ): void {
+  const { node, holds } = test;
   const { context } = writer;
   const { code } = context;
   const { span } = node;
@@ -193,7 +204,7 @@ export function selected(
     writer.goTo(to[0] ?? unreachable('A select goes nowhere.'), span);
     return;
   }
-  const { open, futures } = writer.waits.waitOf(node);
+  const { open, futures } = writer.waits.waitOf(test, span);
   const position =
     node.elseClause === undefined
       ? parked(context, open, { waypoint: waypointAt(context, node), span })
