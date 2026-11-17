@@ -75,7 +75,33 @@ const programs = [
       ].join('\n'),
     },
   },
+  {
+    name: 'a test module calling a std generic std code calls at a heap type, mocking nothing',
+    files: { 'main.test.ista': flatMapTests('    drop 0') },
+  },
+  {
+    name: 'a test module mocking that std generic, never shared across types where mocked',
+    files: {
+      'main.test.ista': flatMapTests(
+        '    hold _ = mock(map<Int, Array<String>, "simple">, fn(xs: Array<Int>, f: fn(Int) -> Array<String>) -> Array<Array<String>>: [["m"]])',
+      ),
+    },
+  },
 ] as const;
+
+/** A test of `flatMap`, which the std's own code makes a `map` at a heap type of; `before` first. */
+function flatMapTests(before: string): string {
+  return [
+    "import Suite, Test, test, assert, mock from 'testing'",
+    '@Suite{"flat"}',
+    'fn flat() -> Array<Test>: [',
+    '  test("maps", fn(): {',
+    before,
+    '    assert([1].flatMap(fn(n: Int) -> Array<String>: [String(n)]).length() == 1)',
+    '  }),',
+    ']',
+  ].join('\n');
+}
 
 type Subject = (typeof programs)[number];
 
@@ -130,6 +156,17 @@ describe('a program lowered after others over its std', () => {
         ),
         { numRuns: 6 },
       );
+    },
+    wholeProgramTimeout,
+  );
+
+  it(
+    "lowers a test build mocking a std generic as with nothing kept, after one that doesn't mock it",
+    () => {
+      const [unmocked, mocked] = programs.slice(-2) as [Subject, Subject];
+      const std = new StdLowering();
+      loweredHash(unmocked, std);
+      expect(loweredHash(mocked, std)).toBe(loweredHash(mocked, new StdLowering()));
     },
     wholeProgramTimeout,
   );

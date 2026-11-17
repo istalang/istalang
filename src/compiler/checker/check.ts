@@ -226,6 +226,11 @@ export interface Checker {
    * instance per representation of their arguments (rules/parametricity/).
    */
   readonly opaqueParametersOf: (declaration: FunctionDeclaration) => ReadonlySet<TypeParameter>;
+  /**
+   * The functions the program's test modules mock (§10), whose instances are never shared across
+   * types (rules/testing.ts).
+   */
+  readonly mockedFunctions: () => ReadonlySet<FunctionDeclaration>;
   /** What tools ask by position: what names denote, the body holding a node (lookup/). */
   readonly lookup: LookupQueries;
 }

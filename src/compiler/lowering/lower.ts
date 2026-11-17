@@ -22,22 +22,27 @@ import { stdModuleIdOf } from '../program/program.ts';
 import type { FunctionDeclaration } from '../syntax/declarations/index.ts';
 import { entryKinds, loweredEntry } from './entry-kinds.ts';
 import { listStart, startableOf, startables } from './synthesized/boundary/starts.ts';
+import { entryKeysOf } from './tables/entry-keys.ts';
 import { rootInstance } from './tables/instances.ts';
 import { type StdLowering, stdLoweringOf } from './tables/std-lowering.ts';
 import { DefinitionTables } from './tables/tables.ts';
 
-/** How a build lowers: a test build's functions' slots may be rebound (§10). */
-interface Build {
-  readonly rebindable: boolean;
-}
-
-/** The tables of a `build` of `checker`'s program, taking over the entries `std` kept for it. */
+/**
+ * The tables of `checker`'s program, a test build's functions' slots `rebindable` (§10), taking over
+ * the entries `std` kept for the build: what changes how the std's entries lower, which the std
+ * functions its test modules mock do too, as they are never shared across types.
+ */
 function tablesOf(
   checker: Checker,
-  build: Build,
+  rebindable: boolean,
   std: StdLowering = stdLoweringOf(checker.program),
 ): DefinitionTables {
-  return new DefinitionTables(checker, { ...build, identities: entryKinds, kept: std.of(build) });
+  const keys = entryKeysOf(checker);
+  const mocked = [...checker.mockedFunctions()]
+    .filter((declaration) => checker.isStd(checker.moduleOf(declaration)))
+    .map((declaration) => keys.declaration(declaration));
+  const kept = std.of({ rebindable, mocked });
+  return new DefinitionTables(checker, { rebindable, identities: entryKinds, kept });
 }
 
 /**
@@ -45,7 +50,7 @@ function tablesOf(
  * started through its start entry, as a host starts any of the others.
  */
 export function lower(checker: Checker, main: FunctionDeclaration, std?: StdLowering): Definition {
-  const tables = tablesOf(checker, { rebindable: false }, std);
+  const tables = tablesOf(checker, false, std);
   const started = startableOf(checker, main);
   if (started === undefined) {
     unreachable("'main' can't be started; the checker should have said why.");
@@ -78,7 +83,7 @@ export function lowerTests(
   suites: readonly Suite[],
   std?: StdLowering,
 ): Definition {
-  const tables = tablesOf(checker, { rebindable: true }, std);
+  const tables = tablesOf(checker, true, std);
   const indexOf = (declaration: FunctionDeclaration) =>
     tables.index({ kind: 'instance', instance: rootInstance(checker, declaration) });
   const runner = (name: string) =>

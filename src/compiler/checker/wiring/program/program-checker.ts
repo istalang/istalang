@@ -27,7 +27,7 @@ import type {
   LanguageModule,
   WellKnownDeclaration,
 } from '../../../../foundation/language/well-known/index.ts';
-import { Entries, type EntryTable } from '../../../../foundation/structures/entries/index.ts';
+import { Entries } from '../../../../foundation/structures/entries/index.ts';
 import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import { bindProgram } from '../../../binder/bind.ts';
 import type { Bindings, Entity } from '../../../binder/entities.ts';
@@ -86,12 +86,10 @@ import { JsonForms } from '../../rules/boundary/json-forms.ts';
 import { Expansion } from '../../rules/expansion/functions.ts';
 import { externHeldOf, keepsOf } from '../../rules/lifetimes/externs.ts';
 import { Lifetimes } from '../../rules/lifetimes/lifetimes.ts';
-import { opaqueParametersQuery } from '../../rules/parametricity/opaque-parameters.ts';
 import type { CheckedBody } from '../../surface/checked-body.ts';
 import { type Fit, type Fitting, fitOf } from '../../types/fitting/fit/index.ts';
 import { typeKeys } from '../../types/identity/type-keys.ts';
 import { standingFor } from '../../types/inference/variables.ts';
-import { sameTypeSpelled } from '../../types/parts/type-parts.ts';
 import { resolveAnyType } from '../../types/traits/any-types.ts';
 import { boundKindsOf } from '../../types/traits/data-kind.ts';
 import { memberUnionOf } from '../../types/traits/struct-keys.ts';
@@ -110,13 +108,14 @@ import type {
 import type { TypeRules } from '../../types/type/type-rules.ts';
 import { cellTypeOf } from '../../types/type/well-known.ts';
 import type { StaticOwner } from '../../types/written/named-types.ts';
-import { resolveTypeNode } from '../../types/written/resolve-type.ts';
 import type { TypeMatchQueries } from '../../types/written/type-match.ts';
 import { BodyChecker } from '../body/body-checker.ts';
 import type { BodyKind } from '../body/body-kinds.ts';
 import { programDisposals } from './program-disposals.ts';
 import { isStdInput, programInputs, recordedBindings } from './program-inputs.ts';
 import { programKinds } from './program-kinds.ts';
+import { programParametricity } from './program-parametricity.ts';
+import { type ResolvedTypes, resolvedTypesOf } from './program-resolved-types.ts';
 import { programTypeRules } from './program-type-rules.ts';
 
 /** What a checker is made with, beside its program. */
@@ -150,8 +149,9 @@ export class ProgramChecker implements CheckerContext {
     unreachable(`No module holds the ${declaration.kind} at ${declaration.span.from}.`);
   readonly isStd: (module: ModuleId | undefined) => boolean;
   readonly blockOf: CheckerContext['blockOf'] = (m, d) => this.inputs.bodyOf(m, d);
-  readonly #resolvedTypes: EntryTable<CheckerNote, TypeNode, Type, ModuleId>;
+  readonly #resolvedTypes: ResolvedTypes;
   readonly opaqueParametersOf: CheckerContext['opaqueParametersOf'];
+  readonly mockedFunctions: CheckerContext['mockedFunctions'];
   readonly disposalOf: CheckerContext['disposalOf'];
   readonly disposeKindsOf: CheckerContext['disposeKindsOf'];
   readonly externHeldOf: CheckerContext['externHeldOf'] = (type) => externHeldOf(this, type);
@@ -185,11 +185,7 @@ export class ProgramChecker implements CheckerContext {
     this.bindings = withSynthesizedNames(recordedBindings(this.entries, bindings));
     this.inputs = programInputs(this.entries, program, bindings);
     this.isStd = isStdInput(this.entries, program);
-    this.#resolvedTypes = this.entries.table({
-      name: 'resolved types',
-      compute: (node, module) => resolveTypeNode(this, module, node),
-      equal: sameTypeSpelled,
-    });
+    this.#resolvedTypes = resolvedTypesOf(this);
     ({ disposalOf: this.disposalOf, disposeKindsOf: this.disposeKindsOf } = programDisposals(this));
     ({ kindOf: this.kindOf, valueKindsOf: this.valueKindsOf } = programKinds(this));
     this.#aliases = new Aliases(this, (alias) => this.#aliasModuleOf(alias));
@@ -232,7 +228,8 @@ export class ProgramChecker implements CheckerContext {
     this.traitObjects = traitObjectsOf(this);
     this.rootGoals = programRootGoals(this, rootSearches);
     this.lookup = new Lookup(this);
-    this.opaqueParametersOf = opaqueParametersQuery(this);
+    ({ mockedFunctions: this.mockedFunctions, opaqueParametersOf: this.opaqueParametersOf } =
+      programParametricity(this));
   }
 
   readonly reachesDisposable = (type: Type): boolean => this.lifetimes.reachesDisposable(type);

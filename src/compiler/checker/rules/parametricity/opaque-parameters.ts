@@ -32,7 +32,6 @@ import { reachedCalls } from '../../surface/reach.ts';
 import { instantiatingTypesOf, type ResolvedCall } from '../../surface/resolved-call.ts';
 import type { Type } from '../../types/type/index.ts';
 import { annotationNamed } from '../annotations/named.ts';
-import { mockedFunctions } from '../testing.ts';
 import { flowOpaque, type Judge } from './flow-uses.ts';
 import { isConstrained, names, opaquelyNamed } from './opaque-types.ts';
 
@@ -60,19 +59,18 @@ type Reader = FlowChecker &
     | 'wellKnownType'
   >;
 
-/** `opaqueParametersOf` over `checker`'s entries: each function's answer an entry of its own. */
+/**
+ * `opaqueParametersOf` over `checker`'s entries: each function's answer an entry of its own, none
+ * for a function `mocked` gives, which a mock replaces at one instance.
+ */
 export function opaqueParametersQuery(
   checker: Reader & Pick<CheckerContext, 'entries'>,
+  mocked: CheckerContext['mockedFunctions'],
 ): CheckerContext['opaqueParametersOf'] {
-  const mocked = checker.entries.table({
-    name: 'mocked functions',
-    compute: () => mockedFunctions(checker),
-    equal: sameMembers,
-  });
   const table = checker.entries.table({
     name: 'opaque parameters',
     compute: (declaration: FunctionDeclaration) =>
-      mocked.get(undefined).has(declaration)
+      mocked().has(declaration)
         ? new Set<TypeParameter>()
         : opaqueParametersOf(checker, declaration, query),
     equal: sameMembers,

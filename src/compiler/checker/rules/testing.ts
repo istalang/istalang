@@ -22,6 +22,7 @@
 
 import { languageModules, wellKnown } from '../../../foundation/language/well-known/index.ts';
 import { testingFunctions } from '../../../foundation/language/well-known/testing.ts';
+import { sameMembers } from '../../../foundation/structures/equality.ts';
 import type { ModuleId } from '../../program/program.ts';
 import { constructedVariant, functionsOf } from '../../syntax/declarations/field-defaults.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations/index.ts';
@@ -93,11 +94,23 @@ function writtenTarget(site: Call, mock: FunctionCall) {
   return { argument, target, recorded };
 }
 
+/** `mockedFunctions` over `checker`'s entries: one entry, computed once per revision. */
+export function mockedFunctionsQuery(
+  checker: Parameters<typeof mockedFunctions>[0] & Pick<CheckerContext, 'entries'>,
+): CheckerContext['mockedFunctions'] {
+  const table = checker.entries.table({
+    name: 'mocked functions',
+    compute: () => mockedFunctions(checker),
+    equal: sameMembers,
+  });
+  return () => table.get(undefined);
+}
+
 /**
- * The functions the program's test modules mock (§10). A mock replaces one function-table entry,
+ * The functions the program's test modules mock (§10). A mock binds a function-table entry's slot,
  * so an instance of one stays its own, never shared across types (rules/parametricity/).
  */
-export function mockedFunctions(
+function mockedFunctions(
   checker: Pick<CheckerContext, 'inputs' | 'bodyOf' | 'defaultsOf' | 'languageFunctions'>,
 ): ReadonlySet<FunctionDeclaration> {
   const { inputs } = checker;
