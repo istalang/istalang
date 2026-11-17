@@ -1,14 +1,17 @@
 /**
  * What an instance disposes as it ends (§3.4, §7, §9): the call its outcome awaits when it is
  * terminated, a root's own defers before the outcome it returns, and its context constants, with
- * what they hold, whether the host's or the program's.
+ * what they hold, whether the host's or the program's. And how a wait on an instance's end goes on
+ * as it ends: on a fresh runtime too, and committed once resolved, before anything awaits it.
  */
 
 import { describe, expect, it } from 'vitest';
 import { compiledEncoded } from '../../compiler/compile.test-kit.ts';
 import { lines } from '../../compiler/parser/parse.test-kit.ts';
+import type { EncodedDefinition } from '../../definition/definition.ts';
+import { ManualClock } from '../clock.ts';
 import type { LogRecord } from '../instance-state.ts';
-import { startToEnd, testRuntime } from '../runtime.test-kit.ts';
+import { recordingStore, startToEnd, testRuntime } from '../runtime.test-kit.ts';
 
 /** The messages of what a step showed. */
 const messages = ({ logs }: { readonly logs: readonly LogRecord[] }) =>
@@ -203,4 +206,74 @@ describe("an instance's context constants", () => {
       expect(records).toEqual(recorded);
     },
   );
+});
+
+/** `body`, spawned as `o/1` by the context `o`, which a live `main` calls and returns from. */
+function spawnedFrom(...body: readonly string[]): EncodedDefinition {
+  return compiledEncoded(
+    lines(
+      "import * as time from 'time'",
+      "import * as runtime from 'runtime'",
+      ...body,
+      'ista async fn spawner() -> Int:',
+      '  spawn parent()',
+      '  0',
+      'live async fn main() -> Int: await runtime.run("o") spawner()',
+    ),
+  );
+}
+
+describe("a wait on another instance's end", () => {
+  it('wakes the waiting parent on a fresh runtime once its child has ended there', async () => {
+    const text = spawnedFrom(
+      'ista async fn child(n: Int) -> Int:',
+      '  await time.delay(10ms)',
+      '  n * 2',
+      'ista async fn parent() -> Int:',
+      '  match await (spawn child(21)).result():',
+      '    case Ok(value): value',
+      '    case Err(_): -1',
+    );
+    const store = recordingStore();
+    const clock = new ManualClock();
+    const first = testRuntime({ store, clock });
+    expect(await startToEnd(first, text)).toEqual({ kind: 'finished', outcome: '0' });
+    expect(first.runtime.inspect('o/1').state).toMatchObject({ watching: ['o/1/1'] });
+
+    const restarted = testRuntime({ store, clock });
+    clock.set(10n);
+    expect((await restarted.runtime.wake('o/1/1')).state).toMatchObject({
+      kind: 'finished',
+      outcome: 42n,
+    });
+    expect((await restarted.runtime.wake('o/1')).state).toMatchObject({
+      kind: 'finished',
+      outcome: 42n,
+    });
+  });
+
+  it('commits once resolved though nothing awaits it yet, so its instance stops being woken for it', async () => {
+    const text = spawnedFrom(
+      'fn quick() -> Int: 7',
+      'ista async fn parent() -> Int:',
+      '  const ending = (spawn quick()).result()',
+      '  await time.delay(5ms)',
+      '  match await ending:',
+      '    case Ok(value): value',
+      '    case Err(_): 0',
+    );
+    const test = testRuntime();
+    expect(await startToEnd(test, text)).toEqual({ kind: 'finished', outcome: '0' });
+    expect(test.runtime.inspect('o/1/1').state).toMatchObject({ kind: 'finished', outcome: 7n });
+    expect(test.runtime.inspect('o/1').state).toEqual({
+      kind: 'waiting',
+      until: 5n,
+      watching: [],
+    });
+    test.clock.set(5n);
+    expect((await test.runtime.wake('o/1')).state).toMatchObject({
+      kind: 'finished',
+      outcome: 7n,
+    });
+  });
 });
