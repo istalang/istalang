@@ -449,6 +449,12 @@
       "✓ functions › a namespace's function-typed constant is called, and spawned",
       "✓ functions › a select with only an else runs its else body",
       "✓ functions › a constant evaluates to the value it spells: an Int beyond a double, -0 and a large Float",
+      "✓ functions › an async function widened and started is no call of it, which a mock would replace",
+      "✓ functions › an async function widened runs as its own call, with no frame of the widening",
+      "✓ functions › an async function widened is disposed as its own call, before an earlier defer",
+      "✓ functions › an async function widened gives its value converted across commits",
+      "✓ functions › an async function widened gives its value converted with every segment re-run",
+      "✓ functions › a future something else holds, widened, is awaited and stays as it was for its holder",
       "✓ instances › a spawn carries a sendable closure's captures into the child",
       "✓ instances › a child started through a shorter function value computes what it left out",
       "✓ instances › an instance ends with the value of the future its function gives, an async or a plain callee",
@@ -468,7 +474,7 @@
       "✓ waits › a wait decides at its first case in order when several disposal watches resolve together",
       "✓ waits › waiters readied together by their timers run in execution creation order",
       "✓ waits › a waiting put's value is held by its put alone: let go of with it, or as it loses a select",
-      "58 passed, 0 failed, 0 skipped."
+      "64 passed, 0 failed, 0 skipped."
     ]
   }
 }

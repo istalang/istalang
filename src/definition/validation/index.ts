@@ -4,7 +4,8 @@
  *
  * - Every index lands in its table: types, functions, constants, a code entry's registers and
  *   labels, a start's entry and the purpose's.
- * - Every code entry ends where no path runs off its end.
+ * - Every code entry ends where no path runs off its end, and one `wrapping` a function value
+ *   captures it, as a start follows it there (§10).
  * - The call rule (foundation/language/call-rule.ts) over the entries the purpose names, which the
  *   runtime calls itself: a test's runner and suites as ista code, the job server as live code. Any
  *   other call is checked by the run, against the kind of code running it.
@@ -76,6 +77,9 @@ function codeIssues(entry: CodeFunction, where: string, definition: Tables): rea
   const last = instructions.at(-1);
   if (last !== undefined && !endsBlock(last)) {
     issues.push(`${where}: its last instruction, ${last.kind}, runs off the end.`);
+  }
+  if (entry.wrapping === true && entry.captures === 0) {
+    issues.push(`${where}: it wraps a function value, yet captures none.`);
   }
   return issues;
 }

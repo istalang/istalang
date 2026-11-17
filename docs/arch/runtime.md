@@ -47,7 +47,9 @@ settle once and call their callbacks in rank order, park and unpark of an execut
   first. Every future a resolver is registered on resolves it as `tryResolve` does: the first
   decides. What settling a set of futures settles in turn (a
   future following another, as a mock's answer does) settles together after it
-  (`Run.settleTogether`).
+  (`Run.settleTogether`). A future a widened function gives, which nothing else holds, converts
+  its value as it settles (`Future.converters`, prelude `_converted`, spec §3.14), so a widened
+  call's future stays the call's own, with no execution between.
 - **Resolvers** are shared structs of `decide` and their state, a `_Resolution<K>` (`rank`, `state`,
   `cancels`, what it comes down to deciding: a wait's case, the resolver a `Resolver.at` one decides,
   or a callback), which takes no value: only what passes a value on is compiled per awaited type, the
@@ -154,7 +156,7 @@ In a Definition built to run tests (spec §10):
 - A call reaches the mock its instance holds, else the nearest one an instance it was spawned from
   holds (`World.heldMock`). A code entry asks at its `mocked` instruction, past its prologue, with
   every parameter's value; a native is asked as its extern is called. The function an invocation
-  starts with is never mocked.
+  starts with is never mocked; a widened one is the function its `wrapping` entry wraps.
 - The holder records the call and runs the replacement, as a call of its own when it holds the mock
   for another instance (`Run.asCall`). A host value crosses as its host's JSON and arrives as the
   caller's resource, which the caller alone disposes; other values pass as they are within one

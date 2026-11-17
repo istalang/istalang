@@ -38,7 +38,7 @@ import { convertedIntoAny } from '../../values/into-any.ts';
 import { rebuiltAs, tupleOf } from '../../values/struct-values.ts';
 import { asBase, intoUnion } from '../../values/unions.ts';
 import { builtKindOf, codeModeOf } from '../modes.ts';
-import { changesLayout, type Rebuilding, rebuilt } from './parts.ts';
+import { changesLayout, convertedFuture, type Rebuilding, rebuilt } from './parts.ts';
 
 /** A register and the type of the value it holds. */
 interface TypedRegister {
@@ -276,9 +276,11 @@ export function convertingEntry(
 /**
  * The entry of a function of type `entry.from` wrapped as one of `entry.to` (§3.5, §3.14): it
  * converts each argument it is given into what the function takes, a `&` passed on as it is,
- * calls the function it captures, and converts what it gives; where `to` gives a future of what it
- * gives, the entry is async, awaiting the future the function gives, if any, so the entry gives a
- * future already resolved when the function gives none.
+ * calls the function it captures, and converts what it gives. Where `to` gives a future of what a
+ * plain function gives, the entry is async, so it gives a future already resolved; a future the
+ * function gives is converted as it is (`convertedFuture`), so the entry starts no call of its own
+ * and the function's call is the caller's. The Definition marks it `wrapping`, so a start of it
+ * starts the function it wraps (§10).
  */
 export function wrappingEntry(
   lowering: Pick<CodeContext, 'checker' | 'tables'>,
@@ -287,7 +289,7 @@ export function wrappingEntry(
   const { checker, tables } = lowering;
   const { from, to, at } = entry;
   const resultFit = resultFitBetween(checker, from, to);
-  const async = resultFit.kind !== 'value';
+  const async = resultFit.kind === 'resolved';
   const code = new SynthesizedCode(lowering, at.span, {
     parameters: to.parameters.map((parameter) => {
       const type = tables.types.reference(parameter.type);
@@ -315,30 +317,38 @@ export function wrappingEntry(
     { span: at.span, callee: { kind: 'value', register: original }, arguments: passed },
     tables.types.reference(from.result),
   );
-  returnedAs(code, called, entry, at);
+  code.return(returnedAs(code, called, entry, at));
   const header = tables.headerAt(conversionName(checker, entry), at.module, at.span);
-  return code.entry(header);
+  return { ...code.entry(header), wrapping: true };
 }
 
 /**
- * Returns `called`, what a function of type `from` gave, as a function of type `to` gives it:
- * fitted to its result; where `to` gives a future of it, from an async entry, awaiting the future
- * `from` gave, if any, so the entry gives a future already resolved when `from` gives none. Whether
- * the entry is async.
+ * `called`, what a function of type `from` gave, as a function of type `to` returns it: fitted to
+ * its result; a future converted as it is; a plain value as an async entry gives it, in the future
+ * it resolves.
  */
 function returnedAs(
   code: SynthesizedCode,
   called: Register,
   { from, to }: { readonly from: FunctionType; readonly to: FunctionType },
   at: ConversionSite,
-): void {
+): Register {
   const result = resultFitBetween(code.checker, from, to);
-  if (result.kind === 'value') {
-    code.return(fittedIn(code, { value: called, type: from.result }, to.result, at));
-    return;
+  switch (result.kind) {
+    case 'value':
+      return fittedIn(code, { value: called, type: from.result }, to.result, at);
+    case 'resolved':
+      return fittedIn(code, { value: called, type: result.value }, result.into, at);
+    case 'awaited': {
+      const how = rebuildingIn(code, applyingIn(at));
+      const { value, into } = result;
+      return convertedFuture(code, called, { value, into, type: to.result }, how);
+    }
+    default: {
+      const unhandled: never = result;
+      return unhandled;
+    }
   }
-  const value = result.kind === 'awaited' ? code.await(called, from.result) : called;
-  code.return(fittedIn(code, { value, type: result.value }, result.into, at));
 }
 
 /** `type`, whose value the checker converted into a shape, so a nominal struct. */

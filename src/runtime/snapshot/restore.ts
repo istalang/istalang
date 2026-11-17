@@ -187,10 +187,12 @@ const fillers: Handlers<{ readonly run: Run } & Reading, PersistedObject, [], vo
       cancelled: restored(cancelled),
     }));
     future.onAwaited.push(...persisted.onAwaited.map(restored));
+    future.converters.push(...persisted.converters.map(restored));
     const held = [
       ...(future.settled ? [future.value] : []),
       ...future.callbacks.flatMap(closuresOf),
       ...future.onAwaited,
+      ...future.converters,
     ];
     for (const each of held) {
       run.lifetimes.adoptRestored(each);

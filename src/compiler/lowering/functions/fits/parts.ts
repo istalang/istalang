@@ -9,7 +9,8 @@
  *   the value as it is. Its declaration stays, and that is all `==` and a map's keys compare of it
  *   besides its parts (definition/values/equality.ts).
  * - An array's items are converted by the prelude's `map`, a map's values by `_mapValues`, each
- *   given a function converting one; a struct's, a variant's, a tuple's and a shape's fields one by
+ *   given a function converting one, as a future given by a function widened is by `_converted`
+ *   (`convertedFuture`), so the future stays the call's own; a struct's, a variant's, a tuple's and a shape's fields one by
  *   one; a union's value as the member it holds; a function by wrapping it in one converting what
  *   it takes and gives. A host's value is its payload's JSON, which a wider type reads alike, so it
  *   stays as it is.
@@ -40,7 +41,7 @@ import type {
   Type,
 } from '../../../checker/types/type/index.ts';
 import { membersOf } from '../../../checker/types/type/index.ts';
-import { wellKnownArguments } from '../../../checker/types/type/well-known.ts';
+import { awaitedOf, wellKnownArguments } from '../../../checker/types/type/well-known.ts';
 import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import { emitCall } from '../../calls/emit-call.ts';
 import type { CodeContext } from '../../context.ts';
@@ -249,20 +250,63 @@ function mappedWith(
   const to = target.arguments;
   const isMap = from.length === 2;
   const name = isMap ? partConversionFunctions.values : partConversionFunctions.items;
-  const declaration =
-    context.checker.languageFunctions('prelude', name)[0] ??
-    unreachable(`The prelude declares no '${name}'.`);
   const item = from.at(-1) ?? unreachable('A collection has an item type.');
   const last = to.at(-1) ?? unreachable('A collection has an item type.');
-  const instance = rootInstance(context.checker, declaration, [...from, last]);
+  return preludeConversion(context, {
+    name,
+    typeArguments: [...from, last],
+    arguments: [value.register, how.converter(item, last)],
+    result: target,
+    span: how.span,
+  });
+}
+
+/**
+ * `future`, of a future of `value`, where `type`, a future of `into` of its kind, is expected, as a
+ * function widened gives it (§3.14): itself where its value keeps its layout, else the prelude's
+ * `_converted` of it, given the converter of its value.
+ */
+export function convertedFuture(
+  context: CodeContext,
+  future: Register,
+  { value, into, type }: { readonly value: Type; readonly into: Type; readonly type: Type },
+  how: Rebuilding,
+): Register {
+  const { checker } = context;
+  if (!changesLayout(checker, value, into)) {
+    return future;
+  }
+  const mode = awaitedOf(checker, type)?.mode ?? unreachable('A widened future has a kind.');
+  return preludeConversion(context, {
+    name: partConversionFunctions.futureValue,
+    typeArguments: [value, into, mode],
+    arguments: [future, how.converter(value, into)],
+    result: type,
+    span: how.span,
+  });
+}
+
+/** What the prelude's conversion function `name` gives of `arguments`, as `result`. */
+function preludeConversion(
+  context: CodeContext,
+  conversion: {
+    readonly name: string;
+    readonly typeArguments: readonly Type[];
+    readonly arguments: readonly Register[];
+    readonly result: Type;
+    readonly span: AnchoredSpan;
+  },
+): Register {
+  const { checker, tables } = context;
+  const { name, span } = conversion;
+  const declaration =
+    checker.languageFunctions('prelude', name)[0] ??
+    unreachable(`The prelude declares no '${name}'.`);
+  const instance = rootInstance(checker, declaration, conversion.typeArguments);
   return emitCall(
     context,
-    {
-      span: how.span,
-      callee: context.tables.functionIndex(instance),
-      arguments: [value.register, how.converter(item, last)],
-    },
-    context.tables.types.reference(target),
+    { span, callee: tables.functionIndex(instance), arguments: conversion.arguments },
+    tables.types.reference(conversion.result),
   );
 }
 

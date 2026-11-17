@@ -34,10 +34,14 @@ export const arrayPatternFunctions = {
 } as const;
 
 /**
- * What a collection converted part by part calls in the prelude (§3.5): an array's `map` of its
- * items, and a map's `_mapValues`, its keys kept.
+ * What a value converted part by part calls in the prelude (§3.5, §3.14): an array's `map` of its
+ * items, a map's `_mapValues`, its keys kept, and a future's `_converted` of what it gives.
  */
-export const partConversionFunctions = { items: 'map', values: '_mapValues' } as const;
+export const partConversionFunctions = {
+  items: 'map',
+  values: '_mapValues',
+  futureValue: '_converted',
+} as const;
 
 /** The static function a conversion `T(x)` calls (§3.10). */
 export const conversionFunction = 'from';

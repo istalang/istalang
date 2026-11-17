@@ -8,6 +8,8 @@
  *   resolver stands for: one that can't decide any more is dropped as another comes or is asked
  *   about, and a future one of those lost on, with nothing waiting on it, is given up on, which a
  *   slot passes over (§6, §8). A withdrawn one, a `select`'s that didn't wait, gives up on nothing.
+ * - A future nothing else holds, widened, converts its value in place, as it settles or at once
+ *   (`_convertedInPlace`, settling.ts `converted`), so a widened call's future is the call's own.
  * - `_later` readies a call of its own, as a `Resolver.of` callback and an `onCancel` run (§8).
  * - `_unpark` readies a parked call to resume with its wait's decided position; a wait decided
  *   before its call parks readies it all the same, as awaiting still yields (§6), unless the call
@@ -22,10 +24,11 @@ import type { Natives } from '../natives.ts';
 import type { Execution } from './objects/execution.ts';
 import { closuresOf, Future, type Waiting } from './objects/future.ts';
 import type { Run } from './run.ts';
+import { converted } from './settling.ts';
 
 /** The run's natives, by key, over `run`. */
 export function runNatives(run: Run): Natives {
-  return { ...futureNatives(run), ...callNatives(run) };
+  return { ...futureNatives(run), ...conversionNatives(run), ...callNatives(run) };
 }
 
 /** `future` given as a value, the handle of one. */
@@ -88,6 +91,25 @@ function futureNatives(run: Run): Natives {
       run.lifetimes.hold(value);
       run.settle(futureOf(given), value ?? null);
       return null;
+    },
+  };
+}
+
+/** What a future widened stands on (prelude.ista `_converted`). */
+function conversionNatives(run: Run): Natives {
+  return {
+    'prelude._unshared(prelude.Future<T, K>)': ([given]) => futureOf(given).count <= 1,
+    'prelude._convertedInPlace(prelude.Future<T, K>, fn(T) -> U)': ([given, kept]) => {
+      const future = futureOf(given);
+      const converter = kept ?? null;
+      run.lifetimes.hold(converter);
+      if (future.settled) {
+        const call = (closure: Value, value: Value) => run.callValue(closure, [value]);
+        future.value = converted(call, run.lifetimes, future.value, converter);
+      } else {
+        future.converters.push(converter);
+      }
+      return given ?? null;
     },
   };
 }

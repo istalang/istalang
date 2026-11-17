@@ -110,6 +110,10 @@ function releasedByFuture(future: Future, seams: DisposalSeams): readonly Value[
   if (future.execution !== undefined) {
     seams.stop(future.execution);
   }
-  const held = [...waiting.flatMap(closuresOf), ...future.onAwaited.splice(0)];
+  const held = [
+    ...waiting.flatMap(closuresOf),
+    ...future.onAwaited.splice(0),
+    ...future.converters.splice(0),
+  ];
   return future.settled ? [future.value, ...held] : held;
 }

@@ -61,6 +61,12 @@ const code = z.strictObject({
   parameters: z.array(z.strictObject({ hasDefault: z.boolean() })),
   /** How many captured values a closure of this function carries. */
   captures: z.int().nonnegative(),
+  /**
+   * Set on a function value widened (§3.5, §3.14): the entry converting the arguments and result
+   * of the function value in its first capture, so that a call of it is that function's own call,
+   * and a start of it starts that function (§10).
+   */
+  wrapping: z.literal(true).optional(),
   registers: z.array(registerEntry),
   instructions: z.array(instruction).min(1),
 });

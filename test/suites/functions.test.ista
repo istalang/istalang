@@ -2,7 +2,9 @@
 # computed and what it sees, and constants another module computes. Each rule is its own function,
 # and its test asserts what the old lowering's unit test did.
 
-import Suite, Test, test, assertEq from 'testing'
+import Suite, Test, test, assertEq, mock, idle, waitingAt, spawnCrashingEveryAwait from 'testing'
+import * as runtime from 'runtime'
+import * as time from 'time'
 import * as strings from 'strings'
 import Decimal from 'decimal'
 import * as lib from './functions-lib'
@@ -72,6 +74,58 @@ fn onlyElse() -> Int:
   select:
     else: 42
 
+ista async fn hello() -> Int: 1
+
+ista async fn mockedHello() -> (Result<Int?>, Result<Int?>):
+  hold _ = mock(hello, async fn() -> Int: 2)
+  (await spawn<Int?>(hello).result(), await runtime.isolate<Int?>(hello))
+
+ista async fn step() -> Int:
+  @Waypoint{"step-1"}
+  await time.delay(1h)
+  1
+
+ista async fn widenedWaitingAt() -> Array<String>:
+  const widened: sendable ista async fn() -> Int? = step
+  const instance = spawn(widened)
+  await instance.idle()
+  instance.waitingAt()
+
+ista async fn worker(log: Shared<Array<String>>) -> Int:
+  await select:
+    case time.delay(1h): 1
+    case worker.disposing():
+      log->value.push("worker disposing")
+      2
+
+ista async fn widenedDisposal() -> Array<String>:
+  const log = new Shared<Array<String>>{value: []}
+  const widened: ista async fn(Shared<Array<String>>) -> Int? = worker
+  if true:
+    _ = defer(fn(): log->value.push("earlier defer"))
+    _ = widened(log)
+  log->value
+
+ista async fn later(value: Int) -> Int:
+  await runtime.commit()
+  value
+
+ista async fn widenedAcrossCommits() -> (Int?, Int?):
+  const widened: ista async fn(Int) -> Int? = later
+  const pending = widened(4)
+  await runtime.commit()
+  (await pending, await widened(5))
+
+shared struct Stored:
+  future: Future<Int, "ista">
+
+ista fn storedFuture(stored: Stored) -> Future<Int, "ista">: stored->future
+
+ista async fn widenedSharedFuture() -> (Int?, Int):
+  const stored = new Stored{future: later(6)}
+  const widened: ista fn(Stored) -> Future<Int?, "ista"> = storedFuture
+  (await widened(stored), await stored->future)
+
 @Suite{"functions"}
 fn suite() -> Array<Test>: [
   test("a default left out is computed in the function, after the call's arguments, each seeing the parameters before it", fn(): assertEq(defaultAfterArguments(), "given a body 1 5"))
@@ -81,4 +135,10 @@ fn suite() -> Array<Test>: [
   test("a namespace's function-typed constant is called, and spawned", async fn(): assertEq(await namespaceFunctionConstant(), 42))
   test("a select with only an else runs its else body", fn(): assertEq(onlyElse(), 42))
   test("a constant evaluates to the value it spells: an Int beyond a double, -0 and a large Float", fn(): assertEq(literalsKept(), (1, true, true)))
+  test("an async function widened and started is no call of it, which a mock would replace", async fn(): assertEq(await mockedHello(), (Ok(1), Ok(1))))
+  test("an async function widened runs as its own call, with no frame of the widening", async fn(): assertEq(await widenedWaitingAt(), ["step-1"]))
+  test("an async function widened is disposed as its own call, before an earlier defer", async fn(): assertEq(await widenedDisposal(), ["worker disposing", "earlier defer"]))
+  test("an async function widened gives its value converted across commits", async fn(): assertEq(await widenedAcrossCommits(), (4, 5)))
+  test("an async function widened gives its value converted with every segment re-run", async fn(): assertEq(await spawnCrashingEveryAwait(widenedAcrossCommits).result(), Ok((4, 5))))
+  test("a future something else holds, widened, is awaited and stays as it was for its holder", async fn(): assertEq(await widenedSharedFuture(), (6, 6)))
 ]

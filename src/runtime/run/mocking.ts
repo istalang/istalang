@@ -6,7 +6,7 @@
  *   spawned from, nearest first (world.ts `heldMock`); the holder runs the replacement, and its
  *   answer crosses back (mock-answers.ts).
  * - **The start stays.** The function an instance or a context's call starts with is never
- *   replaced, so a test can mock the function it calls into.
+ *   replaced, so a test can mock the function it calls into; one widened is the function it wraps.
  * - A call is recorded as the tuple of its arguments, a call of none as `Unit` (§10 `calls()`).
  */
 
@@ -17,6 +17,9 @@ import { answerOfMock } from './mock-answers.ts';
 import { Mocks } from './mocks.ts';
 import { MockObject } from './objects/mock-object.ts';
 import type { Run } from './run.ts';
+
+/** A function value, as a start is given one. */
+type Closure = Extract<Value, { readonly kind: 'closure' }>;
 
 /** What `mocked` gives where no mock holds. */
 export const NOT_MOCKED = Symbol('not mocked');
@@ -51,12 +54,24 @@ export class Mocking {
 
   /** What `closure`'s function gives, started as an invocation: no mock replaces it. */
   started(closure: Value, passed: readonly Value[]): unknown {
-    this.#starting = (closure as { readonly function: number }).function;
+    this.#starting = this.#startedFunction(closure as Closure);
     try {
       return this.#run.callValue(closure, passed);
     } finally {
       this.#starting = undefined;
     }
+  }
+
+  /** The function a start of `closure` starts: its own, or, widened, the one it wraps. */
+  #startedFunction(closure: Closure): number {
+    const entry = this.#run.definition.functions[closure.function];
+    if (entry?.kind !== 'code' || entry.wrapping !== true) {
+      return closure.function;
+    }
+    const [wrapped] = closure.captures;
+    return this.#startedFunction(
+      (wrapped as Closure | undefined) ?? unreachable('A wrapping entry captures what it wraps.'),
+    );
   }
 
   /** Records the call of `mock`'s target with `passed`, then runs its replacement with them. */

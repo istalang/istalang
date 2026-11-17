@@ -204,6 +204,7 @@ Instruction names are in `code`. A call is always to a function-table entry; for
 | Lambdas, local `fn`, closures (§3.14) | `closure` with captures; a captured `let` is a cell, a `const` a copy |
 | Named lambda calling itself (§3.14) | `currentClosure` |
 | Calling a function value (§3.14) | `call` with a value callee |
+| A function value widened (§3.5, §3.14) | a `closure` of its pair's `wrapping` entry, capturing the value: it converts the arguments, calls the value and converts what it gives; a future it gives is converted as it is (prelude `_converted`), so the entry is simple and the call stays the function's own; a start of it starts the function it wraps |
 | A plain function made async (§3.14) | `closure` capturing the plain value, of an async entry per site that calls it with its arguments and returns its result |
 | Annotations (§3.16) | `annotations` on functions and fields; `@Waypoint` becomes the `waypoint` of an `await` or `select` |
 | `await` (§5) | `wait`, then `resolver` for case 0, handed to the operand's `onAwait` (the implicit call the checker recorded) and released, then `await`, which commits first; synthesized code awaiting a future calls the prelude's `onAwait` alike |

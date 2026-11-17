@@ -1,6 +1,7 @@
 /**
  * Settling futures (§8): futures one event settles together call every callback waiting on any of
  * them at once, in the settle order: by rank (prelude.ista `Resolver`), then as they were added.
+ * A future widened gives its value converted (`convert`), before anything hears it.
  * Then the run's own listeners hear each value, such as a call into a context waiting on its
  * invocation's future; what they settle meanwhile settles together after them, as futures following
  * these do (a mock's answer, mock-answers.ts).
@@ -35,9 +36,9 @@ export class Settler {
     const following: (readonly [Future, Value])[] = [];
     this.#following = following;
     try {
-      for (const [future, value] of settling) {
+      for (const [future] of settling) {
         for (const listener of future.listeners.splice(0)) {
-          listener(value);
+          listener(future.value);
         }
       }
     } finally {
@@ -51,9 +52,15 @@ export class Settler {
   /** Settles each future not settled yet, a future listed twice with its first value; what waited. */
   #waitingOn(settling: Settling): Waited[] {
     const waiting: Waited[] = [];
-    for (const [future, value] of settling) {
+    for (const [future, given] of settling) {
       if (!future.settled) {
         future.settled = true;
+        const value = future.converters
+          .splice(0)
+          .reduce(
+            (each, converter) => converted(this.#call, this.#lifetimes, each, converter),
+            given,
+          );
         future.value = value;
         for (const { callback, rank, standing, cancelled } of future.callbacks.splice(0)) {
           waiting.push({ callback, rank, value });
@@ -73,6 +80,18 @@ export class Settler {
       this.#lifetimes.letGo(callback);
     }
   }
+}
+
+/** What `converter`, a future's (`Future.converters`), makes of `value`, called through `call`. */
+export function converted(
+  call: (converter: Value, value: Value) => unknown,
+  lifetimes: Lifetimes,
+  value: Value,
+  converter: Value,
+): Value {
+  const result = call(converter, value) as Value;
+  lifetimes.letGo(value, converter);
+  return result;
 }
 
 /** A callback waiting on a settled future, with its rank and the value it is called with. */
