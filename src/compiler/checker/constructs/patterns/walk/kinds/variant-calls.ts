@@ -46,7 +46,7 @@ import {
   bindArguments,
   isBinding,
 } from '../../../../resolution/choosing/binding.ts';
-import type { Binding } from '../../../../surface/resolved-call.ts';
+import { argumentsOf, type Binding } from '../../../../surface/resolved-call.ts';
 import {
   argumentsReach,
   type BoundPatternArgument,
@@ -287,7 +287,7 @@ function takeField(
       return walk.take(argument, part);
     }
     case 'rest': {
-      const elements = source.items.flatMap(({ index }) => {
+      const elements = argumentsOf(source.items).flatMap((index) => {
         const item = call.given[index];
         return item === undefined || item.kind === 'NamedPatternArgument' ? [] : [item];
       });

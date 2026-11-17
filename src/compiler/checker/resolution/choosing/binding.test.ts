@@ -40,6 +40,7 @@ function positional(count: number, given: number, rest: number | undefined): Bin
     return fixed;
   }
   const items = Array.from({ length: rest }, (_, index) => ({
+    kind: 'passed' as const,
     index: given + index,
     isSpread: false,
   }));
@@ -142,8 +143,8 @@ describe('binding spreads', () => {
       {
         kind: 'rest',
         items: [
-          { index: 1, isSpread: true },
-          { index: 2, isSpread: false },
+          { kind: 'passed', index: 1, isSpread: true },
+          { kind: 'passed', index: 2, isSpread: false },
         ],
       },
     ]);

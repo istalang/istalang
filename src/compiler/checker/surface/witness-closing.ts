@@ -27,7 +27,7 @@ import {
 import { isOpaque } from '../types/type/computed-types.ts';
 import type { Type } from '../types/type/index.ts';
 import { typeText } from '../types/type/type-text.ts';
-import type { Binding, FunctionCall, ResolvedCall, Witnesses } from './resolved-call.ts';
+import type { Binding, FunctionCall, ResolvedCall, RestItem, Witnesses } from './resolved-call.ts';
 
 /** A function as one instantiation runs it: its type arguments and its constraints' witnesses. */
 export interface FunctionInstance {
@@ -160,15 +160,48 @@ export function closedInside(
  * A witness's `binding`, over its own parameters, taking the required function's in their order,
  * composed with the `required` binding the call through the requirement made (§3.10): each of the
  * witness's parameters takes what the call gave the required parameter it takes, or its own
- * default.
+ * default, and its pack each such parameter's in turn.
  */
 function composed(binding: Binding, required: Binding): Binding {
   return binding.map((source) => {
-    if (source.kind !== 'argument') {
-      return source;
+    switch (source.kind) {
+      case 'argument':
+        return requiredSource(required, source.index);
+      case 'rest':
+        return {
+          kind: 'rest',
+          items: source.items.flatMap((item) => composedItem(item, required)),
+        };
+      default:
+        return source;
     }
-    return required[source.index] ?? unreachable(`No required parameter ${source.index} is bound.`);
   });
+}
+
+/**
+ * `item`, which a witness's rest parameter collects of the required function's parameters, as the
+ * call through the requirement passes them: what it gave that parameter, whose items a spread
+ * splices in, and the array a required rest parameter collects as one item.
+ */
+function composedItem(item: RestItem, required: Binding): readonly RestItem[] {
+  if (item.kind === 'collected') {
+    const items = item.items.flatMap((each) => composedItem(each, required));
+    return [{ kind: 'collected', items }];
+  }
+  const source = requiredSource(required, item.index);
+  switch (source.kind) {
+    case 'argument':
+      return [{ kind: 'passed', index: source.index, isSpread: item.isSpread }];
+    case 'rest':
+      return item.isSpread ? source.items : [{ kind: 'collected', items: source.items }];
+    default:
+      return unreachable('A required function has no defaults; checking refuses them.');
+  }
+}
+
+/** What the call through a requirement, bound by `required`, gives its parameter `index`. */
+function requiredSource(required: Binding, index: number): Binding[number] {
+  return required[index] ?? unreachable(`No required parameter ${index} is bound.`);
 }
 
 function closeWitnesses(witnesses: Witnesses, within: Closing, program: Closer): Witnesses {

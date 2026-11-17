@@ -4,6 +4,7 @@
  * apart from the body model because the call model grows with every calling convention.
  */
 
+import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { FunctionDeclaration, TypeParameter } from '../../syntax/declarations/index.ts';
 import type { Call, TypeApplication } from '../../syntax/expressions/calls.ts';
 import type { Expression, MemberAccess } from '../../syntax/expressions/index.ts';
@@ -49,9 +50,9 @@ export interface FunctionCall extends WrittenAs {
 /**
  * Where each parameter of a called function takes its value from, in parameter order (§3.3): an
  * argument the call passes, numbered as passed (a method's receiver first, then the others as
- * written); for a rest parameter, the arguments it collects, into an array or a pack's tuple, each
- * said to be a spread or not; or its default, which the call leaves out and the function computes
- * from the parameters before it as the call starts.
+ * written); for a rest parameter, the items it collects, into an array or a pack's tuple; or its
+ * default, which the call leaves out and the function computes from the parameters before it as
+ * the call starts.
  */
 export type Binding = readonly ParameterSource[];
 
@@ -60,10 +61,24 @@ type ParameterSource =
   | { readonly kind: 'rest'; readonly items: readonly RestItem[] }
   | { readonly kind: 'default' };
 
+/**
+ * What a rest parameter collects: an argument, or an array collected of items in turn, which only
+ * composing a call through a requirement makes: a witness's pack taking the required function's
+ * rest parameter whole (witness-closing.ts).
+ */
+export type RestItem = PassedItem | CollectedItem;
+
 /** An argument a rest parameter collects: its number, and whether it spreads its items (§3.3). */
-interface RestItem {
+export interface PassedItem {
+  readonly kind: 'passed';
   readonly index: number;
   readonly isSpread: boolean;
+}
+
+/** An array of the items it lists, one item of the rest parameter collecting it. */
+export interface CollectedItem {
+  readonly kind: 'collected';
+  readonly items: readonly RestItem[];
 }
 
 /**
@@ -77,19 +92,32 @@ export interface ValueCallMade {
 
 /**
  * The arguments `binding` passes, in parameter order, each as a rest parameter's item is: a
- * parameter's own argument spreads nothing; a default passes none.
+ * parameter's own argument spreads nothing; a default passes none. A written call's binding, which
+ * collects no array of its own (`passedOf`).
  */
-export function argumentsInOrder(binding: Binding): readonly RestItem[] {
+export function argumentsInOrder(binding: Binding): readonly PassedItem[] {
   return binding.flatMap((source) => {
     switch (source.kind) {
       case 'argument':
-        return [{ index: source.index, isSpread: false }];
+        return [{ kind: 'passed', index: source.index, isSpread: false }];
       case 'rest':
-        return source.items;
+        return source.items.map(passedOf);
       default:
         return [];
     }
   });
+}
+
+/** `item`, an item of a written call's rest parameter: an argument, never an array composed in. */
+export function passedOf(item: RestItem): PassedItem {
+  return item.kind === 'passed'
+    ? item
+    : unreachable('Only a call composed through a requirement collects an array of its own.');
+}
+
+/** The arguments `items` pass, those of an array collected of them included, in order. */
+export function argumentsOf(items: readonly RestItem[]): readonly number[] {
+  return items.flatMap((item) => (item.kind === 'passed' ? [item.index] : argumentsOf(item.items)));
 }
 
 /** By argument number, the parameter `binding` passes it to, a rest parameter's items included. */
@@ -99,7 +127,7 @@ export function parameterOfArgument(binding: Binding): ReadonlyMap<number, numbe
     if (source.kind === 'argument') {
       parameters.set(source.index, parameter);
     } else if (source.kind === 'rest') {
-      for (const { index } of source.items) {
+      for (const index of argumentsOf(source.items)) {
         parameters.set(index, parameter);
       }
     }

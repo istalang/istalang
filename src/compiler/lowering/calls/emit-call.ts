@@ -14,7 +14,8 @@
  *
  * This is the one place a rest parameter is made of what a call passes: an array of its items, a
  * spread's spliced in, or, for a pack, its items as single parameters and a spread's tuple as its
- * elements, as the instantiation flattens the pack (packs.ts).
+ * elements, as the instantiation flattens the pack (packs.ts), an array collected of items, a
+ * witness's pack taking a required rest parameter whole, as its element.
  */
 
 import type { Argument, Callee } from '../../../definition/instructions/calls.ts';
@@ -26,8 +27,11 @@ import type { FunctionId, Register } from '../../../definition/operands.ts';
 import type { TypeReference } from '../../../definition/tables/types.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { SignatureParameter } from '../../checker/check.ts';
+import type { RestItem } from '../../checker/surface/resolved-call.ts';
 import type { FunctionInstance } from '../../checker/surface/witness-closing.ts';
 import { substitute } from '../../checker/types/parts/substitution.ts';
+import type { Type } from '../../checker/types/type/index.ts';
+import { arrayElement } from '../../checker/types/type/well-known.ts';
 import { constructedVariant } from '../../syntax/declarations/field-defaults.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 import type { CodeContext } from '../context.ts';
@@ -39,7 +43,7 @@ import {
   resultOfCall,
   substitutionOfCall,
 } from './closed-calls.ts';
-import { packElementsOf } from './packs.ts';
+import { packElements, packElementsOf } from './packs.ts';
 
 /** A call to write: where it is written, what it calls, and its arguments. */
 interface CallToEmit {
@@ -162,11 +166,8 @@ function boundParameters(
         if (declared === undefined) {
           unreachable(`A rest source binds no parameter ${parameter}.`);
         }
-        const items = source.items.map(({ index, isSpread }) => ({
-          value: registerOf(passed(index)),
-          isSpread,
-        }));
-        parameters.push(...restParameters(context, { call, span, declared }, items));
+        const rest = { call, span, declared, passed };
+        parameters.push(...restParameters(context, rest, source.items));
         break;
       }
       case 'default':
@@ -184,45 +185,63 @@ function boundParameters(
   return parameters;
 }
 
-/** What a rest parameter collects: an argument's value, which a spread spreads. */
-interface CollectedItem {
-  readonly value: Register;
-  readonly isSpread: boolean;
+/** A rest parameter of a call to write, and the arguments the call passes, by number. */
+interface Rest {
+  readonly call: ClosedCall;
+  readonly span: AnchoredSpan;
+  readonly declared: SignatureParameter;
+  readonly passed: (index: number) => Register | Argument;
 }
 
 /**
  * What the rest parameter `declared` of `call` takes of `items`: for an array's, one array of
- * them, a spread's array spliced in; for a pack's, each as a parameter of its own, a spread's
- * tuple as its elements.
+ * them; for a pack's, each as a parameter of its own, a spread's tuple as its elements, and an
+ * array collected of items as the element it stands for.
  */
 function restParameters(
   context: CodeContext,
-  rest: {
-    readonly call: ClosedCall;
-    readonly span: AnchoredSpan;
-    readonly declared: SignatureParameter;
-  },
-  items: readonly CollectedItem[],
+  rest: Rest,
+  items: readonly RestItem[],
 ): readonly Register[] {
-  const { call, span, declared } = rest;
-  if (declared.rest?.kind === 'pack') {
-    const type = substitute(
-      declared.type,
-      substitutionOfCall(context.checker, call),
-      context.checker.typeRules,
-    );
-    return items.flatMap(({ value, isSpread }) =>
-      isSpread ? packElementsOf(context, value, { type, span }) : [value],
-    );
-  }
-  const { code, checker, tables } = context;
-  const elements = items.map(({ value, isSpread }) =>
-    isSpread ? { value, spread: true } : { value: code.take(value, span), spread: false },
-  );
+  const { call, span, declared, passed } = rest;
+  const { checker } = context;
   const type = substitute(declared.type, substitutionOfCall(checker, call), checker.typeRules);
+  if (declared.rest?.kind !== 'pack') {
+    return [collectedArray(context, rest, { items, type })];
+  }
+  const elements = packElements(type);
+  return items.flatMap((item, position) => {
+    if (item.kind === 'collected') {
+      const element = elements[position] ?? unreachable(`A pack has no element ${position}.`);
+      return [collectedArray(context, rest, { items: item.items, type: element })];
+    }
+    const value = registerOf(passed(item.index));
+    return item.isSpread ? packElementsOf(context, value, { type, span }) : [value];
+  });
+}
+
+/** The array of `type` collected of `items`, a spread's array spliced in. */
+function collectedArray(
+  context: CodeContext,
+  rest: Rest,
+  { items, type }: { readonly items: readonly RestItem[]; readonly type: Type },
+): Register {
+  const { code, checker, tables } = context;
+  const { span, passed } = rest;
+  const element = arrayElement(checker, type) ?? unreachable('An array collects a rest item.');
+  const elements = items.map((item) => {
+    if (item.kind === 'collected') {
+      const value = collectedArray(context, rest, { items: item.items, type: element });
+      return { value, spread: false };
+    }
+    const value = registerOf(passed(item.index));
+    return item.isSpread
+      ? { value, spread: true }
+      : { value: code.take(value, span), spread: false };
+  });
   const dst = code.allocate(tables.types.reference(type));
   code.emit({ kind: 'array', span, dst, elements });
-  return [dst];
+  return dst;
 }
 
 /**

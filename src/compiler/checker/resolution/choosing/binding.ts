@@ -156,6 +156,7 @@ function bindByPosition(
       ? {
           kind: 'rest',
           items: toRest.map(({ argument, index }) => ({
+            kind: 'passed',
             index,
             isSpread: argument.isSpread === true,
           })),

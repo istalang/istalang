@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-11-13
-last_updated: 2026-11-16
+last_updated: 2026-11-17
 tags: [reuse, checker, calls, resolution, overloads, traits, witnesses]
 ---
 
@@ -28,7 +28,7 @@ tags: [reuse, checker, calls, resolution, overloads, traits, witnesses]
 - list the modules a module sees (its own, its imports, the prelude), or every static function on a type they declare → `modulesSeenFrom`, `staticFunctionsAmong` (`src/compiler/checker/resolution/choosing/candidates.ts`)
 - bind call or function-value arguments to parameter slots, the function a call gives after them among them (`Call.given`, `isDeferred`) → `bindArguments`, `bindValue`, `positionalCounts` (`src/compiler/checker/resolution/choosing/binding.ts`)
 - test for a valid binding → `isBinding` (`src/compiler/checker/resolution/choosing/binding.ts`); the slot each argument of a chosen call fills → `Application.slots`, computed once by `takenBy` (never rebuilt from the binding by a caller)
-- map argument indices to parameter indices, list the arguments a binding passes in parameter order, or test if all parameters are passed → `parameterOfArgument`, `argumentsInOrder`, `passesAll` (`src/compiler/checker/surface/resolved-call.ts`); a function value's call keeps its binding too (`CheckedBody.valueCalls`, `ValueCallMade`), which its flow orders its arguments by (`src/compiler/checker/rules/flow/build/calls.ts`)
+- map argument indices to parameter indices, list the arguments a binding passes in parameter order, list the arguments rest items pass (an array a composed requirement call collects included), or test if all parameters are passed → `parameterOfArgument`, `argumentsInOrder`, `argumentsOf`, `passesAll` (`src/compiler/checker/surface/resolved-call.ts`); a function value's call keeps its binding too (`CheckedBody.valueCalls`, `ValueCallMade`), which its flow orders its arguments by (`src/compiler/checker/rules/flow/build/calls.ts`)
 - tell a function named as a value, which calls nothing where it stands, from a call, among what a body makes → `MadeCall.kind` (`value` or `call`, `src/compiler/checker/surface/resolved-call.ts`), listed by `CheckedBody.madeCalls`
 - test whether one candidate takes given arguments → `takenBy`; whether it takes one only reshaped, which choosing asks only to break a tie → `reshapesArguments` (`src/compiler/checker/resolution/choosing/applicability.ts`)
 - infer type arguments as bounds on variables: `match` where the value may convert, `matchLiteral` for a written literal (fresh), `matchExactly` where it must have its type (a reference, a spread's items, a witness), `matchReceiver` for a method's receiver (given exactly), `expect` for the call's expected type (advisory, after choosing), `fixIn`, `fixToward` and `fixDefaults` to settle a postponed argument's inputs, `guided` and `guidedIn` for what the expected type says of a part still open → `Inference` (`src/compiler/checker/types/inference/infer.ts`), `settledIn` for only what is settled; the call's own variables, twins of its parameters → `CallVariables`, and a twin read as its parameter where the program reads what a parameter declares → `standingFor` (`variables.ts`); the system of variables → `CallSystem` (`system.ts`); the bounds, their rollback and two variables relating → `BoundStore` (`bounds.ts`); how a type relates as it is where fitting asks → `relatedAsIs` (`relate.ts`); equality with variables on either side → `equalTypes` (`equal.ts`)

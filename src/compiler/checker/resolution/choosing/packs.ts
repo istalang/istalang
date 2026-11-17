@@ -6,7 +6,7 @@
  * only one it fills.
  */
 
-import type { Binding } from '../../surface/resolved-call.ts';
+import { type Binding, passedOf } from '../../surface/resolved-call.ts';
 import type { Inference } from '../../types/inference/infer.ts';
 import { isPack } from '../../types/type/function-types.ts';
 import type { Type } from '../../types/type/index.ts';
@@ -19,7 +19,7 @@ export function packItems(takes: Takes, binding: Binding): ReadonlySet<number> {
     takes.parameters.flatMap((slot, parameter) => {
       const source = binding[parameter];
       const fillsPack = slot.rest?.kind === 'pack' && source?.kind === 'rest';
-      return fillsPack ? source.items.map(({ index }) => index) : [];
+      return fillsPack ? source.items.map((item) => passedOf(item).index) : [];
     }),
   );
 }
@@ -37,10 +37,11 @@ export function packInapplicability(
   for (const [parameter, slot] of takes.parameters.entries()) {
     const source = binding[parameter];
     if (slot.rest?.kind === 'pack' && source?.kind === 'rest') {
-      const found = packOf(source.items.map(({ index }) => callArguments[index]));
+      const items = source.items.map(passedOf);
+      const found = packOf(items.map(({ index }) => callArguments[index]));
       if (found === undefined || !inference.matchExactly(slot.type, found)) {
         const expected = inference.substituted(slot.type);
-        return { kind: 'pack', index: source.items[0]?.index ?? 0, expected, found };
+        return { kind: 'pack', index: items[0]?.index ?? 0, expected, found };
       }
     }
   }

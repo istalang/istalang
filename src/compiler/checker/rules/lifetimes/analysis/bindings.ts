@@ -13,7 +13,7 @@
  */
 
 import type { Argument } from '../../../surface/flow-ir.ts';
-import type { FunctionCall } from '../../../surface/resolved-call.ts';
+import { argumentsOf, type FunctionCall } from '../../../surface/resolved-call.ts';
 import { type Input, inputKey } from '../input.ts';
 import type { NodeId } from '../reach-state.ts';
 import type { BodyAnalysis } from './body.ts';
@@ -49,7 +49,7 @@ export function functionBindings(
     if (source.kind === 'argument') {
       bindings.set(inputKey(input), argumentBound(at, args[source.index]));
     } else if (source.kind === 'rest') {
-      const items = source.items.map((item) => argumentBound(at, args[item.index]));
+      const items = argumentsOf(source.items).map((each) => argumentBound(at, args[each]));
       bindings.set(inputKey(input), {
         nodes: items.flatMap(({ nodes }) => nodes),
         owner: undefined,
