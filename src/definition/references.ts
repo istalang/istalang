@@ -13,7 +13,7 @@
  */
 
 import type { z } from 'zod';
-import { branchChooser, discriminatorOf, leafBranch } from './formats/avro/branches.ts';
+import { branchChooser, discriminatorOf, unionBranches } from './formats/avro/branches.ts';
 import { constantId, functionId, moduleId, typeId } from './operands.ts';
 
 /** A zod schema of any kind, as the walk reads it. */
@@ -144,33 +144,13 @@ function sameOr(values: readonly unknown[], walk: Walk, renumbering: Renumbering
 }
 
 function unionWalk(schema: ZodSchema): Walk | undefined {
-  const leaves = leavesOf(schema);
-  const branches = leaves.map((leaf) =>
-    leaf === undefined
-      ? { schema: undefined, bucket: 'absent' as const, tags: new Map() }
-      : leafBranch(leaf, walkOf(leaf)),
-  );
-  if (branches.every((branch) => branch.schema === undefined)) {
+  const branches = unionBranches<Walk | undefined>(schema, walkOf, undefined);
+  if (branches.every(({ derived }) => derived === undefined)) {
     return undefined;
   }
   const chosen = branchChooser(branches, discriminatorOf(schema));
   return {
     visit: (value, renumbering) =>
-      branches[chosen(value)]?.schema?.visit(value, renumbering) ?? value,
+      branches[chosen(value)]?.derived?.visit(value, renumbering) ?? value,
   };
-}
-
-/** A union's leaves, nested unions flattened, an optional's absent value as undefined. */
-function leavesOf(schema: ZodSchema): readonly (ZodSchema | undefined)[] {
-  const { def } = (schema as z.core.$ZodTypes)._zod;
-  switch (def.type) {
-    case 'union':
-      return def.options.flatMap(leavesOf);
-    case 'optional':
-      return [undefined, ...leavesOf(def.innerType)];
-    case 'pipe':
-      return leavesOf(def.out);
-    default:
-      return [schema];
-  }
 }

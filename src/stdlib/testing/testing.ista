@@ -10,8 +10,10 @@
 # mock is let go of. `mock` and `calls` take a pack (§3.5), one declaration for every function, an
 # async one's result being its future. A struct takes no pack, so `Mock<F>` can't name its calls'
 # type: each mock keeps an offer of its calls, untyped, which `calls` meets in the transient of
-# `_metCalls` at its own signature (§3.4), the offer of any other signature meeting none. Setups map each of their types (each test's function takes the setups' environments), which
-# a pack can't say, so `setups` stays one overload per arity, up to six, over one function.
+# `_metCalls` at its own signature (§3.4), the offer of any other signature meeting none.
+#
+# Setups map each of their types (each test's function takes the setups' environments), which a
+# pack can't say, so `setups` stays one overload per arity, up to six, over one function.
 #
 # `ista test` lists and runs a suite's tests through `_list` and `_run`, the one place a suite's
 # tests are flattened, so the listing and each test's own instance (§10) walk the same list.
@@ -124,8 +126,8 @@ fn calls<...A, R, M in Mark = "simple">(self: Mock<Fn<A, R, M>>) -> Array<A>:
   _metCalls<A, R, M>(met)
   found
 
-# Where `calls` meets a mock's offer of its calls: the outermost call makes the cell, an offer of the
-# same signature, nested in it, fills it, and one of another signature fills a cell of its own.
+# Where `calls` meets a mock's offer of its calls: the outermost call makes the cell, an offer of
+# the same signature, nested in it, fills it, and one of another signature fills a cell of its own.
 fn _metCalls<...A, R, M in Mark>(within: fn(Shared<Array<A>?>) -> Unit):
   transient let met = new Shared<Array<A>?>{value: none}
   within(met)

@@ -5,8 +5,8 @@
  * - **Parts.** The run composes what it owns: holders (lifetimes.ts), places (places.ts), value
  *   builders, transients, async calls (executions.ts), the ready queue, timers, arrivals from
  *   outside, calls into the instance (invocations.ts), watches on other instances' ends, weak
- *   references, host values (resources.ts) and rebindable function slots (slots.ts). Compiled code takes its helpers
- *   from the part owning them.
+ *   references, host values (resources.ts) and rebindable function slots (slots.ts). Compiled code
+ *   takes its helpers from the part owning them.
  * - **Calls.** A simple entry is a JavaScript function; an async one runs as an execution of its
  *   own, its caller getting its future.
  * - **The loop.** `drain` runs the ready queue empty, one item at a time in the order readied (§6);

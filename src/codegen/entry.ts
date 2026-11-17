@@ -85,8 +85,8 @@ export function emitEntry(scope: Omit<EntryScope, 'jumps'>): EmittedEntry {
 
 /**
  * The lines opening the entry's function: its signature and registers, and, where a function bound
- * to its slot may replace its call, whether the call is a start, taken as it enters, before its prologue may call
- * the function again.
+ * to its slot may replace its call, whether the call is a start, taken as it enters, before its
+ * prologue may call the function again.
  */
 function openingLines({ entry, index, onFrames }: Omit<EntryScope, 'jumps'>): string[] {
   const registers = entry.registers.map((_, each) => register(each));

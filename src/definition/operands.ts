@@ -15,15 +15,20 @@
 
 import { z } from 'zod';
 
-const index = z.int().nonnegative();
+/** The one rule of every index; each table's references get a schema of their own from it. */
+const indexSchema = () => z.int().nonnegative();
+
+const index = indexSchema();
 
 export const register = index;
 export const label = index;
-export const moduleId = z.int().nonnegative();
-export const functionId = z.int().nonnegative();
-export const typeId = z.int().nonnegative();
-export const constantId = z.int().nonnegative();
+export const moduleId = indexSchema();
+export const functionId = indexSchema();
+export const typeId = indexSchema();
+export const constantId = indexSchema();
 export const objectId = index;
+/** A binding of a function slot in a test (§10), numbered from its instance's object serial. */
+export const bindingId = index;
 export const fieldIndex = index;
 export const variantIndex = index;
 

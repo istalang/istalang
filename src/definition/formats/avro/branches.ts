@@ -18,7 +18,7 @@ type Bucket = 'absent' | 'null' | 'boolean' | 'string' | 'number' | 'bigint' | '
  * and its literal fields (an object's).
  */
 export interface Branch<Derived = AvroSchema> {
-  readonly schema: Derived;
+  readonly derived: Derived;
   readonly bucket: Bucket;
   readonly tags: ReadonlyMap<string, unknown>;
 }
@@ -39,9 +39,29 @@ export function onlyLiteral(values: readonly unknown[]): unknown {
   return only;
 }
 
-/** A union's leaf `schema`, which a walk derives `derived` of. */
-export function leafBranch<Derived>(schema: ZodSchema, derived: Derived): Branch<Derived> {
-  return { schema: derived, bucket: bucketOf(schema), tags: tagsOf(schema) };
+/**
+ * The branches of the union `schema`, its nested unions flattened, since Avro's can't nest: each
+ * leaf with what `derive` makes of it, an optional's absent value with `absent`.
+ */
+export function unionBranches<Derived>(
+  schema: ZodSchema,
+  derive: (leaf: ZodSchema) => Derived,
+  absent: Derived,
+): readonly Branch<Derived>[] {
+  const { def } = (schema as z.core.$ZodTypes)._zod;
+  switch (def.type) {
+    case 'union':
+      return def.options.flatMap((option) => unionBranches(option, derive, absent));
+    case 'optional':
+      return [
+        { derived: absent, bucket: 'absent', tags: new Map() },
+        ...unionBranches(def.innerType, derive, absent),
+      ];
+    case 'pipe':
+      return unionBranches(def.out, derive, absent);
+    default:
+      return [{ derived: derive(schema), bucket: bucketOf(schema), tags: tagsOf(schema) }];
+  }
 }
 
 /** What values a union's leaf takes, by their JavaScript type. */

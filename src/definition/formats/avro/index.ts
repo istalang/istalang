@@ -20,13 +20,7 @@ import type { z } from 'zod';
 import { avscBuffer } from './avsc-buffers.ts';
 import type { AvroSchema, ForSchemaOptions, ZodSchema } from './avsc-types.ts';
 import { BigintType } from './bigint-type.ts';
-import {
-  type Branch,
-  branchChooser,
-  discriminatorOf,
-  leafBranch,
-  onlyLiteral,
-} from './branches.ts';
+import { branchChooser, discriminatorOf, onlyLiteral, unionBranches } from './branches.ts';
 import { ConstantType } from './constant-type.ts';
 import { customForm } from './forms.ts';
 import { JsonType } from './json-type.ts';
@@ -145,9 +139,9 @@ class SchemaWalk {
   }
 
   #union(schema: ZodSchema): AvroSchema {
-    const branches = this.#branchesOf(schema);
+    const branches = unionBranches(schema, (leaf) => this.schemaOf(leaf), 'null' as AvroSchema);
     const union: UnionSchema = Object.assign(
-      branches.map(({ schema: branch }) => branch),
+      branches.map(({ derived }) => derived),
       {
         logicalType: 'istalang-union',
         branchOf: branchChooser(branches, discriminatorOf(schema)),
@@ -155,24 +149,6 @@ class SchemaWalk {
       },
     );
     return union as unknown as AvroSchema;
-  }
-
-  /** The leaves of a union, nested unions flattened, since Avro's can't nest. */
-  #branchesOf(schema: ZodSchema): readonly Branch[] {
-    const { def } = (schema as z.core.$ZodTypes)._zod;
-    switch (def.type) {
-      case 'union':
-        return def.options.flatMap((option) => this.#branchesOf(option));
-      case 'optional':
-        return [
-          { schema: 'null', bucket: 'absent', tags: new Map() },
-          ...this.#branchesOf(def.innerType),
-        ];
-      case 'pipe':
-        return this.#branchesOf(def.out);
-      default:
-        return [leafBranch(schema, this.schemaOf(schema))];
-    }
   }
 
   #name(): string {

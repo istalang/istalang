@@ -2,8 +2,8 @@
  * Calls, and what a code entry knows of the call running it.
  *
  * - **One call path.** Every call targets a function-table entry, directly or through a function
- *   value, externs included (../tables/functions.ts): rebinding, traces and extern results are seen in
- *   one place.
+ *   value, externs included (../tables/functions.ts): rebinding, traces and extern results are seen
+ *   in one place.
  * - **Arguments are borrowed.** The callee holds none of them unless it copies one; a `&` argument
  *   is a reference register (./places.ts). A parameter the call leaves out is `omitted`, which the
  *   callee's prologue computes.

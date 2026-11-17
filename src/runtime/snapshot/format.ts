@@ -19,6 +19,7 @@ import { z } from 'zod';
 import { contentHashText } from '../../definition/formats/binary-format.ts';
 import { defineFormat } from '../../definition/formats/format.ts';
 import {
+  bindingId,
   count,
   functionId,
   label,
@@ -158,7 +159,7 @@ const body = z.strictObject({
   invocations: z.array(z.strictObject({ future: objectId, root: z.boolean() })),
   contextConstants: z.array(z.tuple([z.string(), value])),
   /** The functions bound to entries' slots in a test (§10, run/slots.ts), oldest first. */
-  bindings: z.array(z.strictObject({ id: objectId, target: functionId, bound: value })),
+  bindings: z.array(z.strictObject({ id: bindingId, target: functionId, bound: value })),
 });
 
 export type Snapshot = z.output<typeof body>;
