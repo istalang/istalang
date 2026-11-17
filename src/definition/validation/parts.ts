@@ -45,8 +45,8 @@ const noPart = (): undefined => undefined;
 
 /** What each instruction steps into, checked; exhaustive, so a new kind says whether it does. */
 const partSteps: Handlers<PartScope, Instruction, [], Reached | undefined> = {
-  struct: (scope, i) => builtStruct(scope, i.type, i.fields.length),
-  variant: (scope, i) => builtVariant(scope, i.type, i.variant, i.fields.length),
+  struct: (scope, i) => builtStruct(scope, i.dst, i.fields.length),
+  variant: (scope, i) => builtVariant(scope, i.dst, i.variant, i.fields.length),
   switch: (scope, i) => switched(scope, i.value, i.targets.length, i.otherwise !== undefined),
   tupleItem: (scope, i) => placeType(scope, partOf(i.src, { kind: 'tuple', index: i.index })),
   structField: (scope, i) => placeType(scope, partOf(i.src, { kind: 'field', field: i.field })),
@@ -107,30 +107,47 @@ function entryOf(scope: PartScope, type: TypeReference): TypeDefinition | undefi
   return reference.kind === 'named' ? scope.types[reference.type] : undefined;
 }
 
-function builtStruct(scope: PartScope, type: number, fields: number): Reached | undefined {
-  const entry = scope.types[type];
-  if (entry === undefined) {
+/**
+ * The entry of kind `kind` that `dst`'s type names, `dst` a register code builds `what` in; nothing
+ * where the register or the entry is outside its table, which index.ts and references.ts report.
+ */
+function builtEntry<Kind extends 'struct' | 'enum'>(
+  scope: PartScope,
+  { dst, kind, what }: { readonly dst: Register; readonly kind: Kind; readonly what: string },
+):
+  | { readonly entry: Extract<TypeDefinition, { readonly kind: Kind }> }
+  | { readonly issue: string }
+  | undefined {
+  const type = scope.entry.registers[dst]?.type;
+  const entry = type?.kind === 'named' ? scope.types[type.type] : undefined;
+  if (type === undefined || (type.kind === 'named' && entry === undefined)) {
     return undefined;
   }
-  if (entry.kind !== 'struct') {
-    return { issue: `type ${String(type)} (${entry.name}) is no struct.` };
+  return entry?.kind === kind
+    ? { entry: entry as Extract<TypeDefinition, { readonly kind: Kind }> }
+    : { issue: `it builds ${what} in register ${String(dst)}, of no ${kind}.` };
+}
+
+function builtStruct(scope: PartScope, dst: Register, fields: number): Reached | undefined {
+  const built = builtEntry(scope, { dst, kind: 'struct', what: 'a struct' });
+  if (built === undefined || 'issue' in built) {
+    return built;
   }
+  const { entry } = built;
   return counted(`its ${String(fields)} fields`, fields, entry.fields.length, entry.name);
 }
 
 function builtVariant(
   scope: PartScope,
-  type: number,
+  dst: Register,
   variant: number,
   fields: number,
 ): Reached | undefined {
-  const entry = scope.types[type];
-  if (entry === undefined) {
-    return undefined;
+  const built = builtEntry(scope, { dst, kind: 'enum', what: 'a variant' });
+  if (built === undefined || 'issue' in built) {
+    return built;
   }
-  if (entry.kind !== 'enum') {
-    return { issue: `type ${String(type)} (${entry.name}) is no enum.` };
-  }
+  const { entry } = built;
   const declared = partAt('variant', variant, entry.variants, entry.name);
   if ('issue' in declared) {
     return declared;

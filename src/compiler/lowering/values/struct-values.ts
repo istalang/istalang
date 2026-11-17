@@ -48,11 +48,10 @@ export function construct(
 ): Register {
   const { code, tables } = context;
   const dst = code.allocate(tables.types.reference(type));
-  const index = tables.types.index(type);
   const fields = laidOut(context.checker.fieldsOf(type) ?? [], named).map((field) =>
     code.take(field, span),
   );
-  code.emit({ kind: 'struct', span, dst, type: index, fields });
+  code.emit({ kind: 'struct', span, dst, fields });
   return dst;
 }
 

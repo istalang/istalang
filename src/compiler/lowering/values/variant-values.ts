@@ -54,13 +54,11 @@ export function variantAt(
   span: AnchoredSpan,
   dst: Register = context.code.allocate(context.tables.types.reference(type)),
 ): Register {
-  const { code, tables } = context;
-  const entry = type.kind === 'any' ? tables.types.anyIndex(type) : tables.types.index(type);
+  const { code } = context;
   code.emit({
     kind: 'variant',
     span,
     dst,
-    type: entry,
     variant,
     fields: fields.map((field) => code.take(field, span)),
   });

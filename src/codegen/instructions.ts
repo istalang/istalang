@@ -30,6 +30,7 @@ import type { TypeDefinition } from '../definition/tables/types.ts';
 import { disposeOf, lifetimeOf } from '../definition/tables/types.ts';
 import type { Value } from '../definition/values/values.ts';
 import { type Handlers, handlerOf } from '../foundation/structures/kind-table.ts';
+import { unreachable } from '../foundation/structures/unreachable.ts';
 import { runsOnFrames } from './calling-convention.ts';
 import { literal } from './literal.ts';
 import { primitiveExpressions } from './primitives.ts';
@@ -138,6 +139,14 @@ function argumentsOf(call: InstructionOf<'call'>): string {
     .join(', ');
 }
 
+/** The entry `dst`'s type names, a struct or enum code builds there (validation holds it to one). */
+function builtType(scope: EntryScope, dst: Register): number {
+  const type = scope.entry.registers[dst]?.type;
+  return type?.kind === 'named'
+    ? type.type
+    : unreachable(`Register ${String(dst)} names no entry.`);
+}
+
 /** The expression calling the entry `index` with `passed`: as its kind is called. */
 function callExpression(scope: EntryScope, index: number, passed: string): string {
   const callee = scope.functions[index];
@@ -162,13 +171,13 @@ const emitters: Handlers<EntryScope, Instruction, [], string> = {
   struct: (scope, i) =>
     assigned(
       i.dst,
-      `{ kind: 'struct', type: ${i.type}, fields: [${i.fields.map(register).join(', ')}] }`,
+      `{ kind: 'struct', type: ${builtType(scope, i.dst)}, fields: [${i.fields.map(register).join(', ')}] }`,
       made(scope, i.dst) + movedOut(scope, i),
     ),
   variant: (scope, i) =>
     assigned(
       i.dst,
-      `{ kind: 'variant', type: ${i.type}, variant: ${i.variant}, fields: [${i.fields.map(register).join(', ')}] }`,
+      `{ kind: 'variant', type: ${builtType(scope, i.dst)}, variant: ${i.variant}, fields: [${i.fields.map(register).join(', ')}] }`,
       made(scope, i.dst) + movedOut(scope, i),
     ),
   array: (scope, i) => {

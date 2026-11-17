@@ -43,11 +43,8 @@ const issuesOf = (instruction: Instruction) =>
 
 describe("validation of code's parts", () => {
   it.each<[string, Instruction]>([
-    ['a struct of its fields', { kind: 'struct', span, dst: 0, type: 0, fields: [3, 3] }],
-    [
-      'a variant of its fields',
-      { kind: 'variant', span, dst: 1, type: 1, variant: 0, fields: [3] },
-    ],
+    ['a struct of its fields', { kind: 'struct', span, dst: 0, fields: [3, 3] }],
+    ['a variant of its fields', { kind: 'variant', span, dst: 1, variant: 0, fields: [3] }],
     ["a struct's field", { kind: 'structField', span, dst: 3, src: 0, field: 1 }],
     ["a variant's field", { kind: 'variantField', span, dst: 3, src: 1, variant: 0, field: 0 }],
     ["a tuple's element", { kind: 'tupleItem', span, dst: 3, src: 2, index: 1 }],
@@ -76,22 +73,27 @@ describe("validation of code's parts", () => {
   it.each<[string, Instruction, string]>([
     [
       'a struct of too many fields',
-      { kind: 'struct', span, dst: 0, type: 0, fields: [3, 3, 3] },
+      { kind: 'struct', span, dst: 0, fields: [3, 3, 3] },
       "its 3 fields aren't S's 2.",
     ],
     [
       'a struct of an enum',
-      { kind: 'struct', span, dst: 1, type: 1, fields: [] },
-      'type 1 (E) is no struct.',
+      { kind: 'struct', span, dst: 1, fields: [3, 3] },
+      'it builds a struct in register 1, of no struct.',
+    ],
+    [
+      'a variant of a struct',
+      { kind: 'variant', span, dst: 0, variant: 1, fields: [] },
+      'it builds a variant in register 0, of no enum.',
     ],
     [
       'a variant past its enum',
-      { kind: 'variant', span, dst: 1, type: 1, variant: 2, fields: [] },
+      { kind: 'variant', span, dst: 1, variant: 2, fields: [] },
       "variant 2 is outside the E's 2.",
     ],
     [
       'a variant of too many fields',
-      { kind: 'variant', span, dst: 1, type: 1, variant: 1, fields: [3] },
+      { kind: 'variant', span, dst: 1, variant: 1, fields: [3] },
       "its 1 fields aren't E.B's 0.",
     ],
     [

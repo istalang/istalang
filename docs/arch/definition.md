@@ -48,7 +48,8 @@ refused at load, never midway through an instance. It refuses:
 
 - an index outside its table, in code and in the tables alike (`references.ts`);
 - a part code steps into that its type lacks: a field, a variant, a tuple's element, a `struct` or
-  `variant` built of the wrong number of fields, a `switch` whose targets miss a variant with no
+  `variant` built of the wrong number of fields or in a register whose type is no struct or enum
+  (the instruction builds the entry its `dst` register's type names), a `switch` whose targets miss a variant with no
   `otherwise` or pass the last (`parts.ts`);
 - two starts of one key, or a `main` naming no start;
 - a handle in a constant or an annotation, which only a running instance holds;

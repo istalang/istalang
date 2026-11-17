@@ -14,7 +14,7 @@
  */
 
 import { z } from 'zod';
-import { constantId, fieldIndex, functionId, register, typeId, variantIndex } from '../operands.ts';
+import { constantId, fieldIndex, functionId, register, variantIndex } from '../operands.ts';
 import { defineInstruction } from './define-instruction.ts';
 import { primitiveOp } from './primitive-ops.ts';
 
@@ -29,16 +29,12 @@ const copy = defineInstruction('copy', { dst: register, src: register });
 
 const tuple = defineInstruction('tuple', { dst: register, elements: z.array(register) });
 
-/** A struct of entry `type`, its fields in its entry's order. */
-const struct = defineInstruction('struct', {
-  dst: register,
-  type: typeId,
-  fields: z.array(register),
-});
+/** A struct of the entry `dst`'s type names, its fields in its entry's order. */
+const struct = defineInstruction('struct', { dst: register, fields: z.array(register) });
 
+/** Variant `variant` of the enum entry `dst`'s type names. */
 const variant = defineInstruction('variant', {
   dst: register,
-  type: typeId,
   variant: variantIndex,
   fields: z.array(register),
 });

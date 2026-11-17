@@ -3,8 +3,9 @@
  * index it follows (docs/arch/definition.md, "Validation").
  *
  * - Every index lands in its table: the tables' own references to each other (./references.ts),
- *   a code entry's operands (registers, labels, types, functions, constants) and the purpose's.
- *   Every part code steps into lands among its type's parts (./parts.ts).
+ *   a code entry's operands (registers, labels, functions, constants) and the purpose's. Every
+ *   part code steps into lands among its type's parts, and a struct or variant is built in a
+ *   register of its entry's type (./parts.ts).
  * - The purpose's `main` names a start, and no two starts share a key: a host starts one by key.
  * - Every code entry ends where no path runs off its end, and one `wrapping` a function value
  *   captures it, as a start follows it there (§10).
@@ -64,7 +65,6 @@ function codeIssues(entry: CodeFunction, where: string, definition: Definition):
     within('register', [...operands.read, ...operands.written], registers.length, 'frame');
     within('label', operands.labels, instructions.length, 'code');
     within('function', operands.functions, definition.functions.length);
-    within('type', operands.types, definition.types.length);
     within('constant', operands.constants, definition.constants.length);
   });
   issues.push(

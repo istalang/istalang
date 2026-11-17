@@ -9,7 +9,7 @@
 
 import { z } from 'zod';
 import { type Handlers, handlerOf } from '../../foundation/structures/kind-table.ts';
-import type { ConstantId, FunctionId, Label, Register, TypeId } from '../operands.ts';
+import type { ConstantId, FunctionId, Label, Register } from '../operands.ts';
 import { callInstructions } from './calls.ts';
 import { controlInstructions } from './control.ts';
 import { dataInstructions } from './data.ts';
@@ -43,7 +43,6 @@ export interface Operands {
   readonly moved: readonly Register[];
   readonly labels: readonly Label[];
   readonly functions: readonly FunctionId[];
-  readonly types: readonly TypeId[];
   readonly constants: readonly ConstantId[];
 }
 
@@ -52,8 +51,8 @@ const operandTable: Handlers<undefined, Instruction, [], Partial<Operands>> = {
   move: (_, i) => ({ written: [i.dst], read: [i.src], moved: [i.src] }),
   copy: (_, i) => ({ written: [i.dst], read: [i.src] }),
   tuple: (_, i) => ({ written: [i.dst], read: i.elements, moved: i.elements }),
-  struct: (_, i) => ({ written: [i.dst], read: i.fields, moved: i.fields, types: [i.type] }),
-  variant: (_, i) => ({ written: [i.dst], read: i.fields, moved: i.fields, types: [i.type] }),
+  struct: (_, i) => ({ written: [i.dst], read: i.fields, moved: i.fields }),
+  variant: (_, i) => ({ written: [i.dst], read: i.fields, moved: i.fields }),
   // A spread is read for its items, which the array holds anew.
   array: (_, i) => ({
     written: [i.dst],
@@ -131,7 +130,6 @@ export function operandsOf(subject: Instruction): Operands {
     moved: found.moved ?? [],
     labels: found.labels ?? [],
     functions: found.functions ?? [],
-    types: found.types ?? [],
     constants: found.constants ?? [],
   };
 }
