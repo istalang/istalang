@@ -63,6 +63,8 @@ settle once and call their callbacks in rank order, park and unpark of an execut
   `disposing()` overrides an earlier decision while the call is being disposed (`_disposingWins`).
 - **Slots** are shared structs: `contents: Array<T>` (one item while full) and one queue of
   operations holding their futures weakly, so an operation its holders let go of leaves the queue;
+  a waiting put's value sits in an `_Offer` its future alone holds, the queue reaching it weakly,
+  so the value goes as the put settles or is let go of, a `select`'s loser included (spec §7, §8);
   one given up on (every case awaiting it lost) is passed over, and served where it stands once
   awaited again (`_onAwaited`). Reads at the head are one event and a take after them the next, so
   a `select` the reads decide has cancelled a losing take before it is reached. `put`, `take` and

@@ -464,7 +464,8 @@
       "✓ waits › a wait decides at its first case in order when several timers resolve together",
       "✓ waits › a wait decides at its first case in order when several disposal watches resolve together",
       "✓ waits › waiters readied together by their timers run in execution creation order",
-      "55 passed, 0 failed, 0 skipped."
+      "✓ waits › a waiting put's value is held by its put alone: let go of with it, or as it loses a select",
+      "56 passed, 0 failed, 0 skipped."
     ]
   }
 }

@@ -396,18 +396,19 @@ extern ista fn spawn<R>(f: sendable ista async fn() -> R) -> Instance<R>
 
 # A slot (§6), empty or full: full, its one value is its contents' one item, so a value of any type,
 # `none` among them, fills it. Its waiting operations are one queue, longest waiter first, which
-# holds each one's future weakly: an operation its holders let go of leaves the queue, as an inbox's
-# retracted message does. An operation that can complete when it is called completes then, its
-# future settled, and a full slot never has a read or take waiting that it would serve, nor an empty
-# one such a put, so completing at once never jumps a waiter. Its operations declare what they keep:
-# serving reads the queue's futures back through weak references, which the analysis of lifetimes
-# can't follow (§7).
+# holds nothing (§7): it reaches each one's future, and a put's offer, weakly, so an operation its
+# holders let go of leaves the queue, as an inbox's retracted message does, and a put's value goes
+# with its future, which alone holds it while it waits. An operation that can complete when it is
+# called completes then, its future settled, and a full slot never has a read or take waiting that
+# it would serve, nor an empty one such a put, so completing at once never jumps a waiter. Its
+# operations declare what they keep: serving reads the queue's futures back through weak
+# references, which the analysis of lifetimes can't follow (§7).
 shared struct Slot<T>:
   contents: Array<T> = []
   waiting: Array<_SlotOperation<T>> = []
 
 enum _SlotOperation<T>:
-  Put(future: WeakRef<Future<Unit, "ista">>, value: T)
+  Put(future: WeakRef<Future<Unit, "ista">>, offer: WeakRef<_Offer<T>>)
   Take(future: WeakRef<Future<T, "ista">>)
   Read(future: WeakRef<Future<T, "ista">>)
 
@@ -422,9 +423,24 @@ ista fn put<T>(self: Slot<T>, value: T) -> Future<Unit, "ista">:
     _settle(future, ())
     _serve(self)
   else:
-    self->waiting.push(Put(WeakRef(future), value))
+    const offer = new _Offer<T>{value}
+    self->waiting.push(Put(WeakRef(future), WeakRef(offer)))
     _onAwaited(future, _serving(self))
+    _onAwaited(future, _keeping(offer))
   future
+
+# The value a waiting put fills its slot with, held by the put's future alone (`_keeping`), so the
+# value is let go of as the put settles or is disposed. Disposable only so its slot's queue reaches
+# it weakly.
+shared struct _Offer<T>:
+  value: T
+
+ista fn dispose<T>(self: _Offer<T>): ()
+
+# What keeps `offer` while its put waits: run as the put is awaited, it does nothing.
+ista fn _keeping<T>(offer: _Offer<T>) -> Fn<(), Unit, "ista">:
+  ista fn kept(): _ = offer
+  kept
 
 # Empties the slot once it is full, giving its value.
 @Keeps{[:]}
@@ -491,10 +507,11 @@ ista fn _servedOnce<T>(slot: Slot<T>) -> Bool:
           _settle(future, value)
           return true
         elif weak._held(): kept.push(operation)
-      case Put(weak, value):
+      case Put(weak, offered):
         if _waiting(weak) is Future<Unit, "ista"> as future:
           if full: return _readersServed(slot, readers, [...kept, ...waiting.slice(index)])
-          slot->contents = [value]
+          # A put still waiting keeps its offer.
+          slot->contents = [offered._referent()->value]
           slot->waiting = [...kept, ...waiting.slice(index + 1)]
           _settle(future, ())
           return true

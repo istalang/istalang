@@ -207,6 +207,26 @@ ista async fn readyCreationOrder() -> Array<Int>:
   await second
   [await log.receive(), await log.receive()]
 
+shared struct Offered:
+  id: Int
+  log: Shared<Array<String>>
+
+fn dispose(self: Offered):
+  self->log->value.push("disposed " + self->id)
+
+ista async fn waitingPutsHoldTheirValues() -> String:
+  const log = new Shared<Array<String>>{value: []}
+  const s = Slot.create<Offered>()
+  await s.put(new Offered{id: 1, log})
+  if true:
+    const dropped = s.put(new Offered{id: 2, log})
+    drop dropped
+    log->value.push("dropped")
+  await select:
+    case s.put(new Offered{id: 3, log}): log->value.push("put won")
+    case time.delay(1ms): log->value.push("timer won")
+  log->value.join(", ")
+
 @Suite{"waits"}
 fn suite() -> Array<Test>: [
   test("futures.first in a select wins at its case when its future resolves together with a later case", async fn(): assertEq(await firstInSelect(), 0))
@@ -222,4 +242,5 @@ fn suite() -> Array<Test>: [
   test("a wait decides at its first case in order when several timers resolve together", async fn(): assertEq(await firstCaseTimers(), 1))
   test("a wait decides at its first case in order when several disposal watches resolve together", async fn(): assertEq(await firstCaseDisposals(), 1))
   test("waiters readied together by their timers run in execution creation order", async fn(): assertEq(await readyCreationOrder(), [1, 2]))
+  test("a waiting put's value is held by its put alone: let go of with it, or as it loses a select", async fn(): assertEq(await waitingPutsHoldTheirValues(), "disposed 2, dropped, disposed 3, timer won"))
 ]
