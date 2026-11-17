@@ -15,6 +15,7 @@
  */
 
 import { outcomeEncoderOf } from '../../definition/tables/types.ts';
+import { instanceHandle } from '../../definition/values/instance-handles.ts';
 import { externValue, type Value } from '../../definition/values/values.ts';
 import { unreachable } from '../../foundation/structures/unreachable.ts';
 import type { Clock } from '../clock.ts';
@@ -61,8 +62,7 @@ export function capabilitiesOf(run: Run, seams: CapabilitySeams): NativeCapabili
     instances: {
       spawn: (closure, type, options) => {
         const encoder = outcomeEncoderOf(run.definition.types, type);
-        const payload = run.world.spawn(run, closure, { options, encoder });
-        return externValue(type, payload);
+        return instanceHandle(type, run.world.spawn(run, closure, { options, encoder }));
       },
       ended: (name) => run.watchEnd(name) as unknown as Value,
     },

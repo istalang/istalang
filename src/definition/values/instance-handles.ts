@@ -5,7 +5,12 @@
  */
 
 import { unreachable } from '../../foundation/structures/unreachable.ts';
-import { isComposite, type Value } from './values.ts';
+import { type ExternValue, externValue, isComposite, type Value } from './values.ts';
+
+/** A handle of `Instance` type entry `type` to the instance `name`. */
+export function instanceHandle(type: number, name: string): ExternValue {
+  return externValue(type, name);
+}
 
 /** The name of the instance `handle` is a handle to. */
 export function instanceNameOf(handle: Value | undefined): string {
