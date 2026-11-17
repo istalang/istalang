@@ -105,7 +105,7 @@ export class Executions {
     });
     execution.frame = {
       function: index,
-      pc: 0,
+      parkedAt: undefined,
       registers,
       closure,
       decision: undefined,

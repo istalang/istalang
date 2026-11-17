@@ -26,9 +26,11 @@ what each instruction says and nothing else.
   (`currentClosure`). A call leaving parameters out passes them absent, and the prologue computes
   their defaults (`given`).
 - **Async entries** are resumable functions over a frame record, `fN(frame)`: registers come back
-  from `frame.registers`, and the body is `switch (frame.pc)` over the instructions. A `park` stops
-  where the call is stopping (to its stop landing), else saves the registers and the resume pc,
-  `instructions.length + index of the park`, and returns `PARKED`; the run resumes the frame with
+  from `frame.registers`, and the body is a `switch (pc)` over the instructions. A `park` stops
+  where the call is stopping (to its stop landing), else saves the registers and its own label
+  (`frame.parkedAt`, an IR label, which a snapshot keeps), and returns `PARKED`; the function maps
+  that label to its resume case, `instructions.length + label`, a numbering no one else reads, and
+  starts at 0 for a frame that hasn't parked yet. The run resumes the frame with
   the position its wait was decided for (`frame.decision`). Frames are data, the snapshot's own
   shape (design decision 3).
 - **Recursion** has no depth counter: the host's stack decides, and the run maps a stack overflow

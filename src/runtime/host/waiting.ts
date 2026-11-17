@@ -4,16 +4,20 @@
  * a commit that fails names the await it would have committed at.
  */
 
-import { parkAt } from '../../codegen/instructions.ts';
 import type { Definition } from '../../definition/definition.ts';
+import type { Label } from '../../definition/operands.ts';
+import { parkAt } from '../../definition/tables/functions.ts';
 import { locationOf } from '../../definition/traces.ts';
 import type { WaitingPoint } from '../instance-state.ts';
 import type { Resident } from './resident.ts';
 
-/** Where a frame parked at `pc` waits; undefined when it isn't parked at a `park`. */
+/** Where a frame parked at the `park` labeled `at` waits; undefined before it first parks. */
 export function parkedAt(
   definition: Definition,
-  { function: index, pc }: { readonly function: number; readonly pc: number },
+  {
+    function: index,
+    parkedAt: at,
+  }: { readonly function: number; readonly parkedAt: Label | undefined },
 ):
   | { readonly function: string; readonly waypoint: string | undefined; readonly location: string }
   | undefined {
@@ -21,7 +25,7 @@ export function parkedAt(
   if (entry?.kind !== 'code') {
     return undefined;
   }
-  const park = parkAt(entry, pc);
+  const park = at === undefined ? undefined : parkAt(entry, at);
   return park === undefined
     ? undefined
     : {

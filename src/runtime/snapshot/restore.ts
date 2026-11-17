@@ -11,10 +11,10 @@
  *   holder it is read under. A disposed object holds nothing, its disposal having let go of it.
  */
 
-import { parkAt } from '../../codegen/instructions.ts';
 import type { Definition } from '../../definition/definition.ts';
 import {
   type CodeFunction,
+  parkAt,
   startsExecution,
   transientRegistersOf,
 } from '../../definition/tables/functions.ts';
@@ -255,7 +255,7 @@ function filledExecution(
   const entry = fittingEntry(run.definition, persisted);
   execution.frame = {
     function: persisted.function,
-    pc: persisted.pc,
+    parkedAt: persisted.parkedAt,
     registers: persisted.registers.map((register) => registerOf(register, reading)),
     closure: persisted.closure === undefined ? undefined : restored(persisted.closure),
     decision: undefined,
@@ -297,15 +297,15 @@ function fittingEntry(
   definition: Definition,
   persisted: Extract<PersistedObject, { readonly kind: 'execution' }>,
 ): CodeFunction {
-  const { id, pc, registers } = persisted;
+  const { id, parkedAt, registers } = persisted;
   const entry = definition.functions[persisted.function];
   const refused = (why: string) =>
     new Refusal('snapshotMismatch', `The snapshot's execution ${id} ${why}.`);
   if (entry?.kind !== 'code' || !startsExecution(entry)) {
     throw refused(`runs ${persisted.function}, no async code entry`);
   }
-  if (parkAt(entry, pc) === undefined) {
-    throw refused(`stands at ${pc}, where no call of ${entry.name} waits`);
+  if (parkAt(entry, parkedAt) === undefined) {
+    throw refused(`stands at ${parkedAt}, where no call of ${entry.name} waits`);
   }
   if (registers.length !== entry.registers.length) {
     throw refused(

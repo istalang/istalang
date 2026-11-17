@@ -299,7 +299,7 @@ const emitters: Handlers<EntryScope, Instruction, [], string> = {
   },
   park: (scope, i) => {
     const saved = scope.entry.registers.map((_, index) => register(index)).join(', ');
-    return `if (frame.stopping) { ${goTo(i.stop)} } frame.pc = ${parkResumeOf(scope, i)}; frame.registers = [${saved}]; return PARKED;`;
+    return `if (frame.stopping) { ${goTo(i.stop)} } frame.parkedAt = ${scope.entry.instructions.indexOf(i)}; frame.registers = [${saved}]; return PARKED;`;
   },
   stopped: () => 'return STOPPED;',
   letGo: (scope, i) => {
@@ -321,17 +321,16 @@ function transientEnds(scope: EntryScope): string {
 }
 
 /**
- * The case a parked frame resumes at: one of its own past every instruction's (entry.ts), which
- * takes the decision, then falls into the instruction after the `park`.
+ * The case a frame parked at `park` resumes at: one of its own past every instruction's (entry.ts),
+ * which takes the decision, then falls into the instruction after the `park`.
  */
 export function parkResumeOf(scope: EntryScope, park: InstructionOf<'park'>): number {
-  return scope.entry.instructions.length + scope.entry.instructions.indexOf(park);
+  return resumeCasesFrom(scope.entry) + scope.entry.instructions.indexOf(park);
 }
 
-/** The `park` of `entry` a frame standing at `pc` resumes from; undefined where none does. */
-export function parkAt(entry: CodeFunction, pc: number): InstructionOf<'park'> | undefined {
-  const park = entry.instructions[pc - entry.instructions.length];
-  return park?.kind === 'park' ? park : undefined;
+/** Where the resume cases of `entry`'s parks start, each at its park's label past it. */
+export function resumeCasesFrom(entry: CodeFunction): number {
+  return entry.instructions.length;
 }
 
 /** `instruction` of the entry `scope` emits, as a line. */

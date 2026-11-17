@@ -169,12 +169,13 @@ In a Definition built to run tests (spec §10):
 ## Snapshots (`snapshot/`)
 
 - `format.ts`: the persisted shape. Objects by id (cells, futures, executions, weak references,
-  resources, mocks); values as trees with run objects as handles; frames as data (function, pc,
-  registers, where a register may hold a `&` reference), each execution with the transients' cells
-  it kept where it started (its frame's own shares are its transient registers); live executions,
-  timers, watches of other instances' ends, the ready queue, the running invocations (the spawned
-  one `root`), context constants, the serial, the seed and draws, spawned count, the outcome's
-  encoder, options and status (a finished one with its outcome and, where encoded, its JSON).
+  resources, mocks); values as trees with run objects as handles; frames as data (function, the
+  label of the `park` it stands at, registers, where a register may hold a `&` reference), each
+  execution with the transients' cells it kept where it started (its frame's own shares are its
+  transient registers); live executions, timers, watches of other instances' ends, the ready queue,
+  the running invocations (the spawned one `root`), context constants, the serial, the seed and
+  draws, spawned count, the outcome's encoder, options and status (a finished one with its outcome
+  and, where encoded, its JSON).
 - `write.ts`: a root walk from what the instance keeps. Holders are not written.
 - `restore.ts`: objects made first, then filled; every holder counted again as the writing run
   counted it (`Lifetimes.adoptRestored`): a composite comes back held by one holder, so value

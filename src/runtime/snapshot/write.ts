@@ -13,6 +13,7 @@
 import { bytesToHex } from '@noble/hashes/utils.js';
 import { replacingParts } from '../../definition/values/replacing.ts';
 import { depthOf, maximumDepth, type Value } from '../../definition/values/values.ts';
+import { unreachable } from '../../foundation/structures/unreachable.ts';
 import type { Instance } from '../run/instances.ts';
 import { Cell } from '../run/objects/cell.ts';
 import { Execution } from '../run/objects/execution.ts';
@@ -193,7 +194,7 @@ function executionOf(execution: Execution, { named, persisted }: Naming): Persis
     id: execution.object,
     future: named(execution.future),
     function: frame.function,
-    pc: frame.pc,
+    parkedAt: frame.parkedAt ?? unreachable('A frame a snapshot keeps stands at a park.'),
     registers: frame.registers.map((register) => registerOf(register, { named, persisted })),
     ...(frame.closure === undefined ? {} : { closure: persisted(frame.closure) }),
     parked: execution.parked,

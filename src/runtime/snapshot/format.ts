@@ -3,7 +3,7 @@
  * segment, so a runtime reading it back resumes where the instance committed.
  *
  * - **Frames are data** (ir-first design, decision 3): an execution is its frame record, its
- *   entry's index, its pc and its registers, so a snapshot means something only beside the
+ *   entry's index, the label of the `park` it stands at and its registers, so a snapshot means something only beside the
  *   Definition it names by hash.
  * - **Objects by id**: cells, futures, executions, weak references and resources, each under its
  *   id from the instance's serial, which a value names as a handle. Values are written as trees: a
@@ -20,6 +20,7 @@ import { defineFormat } from '../../definition/formats/format.ts';
 import {
   count,
   functionId,
+  label,
   objectId,
   register as registerIndex,
   typeId,
@@ -68,7 +69,7 @@ const object = z.discriminatedUnion('kind', [
     ...identity,
     future: objectId,
     function: functionId,
-    pc: count,
+    parkedAt: label,
     registers: z.array(register),
     closure: value.optional(),
     parked: z.boolean(),

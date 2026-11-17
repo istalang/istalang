@@ -6,7 +6,8 @@
  * resolution unparks with the winning case's position (ir-first design, decisions 3 and 6).
  *
  * - `park` suspends the running execution, a live or ista entry's, its frame kept as data:
- *   `(function, pc, registers)`, every register the code hasn't emptied. In ista code it commits
+ *   `(function, parkedAt, registers)`, the label of the `park` it stands at and every register the
+ *   code hasn't emptied, so each backend maps the label to its own resume point. In ista code it commits
  *   the segment first, so a frame in a snapshot always stands at a `park` (§5).
  * - Unparked, `dst` gets the position the wait was decided for, an `Int`.
  * - A call stopped while parked (§7: its future disposed and it not resuming on `disposing()`), or

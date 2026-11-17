@@ -2,8 +2,8 @@
  * One code entry as one JavaScript function (docs/arch/codegen.md).
  *
  * - **On a frame record** (calling-convention.ts `runsOnFrames`), an entry is `f<i>(frame)`: it
- *   loads its registers from the record, runs from `frame.pc`, and at a `park` saves every register
- *   back and returns, so a suspended frame is data the run keeps, spills and restores. Any other
+ *   loads its registers from the record, runs from the start or from the `park` it stands at
+ *   (`frame.parkedAt`, an IR label), and at a `park` saves every register and its label and returns, so a suspended frame is data the run keeps, spills and restores. Any other
  *   entry is a plain function, `f<i>(...parameters, closure)`, its registers locals.
  * - **Control** goes through `pc` and a `switch` only where the entry jumps; a parked frame resumes
  *   at a case of its own past every instruction's, which takes the decision and falls into the
@@ -22,6 +22,7 @@ import {
   emitInstruction,
   parkResumeOf,
   register,
+  resumeCasesFrom,
   resumed,
 } from './instructions.ts';
 
@@ -52,7 +53,11 @@ export function emitEntry(scope: Omit<EntryScope, 'jumps'>): EmittedEntry {
     line('  try {');
   }
   if (jumps) {
-    line(onFrames ? '  let pc = frame.pc;' : '  let pc = 0;');
+    line(
+      onFrames
+        ? `  let pc = frame.parkedAt === undefined ? 0 : ${resumeCasesFrom(entry)} + frame.parkedAt;`
+        : '  let pc = 0;',
+    );
     line('  for (;;) switch (pc) {');
     line('  case 0:');
   }
@@ -105,7 +110,9 @@ function openingLines({ entry, index, onFrames }: Omit<EntryScope, 'jumps'>): st
     }
   }
   if (entry.instructions.some(({ kind }) => kind === 'mocked')) {
-    lines.push(`  const started = ${onFrames ? 'frame.pc === 0 && ' : ''}startsHere(${index});`);
+    lines.push(
+      `  const started = ${onFrames ? 'frame.parkedAt === undefined && ' : ''}startsHere(${index});`,
+    );
   }
   return lines;
 }

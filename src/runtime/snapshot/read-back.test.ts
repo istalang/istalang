@@ -88,8 +88,8 @@ describe('reading an instance back', () => {
   });
 
   it.each<[string, (execution: PersistedExecution) => PersistedExecution]>([
-    ['a frame standing where no call waits', (execution) => ({ ...execution, pc: 0 })],
-    ['a pc outside its function', (execution) => ({ ...execution, pc: 10_000 })],
+    ['a frame standing where no call waits', (execution) => ({ ...execution, parkedAt: 0 })],
+    ['a park label outside its function', (execution) => ({ ...execution, parkedAt: 10_000 })],
     [
       'a register outside its frame',
       (execution) => ({ ...execution, registers: [...execution.registers, null] }),

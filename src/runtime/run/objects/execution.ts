@@ -3,6 +3,7 @@
  * handle is the call's (`_Call`, §7), and its future what the call gives.
  */
 
+import type { Label } from '../../../definition/operands.ts';
 import type { Value } from '../../../definition/values/values.ts';
 import type { Instance } from '../instances.ts';
 import { TransientScope } from '../transient-scope.ts';
@@ -47,7 +48,8 @@ export class Execution extends RunObject {
 /** A frame record (definition/instructions/suspension.ts): an async entry's, parked or running. */
 export interface Frame {
   readonly function: number;
-  pc: number;
+  /** The label of the `park` it stands at; none before it first parks. */
+  parkedAt: Label | undefined;
   registers: (Value | undefined)[];
   readonly closure: Value | undefined;
   decision: Value | undefined;
