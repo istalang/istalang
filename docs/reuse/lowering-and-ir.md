@@ -14,6 +14,7 @@ tags: [reuse, lowering, definition, ir, instructions]
 
 - lower a checked program or its `@Suite` tests into a `Definition` → `lower`, `lowerTests` (`src/compiler/lowering/lower.ts`)
 - intern modules, constants, function instances or closing `any` entries → `DefinitionTables` (`src/compiler/lowering/tables/tables.ts`); number any function-table entry → `DefinitionTables.index`, over its kind's identity (`src/compiler/lowering/tables/entries.ts`)
+- renumber a Definition's references to its functions, types, constants or modules (each kind its own operand schema, `src/definition/operands.ts`), found by walking its schema → `renumbered` (`src/definition/references.ts`); never a walk that knows the instructions' shapes
 - the type a parameter's argument arrives in, a reference for a `&` parameter → `parameterTypeOf` (`src/compiler/lowering/tables/parameter-types.ts`)
 - assemble a code entry from the code a `CodeWriter` wrote → `codeEntry` (`src/compiler/lowering/functions/code-entry.ts`), the one builder, which function lowering and synthesized code both call
 - add a kind of function-table entry → its variant in `LoweredEntry` (`tables/entries.ts`) and its row, identity and entry, in `entryKinds` (`src/compiler/lowering/entry-kinds.ts`); nothing else dispatches on the kind

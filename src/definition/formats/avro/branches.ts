@@ -1,6 +1,7 @@
 /**
- * A union's branches as Avro holds them: Avro's can't nest, so nested unions are flattened, and
- * each value picks its branch by its JavaScript type and, among objects, by the literal field that
+ * A union's branches as Avro holds them, and as a Definition's references are walked
+ * (../../references.ts): Avro's can't nest, so nested unions are flattened, and each value picks
+ * its branch by its JavaScript type and, among objects, by the literal field that
  * tells them apart (a discriminated union's key, else the first one every branch has). A union no
  * such rule tells apart is refused as its type is derived, never guessed at as a value is written.
  */
@@ -12,9 +13,12 @@ import { type AvroPrimitive, customForm } from './forms.ts';
 /** What a JavaScript value is, as far as choosing a union's branch for it goes. */
 type Bucket = 'absent' | 'null' | 'boolean' | 'string' | 'number' | 'bigint' | 'array' | 'object';
 
-/** A union's branch: its Avro schema, the values it takes, and its literal fields (an object's). */
-export interface Branch {
-  readonly schema: AvroSchema;
+/**
+ * A union's branch: what a walk derives of it (its Avro schema, for a codec), the values it takes,
+ * and its literal fields (an object's).
+ */
+export interface Branch<Derived = AvroSchema> {
+  readonly schema: Derived;
   readonly bucket: Bucket;
   readonly tags: ReadonlyMap<string, unknown>;
 }
@@ -35,9 +39,9 @@ export function onlyLiteral(values: readonly unknown[]): unknown {
   return only;
 }
 
-/** A union's leaf `schema`, written as `avro`. */
-export function leafBranch(schema: ZodSchema, avro: AvroSchema): Branch {
-  return { schema: avro, bucket: bucketOf(schema), tags: tagsOf(schema) };
+/** A union's leaf `schema`, which a walk derives `derived` of. */
+export function leafBranch<Derived>(schema: ZodSchema, derived: Derived): Branch<Derived> {
+  return { schema: derived, bucket: bucketOf(schema), tags: tagsOf(schema) };
 }
 
 /** What values a union's leaf takes, by their JavaScript type. */
@@ -104,7 +108,7 @@ function bucketOfValue(value: unknown): Bucket {
 
 /** How a value picks its branch of `branches`, telling objects apart by `discriminator` if named. */
 export function branchChooser(
-  branches: readonly Branch[],
+  branches: readonly Branch<unknown>[],
   discriminator: string | undefined,
 ): (value: unknown) => number {
   const byBucket = new Map<Bucket, number>();
@@ -140,7 +144,7 @@ export function branchChooser(
 
 /** The literal field that tells `objects` apart: `discriminator`, else the first that does. */
 function tagOf(
-  objects: readonly (Branch | undefined)[],
+  objects: readonly (Branch<unknown> | undefined)[],
   discriminator: string | undefined,
 ): string {
   const [first] = objects;

@@ -8,9 +8,9 @@
  * - a field or variant into its type's lists
  * - an object into the snapshot's heap
  * Indexes keep the JSON small, and they make a frame's position in the code a single number
- * (docs/arch/definition.md, "Frames"). Every index, offset and count is the same schema; the
- * names exist for readability at the use site and are the one place to change if any of them
- * ever needs its own rule.
+ * (docs/arch/definition.md, "Frames"). Every index, offset and count has one rule; a reference
+ * into one of the Definition's tables has a schema of its own, so a walk of a Definition's schema
+ * finds each kind of reference (references.ts), and the other names exist for readability.
  */
 
 import { z } from 'zod';
@@ -19,10 +19,10 @@ const index = z.int().nonnegative();
 
 export const register = index;
 export const label = index;
-export const moduleId = index;
-export const functionId = index;
-export const typeId = index;
-export const constantId = index;
+export const moduleId = z.int().nonnegative();
+export const functionId = z.int().nonnegative();
+export const typeId = z.int().nonnegative();
+export const constantId = z.int().nonnegative();
 export const objectId = index;
 export const fieldIndex = index;
 export const variantIndex = index;
