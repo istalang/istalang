@@ -24,7 +24,7 @@ import type { LiteralType, NominalType, Type } from '../../../checker/types/type
 import { intType, stringType } from '../../../checker/types/type/primitives.ts';
 import { typeText } from '../../../checker/types/type/type-text.ts';
 import { type ClosedCall, closeCall } from '../../calls/closed-calls.ts';
-import { literalValue, oneValueIn } from '../../values/unions.ts';
+import { literalValue, oneValueIn } from '../../values/members/index.ts';
 import type { SynthesizedCode } from '../index.ts';
 import { codecCall } from './codec-calls.ts';
 

@@ -48,8 +48,9 @@ import { codeModeOf } from '../functions/modes.ts';
 import { tableKey } from '../tables/names.ts';
 import { parameterTypeOf } from '../tables/parameter-types.ts';
 import { convertedIntoAny } from '../values/into-any.ts';
+import { heldAt, heldStep } from '../values/members/holdings.ts';
+import { outOfUnion } from '../values/members/index.ts';
 import { readRequiredField } from '../values/required-fields.ts';
-import { outOfUnion } from '../values/unions.ts';
 import { SynthesizedCode } from './index.ts';
 
 /**
@@ -133,7 +134,7 @@ export function anyConversionEntry(
     unreachable('A conversion takes the value it converts.');
   }
   switchOverMembers(code, from, value, (type, variant) => {
-    const held = code.variantField(value, variant, 0, baseOf(type));
+    const held = heldAt(code, value, { variant, member: baseOf(type) }, code.span);
     code.return(convertedIntoAny(code, { value: held, from: type, to }, span));
   });
   const name = `${tableKey(checker, from)} as ${tableKey(checker, to)}`;
@@ -167,7 +168,10 @@ export function anyFieldEntry(
   const constraint = on.constraints.findIndex((each) => each.trait === trait);
   const at = { module: checker.moduleOf(trait), span: field.name.span };
   switchOverMembers(code, on, value, (type, variant) => {
-    const member = { register: code.variantField(value, variant, 0, baseOf(type)), type };
+    const member = {
+      register: heldAt(code, value, { variant, member: baseOf(type) }, code.span),
+      type,
+    };
     const witnesses = () => checker.traitObjects.memberWitnesses(on, constraint, type);
     const types = checker.traitObjects.memberFieldTypes(on, constraint, type, field);
     const read = { value: member, field, result: types?.met ?? result };
@@ -212,8 +216,8 @@ function memberReceiver(
   }
   const held = baseOf(type);
   return byReference
-    ? code.passedOn(0, [{ kind: 'variant', variant, field: 0 }], held)
-    : code.variantField(receiver, variant, 0, held);
+    ? code.passedOn(0, [heldStep(variant)], held)
+    : heldAt(code, receiver, { variant, member: held }, code.span);
 }
 
 /**

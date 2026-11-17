@@ -46,8 +46,8 @@ import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import { emitCall } from '../../calls/emit-call.ts';
 import type { CodeContext, TypedValue } from '../../context.ts';
 import { rootInstance } from '../../tables/instances.ts';
+import { eachMember } from '../../values/members/index.ts';
 import { construct, tupleOf } from '../../values/struct-values.ts';
-import { eachMember } from '../../values/unions.ts';
 import { buildVariant } from '../../values/variant-values.ts';
 
 /** What rebuilding a value reads of the conversion it is part of. */

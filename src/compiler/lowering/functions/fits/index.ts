@@ -38,8 +38,8 @@ import {
 import { tableKey } from '../../tables/names.ts';
 import { parameterTypeOf } from '../../tables/parameter-types.ts';
 import { convertedIntoAny } from '../../values/into-any.ts';
+import { asBase, intoUnion } from '../../values/members/index.ts';
 import { rebuiltAs, tupleOf } from '../../values/struct-values.ts';
-import { asBase, intoUnion } from '../../values/unions.ts';
 import { builtKindOf, codeModeOf } from '../modes.ts';
 import { changesLayout, convertedFuture, type Rebuilding, rebuilt } from './parts.ts';
 

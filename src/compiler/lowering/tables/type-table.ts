@@ -38,6 +38,7 @@ import type {
 import type { Value } from '../../../definition/values/values.ts';
 import { compareOrdered } from '../../../foundation/language/order.ts';
 import { unionLayout } from '../../../foundation/language/well-known/variants.ts';
+import { memo } from '../../../foundation/structures/memo.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { Checker, Disposal } from '../../checker/check.ts';
 import type { CheckedAnnotation } from '../../checker/surface/checked-annotation.ts';
@@ -182,20 +183,13 @@ export class TypeTable {
 
   /** The index of the enum standing for the `any` type `type`, with the variants it has so far. */
   anyIndex(type: AnyType): TypeId {
-    const key = this.#checker.typeKeys.typeKey(type);
-    const known = this.#indexes.get(key);
-    if (known !== undefined) {
-      return known;
-    }
-    const entry: AnyEntry = {
-      kind: 'any',
-      name: tableKey(this.#checker, type),
-      disposable: this.#checker.reachesDisposable(type),
-      members: [],
-    };
-    const index = this.#entries.push(entry) - 1;
-    this.#indexes.set(key, index);
-    return index;
+    const checker = this.#checker;
+    return memo(this.#indexes, checker.typeKeys.typeKey(type), () => {
+      const name = tableKey(checker, type);
+      const disposable = checker.reachesDisposable(type);
+      const entry: AnyEntry = { kind: 'any', name, disposable, members: [] };
+      return this.#entries.push(entry) - 1;
+    });
   }
 
   /**

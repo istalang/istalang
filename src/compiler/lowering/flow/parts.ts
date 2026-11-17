@@ -7,7 +7,7 @@
  * - A field of a struct is read at its position in the layout the instantiation made (§3.1); one a
  *   trait requires as the type the instance knows has it, its stored field or its getter's call,
  *   and of an `any` value through the dispatch reading it so from each member (§3.10).
- * - A union's member is taken out as it is held (values/unions.ts), as is the value of a pattern's
+ * - A union's member is taken out as it is held (values/members/index.ts), as is the value of a pattern's
  *   name narrowed from a union or an `any`.
  * - A field a key of several names names is read in each case of a switch on the key (§3.9).
  */
@@ -26,12 +26,12 @@ import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 import { emitCall } from '../calls/emit-call.ts';
 import type { TypedValue } from '../context.ts';
 import { constantValue } from '../tables/constants.ts';
-import { laidOutAs } from '../values/holdings.ts';
 import { readKeyed } from '../values/keyed-fields.ts';
+import { heldAt, laidOutAs } from '../values/members/holdings.ts';
+import { outOfUnion } from '../values/members/index.ts';
 import { insideOptional } from '../values/optionals.ts';
 import { readRequiredField } from '../values/required-fields.ts';
 import { rebuiltAs } from '../values/struct-values.ts';
-import { outOfUnion } from '../values/unions.ts';
 import { concreteType } from './variables.ts';
 import type { FlowWriter } from './writer.ts';
 
@@ -133,10 +133,13 @@ function stepRead(
     case 'downcast': {
       const any = laidOutAs(value.type);
       return any.kind === 'any'
-        ? code.variantField(
+        ? heldAt(
+            context,
             value.register,
-            { variant: tables.types.anyVariant(any, step.to), field: 0 },
-            typed(step.to),
+            {
+              variant: tables.types.anyVariant(any, step.to),
+              member: concreteType(context, step.to),
+            },
             span,
           )
         : unreachable(`A downcast out of a ${any.kind} type.`);

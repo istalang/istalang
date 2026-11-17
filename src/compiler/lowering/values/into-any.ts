@@ -1,6 +1,6 @@
 /**
  * A value converted into an `any` type (§3.10), as a fit or a conversion entry makes it: from a
- * concrete type, the variant holding it (holdings.ts); from another `any` type, whose constraints
+ * concrete type, the variant holding it (members/holdings.ts); from another `any` type, whose constraints
  * stand for the target's, through the entry converting variant by variant; from the same `any` type,
  * the value itself; from a union, each member's value as a value of that member.
  */
@@ -10,8 +10,8 @@ import { sameType } from '../../checker/types/identity/identity.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 import { emitCall } from '../calls/emit-call.ts';
 import type { CodeContext } from '../context.ts';
-import { heldInAny, type IntoAny } from './holdings.ts';
-import { eachMember } from './unions.ts';
+import { heldInAny, type IntoAny } from './members/holdings.ts';
+import { eachMember } from './members/index.ts';
 
 /** The value `conversion` converts, in the `any` type it converts into. */
 export function convertedIntoAny(

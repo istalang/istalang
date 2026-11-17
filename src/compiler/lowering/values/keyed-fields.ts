@@ -1,6 +1,6 @@
 /**
  * A struct's field reached by a key's value (§3.1, §3.9): `s[k]` where `k` may name several fields.
- * A key of several names is a value of the union of their literals, a tag (unions.ts), so reaching
+ * A key of several names is a value of the union of their literals, a tag (members/index.ts), so reaching
  * its field switches on the tag, and each member reaches the field its name names at that field's
  * position in the struct's layout, which is name order (§3.1). Nothing is looked up by name when
  * the program runs.
@@ -20,8 +20,8 @@ import type { FieldMember, Type } from '../../checker/types/type/index.ts';
 import type { Expression } from '../../syntax/expressions/index.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 import type { FunctionContext, TypedValue } from '../context.ts';
-import { heldIn } from './holdings.ts';
-import { onEachMember } from './unions.ts';
+import { heldIn } from './members/holdings.ts';
+import { onEachMember } from './members/index.ts';
 
 /** A field reached by a key: the struct type `on`, and the key's value. */
 export interface KeyedField {

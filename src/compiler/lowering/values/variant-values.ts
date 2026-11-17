@@ -2,7 +2,8 @@
  * Enum values built by their variant (§3.11): `variant` of an enum type by the index of the variant
  * named, its fields in declaration order, which a call of a variant's constructor, the
  * constructor's own entry and code the compiler writes (a propagated error, a decoded value) all
- * build through, so none of them imports another to build one.
+ * build through, so none of them imports another to build one. A union's or an `any` type's value
+ * is a variant of its enum, built here too (members/holdings.ts).
  *
  * A variant's constructor (syntax/declarations/field-defaults.ts) has no code of its own to run:
  * its parameters are the variant's fields, so a call of it builds the variant where it stands,
@@ -15,7 +16,7 @@ import type { Checker } from '../../checker/check.ts';
 import { variantNamedIn } from '../../checker/surface/named-variants.ts';
 import { type FunctionInstance, substitutionOf } from '../../checker/surface/witness-closing.ts';
 import { substitute } from '../../checker/types/parts/substitution.ts';
-import type { NominalType } from '../../checker/types/type/index.ts';
+import type { AnyType, NominalType, UnionType } from '../../checker/types/type/index.ts';
 import { constructedVariant } from '../../syntax/declarations/field-defaults.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 import type { CodeContext, TypedValue } from '../context.ts';
@@ -39,19 +40,22 @@ export function buildVariant(
   return variantAt(context, { type, variant, fields }, span, dst);
 }
 
-/** Builds the `variant`-th variant of the enum `type`, of `fields`, in `dst`. */
+/** The `variant`-th variant of the enum `type` is, a union's or an `any` type's too, of `fields`. */
+interface VariantAt {
+  readonly type: NominalType | UnionType | AnyType;
+  readonly variant: number;
+  readonly fields: readonly Register[];
+}
+
+/** Builds the variant `VariantAt` says in `dst`. */
 export function variantAt(
   context: CodeContext,
-  {
-    type,
-    variant,
-    fields,
-  }: { readonly type: NominalType; readonly variant: number; readonly fields: readonly Register[] },
+  { type, variant, fields }: VariantAt,
   span: AnchoredSpan,
   dst: Register = context.code.allocate(context.tables.types.reference(type)),
 ): Register {
-  const { code } = context;
-  const entry = context.tables.types.index(type);
+  const { code, tables } = context;
+  const entry = type.kind === 'any' ? tables.types.anyIndex(type) : tables.types.index(type);
   code.emit({
     kind: 'variant',
     span,

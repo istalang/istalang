@@ -1,5 +1,5 @@
 /**
- * Optionals in lowered code (§2, §4): `T?` is the union `T | None` (unions.ts), and this is the one
+ * Optionals in lowered code (§2, §4): `T?` is the union `T | None` (members/index.ts), and this is the one
  * place that tests one for `none`, for `none` itself, `??`, optional chains and a range's left-out
  * end, as their flows branch (lowering/flow/exits.ts).
  *
@@ -11,7 +11,7 @@
  * - An instantiation may collapse an optional (§3.5): `T?` with `T = None` is `None`, whose one
  *   value is always absent, and with `T = Int?` is `Int?`, which a value of `T` is already, so it
  *   goes in as it is; with `T = any Sendable`, which takes `None` whole (§2), it is that `any`
- *   type, holding `none` as any other value (holdings.ts).
+ *   type, holding `none` as any other value (members/holdings.ts).
  */
 
 import type { Register } from '../../../definition/operands.ts';
@@ -21,8 +21,9 @@ import { isPrimitive, noneType } from '../../checker/types/type/primitives.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 import type { CodeContext, TypedValue } from '../context.ts';
 import type { Label } from '../functions/code-writer.ts';
-import { jumpIfHeld, laidOutAs } from './holdings.ts';
-import { oneValueIn, outOfUnion } from './unions.ts';
+import { laidOutAs } from './members/holdings.ts';
+import { oneValueIn, outOfUnion } from './members/index.ts';
+import { jumpIfHeld } from './members/tests.ts';
 
 /** `none` as a value of `type`: an optional, `None` itself, or an `any` type that took it whole. */
 export function noneOf(context: CodeContext, type: Type, span: AnchoredSpan): Register {

@@ -1,7 +1,9 @@
 /**
- * Union values in lowered code (§2): the one place that knows how a value of `A | B` is laid out,
- * an enum with a variant per member (tables/type-table.ts), which conversions, `none`, the optional
- * operators and patterns all go through.
+ * Members of union and `any` values in lowered code (§2): the one module that reads, builds and
+ * tests them, which conversions, `none`, the optional operators, patterns and trait objects all go
+ * through. A union's value is an enum with a variant per member (tables/type-table.ts); where a
+ * type sits in another, and reading or building it there, is holdings.ts', testing which member a
+ * value holds tests.ts', and converting into and out of a union this module's.
  *
  * - Into a union, a value of a member becomes that member's variant; a union becomes the wider
  *   one variant by variant, a literal member going into its base where the base is the member.
@@ -16,23 +18,23 @@
  * - An instantiation may let an `any` member take a member whole (§2, §3.5): `T | any Stringable`
  *   with `T = Int` is `any Stringable`. A value of the member then sits inside the `any` type's
  *   variant, which goes into the union's variant of that `any` member, and a test of it is the
- *   union's test, then the `any` type's. Where a type sits in another (`holdingOf`) is derived
- *   here, from the types as the instantiation made them, for every way in or out.
+ *   union's test, then the `any` type's.
  */
 
-import type { Register } from '../../../definition/operands.ts';
-import type { Value } from '../../../definition/values/values.ts';
-import { distinctItems } from '../../../foundation/structures/equality.ts';
-import { unreachable } from '../../../foundation/structures/unreachable.ts';
-import { sameType } from '../../checker/types/identity/identity.ts';
-import type { AnyType, LiteralType, Type, UnionType } from '../../checker/types/type/index.ts';
-import { isPrimitive } from '../../checker/types/type/primitives.ts';
-import { baseOf } from '../../checker/types/unions/union-members.ts';
-import { hasOneValue } from '../../checker/types/unions/unions.ts';
-import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
-import type { CodeContext, TypedValue } from '../context.ts';
-import { emitConstant } from '../tables/constants.ts';
-import { branchOnHeld, heldIn, holdingOf, laidOutAs, memberValue, readHeld } from './holdings.ts';
+import type { Register } from '../../../../definition/operands.ts';
+import type { Value } from '../../../../definition/values/values.ts';
+import { distinctItems } from '../../../../foundation/structures/equality.ts';
+import { unreachable } from '../../../../foundation/structures/unreachable.ts';
+import { sameType } from '../../../checker/types/identity/identity.ts';
+import type { AnyType, LiteralType, Type, UnionType } from '../../../checker/types/type/index.ts';
+import { isPrimitive } from '../../../checker/types/type/primitives.ts';
+import { baseOf } from '../../../checker/types/unions/union-members.ts';
+import { hasOneValue } from '../../../checker/types/unions/unions.ts';
+import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
+import type { CodeContext, TypedValue } from '../../context.ts';
+import { emitConstant } from '../../tables/constants.ts';
+import { heldAt, heldIn, holdingOf, laidOutAs, memberValue, readHeld } from './holdings.ts';
+import { branchOnHeld } from './tests.ts';
 
 /** The value of `holder` that is the one value of `member`, a literal or `None`. */
 export function oneValueIn(
@@ -193,10 +195,10 @@ function remapped(
       const inside = () =>
         hasOneValue(member)
           ? emitConstant(context, oneValueOf(member), member, span)
-          : context.code.variantField(
+          : heldAt(
+              context,
               value.register,
-              { variant: context.tables.types.unionVariant(value.type, member), field: 0 },
-              context.tables.types.reference(member),
+              { variant: context.tables.types.unionVariant(value.type, member), member },
               span,
             );
       return holds(member)

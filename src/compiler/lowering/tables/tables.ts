@@ -31,7 +31,7 @@ import type { SyntaxTree } from '../../syntax/tree/index.ts';
 import { type AnchoredSpan, spanIn } from '../../syntax/tree/positions.ts';
 import { type ClosedCall, leavesOut } from '../calls/closed-calls.ts';
 import { nestedSpanOf } from '../functions/bodies.ts';
-import { laidOutAs } from '../values/holdings.ts';
+import { laidOutAs } from '../values/members/holdings.ts';
 import { annotationValues } from './constants.ts';
 import {
   type EntryIdentities,
