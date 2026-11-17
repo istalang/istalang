@@ -13,13 +13,11 @@
  *   (instances.ts).
  */
 
-import type { Representation } from '../../../definition/tables/types.ts';
-import { type PrimitiveName, primitiveNames } from '../../../foundation/language/primitives.ts';
+import { type Representation, sameRepresentation } from '../../../definition/tables/types.ts';
 import {
   type WellKnownDeclaration,
   wellKnown,
 } from '../../../foundation/language/well-known/index.ts';
-import { memo } from '../../../foundation/structures/memo.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { Checker } from '../../checker/check.ts';
 import type { FunctionInstance } from '../../checker/surface/witness-closing.ts';
@@ -29,13 +27,13 @@ import { primitiveType } from '../../checker/types/type/primitives.ts';
 import { typeParametersOf } from '../../syntax/declarations/index.ts';
 import type { TypeTable } from './type-table.ts';
 
-/** The prelude's stand-in for each representation a primitive isn't. */
-const standIns = {
-  handle: wellKnown.handleStandIn,
+/** The prelude's stand-in of each representation a primitive isn't. */
+const preludeStandIns = {
   tag: wellKnown.tagStandIn,
+  handle: wellKnown.handleStandIn,
   heap: wellKnown.heapStandIn,
   counted: wellKnown.countedStandIn,
-} as const satisfies Record<Exclude<Representation, PrimitiveName>, WellKnownDeclaration>;
+} as const satisfies Record<Exclude<Representation['kind'], 'primitive'>, WellKnownDeclaration>;
 
 /**
  * Whether `type` holds a prelude stand-in at any depth: what a decision by a type's shape (a
@@ -50,14 +48,15 @@ export function holdsStandIn(checker: Pick<Checker, 'wellKnownEntity'>, type: Ty
 export function isStandIn(checker: Pick<Checker, 'wellKnownEntity'>, type: Type): boolean {
   return (
     type.kind === 'nominal' &&
-    Object.values(standIns).some((standIn) => checker.wellKnownEntity(standIn) === type.entity)
+    Object.values(preludeStandIns).some(
+      (standIn) => checker.wellKnownEntity(standIn) === type.entity,
+    )
   );
 }
 
 export class Stencils {
   readonly #checker: Checker;
   readonly #types: TypeTable;
-  readonly #standIns = new Map<Representation, Type>();
 
   constructor(checker: Checker, types: TypeTable) {
     this.#checker = checker;
@@ -89,20 +88,15 @@ export class Stencils {
 
   /** The stand-in of `representation`, which its own entry must have. */
   #standIn(representation: Representation): Type {
-    return memo(this.#standIns, representation, () => {
-      const standIn = isPrimitive(representation)
-        ? primitiveType(representation)
-        : (this.#checker.wellKnownType(standIns[representation]) ??
+    const standIn =
+      representation.kind === 'primitive'
+        ? primitiveType(representation.name)
+        : (this.#checker.wellKnownType(preludeStandIns[representation.kind]) ??
           unreachable('A program sharing instances has a prelude.'));
-      const kept = this.#types.representationOf(standIn);
-      if (kept !== representation) {
-        unreachable(`The ${representation} stand-in is represented as ${String(kept)}.`);
-      }
-      return standIn;
-    });
+    const kept = this.#types.representationOf(standIn);
+    if (kept === undefined || !sameRepresentation(kept, representation)) {
+      unreachable(`The ${representation.kind} stand-in is represented otherwise.`);
+    }
+    return standIn;
   }
-}
-
-function isPrimitive(representation: Representation): representation is PrimitiveName {
-  return (primitiveNames as readonly string[]).includes(representation);
 }

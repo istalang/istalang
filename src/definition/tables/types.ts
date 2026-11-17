@@ -243,7 +243,17 @@ export function lifetimeOf(types: readonly TypeDefinition[], reference: TypeRefe
  * (`Int`, `Float`, …), an enum's bare tag (`tag`), or a pointer it never counts: a run object's or
  * a host value's handle, or a place (`handle`).
  */
-export type Representation = PrimitiveName | 'tag' | 'handle' | Exclude<Lifetime, 'plain'>;
+export type Representation =
+  | { readonly kind: 'primitive'; readonly name: PrimitiveName }
+  | { readonly kind: 'tag' | 'handle' | Exclude<Lifetime, 'plain'> };
+
+/** Whether `first` and `second` are one representation. */
+export function sameRepresentation(first: Representation, second: Representation): boolean {
+  return (
+    first.kind === second.kind &&
+    (first.kind !== 'primitive' || (second.kind === 'primitive' && first.name === second.name))
+  );
+}
 
 /** The representation of values of `reference` (`Representation`). */
 export function representationOf(
@@ -252,15 +262,15 @@ export function representationOf(
 ): Representation {
   const lifetime = lifetimeOf(types, reference);
   if (lifetime !== 'plain') {
-    return lifetime;
+    return { kind: lifetime };
   }
   switch (reference.kind) {
     case 'primitive':
-      return reference.name;
+      return { kind: 'primitive', name: reference.name };
     case 'named':
-      return types[reference.type]?.kind === 'enum' ? 'tag' : 'handle';
+      return { kind: types[reference.type]?.kind === 'enum' ? 'tag' : 'handle' };
     case 'reference':
-      return 'handle';
+      return { kind: 'handle' };
     case 'tuple':
     case 'function':
       return unreachable('A tuple or a function is never plain.');
