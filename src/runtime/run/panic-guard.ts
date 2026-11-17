@@ -1,0 +1,38 @@
+/**
+ * Where a panic stops (§3.12): an ista instance's ends the instance at the run's outermost guarded
+ * call, unwinding every call started within it (an async call's start, a call stopped as it is
+ * disposed) as a plain callee's panic does, so no code of the instance runs past it, a host extern
+ * call included. The live run's propagates to the host.
+ */
+
+import type { Instance } from './instances.ts';
+import type { Traces } from './traces.ts';
+
+export class PanicGuard {
+  readonly #instance: Instance;
+  readonly #traces: Pick<Traces, 'panicOf'>;
+  /** Whether a guarded call is running, which a panic in any call it started unwinds to. */
+  #guarding = false;
+
+  constructor(instance: Instance, traces: Pick<Traces, 'panicOf'>) {
+    this.#instance = instance;
+    this.#traces = traces;
+  }
+
+  /** What `run` gives; undefined once its panic ended the instance. */
+  guarded<Result>(run: () => Result): Result | undefined {
+    if (!this.#instance.durable || this.#guarding) {
+      return run();
+    }
+    this.#guarding = true;
+    try {
+      return run();
+    } catch (error) {
+      const { message, trace } = this.#traces.panicOf(error);
+      this.#instance.ended({ kind: 'panicked', message, trace });
+      return undefined;
+    } finally {
+      this.#guarding = false;
+    }
+  }
+}

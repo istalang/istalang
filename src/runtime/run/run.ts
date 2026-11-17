@@ -35,6 +35,7 @@ import { bindNatives, type NativeBinding } from './natives.ts';
 import type { Execution, Frame } from './objects/execution.ts';
 import { Future } from './objects/future.ts';
 import type { WeakReference } from './objects/weak-reference.ts';
+import { PanicGuard } from './panic-guard.ts';
 import { Places } from './places.ts';
 import { calledPrimitives } from './primitives.ts';
 import { type PersistedReady, type Ready, ReadyQueue } from './ready-queue.ts';
@@ -95,8 +96,7 @@ export class Run {
   readonly #entries: readonly Entry[];
   readonly #natives: (index: number) => Entry;
   readonly #settler: Settler;
-  /** Whether a guarded call is running, which a panic in any call it started unwinds to. */
-  #guarding = false;
+  readonly #guard: PanicGuard;
   #objects = 0;
 
   constructor(definition: Definition, program: EmittedProgram, binding: NativeBinding) {
@@ -130,7 +130,7 @@ export class Run {
       newId: () => this.newId(),
       settle: (future, value) => this.settle(future, value),
       startedTransients: () => this.transients.started(),
-      guarded: (run) => this.#guarded(run),
+      guarded: (run) => this.#guard.guarded(run),
     });
     this.#natives = bindNatives(this, {
       ...binding,
@@ -143,6 +143,7 @@ export class Run {
     const { site, entries } = made(this);
     this.#entries = entries;
     this.traces = new Traces(definition, program.lines, site);
+    this.#guard = new PanicGuard(this.instance, this.traces);
   }
 
   /** What disposing this run's objects needs of it (disposal.ts). */
@@ -373,33 +374,12 @@ export class Run {
       return;
     }
     this.invocations.waitOnEnd(invocation);
-    const given = this.#guarded(() => this.mocking.started(closure, passed));
+    const given = this.#guard.guarded(() => this.mocking.started(closure, passed));
     if (given instanceof Future) {
       this.invocations.attach(given, invocation);
     } else if (instance.end === undefined) {
       // A plain function's call gives its value at once (§9); a panicked one gives none.
       this.invocations.answer(invocation, given as Value);
-    }
-  }
-
-  /**
-   * What `run` gives; an ista instance's panic ends it, the live run's propagates to the host. Only
-   * the outermost guarded call catches it: one nested in it, an async call started within it or a
-   * call stopped as it disposes, lets it unwind, so no code of the instance runs past a panic.
-   */
-  #guarded<Result>(run: () => Result): Result | undefined {
-    if (!this.instance.durable || this.#guarding) {
-      return run();
-    }
-    this.#guarding = true;
-    try {
-      return run();
-    } catch (error) {
-      const { message, trace } = this.traces.panicOf(error);
-      this.instance.ended({ kind: 'panicked', message, trace });
-      return undefined;
-    } finally {
-      this.#guarding = false;
     }
   }
 
