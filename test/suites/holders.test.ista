@@ -61,9 +61,22 @@ fn defaultsLiveAsTheFunction() -> Array<String>:
   note(log, "returned")
   log->value
 
+struct Defaulted:
+  log: Shared<Array<String>>
+  a: Int = { hold _ = defer note(log, "held by a"); note(log, "default a"); 1 }
+  b: Bool = (new Lease{name: "b's temporary", log} is Lease as lease) and lease->name != ""
+  c: Int = { note(log, "default c"); a + 1 }
+
+fn fieldDefaultsLiveAsTheirStruct() -> Array<String>:
+  const log = new Shared<Array<String>>{value: []}
+  const built = Defaulted{log}
+  note(log, "built")
+  log->value
+
 @Suite{"holders"}
 fn suite() -> Array<Test>: [
   test("a _ among a destructuring's targets holds its part alone, so dropping or reassigning a named part disposes it", fn(): assertEq(unnamedParts(), ["disposed a", "a dropped", "disposed b", "b assigned", "disposed kept2", "disposed b2", "disposed kept"]))
   test("break and continue release the temporaries of the statements and loops they leave", fn(): assertEq(exitsReleaseTemporaries(), ["disposed item", "after break outer", "disposed operand", "after break", "disposed turn 0", "disposed turn 1", "after continue"]))
   test("a default's temporaries end with it, and what it holds for its function ends with the function", fn(): assertEq(defaultsLiveAsTheFunction(), ["default a", "disposed b's temporary", "default c", "body", "held by a", "returned"]))
+  test("a field default's temporaries end with it, and what it holds for building its struct ends once the struct is built", fn(): assertEq(fieldDefaultsLiveAsTheirStruct(), ["default a", "disposed b's temporary", "default c", "held by a", "built"]))
 ]

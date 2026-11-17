@@ -464,6 +464,7 @@
       "✓ holders › a _ among a destructuring's targets holds its part alone, so dropping or reassigning a named part disposes it",
       "✓ holders › break and continue release the temporaries of the statements and loops they leave",
       "✓ holders › a default's temporaries end with it, and what it holds for its function ends with the function",
+      "✓ holders › a field default's temporaries end with it, and what it holds for building its struct ends once the struct is built",
       "✓ instances › a spawn carries a sendable closure's captures into the child",
       "✓ instances › a child started through a shorter function value computes what it left out",
       "✓ instances › an instance ends with the value of the future its function gives, an async or a plain callee",
@@ -483,7 +484,7 @@
       "✓ waits › a wait decides at its first case in order when several disposal watches resolve together",
       "✓ waits › waiters readied together by their timers run in execution creation order",
       "✓ waits › a waiting put's value is held by its put alone: let go of with it, or as it loses a select",
-      "73 passed, 0 failed, 0 skipped."
+      "74 passed, 0 failed, 0 skipped."
     ]
   }
 }
