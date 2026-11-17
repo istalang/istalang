@@ -34,7 +34,6 @@ import { substitute } from '../../checker/types/parts/substitution.ts';
 import { kindOfFunction } from '../../checker/types/type/function-kinds.ts';
 import type { AnyType, Type } from '../../checker/types/type/index.ts';
 import { awaitedOf } from '../../checker/types/type/well-known.ts';
-import { baseOf } from '../../checker/types/unions/union-members.ts';
 import { hasOneValue } from '../../checker/types/unions/unions.ts';
 import {
   closeWitness,
@@ -134,7 +133,7 @@ export function anyConversionEntry(
     unreachable('A conversion takes the value it converts.');
   }
   switchOverMembers(code, from, value, (type, variant) => {
-    const held = heldAt(code, value, { variant, member: baseOf(type) }, code.span);
+    const held = heldAt(code, value, { variant, held: type }, code.span);
     code.return(convertedIntoAny(code, { value: held, from: type, to }, span));
   });
   const name = `${tableKey(checker, from)} as ${tableKey(checker, to)}`;
@@ -169,7 +168,7 @@ export function anyFieldEntry(
   const at = { module: checker.moduleOf(trait), span: field.name.span };
   switchOverMembers(code, on, value, (type, variant) => {
     const member = {
-      register: heldAt(code, value, { variant, member: baseOf(type) }, code.span),
+      register: heldAt(code, value, { variant, held: type }, code.span),
       type,
     };
     const witnesses = () => checker.traitObjects.memberWitnesses(on, constraint, type);
@@ -214,16 +213,15 @@ function memberReceiver(
   if (on.kind !== 'any' && on.kind !== 'union') {
     return code.passedOn(0);
   }
-  const held = baseOf(type);
   return byReference
-    ? code.passedOn(0, [heldStep(variant)], held)
-    : heldAt(code, receiver, { variant, member: held }, code.span);
+    ? code.passedOn(0, [heldStep(variant)], type)
+    : heldAt(code, receiver, { variant, held: type }, code.span);
 }
 
 /**
  * Switches on the variant of the enum `on` is, an `any` type's or a union's, in `value`, writing
- * what each does with its member type; on any other type, the one type a union collapsed into,
- * writes it once.
+ * what each does with the type its variant holds, an `any` type's a base already; on any other
+ * type, the one type a union collapsed into, writes it once.
  */
 function switchOverMembers(
   code: SynthesizedCode,

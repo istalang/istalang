@@ -7,9 +7,9 @@
  *   member's own, its literal's base, whose value a literal is, or the `any` member that took it
  *   whole.
  * - An `any` type's value is the variant of its enum holding a concrete type's value, its base's
- *   for a literal. Where an instantiation let an `any` type take a member whole (`T | any
- *   Stringable` with `T = Int`), a value of the member sits there, in the union's variant of that
- *   `any` member or in the `any` type the union collapsed into.
+ *   for a literal: any type the checker let convert into it (§3.10), through variance too. Only a
+ *   union's layout asks which `any` member took a member whole (§2: `T | any Stringable` with
+ *   `T = Int`), its value sitting in the union's variant of that `any` member.
  * - A member's variant holds its value as its one field; a member with one value, a literal or
  *   `none`, holds nothing there.
  * - A recursive type is laid out as what it unfolds to (§3.17), one type, and a recursive union in
@@ -26,12 +26,13 @@ import { absorbingMember, baseOf } from '../../../checker/types/unions/union-mem
 import { hasMember, hasOneValue } from '../../../checker/types/unions/unions.ts';
 import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import type { CodeContext, TypedValue } from '../../context.ts';
+import type { HeldVariant } from '../../tables/type-table.ts';
 import { variantAt } from '../variant-values.ts';
 
 /**
  * Where a value sits in a value of a holder, both as an instantiation made them (§2, §3.5): the
- * holder itself, of the value's type or its literal's base; inside the `any` holder that took it
- * whole; in the variant of the holder `union`'s member `variant`, its own or its literal's base; or
+ * holder itself, of the value's type or its literal's base; inside the `any` holder it converted
+ * into; in the variant of the holder `union`'s member `variant`, its own or its literal's base; or
  * inside the `any` member `variant` of `union` that took it whole.
  */
 export type Holding =
@@ -53,7 +54,7 @@ export function holdingOf(context: CodeContext, given: Type, member: Type): Hold
     if (sameType(holder, member) || sameType(holder, baseOf(member))) {
       return { kind: 'itself' };
     }
-    return holder.kind === 'any' && absorbingMember([holder], member, rules) !== undefined
+    return holder.kind === 'any' && member.kind !== 'any' && member.kind !== 'union'
       ? { kind: 'inAny', any: holder }
       : undefined;
   }
@@ -69,14 +70,14 @@ export function holdingOf(context: CodeContext, given: Type, member: Type): Hold
     : { kind: 'variantInAny', union: holder, variant: absorbing };
 }
 
-/** Borrows the value of `member` the `variant`-th variant of the union or `any` value holds. */
+/** Borrows the value of `held` the `variant`-th variant of the union or `any` value holds. */
 export function heldAt(
   context: CodeContext,
   holder: Register,
-  { variant, member }: { readonly variant: number; readonly member: Type },
+  { variant, held }: HeldVariant,
   span: AnchoredSpan,
 ): Register {
-  const reference = context.tables.types.reference(member);
+  const reference = context.tables.types.reference(held);
   return context.code.variantField(holder, { variant, field: 0 }, reference, span);
 }
 
@@ -101,16 +102,11 @@ export function readHeld(
     heldAt(
       context,
       value.register,
-      { variant: tables.types.unionVariant(union, variant), member: variant },
+      { variant: tables.types.unionVariant(union, variant), held: variant },
       span,
     );
   const inAny = (register: Register, any: AnyType) =>
-    heldAt(
-      context,
-      register,
-      { variant: tables.types.anyVariant(any, member), member: baseOf(member) },
-      span,
-    );
+    heldAt(context, register, tables.types.anyVariant(any, member), span);
   switch (holding?.kind) {
     case undefined:
     case 'itself':
@@ -179,7 +175,7 @@ export interface IntoAny {
  * base's for a literal, whose value it is (§2), so a downcast to the base finds it.
  */
 export function heldInAny(context: CodeContext, { value, from, to }: IntoAny, span: AnchoredSpan) {
-  const variant = context.tables.types.anyVariant(to, from);
+  const { variant } = context.tables.types.anyVariant(to, from);
   return variantAt(context, { type: to, variant, fields: [value] }, span);
 }
 

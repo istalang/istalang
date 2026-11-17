@@ -18,10 +18,10 @@ import type { TypeTest } from '../../checker/surface/checked-pattern.ts';
 import type { BlockId, BranchTest, Exit } from '../../checker/surface/flow-ir.ts';
 import { unitType } from '../../checker/types/type/primitives.ts';
 import type { TypedValue } from '../context.ts';
-import type { Label } from '../functions/code-writer.ts';
-import { type Branch, branchOnMembers } from '../values/members/tests.ts';
+import type { Branch, Label } from '../functions/code-writer.ts';
+import { branchOnHeld, branchOnMembers } from '../values/members/tests.ts';
 import { branchOnPresent } from '../values/optionals.ts';
-import { branchOnVariant } from '../values/variant-values.ts';
+import { branchOnVariants } from '../values/variant-values.ts';
 import { selected } from './flow-waits.ts';
 import type { FlowWriter } from './writer.ts';
 
@@ -103,12 +103,14 @@ function labelsOf(writer: FlowWriter, to: readonly BlockId[]): Targets {
 function branchOnType(writer: FlowWriter, value: TypedValue, test: TypeTest, branch: Branch): void {
   const { context } = writer;
   const { span } = writer.flow.root;
+  const { register } = value;
   if (test.kind === 'member') {
-    const tested = { register: value.register, type: test.union };
+    const tested = { register, type: test.union };
     branchOnMembers(context, { value: tested, members: test.members }, branch, span);
-    return;
+  } else if (test.kind === 'downcast') {
+    const tested = { register, type: test.from };
+    branchOnHeld(context, { value: tested, members: [test.to] }, branch, span);
+  } else {
+    branchOnVariants(context, { register, variants: [test.variant] }, branch, span);
   }
-  const variant =
-    test.kind === 'variant' ? test.variant : context.tables.types.anyVariant(test.from, test.to);
-  branchOnVariant(context, { register: value.register, variant }, branch, span);
 }

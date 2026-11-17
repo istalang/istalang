@@ -27,7 +27,7 @@ import { emitCall } from '../calls/emit-call.ts';
 import type { TypedValue } from '../context.ts';
 import { constantValue } from '../tables/constants.ts';
 import { readKeyed } from '../values/keyed-fields.ts';
-import { heldAt, laidOutAs } from '../values/members/holdings.ts';
+import { laidOutAs, readHeld } from '../values/members/holdings.ts';
 import { outOfUnion } from '../values/members/index.ts';
 import { insideOptional } from '../values/optionals.ts';
 import { readRequiredField } from '../values/required-fields.ts';
@@ -130,20 +130,8 @@ function stepRead(
         span,
       );
     }
-    case 'downcast': {
-      const any = laidOutAs(value.type);
-      return any.kind === 'any'
-        ? heldAt(
-            context,
-            value.register,
-            {
-              variant: tables.types.anyVariant(any, step.to),
-              member: concreteType(context, step.to),
-            },
-            span,
-          )
-        : unreachable(`A downcast out of a ${any.kind} type.`);
-    }
+    case 'downcast':
+      return readHeld(context, value, concreteType(context, step.to), span);
     case 'member':
       return outOfUnion(context, { register: value.register, type: step.union }, step.member, span);
     case 'fieldRest':

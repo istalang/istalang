@@ -100,6 +100,12 @@ const placeholder: TypeDefinition = {
   heap: true,
 };
 
+/** The variant of a union's or an `any` type's enum holding a value, and that value's type. */
+export interface HeldVariant {
+  readonly variant: number;
+  readonly held: Type;
+}
+
 export class TypeTable {
   readonly #checker: Checker;
   readonly #seams: TypeTableSeams;
@@ -189,15 +195,14 @@ export class TypeTable {
    * base, interned as every entry is: a type test names the variant a value would be held in before
    * lowering has met any put there, so a member is added the first time either asks.
    */
-  anyVariant(type: AnyType, member: Type): number {
+  anyVariant(type: AnyType, member: Type): HeldVariant {
     const held = baseOf(member);
     const { members } = this.#anyEntry(type);
     const found = members.findIndex((each) => sameType(each.type, held));
-    if (found >= 0) {
-      return found;
-    }
     const name = tableKey(this.#checker, held);
-    return members.push({ type: held, name, reference: this.reference(held) }) - 1;
+    const variant =
+      found >= 0 ? found : members.push({ type: held, name, reference: this.reference(held) }) - 1;
+    return { variant, held };
   }
 
   /** The types `type`'s variants hold so far, in variant order. */

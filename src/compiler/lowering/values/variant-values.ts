@@ -20,7 +20,7 @@ import type { AnyType, NominalType, UnionType } from '../../checker/types/type/i
 import { constructedVariant } from '../../syntax/declarations/field-defaults.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 import type { CodeContext, TypedValue } from '../context.ts';
-import type { Label } from '../functions/code-writer.ts';
+import type { Branch } from '../functions/code-writer.ts';
 
 /** A value of an enum to build: its type, its variant's name, and the variant's fields. */
 interface VariantValue {
@@ -103,17 +103,17 @@ export function buildConstructed(
   return buildVariant(context, { type, name: constructed.variant.name.text, fields }, span, dst);
 }
 
-/** Jumps to `matched` when the value holds the variant tested, else to `otherwise`: a `switch`. */
-export function branchOnVariant(
+/** Jumps to `matched` when the value holds one of the variants tested, else to `otherwise`. */
+export function branchOnVariants(
   context: CodeContext,
-  test: VariantTest,
-  labels: { readonly matched: Label; readonly otherwise: Label },
+  { register, variants }: VariantTest,
+  { matched, otherwise }: Branch,
   span: AnchoredSpan,
 ): void {
-  const targets = Array.from({ length: test.variant + 1 }, (_, index) =>
-    index === test.variant ? labels.matched : labels.otherwise,
+  const targets = Array.from({ length: Math.max(...variants) + 1 }, (_, index) =>
+    variants.includes(index) ? matched : otherwise,
   );
-  context.code.switch(test.register, targets, span, labels.otherwise);
+  context.code.switch(register, targets, span, otherwise);
 }
 
 /** Borrows the one field of the variant `tested` holds, an `Ok`'s or `Err`'s (§3.11, §3.12). */
@@ -148,7 +148,7 @@ export function payloadOr(
   const matched = code.newLabel();
   const unmatched = code.newLabel();
   const test = variantTestOf(context.checker, tested.register, tested.type, tested.name);
-  branchOnVariant(context, test, { matched, otherwise: unmatched }, span);
+  branchOnVariants(context, test, { matched, otherwise: unmatched }, span);
   code.place(unmatched);
   otherwise();
   code.place(matched);
@@ -162,7 +162,7 @@ function variantTestOf(
   type: NominalType,
   name: string,
 ): VariantTest {
-  return { register, variant: variantIndexOf(checker, type, name) };
+  return { register, variants: [variantIndexOf(checker, type, name)] };
 }
 
 /** A value of the enum `type` in `register`, tested for its variant `name`, which has one field. */
@@ -170,8 +170,8 @@ interface VariantCase extends TypedValue<NominalType> {
   readonly name: string;
 }
 
-/** The enum value in `register` tested for one of its variants, the `variant`-th. */
+/** The enum value in `register` tested for whether it holds one of `variants`. */
 interface VariantTest {
   readonly register: Register;
-  readonly variant: number;
+  readonly variants: readonly number[];
 }

@@ -12,16 +12,11 @@ import { baseOf } from '../../../checker/types/unions/union-members.ts';
 import { hasMember } from '../../../checker/types/unions/unions.ts';
 import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import type { CodeContext, TypedValue } from '../../context.ts';
-import type { Label } from '../../functions/code-writer.ts';
+import type { Branch, Label } from '../../functions/code-writer.ts';
 import { emitConstant } from '../../tables/constants.ts';
 import { equal } from '../operators.ts';
+import { branchOnVariants } from '../variant-values.ts';
 import { heldAt, holdingOf, laidOutAs, readHeld } from './holdings.ts';
-
-/** Where a test goes: to `matched` when it passes, else to `otherwise`. */
-export interface Branch {
-  readonly matched: Label;
-  readonly otherwise: Label;
-}
 
 /** What a member test tests: a value, and the members it passes for. */
 interface MembersTest {
@@ -124,7 +119,7 @@ export function branchOnHeld(
   code.switch(value.register, targets, span, otherwise);
   for (const { label, variant, inside, members: absorbed } of pending) {
     code.place(label);
-    const inner = heldAt(context, value.register, { variant, member: inside }, span);
+    const inner = heldAt(context, value.register, { variant, held: inside }, span);
     const any = { register: inner, type: inside };
     branchOnAnyVariants(context, { value: any, members: absorbed }, { matched, otherwise }, span);
   }
@@ -134,16 +129,12 @@ export function branchOnHeld(
 function branchOnAnyVariants(
   context: CodeContext,
   { value, members }: { readonly value: TypedValue<AnyType>; readonly members: readonly Type[] },
-  { matched, otherwise }: Branch,
+  branch: Branch,
   span: AnchoredSpan,
 ): void {
-  const variants = new Set(
-    members.map((member) => context.tables.types.anyVariant(value.type, member)),
-  );
-  const targets = Array.from({ length: Math.max(...variants) + 1 }, (_, index) =>
-    variants.has(index) ? matched : otherwise,
-  );
-  context.code.switch(value.register, targets, span, otherwise);
+  const variants = members.map((member) => context.tables.types.anyVariant(value.type, member));
+  const test = { register: value.register, variants: variants.map(({ variant }) => variant) };
+  branchOnVariants(context, test, branch, span);
 }
 
 /** Jumps to `to` when `value` holds a value of `member`, else carries on. */

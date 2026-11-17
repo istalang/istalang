@@ -28,6 +28,12 @@ export interface Label {
   readonly id: number;
 }
 
+/** Where a test goes: to `matched` when it passes, else to `otherwise`. */
+export interface Branch {
+  readonly matched: Label;
+  readonly otherwise: Label;
+}
+
 /** An instruction as lowering writes it: at the span of the syntax it stands for. */
 export type WrittenInstruction = Instruction extends infer Each
   ? Each extends Instruction

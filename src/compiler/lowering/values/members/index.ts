@@ -198,7 +198,7 @@ function remapped(
           : heldAt(
               context,
               value.register,
-              { variant: context.tables.types.unionVariant(value.type, member), member },
+              { variant: context.tables.types.unionVariant(value.type, member), held: member },
               span,
             );
       return holds(member)
