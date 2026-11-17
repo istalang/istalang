@@ -16,11 +16,12 @@
  */
 
 import { Temporal } from 'temporal-polyfill';
+import type { NativeKeys } from '../../definition/extern-key.ts';
 import { fieldValueOf, type NamedFields } from '../../definition/values/declared-values.ts';
 import type { Value } from '../../definition/values/values.ts';
 import { wellKnown } from '../../foundation/language/well-known/index.ts';
 import { type NativeContext, type Natives, Panic } from '../../runtime/natives.ts';
-import { knownTypeKey, type NativeKeys } from '../std-module.ts';
+import { knownTypeKey } from '../std-module.ts';
 import { arrayOf, int, text, textPayloadOf } from '../values/arguments.ts';
 import { itemExtern, itemStruct, resultExtern, resultStruct } from '../values/results.ts';
 import { millisecondsOf, resultMilliseconds } from './fields.ts';

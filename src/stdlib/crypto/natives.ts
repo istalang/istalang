@@ -13,10 +13,10 @@ import { hmac } from '@noble/hashes/hmac.js';
 import { sha1 } from '@noble/hashes/legacy.js';
 import { sha256, sha384, sha512 } from '@noble/hashes/sha2.js';
 import { bytesToHex, hexToBytes, utf8ToBytes } from '@noble/hashes/utils.js';
+import type { NativeKeys } from '../../definition/extern-key.ts';
 import type { Value } from '../../definition/values/values.ts';
 import { base64Of, bytesOfBase64 } from '../../foundation/text/base64.ts';
 import type { NativeContext, Natives } from '../../runtime/natives.ts';
-import type { NativeKeys } from '../std-module.ts';
 import { text, variantEntry } from '../values/arguments.ts';
 
 /** An encoding of bytes as text: its name, and both ways; `decode` gives none for what it can't read. */

@@ -10,10 +10,10 @@
  *   code `parse`, never a panic (§3.12).
  */
 
+import type { NativeKeys } from '../../definition/extern-key.ts';
 import type { Value } from '../../definition/values/values.ts';
 import type { PrimitiveName } from '../../foundation/language/primitives.ts';
 import type { Native, NativeContext, Natives } from '../../runtime/natives.ts';
-import type { NativeKeys } from '../std-module.ts';
 import { arrayOf, text } from '../values/arguments.ts';
 
 const wholeDigits = /^-?\d+$/u;

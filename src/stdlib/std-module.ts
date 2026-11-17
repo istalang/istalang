@@ -7,12 +7,11 @@
 
 import {
   type KeyType,
-  type NativeParameter,
+  type NativeKeys,
   namedKey,
-  nativeKey,
+  nativeKeysOf,
   type WrittenType,
 } from '../definition/extern-key.ts';
-import { staticName } from '../foundation/language/static-names.ts';
 import {
   type Persistence,
   qualifiedName,
@@ -27,36 +26,12 @@ export interface StdModule {
   readonly natives: Natives;
 }
 
-/** The keys of one std module's natives (definition/extern-key.ts). */
-export interface NativeKeys {
-  /** Type `name` the module declares, with its type arguments: `decimal.Decimal`. */
-  readonly type: (name: string, ...typeArguments: readonly WrittenType[]) => KeyType;
-  /** Function `name` taking `parameters`: `time.at(time.Time)`. */
-  readonly of: (name: string, ...parameters: readonly NativeParameter[]) => string;
-  /** Static function `name` of type `owner` taking `parameters`: `time.Time.parse(String)`. */
-  readonly ofStatic: (
-    owner: string,
-    name: string,
-    ...parameters: readonly NativeParameter[]
-  ) => string;
-}
-
 /** The natives of a std module's externs, built from its keys. */
 export type ModuleNatives = (keys: NativeKeys) => Natives;
 
 /** Std module `name` with its `source`, and the natives `natives` builds from its keys. */
 export function stdModule(name: string, source: string, natives?: ModuleNatives): StdModule {
   return { name, source, natives: natives?.(nativeKeysOf(name)) ?? {} };
-}
-
-/** The keys of std module `module`'s natives. */
-export function nativeKeysOf(module: string): NativeKeys {
-  return {
-    type: (name, ...typeArguments) => namedKey(qualifiedName({ module, name }), ...typeArguments),
-    of: (name, ...parameters) => nativeKey(module, name, ...parameters),
-    ofStatic: (owner, name, ...parameters) =>
-      nativeKey(module, staticName(owner, name), ...parameters),
-  };
 }
 
 /** A well-known type as a key spells it, with its type arguments: `prelude.Array<T>`. */

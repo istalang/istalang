@@ -12,6 +12,7 @@
 
 import { LRUCache } from 'lru-cache';
 import { RE2JS, RE2JSException } from 're2js';
+import type { NativeKeys } from '../../definition/extern-key.ts';
 import type { TypeId } from '../../definition/operands.ts';
 import type { TypeDefinition } from '../../definition/tables/types.ts';
 import { fieldValueOf, structOf } from '../../definition/values/declared-values.ts';
@@ -20,7 +21,6 @@ import type { Value } from '../../definition/values/values.ts';
 import { memo } from '../../foundation/structures/memo.ts';
 import { codePointPositions } from '../../foundation/text/code-points.ts';
 import { type NativeContext, type Natives, Panic } from '../../runtime/natives.ts';
-import type { NativeKeys } from '../std-module.ts';
 import { arrayOf, int, text } from '../values/arguments.ts';
 import { resultTypeArgument } from '../values/results.ts';
 import { split } from './split.ts';

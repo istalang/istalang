@@ -9,7 +9,7 @@
  * with the built-in `==`.
  */
 
-import { parameterKey, referenceKey } from '../../definition/extern-key.ts';
+import { type NativeKeys, parameterKey, referenceKey } from '../../definition/extern-key.ts';
 import { elementsOf } from '../../definition/values/values.ts';
 import { wellKnown } from '../../foundation/language/well-known/index.ts';
 import { unreachable } from '../../foundation/structures/unreachable.ts';
@@ -23,7 +23,7 @@ import {
   splicesOf,
 } from '../positions.ts';
 import { rangeOf } from '../ranges.ts';
-import { knownTypeKey, type NativeKeys } from '../std-module.ts';
+import { knownTypeKey } from '../std-module.ts';
 import { arrayOf, int, optionalInt } from '../values/arguments.ts';
 
 const item = parameterKey('T');

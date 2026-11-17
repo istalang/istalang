@@ -3,10 +3,11 @@
  * through the one reading of its values (stdlib/ranges.ts).
  */
 
+import type { NativeKeys } from '../../definition/extern-key.ts';
 import { wellKnown } from '../../foundation/language/well-known/index.ts';
 import type { NativeContext, Natives } from '../../runtime/natives.ts';
 import { bounded, countOf, rangeOf, reaches } from '../ranges.ts';
-import { knownTypeKey, type NativeKeys } from '../std-module.ts';
+import { knownTypeKey } from '../std-module.ts';
 import { int } from '../values/arguments.ts';
 
 const range = knownTypeKey(wellKnown.range);

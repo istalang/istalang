@@ -14,7 +14,7 @@
  *   written as: the extern's one type argument.
  */
 
-import { parameterKey } from '../../definition/extern-key.ts';
+import { type NativeKeys, parameterKey } from '../../definition/extern-key.ts';
 import type { TypeReference } from '../../definition/tables/types.ts';
 import { isResourceType } from '../../definition/tables/types.ts';
 import { namedType } from '../../definition/values/declared-values.ts';
@@ -37,7 +37,7 @@ import type {
   WithResources,
 } from '../../runtime/natives.ts';
 import { Refusal } from '../../runtime/refusal.ts';
-import { knownTypeKey, type NativeKeys } from '../std-module.ts';
+import { knownTypeKey } from '../std-module.ts';
 import { arrayOf, externPayloadOf, given, text } from '../values/arguments.ts';
 
 /** The JSON a host gave a value of one of its types: the value itself, or its resource's (§7). */

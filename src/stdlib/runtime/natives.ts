@@ -6,7 +6,12 @@
  * (runtime/run/capabilities.ts).
  */
 
-import { functionKey, namedKey, parameterKey } from '../../definition/extern-key.ts';
+import {
+  functionKey,
+  type NativeKeys,
+  namedKey,
+  parameterKey,
+} from '../../definition/extern-key.ts';
 import { fieldValueOf } from '../../definition/values/declared-values.ts';
 import type { CallMaker } from '../../runtime/natives.ts';
 import {
@@ -18,7 +23,7 @@ import {
   type WithFutures,
   type WithInstances,
 } from '../../runtime/natives.ts';
-import { futureKey, type NativeKeys } from '../std-module.ts';
+import { futureKey } from '../std-module.ts';
 import { arrayOf, given, int, text } from '../values/arguments.ts';
 import { declaredResult, resultTypeArgument } from '../values/results.ts';
 

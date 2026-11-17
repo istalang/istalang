@@ -5,12 +5,12 @@
  * (runtime/run/weak-references.ts).
  */
 
-import { parameterKey } from '../../definition/extern-key.ts';
+import { type NativeKeys, parameterKey } from '../../definition/extern-key.ts';
 import { conversionFunction } from '../../foundation/language/well-known/implicit-calls.ts';
 import { wellKnown } from '../../foundation/language/well-known/index.ts';
 import { unreachable } from '../../foundation/structures/unreachable.ts';
 import type { NativeContext, Natives, WithWeakSide } from '../../runtime/natives.ts';
-import { knownTypeKey, type NativeKeys } from '../std-module.ts';
+import { knownTypeKey } from '../std-module.ts';
 import { given } from '../values/arguments.ts';
 
 const referent = parameterKey('T');

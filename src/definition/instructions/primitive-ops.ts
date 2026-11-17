@@ -17,6 +17,8 @@
  */
 
 import { z } from 'zod';
+import { languageModules } from '../../foundation/language/well-known/index.ts';
+import { nativeKeysOf } from '../extern-key.ts';
 
 export const primitiveOp = z.enum([
   'intAdd',
@@ -48,31 +50,33 @@ export const primitiveOp = z.enum([
 
 export type PrimitiveOp = z.output<typeof primitiveOp>;
 
+const prelude = nativeKeysOf(languageModules.prelude);
+
 /** The prelude extern, by its key, each primitive operation stands for. */
 export const primitiveOfExtern: Readonly<Record<string, PrimitiveOp>> = {
-  'prelude.add(Int, Int)': 'intAdd',
-  'prelude.subtract(Int, Int)': 'intSubtract',
-  'prelude.multiply(Int, Int)': 'intMultiply',
-  'prelude.floorDivide(Int, Int)': 'intFloorDivide',
-  'prelude.remainder(Int, Int)': 'intRemainder',
-  'prelude.power(Int, Int)': 'intPower',
-  'prelude.negate(Int)': 'intNegate',
-  'prelude.compare(Int, Int)': 'intCompare',
-  'prelude.bitAnd(Int, Int)': 'intBitAnd',
-  'prelude.bitOr(Int, Int)': 'intBitOr',
-  'prelude.bitXor(Int, Int)': 'intBitXor',
-  'prelude.bitNot(Int)': 'intBitNot',
-  'prelude.shiftLeft(Int, Int)': 'intShiftLeft',
-  'prelude.shiftRight(Int, Int)': 'intShiftRight',
-  'prelude.add(Float, Float)': 'floatAdd',
-  'prelude.subtract(Float, Float)': 'floatSubtract',
-  'prelude.multiply(Float, Float)': 'floatMultiply',
-  'prelude.divide(Float, Float)': 'floatDivide',
-  'prelude.power(Float, Float)': 'floatPower',
-  'prelude.negate(Float)': 'floatNegate',
-  'prelude.compare(Float, Float)': 'floatCompare',
-  'prelude.add(String, String)': 'stringConcat',
-  'prelude.compare(String, String)': 'stringCompare',
-  'prelude.Float.from(Int)': 'floatFromInt',
-  'prelude.Int.from(Float)': 'intFromFloat',
+  [prelude.of('add', 'Int', 'Int')]: 'intAdd',
+  [prelude.of('subtract', 'Int', 'Int')]: 'intSubtract',
+  [prelude.of('multiply', 'Int', 'Int')]: 'intMultiply',
+  [prelude.of('floorDivide', 'Int', 'Int')]: 'intFloorDivide',
+  [prelude.of('remainder', 'Int', 'Int')]: 'intRemainder',
+  [prelude.of('power', 'Int', 'Int')]: 'intPower',
+  [prelude.of('negate', 'Int')]: 'intNegate',
+  [prelude.of('compare', 'Int', 'Int')]: 'intCompare',
+  [prelude.of('bitAnd', 'Int', 'Int')]: 'intBitAnd',
+  [prelude.of('bitOr', 'Int', 'Int')]: 'intBitOr',
+  [prelude.of('bitXor', 'Int', 'Int')]: 'intBitXor',
+  [prelude.of('bitNot', 'Int')]: 'intBitNot',
+  [prelude.of('shiftLeft', 'Int', 'Int')]: 'intShiftLeft',
+  [prelude.of('shiftRight', 'Int', 'Int')]: 'intShiftRight',
+  [prelude.of('add', 'Float', 'Float')]: 'floatAdd',
+  [prelude.of('subtract', 'Float', 'Float')]: 'floatSubtract',
+  [prelude.of('multiply', 'Float', 'Float')]: 'floatMultiply',
+  [prelude.of('divide', 'Float', 'Float')]: 'floatDivide',
+  [prelude.of('power', 'Float', 'Float')]: 'floatPower',
+  [prelude.of('negate', 'Float')]: 'floatNegate',
+  [prelude.of('compare', 'Float', 'Float')]: 'floatCompare',
+  [prelude.of('add', 'String', 'String')]: 'stringConcat',
+  [prelude.of('compare', 'String', 'String')]: 'stringCompare',
+  [prelude.ofStatic('Float', 'from', 'Int')]: 'floatFromInt',
+  [prelude.ofStatic('Int', 'from', 'Float')]: 'intFromFloat',
 };

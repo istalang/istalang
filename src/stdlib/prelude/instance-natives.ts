@@ -5,11 +5,11 @@
  * (runtime/run/end-watches.ts).
  */
 
-import { functionKey, parameterKey } from '../../definition/extern-key.ts';
+import { functionKey, type NativeKeys, parameterKey } from '../../definition/extern-key.ts';
 import { instanceNameOf } from '../../definition/values/instance-handles.ts';
 import { wellKnown } from '../../foundation/language/well-known/index.ts';
 import type { NativeContext, Natives, WithInstances } from '../../runtime/natives.ts';
-import { futureKey, knownTypeKey, type NativeKeys } from '../std-module.ts';
+import { futureKey, knownTypeKey } from '../std-module.ts';
 import { given } from '../values/arguments.ts';
 import { declaredResult } from '../values/results.ts';
 

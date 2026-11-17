@@ -4,8 +4,8 @@
  * negative number is NaN. Every other rounding is the module's code over the two.
  */
 
+import type { NativeKeys } from '../../definition/extern-key.ts';
 import type { NativeContext, Natives } from '../../runtime/natives.ts';
-import type { NativeKeys } from '../std-module.ts';
 import { float } from '../values/arguments.ts';
 
 export const mathNatives = (keys: NativeKeys): Natives<NativeContext> => ({

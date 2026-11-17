@@ -19,6 +19,7 @@
  */
 
 import type { PrimitiveName } from '../foundation/language/primitives.ts';
+import { staticName } from '../foundation/language/static-names.ts';
 import { type Persistence, qualifiedName } from '../foundation/language/well-known/index.ts';
 
 /** A declared type, as a key spells it. */
@@ -114,7 +115,7 @@ export type NativeParameter = WrittenType | ReferenceKey;
  * The key of extern `name` of `module` taking `parameters`, as a natives table writes it: each a
  * type taken by value, or one `referenceKey` marks as taken by `&`.
  */
-export function nativeKey(
+function nativeKey(
   module: string,
   name: string,
   ...parameters: readonly NativeParameter[]
@@ -192,4 +193,28 @@ export function keyTypeText(type: KeyType): string {
       return unhandled;
     }
   }
+}
+
+/** The keys of one std module's natives, each built from the module's name. */
+export interface NativeKeys {
+  /** Type `name` the module declares, with its type arguments: `decimal.Decimal`. */
+  readonly type: (name: string, ...typeArguments: readonly WrittenType[]) => KeyType;
+  /** Function `name` taking `parameters`: `time.at(time.Time)`. */
+  readonly of: (name: string, ...parameters: readonly NativeParameter[]) => string;
+  /** Static function `name` of type `owner` taking `parameters`: `time.Time.parse(String)`. */
+  readonly ofStatic: (
+    owner: string,
+    name: string,
+    ...parameters: readonly NativeParameter[]
+  ) => string;
+}
+
+/** The keys of std module `module`'s natives. */
+export function nativeKeysOf(module: string): NativeKeys {
+  return {
+    type: (name, ...typeArguments) => namedKey(qualifiedName({ module, name }), ...typeArguments),
+    of: (name, ...parameters) => nativeKey(module, name, ...parameters),
+    ofStatic: (owner, name, ...parameters) =>
+      nativeKey(module, staticName(owner, name), ...parameters),
+  };
 }

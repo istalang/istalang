@@ -5,10 +5,10 @@
  * number, which reads as the same int.
  */
 
+import type { NativeKeys } from '../../definition/extern-key.ts';
 import type { Value } from '../../definition/values/values.ts';
 import { unreachable } from '../../foundation/structures/unreachable.ts';
 import type { NativeContext, Natives } from '../../runtime/natives.ts';
-import type { NativeKeys } from '../std-module.ts';
 import { externPayloadOf, int } from '../values/arguments.ts';
 import { resultExtern } from '../values/results.ts';
 

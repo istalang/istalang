@@ -7,7 +7,12 @@
  * one that is ready to.
  */
 
-import { functionKey, type NativeParameter, parameterKey } from '../../definition/extern-key.ts';
+import {
+  functionKey,
+  type NativeKeys,
+  type NativeParameter,
+  parameterKey,
+} from '../../definition/extern-key.ts';
 import { namedType } from '../../definition/values/declared-values.ts';
 import { instanceNameOf } from '../../definition/values/instance-handles.ts';
 import { closureOf, type Value } from '../../definition/values/values.ts';
@@ -19,7 +24,7 @@ import {
   type WithInstances,
   type WithTesting,
 } from '../../runtime/natives.ts';
-import { futureKey, knownTypeKey, type NativeKeys } from '../std-module.ts';
+import { futureKey, knownTypeKey } from '../std-module.ts';
 import { arrayOf, given, text } from '../values/arguments.ts';
 import { declaredResult } from '../values/results.ts';
 

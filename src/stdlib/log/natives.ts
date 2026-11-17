@@ -4,11 +4,12 @@
  * reads (§9).
  */
 
+import type { NativeKeys } from '../../definition/extern-key.ts';
 import { jsonTypeOf, plainOfJson } from '../../definition/values/json-values.ts';
 import { wellKnown } from '../../foundation/language/well-known/index.ts';
 import type { LogLevel } from '../../runtime/instance-state.ts';
 import type { NativeContext, Natives, WithLogs } from '../../runtime/natives.ts';
-import { knownTypeKey, type NativeKeys } from '../std-module.ts';
+import { knownTypeKey } from '../std-module.ts';
 import { given, text, variantEntry } from '../values/arguments.ts';
 
 // biome-ignore-start lint/style/useNamingConvention: the keys are the enum's variant names.

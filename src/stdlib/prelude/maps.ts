@@ -6,13 +6,13 @@
  * it.
  */
 
-import { parameterKey, referenceKey } from '../../definition/extern-key.ts';
+import { type NativeKeys, parameterKey, referenceKey } from '../../definition/extern-key.ts';
 import { entryPosition, entryValue } from '../../definition/values/equality.ts';
 import { mapValueOf, type Value } from '../../definition/values/values.ts';
 import { wellKnown } from '../../foundation/language/well-known/index.ts';
 import { type NativeContext, type Natives, Panic } from '../../runtime/natives.ts';
 import { checkedIndex } from '../positions.ts';
-import { knownTypeKey, type NativeKeys } from '../std-module.ts';
+import { knownTypeKey } from '../std-module.ts';
 import { int } from '../values/arguments.ts';
 
 const keyType = parameterKey('K');

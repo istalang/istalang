@@ -14,6 +14,7 @@
  * as the run makes every such limit do (runtime/natives.ts `panicOf`).
  */
 
+import type { NativeKeys } from '../../definition/extern-key.ts';
 import { wellKnown } from '../../foundation/language/well-known/index.ts';
 import {
   codePointCount,
@@ -23,7 +24,7 @@ import {
 } from '../../foundation/text/code-points.ts';
 import type { NativeContext, Natives } from '../../runtime/natives.ts';
 import { sliceBounds } from '../positions.ts';
-import { knownTypeKey, type NativeKeys } from '../std-module.ts';
+import { knownTypeKey } from '../std-module.ts';
 import { arrayOf, int, optionalInt, text } from '../values/arguments.ts';
 
 const optionalIntKey = knownTypeKey(wellKnown.optional, 'Int');

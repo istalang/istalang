@@ -10,10 +10,11 @@
  */
 
 import { bytesToHex } from '@noble/hashes/utils.js';
+import type { NativeKeys } from '../../definition/extern-key.ts';
 import { wellKnown } from '../../foundation/language/well-known/index.ts';
 import { type NativeContext, type Natives, Panic, type WithRandom } from '../../runtime/natives.ts';
 import { bounded, countOf, rangeOf, textOf } from '../ranges.ts';
-import { knownTypeKey, type NativeKeys } from '../std-module.ts';
+import { knownTypeKey } from '../std-module.ts';
 import { given } from '../values/arguments.ts';
 
 const rangeType = knownTypeKey(wellKnown.range);

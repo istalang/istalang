@@ -10,6 +10,7 @@
  *   starts where it is built.
  */
 
+import type { NativeKeys } from '../../definition/extern-key.ts';
 import {
   type NativeContext,
   type Natives,
@@ -17,7 +18,6 @@ import {
   type WithInstances,
   type WithWeakSide,
 } from '../../runtime/natives.ts';
-import type { NativeKeys } from '../std-module.ts';
 import { text } from '../values/arguments.ts';
 import { arrayNatives } from './arrays.ts';
 import { instanceNatives } from './instance-natives.ts';

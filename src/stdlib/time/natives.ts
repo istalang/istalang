@@ -7,9 +7,10 @@
  * first segment that starts at or after it.
  */
 
+import type { NativeKeys } from '../../definition/extern-key.ts';
 import { wellKnown } from '../../foundation/language/well-known/index.ts';
 import type { NativeContext, Natives, WithFutures } from '../../runtime/natives.ts';
-import { knownTypeKey, type NativeKeys } from '../std-module.ts';
+import { knownTypeKey } from '../std-module.ts';
 import { millisecondsOf, resultMilliseconds } from './fields.ts';
 import { zoneNatives } from './zones.ts';
 
