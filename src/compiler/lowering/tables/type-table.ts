@@ -378,8 +378,6 @@ export class TypeTable {
     };
   }
 
-  /** Which of `roles` the type `declaration` declares has: what the runtime makes of its values. */
-
   /** What every entry states: whether its values may reach a disposable, and are allocations. */
   #facts(type: Type): EntryFacts {
     return { disposable: this.#checker.reachesDisposable(type), heap: true };

@@ -256,7 +256,6 @@ export class DefinitionTables {
     return this.#closingIndex(key, { kind: 'anyConversion', from, to });
   }
 
-  /** The index of the entry reading a field a trait of `on` requires from an `on` value. */
   /** The index of the entry reading `required`, of `result`, from a value of `on` (§3.10). */
   anyFieldIndex(on: AnyType, required: RequiredField, result: Type): FunctionId {
     const key = `field:${this.#checker.typeKeys.typeKey(on)}.${required.field.name.text}`;
