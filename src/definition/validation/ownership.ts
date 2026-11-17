@@ -105,7 +105,7 @@ const effects: Handlers<CodeFunction, Instruction, [], Partial<Effect>> = {
   switch: () => ({}),
   return: (_, i) => ({ moved: [i.value], letGo: i.releasing }),
   unreachable: () => ({}),
-  call: (_, i) => ({ owned: i.dst === undefined ? none : [i.dst] }),
+  call: (_, i) => ({ owned: [i.dst] }),
   currentCall: (_, i) => ({ borrowed: [i.dst] }),
   given: () => ({}),
   mocked: (_, i) => ({ taken: { owned: [i.dst], to: i.landing } }),

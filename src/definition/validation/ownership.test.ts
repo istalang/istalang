@@ -26,6 +26,7 @@ function entryRunning(instructions: readonly Instruction[]): CodeFunction {
       { type: { kind: 'primitive', name: 'Bool' }, borrowed: true },
       { type: value, borrowed: false },
       { type: { kind: 'tuple', elements: [value] }, borrowed: false },
+      { type: { kind: 'primitive', name: 'Unit' }, borrowed: false },
     ],
     instructions: [...instructions],
   };
@@ -43,11 +44,11 @@ describe('the ownership verifier', () => {
       {
         kind: 'call',
         span,
-        dst: undefined,
+        dst: 3,
         callee: { kind: 'function', function: 0 },
         arguments: [{ kind: 'value', register: 1 }],
       },
-      { kind: 'return', span, value: 2, releasing: [1] },
+      { kind: 'return', span, value: 2, releasing: [1, 3] },
     ]);
     expect(ownershipIssues(code)).toEqual([
       'at 6 (call): reads register 1, moved out of on some path.',
@@ -62,12 +63,12 @@ describe('the ownership verifier', () => {
       {
         kind: 'call',
         span,
-        dst: undefined,
+        dst: 3,
         callee: { kind: 'function', function: 0 },
         arguments: [{ kind: 'value', register: 1 }],
       },
       { kind: 'constant', span, dst: 2, constant: 1 },
-      { kind: 'return', span, value: 2, releasing: [1] },
+      { kind: 'return', span, value: 2, releasing: [1, 3] },
     ]);
     expect(ownershipIssues(code)).toEqual([]);
   });

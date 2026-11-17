@@ -32,9 +32,8 @@ const argument = z.discriminatedUnion('kind', [
 
 export type Argument = z.output<typeof argument>;
 
-/** Without `dst`, the result is let go of at once; the checker allows that only for `Unit`. */
 const call = defineInstruction('call', {
-  dst: register.optional(),
+  dst: register,
   callee,
   arguments: z.array(argument),
 });

@@ -84,7 +84,7 @@ const operandTable: Handlers<undefined, Instruction, [], Partial<Operands>> = {
   return: (_, i) => ({ read: [i.value, ...i.releasing] }),
   unreachable: () => ({}),
   call: (_, i) => ({
-    written: i.dst === undefined ? [] : [i.dst],
+    written: [i.dst],
     read: [
       ...(i.callee.kind === 'value' ? [i.callee.register] : []),
       ...i.arguments.flatMap((argument) => (argument.kind === 'value' ? [argument.register] : [])),

@@ -275,9 +275,6 @@ const emitters: Handlers<EntryScope, Instruction, [], string> = {
       i.callee.kind === 'function'
         ? callExpression(scope, i.callee.function, passed)
         : `callValue(${register(i.callee.register)}, [${passed}])`;
-    if (i.dst === undefined) {
-      return `letGo(${called});`;
-    }
     return `${register(i.dst)} = ${called};`;
   },
   currentCall: (scope, i) =>
