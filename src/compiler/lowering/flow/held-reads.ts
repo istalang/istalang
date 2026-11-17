@@ -7,9 +7,10 @@
  * holds its value instead, a holder of its own, so a write in place copies and a replaced value
  * outlives the read.
  *
- * - **A read's root** is the variable it reads, at a name or through the reads it is a part of;
- *   one read out of a computed value has none, as nothing else reaches that value. Through a
- *   handle (`behind`), a computed one too, what it reaches is the handle's state, others' as well.
+ * - **A read's root** is the value it is read out of, at a name or through the reads it is a part
+ *   of: a variable, or a computed value, which nothing else reaches, so only its release (a block
+ *   ending before the part it gives is taken) changes it. Through a handle (`behind`), a computed
+ *   one too, what it reaches is the handle's state, others' as well.
  * - **What may change a root:** a write into its variable, whole or in part, a `&` argument rooted
  *   at it, or its release; and, where code other than the flow's own reaches it (a cell a closure
  *   or a nested call shares, the place a `&` parameter refers to, a handle's state), anything that
@@ -21,6 +22,7 @@
  */
 
 import { memo } from '../../../foundation/structures/memo.ts';
+import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import {
   type BlockId,
   type Exit,
@@ -98,9 +100,12 @@ function callsNativeOnValues(
   );
 }
 
-/** What a read stays what it read while nothing changes: its variable, and whether others reach it. */
+/**
+ * What a read stays what it read while nothing changes: the value it is read out of at the base, a
+ * variable or a computed value, and whether code other than the flow's own reaches it.
+ */
 interface Root {
-  readonly variable: ValueId | undefined;
+  readonly value: ValueId;
   readonly reachable: boolean;
 }
 
@@ -117,19 +122,26 @@ export function heldReads(flow: FlowFunction, facts: ReadFacts): ReadonlySet<Val
   const graph = graphOf(flow);
   const judging = { ...facts, isVariable: (value: ValueId) => isVariableOf(flow, value) };
   const held = new Set<ValueId>();
-  /** Where each read decided so far is used, itself or through a part of it holding nothing. */
+  /** Where each read is used, itself or through a part of it holding nothing. */
   const lasting = new Map<ValueId, readonly Position[]>();
-  // A part read out of a read is read after it, so it is decided first.
-  for (const [value, read] of [...reads].toSorted(([first], [second]) => second - first)) {
-    const used = [
-      ...(uses.get(value) ?? []),
-      ...read.parts.filter((part) => !held.has(part)).flatMap((part) => lasting.get(part) ?? []),
-    ];
-    lasting.set(value, used);
-    const changing = (operation: Operation) => changes(operation, read.root, judging);
-    if (changedBeforeUse(graph, { at: read.at, used }, changing)) {
-      held.add(value);
-    }
+  // Deciding a read decides the parts read out of it first, as they may make it last.
+  const decided = (value: ValueId, read: Read): readonly Position[] =>
+    memo(lasting, value, () => {
+      const used = [
+        ...(uses.get(value) ?? []),
+        ...read.parts.flatMap((part) => {
+          const partUsed = decided(part, reads.get(part) ?? unreachable(`No read into ${part}.`));
+          return held.has(part) ? [] : partUsed;
+        }),
+      ];
+      const changing = (operation: Operation) => changes(operation, read.root, judging);
+      if (changedBeforeUse(graph, { at: read.at, used }, changing)) {
+        held.add(value);
+      }
+      return used;
+    });
+  for (const [value, read] of reads) {
+    decided(value, read);
   }
   return held;
 }
@@ -176,32 +188,34 @@ interface Read {
   readonly parts: ValueId[];
 }
 
-/**
- * Every read of `flow` with a root, by the value it reads into, taken in the order values were made,
- * so what a read reads out of is known before it, whatever block it stands in.
- */
+/** Every read of `flow` into a temporary, by the value it reads into. */
 function readsOf(flow: FlowFunction, facts: ReadFacts): ReadonlyMap<ValueId, Read> {
-  const found = flow.blocks.flatMap(({ operations }, block) =>
-    operations.flatMap((operation, index) => {
-      const read = readOf(operation);
-      return read === undefined || isVariableOf(flow, read.into)
-        ? []
-        : [{ ...read, at: { block, index } }];
-    }),
+  const found = new Map(
+    flow.blocks.flatMap(({ operations }, block) =>
+      operations.flatMap((operation, index) => {
+        const read = readOf(operation);
+        return read === undefined || isVariableOf(flow, read.into)
+          ? []
+          : [[read.into, { ...read, at: { block, index } }] as const];
+      }),
+    ),
   );
-  const reads = new Map<ValueId, Read>();
-  const rootOf = (value: ValueId): Root | undefined =>
-    isVariableOf(flow, value)
-      ? { variable: value, reachable: facts.reachable(value) }
-      : reads.get(value)?.root;
-  for (const { into, from, behind, at } of found.toSorted(
-    (first, second) => first.into - second.into,
-  )) {
-    const root = behind ? { variable: rootOf(from)?.variable, reachable: true } : rootOf(from);
-    if (root !== undefined) {
-      reads.get(from)?.parts.push(into);
-      reads.set(into, { at, root, parts: [] });
-    }
+  const roots = new Map<ValueId, Root>();
+  const rootOf = (value: ValueId): Root =>
+    memo(roots, value, () => {
+      const read = found.get(value);
+      if (read === undefined) {
+        const reachable = isVariableOf(flow, value) && facts.reachable(value);
+        return { value, reachable };
+      }
+      const root = rootOf(read.from);
+      return read.behind ? { ...root, reachable: true } : root;
+    });
+  const reads = new Map(
+    [...found].map(([into, { at }]) => [into, { at, root: rootOf(into), parts: [] as ValueId[] }]),
+  );
+  for (const [into, { from }] of found) {
+    reads.get(from)?.parts.push(into);
   }
   return reads;
 }
@@ -321,14 +335,14 @@ function targetsOf(exit: Exit | undefined): readonly BlockId[] {
   }
 }
 
-/** Whether `operation` may change what a read of `root` reads. */
+/** Whether `operation` may change what a read of `root` reads: releasing a computed root ends it. */
 function changes(
   operation: Operation,
   root: Root,
   facts: ReadFacts & { readonly isVariable: (value: ValueId) => boolean },
 ): boolean {
   const written = writes(operation);
-  if (root.variable !== undefined && written.includes(root.variable)) {
+  if (written.includes(root.value)) {
     return true;
   }
   // Writing a variable ends what it held, whose disposal runs code.

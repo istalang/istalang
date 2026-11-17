@@ -146,6 +146,18 @@ fn untupledReads() -> (Array<String>, (Int, Int)):
   let pair: (Pair,) = (Pair{a: 1, b: 2},)
   (log->value, takePair(pair, { pair.0.a = 99; 10 }))
 
+fn tailPartsOutliveTheirTemporaries(first: Bool) -> Array<String>:
+  const log = new Shared<Array<String>>{value: []}
+  const fromIf = if first: Box{res: new Res{id: 1, log}}.res else: new Res{id: 0, log}
+  log->value.push("if gave " + fromIf->id)
+  const fromBlock = { const unused = 0; Box{res: new Res{id: 2, log}}.res }
+  log->value.push("block gave " + fromBlock->id)
+  const fromMatch = match first:
+    case true: Box{res: new Res{id: 3, log}}.res
+    case false: new Res{id: 0, log}
+  log->value.push("match gave " + fromMatch->id)
+  log->value
+
 fn swapped() -> (Int, Int):
   let swap = (10, 20)
   swap.1, swap.0 = swap
@@ -203,6 +215,14 @@ fn suite() -> Array<Test>: [
   test(
     "a one-element tuple's element, read where its element is expected, holds it when a later argument changes the tuple"
     fn(): assertEq(untupledReads(), (["read 1", "disposed 1", "got 11"], (1, 10)))
+  )
+  test(
+    "a part of a temporary a block, if or match ends with outlives the temporary, which its end disposes"
+    fn(): assertEq(tailPartsOutliveTheirTemporaries(true), [
+      "if gave 1"
+      "block gave 2"
+      "match gave 3"
+    ])
   )
   test(
     "a destructuring assignment takes its value apart as it was before writing any part"
