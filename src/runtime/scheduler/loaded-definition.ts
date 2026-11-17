@@ -6,7 +6,7 @@
  * check each of its instances' heaps as they change (`HeapCheck`), which a host never does: the
  * check is a test's oracle, as costly as a walk of what changed reaches. It sees the heap both
  * after an instruction and around a native's call, since only the latter tells which of the
- * call's arguments an edge a native adds holds (docs/work/static-lifetimes/design.md §6.6).
+ * call's arguments an edge a native adds holds (docs/work/done/static-lifetimes/design.md §6.6).
  */
 
 import type { Definition } from '../../definition/definition.ts';

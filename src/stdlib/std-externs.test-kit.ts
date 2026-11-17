@@ -1,7 +1,7 @@
 /**
  * The std's extern functions as the runtime binds them: each under the key lowering gives its
  * declaration, so a test reads what the checker knows of one by the key a Definition's entry names,
- * such as what its parameters keep (docs/work/static-lifetimes/design.md §6.6).
+ * such as what its parameters keep (docs/work/done/static-lifetimes/design.md §6.6).
  */
 
 import type { Checker } from '../compiler/checker/check.ts';

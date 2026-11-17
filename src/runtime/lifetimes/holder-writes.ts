@@ -1,5 +1,5 @@
 /**
- * Every write of a holder, reported in one place (docs/work/static-lifetimes/design.md §9.1): a
+ * Every write of a holder, reported in one place (docs/work/done/static-lifetimes/design.md §9.1): a
  * register (interpreter/registers.ts), a heap object's fields and the edges its indexes give it
  * (scheduler/instance/heap.ts), and a running call's own future (scheduler/segment/run-stack.ts).
  * Each reports what the holder held and what it holds now, and the heap which objects it made and

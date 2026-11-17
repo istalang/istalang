@@ -1,6 +1,6 @@
 /**
  * End-to-end value-semantics tests over in-place updates (spec §3.1, §3.7, §3.9, §3.10, §3.14,
- * §7, §9, §10; docs/work/static-lifetimes/design.md §9.6): a mutation of a composite value must
+ * §7, §9, §10; docs/work/done/static-lifetimes/design.md §9.6): a mutation of a composite value must
  * never be observed by any other holder of the value.
  */
 

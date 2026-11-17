@@ -1,5 +1,5 @@
 /**
- * How many holders each counted object has (docs/work/static-lifetimes/design.md §9): no cycle
+ * How many holders each counted object has (docs/work/done/static-lifetimes/design.md §9): no cycle
  * passes through an object that reaches a disposable (spec §7, "Cycles", which the checker
  * enforces), so such an object loses its last holder exactly when its count drops to zero.
  *

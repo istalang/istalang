@@ -1,7 +1,7 @@
 ---
 description: plan for B94 and its structural siblings — type identity from one structural walk, per-field layout and one expansion reach, member meaning answered once, inference asymmetries fixed at their units; process, phases, acceptance, decisions. Read before starting or examining a structural-fixes phase
 owner: tech-lead
-status: active
+status: done
 applies_to: istalang
 last_verified: 2026-11-15
 last_updated: 2026-11-15

@@ -10,7 +10,7 @@
  * editor's does, and changes a call's argument back and forth, so every iteration is an edit.
  *
  * A cold open is timed too: a new workspace's first diagnostics of the module, which check every
- * std body its functions reach (static lifetimes' summaries, docs/work/static-lifetimes/design.md
+ * std body its functions reach (static lifetimes' summaries, docs/work/done/static-lifetimes/design.md
  * §8). It has no budget of its own; the rule's share of both is design.md §8's, measured paired
  * against the rule off.
  *

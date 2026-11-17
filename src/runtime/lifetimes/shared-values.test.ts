@@ -1,5 +1,5 @@
 /**
- * Values shared across instances are never written in place (docs/work/static-lifetimes/design.md
+ * Values shared across instances are never written in place (docs/work/done/static-lifetimes/design.md
  * §9.6): a Definition's constants, which every instance shares, and the values of one snapshot,
  * which every instance restored from it shares. Both are frozen here, so a write in place into
  * either throws, and two instances restored from one snapshot must each end as the instance that

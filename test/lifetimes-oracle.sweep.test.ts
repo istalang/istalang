@@ -1,5 +1,5 @@
 /**
- * Static lifetimes is sound (docs/work/static-lifetimes/plan.md, C3): over soups of writes,
+ * Static lifetimes is sound (docs/work/done/static-lifetimes/plan.md, C3): over soups of writes,
  * closures (inert ones kept in a handle they capture among them, proposal 14), async calls, inboxes
  * and awaitables, a program the checker accepts never trips the
  * oracle when it runs (runtime/lifetimes/oracle.test-kit.ts), and one it rejects is rejected for a

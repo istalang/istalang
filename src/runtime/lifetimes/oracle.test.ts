@@ -1,7 +1,7 @@
 /**
  * The oracle of static lifetimes (oracle.test-kit.ts) sees the cycles that reach a disposable and
  * only those, over programs shaped as the design's acceptance examples
- * (docs/work/static-lifetimes/design.md §12): what holds what is the runtime's, but for a call's
+ * (docs/work/done/static-lifetimes/design.md §12): what holds what is the runtime's, but for a call's
  * future holding its call, and a wait holding what its chain is registered on rather than the
  * chain. It sees a cycle whether something lets go of it or it is undone first, and stops the run
  * there: counting never disposes a cycle, so what such a program does after is no one's to say.

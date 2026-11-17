@@ -1,5 +1,5 @@
 /**
- * The native audit of static lifetimes (docs/work/static-lifetimes/design.md §6.6): an edge a native
+ * The native audit of static lifetimes (docs/work/done/static-lifetimes/design.md §6.6): an edge a native
  * adds to what an argument holds must be one its extern's `@Keeps` names, or the `&` default, since
  * that is all the analysis knows of a native's call. A test runtime checks it around every native's
  * call (`HeapCheck.native`), as the oracle checks the heap after every instruction.

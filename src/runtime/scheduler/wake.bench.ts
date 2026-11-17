@@ -8,7 +8,7 @@
  *   waiting worker.
  * - The second lets go of a disposable on every turn of a loop, beside many held ones: what
  *   collecting costs per release, which counting keeps from growing with what is held
- *   (docs/work/static-lifetimes/design.md §9).
+ *   (docs/work/done/static-lifetimes/design.md §9).
  * - The third wakes a live run many times beside many held objects: what letting go of what nothing
  *   holds costs per segment, which walking only once the heap has doubled keeps from growing with
  *   what is held (design.md §9.5).

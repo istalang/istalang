@@ -1,5 +1,5 @@
 /**
- * Values changed in place (docs/work/static-lifetimes/design.md §9.6). A value is immutable to the
+ * Values changed in place (docs/work/done/static-lifetimes/design.md §9.6). A value is immutable to the
  * program: every other holder of it keeps what it holds. So an update writes in place only a node
  * nothing else can see: one this instance made (`#own`), held once (counts.ts). Any other node is
  * copied at its first write, and the copy is this instance's own from then on, so building a

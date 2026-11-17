@@ -10,7 +10,7 @@ tags: [tracker]
 
 # Tracker
 
-## Milestones (plan: `docs/work/toolchain-v0.1/plan.md`)
+## Milestones (plan: `docs/work/done/toolchain-v0.1/plan.md`)
 
 | Milestone | Status |
 | --- | --- |
@@ -28,7 +28,7 @@ tags: [tracker]
 | Identity, variance and inference (`docs/work/done/variance-inference/plan.md`; closed F25) | done |
 | Proposal 8, live and ista async (`docs/work/done/async-kinds/plan.md`; merge review closed every finding, Q52–Q55 left) | done |
 | Proposal 9, native runtime (`docs/proposals/9-native-runtime.md`), beyond async-kinds CX's minimal slice | not planned: a plan of its own |
-| Static lifetimes (`docs/work/static-lifetimes/plan.md`) | in progress: C1, C2, R1, R2, C3, C4, R3, R4 and R5 done; C5 dropped |
+| Static lifetimes (`docs/work/done/static-lifetimes/plan.md`) | done (C5 dropped) |
 | Proposal 13, transients and getters (`docs/work/done/transients-getters/plan.md`) | done (merge re-review approved; B87, B88 left) |
 | Proposal 14, inert functions (`docs/work/done/inert-functions/plan.md`) | done (reviewer approved, QA passed; B89 left) |
 | Computed, and FormBuilder on it (`docs/work/done/computed/plan.md`) | done (merge review approved) |

@@ -1,5 +1,5 @@
 /**
- * The oracle of static lifetimes (docs/work/static-lifetimes/design.md §1, §9.2): no cycle of what
+ * The oracle of static lifetimes (docs/work/done/static-lifetimes/design.md §1, §9.2): no cycle of what
  * the heap holds passes through an object that reaches a disposable, so counting holders would
  * dispose everything tracing does. Test runtimes check it after every instruction that let go of
  * or wrote into something (`HeapCheck`), over what those objects reach. Only a write into one of
