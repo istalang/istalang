@@ -5,25 +5,15 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import { codeEntry, noSpan } from '../definition/definition.test-kit.ts';
 import type { InstructionOf } from '../definition/instructions/instruction.ts';
 import { type EntryScope, emitInstruction } from './instructions.ts';
 
-const span = { start: 0, end: 0 };
+const span = noSpan;
 
 const scope: EntryScope = {
   index: 0,
-  entry: {
-    kind: 'code',
-    name: 'main.f',
-    module: 0,
-    span,
-    annotations: [],
-    mode: 'simple',
-    parameters: [],
-    captures: 0,
-    registers: [],
-    instructions: [],
-  },
+  entry: codeEntry([], []),
   functions: [],
   types: [],
   constants: [],

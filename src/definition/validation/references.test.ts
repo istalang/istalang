@@ -4,46 +4,26 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import { codeEntry, noSpan, programOf } from '../definition.test-kit.ts';
 import type { Definition } from '../definition.ts';
 import type { TypeDefinition } from '../tables/types.ts';
 import type { Value } from '../values/values.ts';
 import { validationIssues } from './index.ts';
 
-const span = { start: 0, end: 0 };
+const span = noSpan;
 const unit = { kind: 'primitive', name: 'Unit' } as const;
 const outside = { kind: 'named', type: 9 } as const;
 const common = { arguments: [], disposable: false, heap: false };
 
-/** One code entry giving its one constant, `Unit`, in a module of its own. */
-const valid: Definition = {
-  modules: [{ id: 'main', lineStarts: [0] }],
-  types: [],
-  functions: [
-    {
-      kind: 'code',
-      name: 'main.f',
-      module: 0,
-      span,
-      annotations: [],
-      mode: 'simple',
-      parameters: [],
-      captures: 0,
-      registers: [{ type: unit, borrowed: false }],
-      instructions: [
-        { kind: 'constant', span, dst: 0, constant: 0 },
-        { kind: 'return', span, value: 0, releasing: [] },
-      ],
-    },
+/** One code entry giving the one constant, `Unit`. */
+const entry = codeEntry(
+  [{ type: unit, borrowed: false }],
+  [
+    { kind: 'constant', span, dst: 0, constant: 0 },
+    { kind: 'return', span, value: 0, releasing: [] },
   ],
-  constants: [null],
-  starts: [],
-  purpose: { kind: 'program' },
-};
-
-const [entry] = valid.functions;
-if (entry?.kind !== 'code') {
-  throw new Error('The valid Definition has no code entry.');
-}
+);
+const valid = programOf([entry]);
 
 const withType = (type: TypeDefinition): Definition => ({ ...valid, types: [type] });
 const withConstant = (constant: Value): Definition => ({ ...valid, constants: [constant] });

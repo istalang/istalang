@@ -4,32 +4,23 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import { codeEntry, noSpan } from '../definition.test-kit.ts';
 import type { Instruction } from '../instructions/instruction.ts';
 import type { CodeFunction } from '../tables/functions.ts';
 import { ownershipIssues } from './ownership.ts';
 
-const span = { start: 0, end: 0 };
+const span = noSpan;
 
 /** An entry of a borrowed `Bool` parameter, a value and a tuple of it, running `instructions`. */
 function entryRunning(instructions: readonly Instruction[]): CodeFunction {
   const value = { kind: 'primitive', name: 'String' } as const;
-  return {
-    kind: 'code',
-    name: 'main.f',
-    module: 0,
-    span,
-    annotations: [],
-    mode: 'simple',
-    parameters: [{ hasDefault: false }],
-    captures: 0,
-    registers: [
-      { type: { kind: 'primitive', name: 'Bool' }, borrowed: true },
-      { type: value, borrowed: false },
-      { type: { kind: 'tuple', elements: [value] }, borrowed: false },
-      { type: { kind: 'primitive', name: 'Unit' }, borrowed: false },
-    ],
-    instructions: [...instructions],
-  };
+  const registers: CodeFunction['registers'] = [
+    { type: { kind: 'primitive', name: 'Bool' }, borrowed: true },
+    { type: value, borrowed: false },
+    { type: { kind: 'tuple', elements: [value] }, borrowed: false },
+    { type: { kind: 'primitive', name: 'Unit' }, borrowed: false },
+  ];
+  return { ...codeEntry(registers, instructions), parameters: [{ hasDefault: false }] };
 }
 
 describe('the ownership verifier', () => {
