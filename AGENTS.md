@@ -13,7 +13,7 @@ Compiler, runtime and tooling for Istalang (spec: `docs/spec.md`). One npm packa
 
 - `docs/arch/architecture.md`: folders, layers, phase contracts, seams. Read it before adding a module or importing across folders.
 - `docs/work/`: plans, phase details, `tracker.md`.
-- `src/`: code, organized by toolchain feature (`src/AGENTS.md`).
+- `src/`: code, organized by toolchain feature ("src" below).
 - `test/`: inputs shared across phases (`test/AGENTS.md`).
 - `.vscode/extensions/ista/`: VS Code highlighting for `.ista`, installed with *Developer: Install Extension from Location…*. `test/vscode-grammar.test.ts` holds its reserved words to the scanner's.
 
