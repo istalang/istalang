@@ -5,7 +5,8 @@
  *
  * - The type stepped into is the register's (../tables/functions.ts): every register is typed, so
  *   a part's index is checked against the code alone.
- * - A recursive alias unfolds to the structural type it names; nothing else changes a type's parts.
+ * - A recursive alias unfolds in one step to the tuple or function it names (index.ts holds it to
+ *   that); nothing else changes a type's parts.
  */
 
 import type { Instruction } from '../instructions/instruction.ts';
@@ -70,17 +71,10 @@ function issuesOf(reached: Reached | undefined): readonly string[] {
   return reached !== undefined && 'issue' in reached ? [reached.issue] : [];
 }
 
-/** `type` with its aliases unfolded; an alias cycle, in a broken table, stops past its size. */
+/** `type` with its alias unfolded. */
 function unfolded(scope: PartScope, type: TypeReference): TypeReference {
-  let reference = type;
-  for (let count = 0; count <= scope.types.length; count += 1) {
-    const entry = reference.kind === 'named' ? scope.types[reference.type] : undefined;
-    if (entry?.kind !== 'alias') {
-      return reference;
-    }
-    reference = entry.type;
-  }
-  return reference;
+  const entry = type.kind === 'named' ? scope.types[type.type] : undefined;
+  return entry?.kind === 'alias' ? entry.type : type;
 }
 
 /** The entry `type` names once unfolded; undefined where it names none. */
