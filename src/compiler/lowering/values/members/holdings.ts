@@ -25,7 +25,7 @@ import { baseOf } from '../../../checker/types/unions/union-members.ts';
 import { hasMember, hasOneValue } from '../../../checker/types/unions/unions.ts';
 import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import type { CodeContext, TypedValue } from '../../context.ts';
-import type { HeldVariant } from '../../tables/type-table.ts';
+import type { HeldVariant } from '../../tables/type-table/index.ts';
 import { variantAt } from '../variant-values.ts';
 
 /**

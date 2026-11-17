@@ -224,7 +224,7 @@ src/
                                                                  entries built from parameters with no body (built-entries.ts), the kind an entry runs in:
                                                                  its function's, concrete per instance, or simple when its body never waits (modes.ts),
                                                                  fits, its code and labels (code-writer.ts), and the written body lowering compiles (bodies.ts)
-      tables/                                                    the interned tables (types in type-table.ts), qualified names and table keys
+      tables/                                                    the interned tables (functions in function-table.ts, types in type-table/), qualified names and table keys
                                                                  (names.ts), extern and start keys (extern-keys.ts), compile-time constants,
                                                                  function instances (one entry per instantiation), and what each instance's
                                                                  own entry is made of, decided once (own-entries.ts); instances shared

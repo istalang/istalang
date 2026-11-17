@@ -1,0 +1,260 @@
+/**
+ * The type table of a Definition (docs/arch/definition.md): one entry per distinct type, keyed by
+ * its table key (names.ts), which is the same in every program, so an entry made for one program is
+ * found by it in another. A declared type's entry is named by its declaration, any other by its
+ * table key, which names nothing by an alias.
+ *
+ * - An entry is numbered before its layout is computed, so a recursive type refers to itself
+ *   through the table (§3.1).
+ * - What an entry holds is its layout (layouts.ts); a shape is one entry per shape, so every place
+ *   writing equal fields shares it (§3.1).
+ * - A recursive type (§3.17) is the entry of what it unfolds to, the same key, whose layout refers
+ *   back to it; one unfolding to a tuple or a function type, which have no entry of their own, has
+ *   an alias entry, numbered first for the same reason, as has the type written out (`folded`).
+ * - A union (§2) is an enum, one variant per member, ordered and named by their table keys, which
+ *   tell every two members apart and spell a type by its key alone, never by the alias it was
+ *   written through, so every union of one key orders its variants alike, as its entry was laid
+ *   out, and the runtime finds a member's variant by its name: a member's value is the variant's
+ *   one field, and a member with one value only, a literal type or `None`, is a variant without
+ *   fields, its tag. A literal type on its own is its base: its one value needs no tag.
+ * - An `any` type (§3.10) is an enum the program closes: one variant per type a value of it is
+ *   converted from, each holding that value as its one field. A variant is added the first time
+ *   lowering converts from its type, so a variant's index never changes once code names it;
+ *   what switches over every variant is written once lowering has reached them all (tables.ts).
+ */
+
+import type { TypeId } from '../../../../definition/operands.ts';
+import {
+  type Representation,
+  representationOf,
+  type StructuralReference,
+  type TypeDefinition,
+  type TypeReference,
+  typesIn,
+} from '../../../../definition/tables/types.ts';
+import { compareOrdered } from '../../../../foundation/language/order.ts';
+import { memo } from '../../../../foundation/structures/memo.ts';
+import { unreachable } from '../../../../foundation/structures/unreachable.ts';
+import type { Checker } from '../../../checker/check.ts';
+import { folded } from '../../../checker/types/identity/folding.ts';
+import { sameType } from '../../../checker/types/identity/identity.ts';
+import { type RecursiveType, unfoldRecursive } from '../../../checker/types/type/computed-types.ts';
+import type {
+  AnyType,
+  FunctionType,
+  TupleType,
+  Type,
+  UnionType,
+} from '../../../checker/types/type/index.ts';
+import { baseOf } from '../../../checker/types/unions/union-members.ts';
+import { type AnyEntry, anyEnum } from '../any-entries.ts';
+import { tableKey } from '../names.ts';
+import {
+  type EntryType,
+  factsOf,
+  type LayoutContext,
+  layoutOf,
+  refuseStandIn,
+  type TypeTableSeams,
+} from './layouts.ts';
+
+/** What an entry stands as while its layout, which may refer back to it, is computed. */
+const placeholder: TypeDefinition = {
+  kind: 'struct',
+  name: '',
+  arguments: [],
+  fields: [],
+  disposable: false,
+  heap: true,
+};
+
+/** The variant of a union's or an `any` type's enum holding a value, and that value's type. */
+export interface HeldVariant {
+  readonly variant: number;
+  readonly held: Type;
+}
+
+export class TypeTable {
+  readonly #checker: Checker;
+  /** Each entry, an `any` type's as the members its enum is built from. */
+  readonly #entries: (TypeDefinition | AnyEntry)[] = [];
+  /**
+   * Each entry's table key (names.ts), which finds it and which the Definition is numbered by
+   * (key-order.ts).
+   */
+  readonly #keys: string[] = [];
+  readonly #indexes = new Map<string, TypeId>();
+
+  readonly #layoutContext: LayoutContext;
+
+  constructor(checker: Checker, seams: TypeTableSeams) {
+    this.#checker = checker;
+    this.#layoutContext = {
+      checker,
+      seams,
+      reference: (type) => this.reference(type),
+      index: (type) => this.index(type),
+      unionMembers: (type) => this.unionMembers(type),
+    };
+  }
+
+  /** Every entry made so far, in index order. */
+  get entries(): readonly TypeDefinition[] {
+    return this.#entries.map((entry) => (entry.kind === 'any' ? anyEnum(entry) : entry));
+  }
+
+  /** Every entry's table key, in index order. */
+  get keys(): readonly string[] {
+    return this.#keys;
+  }
+
+  /** How the Definition refers to `type`. */
+  reference(type: Type): TypeReference {
+    if (type.kind === 'tuple' || type.kind === 'function') {
+      const recursive = folded(type);
+      return recursive.kind === 'recursive' ? this.reference(recursive) : this.#structural(type);
+    }
+    switch (type.kind) {
+      case 'primitive':
+        return { kind: 'primitive', name: type.name };
+      case 'nominal':
+      case 'anonymous':
+        return { kind: 'named', type: this.index(type) };
+      case 'recursive': {
+        const unfolded = unfoldRecursive(type);
+        return unfolded.kind === 'tuple' || unfolded.kind === 'function'
+          ? { kind: 'named', type: this.#aliasEntry(type, unfolded) }
+          : this.reference(unfolded);
+      }
+      case 'parameter':
+      case 'associated':
+      case 'field':
+      case 'keys':
+      case 'mapped':
+      case 'match':
+      case 'error':
+        return unreachable(`A ${type.kind} type can't reach lowering.`);
+      case 'any':
+        return { kind: 'named', type: this.anyIndex(type) };
+      case 'union':
+        return { kind: 'named', type: this.index(type) };
+      case 'literal':
+        return this.reference(baseOf(type));
+      default: {
+        const unhandled: never = type;
+        return unhandled;
+      }
+    }
+  }
+
+  /**
+   * How every backend represents values of `type` (definition `representationOf`); undefined while
+   * an entry that says so is still being laid out, as a recursive type's is while its layout runs.
+   */
+  representationOf(type: Type): Representation | undefined {
+    const reference = this.reference(type);
+    const laidOut = typesIn(reference).every((index) => this.#entries[index] !== placeholder);
+    return laidOut ? representationOf(this.entries, reference) : undefined;
+  }
+
+  /** The index of the type entry for `type`. */
+  index(type: EntryType): TypeId {
+    return this.#entryOf(type, () => layoutOf(this.#layoutContext, type));
+  }
+
+  /** The members of the union `type` in the order of its enum's variants. */
+  unionMembers(type: UnionType): readonly Type[] {
+    const keyed = type.members.map((member) => ({ member, key: tableKey(this.#checker, member) }));
+    return keyed.sort((a, b) => compareOrdered(a.key, b.key)).map(({ member }) => member);
+  }
+
+  /** The variant of the union `type`'s enum holding a value of `member`, one of its members. */
+  unionVariant(type: UnionType, member: Type): number {
+    const index = this.unionMembers(type).findIndex((each) => sameType(each, member));
+    return index >= 0 ? index : unreachable(`${tableKey(this.#checker, member)} is no member.`);
+  }
+
+  /** The index of the enum standing for the `any` type `type`, with the variants it has so far. */
+  anyIndex(type: AnyType): TypeId {
+    const checker = this.#checker;
+    const name = tableKey(checker, type);
+    return memo(this.#indexes, name, () => {
+      const disposable = checker.reachesDisposable(type);
+      const entry: AnyEntry = { kind: 'any', name, disposable, members: [] };
+      this.#keys.push(name);
+      return this.#entries.push(entry) - 1;
+    });
+  }
+
+  /**
+   * The variant of `type`'s enum holding a value of `member`, a type meeting it, or of a literal's
+   * base, interned as every entry is: a type test names the variant a value would be held in before
+   * lowering has met any put there, so a member is added the first time either asks.
+   */
+  anyVariant(type: AnyType, member: Type): HeldVariant {
+    const held = baseOf(member);
+    refuseStandIn(this.#layoutContext, held, type);
+    const { members } = this.#anyEntry(type);
+    const found = members.findIndex((each) => sameType(each.type, held));
+    const name = tableKey(this.#checker, held);
+    const variant =
+      found >= 0 ? found : members.push({ type: held, name, reference: this.reference(held) }) - 1;
+    return { variant, held };
+  }
+
+  /** The types `type`'s variants hold so far, in variant order. */
+  anyMembers(type: AnyType): readonly Type[] {
+    return this.#anyEntry(type).members.map((member) => member.type);
+  }
+
+  #anyEntry(type: AnyType): AnyEntry {
+    const entry = this.#entries[this.anyIndex(type)];
+    if (entry?.kind !== 'any') {
+      unreachable(`${tableKey(this.#checker, type)} has an entry of another kind.`);
+    }
+    return entry;
+  }
+
+  /**
+   * The index of `type`'s entry, which `layout` computes. Not `memo`: the index is recorded before
+   * the layout is computed, because a recursive type's layout refers to the type itself.
+   */
+  #entryOf(type: Type, layout: () => TypeDefinition): TypeId {
+    const key = tableKey(this.#checker, type);
+    const known = this.#indexes.get(key);
+    if (known !== undefined) {
+      return known;
+    }
+    const index = this.#entries.length;
+    this.#indexes.set(key, index);
+    this.#keys.push(key);
+    this.#entries.push(placeholder);
+    this.#entries[index] = layout();
+    return index;
+  }
+
+  /**
+   * The tuple or function `type` is, part by part: not folded, so a recursive alias's body is the
+   * structure it unfolds to, never the alias again.
+   */
+  #structural(type: TupleType | FunctionType): StructuralReference {
+    return type.kind === 'tuple'
+      ? { kind: 'tuple', elements: type.elements.map((element) => this.reference(element)) }
+      : {
+          kind: 'function',
+          parameters: type.parameters.map((parameter) => this.reference(parameter.type)),
+          result: this.reference(type.result),
+        };
+  }
+
+  /** The alias entry of the recursive type `type`, standing for `unfolded`, numbered first. */
+  #aliasEntry(type: RecursiveType, unfolded: TupleType | FunctionType): TypeId {
+    return this.#entryOf(type, () => ({
+      kind: 'alias',
+      name: tableKey(this.#checker, type),
+      arguments: [],
+      type: this.#structural(unfolded),
+      ...factsOf(this.#checker, type),
+    }));
+  }
+}

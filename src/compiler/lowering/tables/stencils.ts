@@ -25,7 +25,7 @@ import { nominalsIn } from '../../checker/types/parts/type-parts.ts';
 import type { Type } from '../../checker/types/type/index.ts';
 import { primitiveType } from '../../checker/types/type/primitives.ts';
 import { typeParametersOf } from '../../syntax/declarations/index.ts';
-import type { TypeTable } from './type-table.ts';
+import type { TypeTable } from './type-table/index.ts';
 
 /** The prelude's stand-in of each representation a primitive isn't. */
 const preludeStandIns = {

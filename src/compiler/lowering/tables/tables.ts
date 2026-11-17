@@ -50,7 +50,7 @@ import { orderedByKeys } from './key-order.ts';
 import { qualifiedNameOf } from './names.ts';
 import { ownEntryOf } from './own-entries.ts';
 import { holdsStandIn, Stencils } from './stencils.ts';
-import { TypeTable } from './type-table.ts';
+import { TypeTable } from './type-table/index.ts';
 
 /** What every function-table entry starts with: its name, and where it is declared. */
 export type EntryHeader = Pick<FunctionDefinition, 'name' | 'module' | 'span' | 'annotations'>;
@@ -86,7 +86,6 @@ export class DefinitionTables {
     this.types = new TypeTable(checker, {
       functionIndex: (instance) => this.index({ kind: 'instance', instance }),
       callIndex: (call) => this.callIndex(call),
-      hostNativeIndex: (declaration) => this.index({ kind: 'hostNative', declaration }),
       annotationValues: (annotations) => annotationValues(this, annotations),
       holdsStandIn: (type) => holdsStandIn(checker, type),
     });

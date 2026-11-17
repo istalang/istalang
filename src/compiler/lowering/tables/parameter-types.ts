@@ -6,7 +6,7 @@
 
 import type { TypeReference } from '../../../definition/tables/types.ts';
 import type { Type } from '../../checker/types/type/index.ts';
-import type { TypeTable } from './type-table.ts';
+import type { TypeTable } from './type-table/index.ts';
 
 /** A parameter as an entry takes it: its type, and whether it is taken by `&`. */
 interface TakenParameter {

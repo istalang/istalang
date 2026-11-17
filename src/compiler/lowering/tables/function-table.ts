@@ -18,7 +18,7 @@ import type { Type } from '../../checker/types/type/index.ts';
 import { laidOutAs } from '../values/members/holdings.ts';
 import { type EntryIdentities, identityOf, type LoweredEntry } from './entries.ts';
 import type { EntryKeys } from './entry-keys.ts';
-import type { TypeTable } from './type-table.ts';
+import type { TypeTable } from './type-table/index.ts';
 
 /** An entry with the index it was numbered. */
 type Numbered = LoweredEntry & { readonly index: FunctionId };
