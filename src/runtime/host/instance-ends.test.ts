@@ -2,7 +2,8 @@
  * What an instance disposes as it ends (§3.4, §7, §9): the call its outcome awaits when it is
  * terminated, a root's own defers before the outcome it returns, and its context constants, with
  * what they hold, whether the host's or the program's. And how a wait on an instance's end goes on
- * as it ends: on a fresh runtime too, and committed once resolved, before anything awaits it.
+ * as it ends: on a fresh runtime too, and committed once resolved, before anything awaits it. And
+ * that a panic ends its instance where it happens, however deep in calls started within a call.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -276,4 +277,38 @@ describe("a wait on another instance's end", () => {
       outcome: 7n,
     });
   });
+});
+
+describe('a panic', () => {
+  it.each([
+    ['a plain', 'ista fn caller() -> Int:'],
+    ['an async', 'ista async fn caller() -> Int:'],
+  ])(
+    'in an async call before its first await ends its instance there: %s caller runs no further (§3.12)',
+    async (_, caller) => {
+      const records: string[] = [];
+      const test = testRuntime({
+        host: {
+          'main.record(String)': ([recordText]) => {
+            records.push(String(recordText));
+            return null;
+          },
+        },
+      });
+      const text = compiledEncoded(
+        lines(
+          "import * as runtime from 'runtime'",
+          'extern fn record(text: String)',
+          'ista async fn boom() -> Int: panic("boom")',
+          caller,
+          '  drop boom()',
+          '  record("after the panic")',
+          '  1',
+          'live async fn main() -> Int: await runtime.run("c") caller()',
+        ),
+      );
+      expect(await startToEnd(test, text)).toMatchObject({ kind: 'panicked', message: 'boom' });
+      expect(records).toEqual([]);
+    },
+  );
 });

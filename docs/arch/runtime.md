@@ -123,7 +123,9 @@ it as a native, with exactly the summary its extern predecessor had (spec §3.16
   spawns nothing), its end told to watchers, its log records (to the host's reports, or to the
   `Advanced` of a host call advancing it). A panicked segment never happened (spec §5): it commits
   the instance as it stood before, and its end alone leaves it, the calls still waiting hearing
-  its panic.
+  its panic. A panic unwinds to the run's outermost guarded call (`Run.#guarded`), even from an
+  async call started within another, so no code of the instance runs past it, a host extern call
+  included.
 - **Inputs.** What starts a segment and every turn it takes as it runs is an input of it
   (`Run.onArrivalTaken` into `Resident.inputs`), which a segment run again applies again. A call
   made into it after a call parked still starts before the commit, which can't keep it

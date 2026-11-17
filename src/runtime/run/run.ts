@@ -95,6 +95,8 @@ export class Run {
   readonly #entries: readonly Entry[];
   readonly #natives: (index: number) => Entry;
   readonly #settler: Settler;
+  /** Whether a guarded call is running, which a panic in any call it started unwinds to. */
+  #guarding = false;
   #objects = 0;
 
   constructor(definition: Definition, program: EmittedProgram, binding: NativeBinding) {
@@ -375,22 +377,29 @@ export class Run {
     if (given instanceof Future) {
       this.invocations.attach(given, invocation);
     } else if (instance.end === undefined) {
-      // A plain function's call gives its value at once (§9).
+      // A plain function's call gives its value at once (§9); a panicked one gives none.
       this.invocations.answer(invocation, given as Value);
     }
   }
 
-  /** What `run` gives; an ista instance's panic ends it, the live run's propagates to the host. */
+  /**
+   * What `run` gives; an ista instance's panic ends it, the live run's propagates to the host. Only
+   * the outermost guarded call catches it: one nested in it, an async call started within it or a
+   * call stopped as it disposes, lets it unwind, so no code of the instance runs past a panic.
+   */
   #guarded<Result>(run: () => Result): Result | undefined {
-    if (!this.instance.durable) {
+    if (!this.instance.durable || this.#guarding) {
       return run();
     }
+    this.#guarding = true;
     try {
       return run();
     } catch (error) {
       const { message, trace } = this.traces.panicOf(error);
       this.instance.ended({ kind: 'panicked', message, trace });
       return undefined;
+    } finally {
+      this.#guarding = false;
     }
   }
 
