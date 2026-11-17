@@ -29,7 +29,7 @@ import type {
 import type { TypeRules } from '../type/type-rules.ts';
 import { unionOf, unionOfNormalized } from '../unions/unions.ts';
 import { mappedParts, reducedComputed } from './computed-reduction.ts';
-import { boundParameters, typeChildren } from './type-children.ts';
+import { boundParameters, isLeafType, typeChildren } from './type-children.ts';
 
 /** Each type written through no alias at any level (`unaliased`). */
 const unaliasedTypes = new WeakMap<Type, Type>();
@@ -88,11 +88,17 @@ export function unaliased(type: Type): Type {
   });
 }
 
+/** What a type built from no other mentions, but a parameter: none, as asked of most types. */
+const noParameters: readonly ParameterKey[] = Object.freeze([]);
+
 /**
  * The type parameters `type` mentions, each once, in order of appearance; not those it binds: an
  * `any` type's `Self`, a mapped struct type's parameter.
  */
 export function parametersIn(type: Type): readonly ParameterKey[] {
+  if (type.kind !== 'parameter' && isLeafType(type)) {
+    return noParameters;
+  }
   return memo(mentionedParameters, type, () => {
     if (type.kind === 'parameter') {
       return [type.declaration];

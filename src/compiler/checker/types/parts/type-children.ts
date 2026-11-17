@@ -23,6 +23,9 @@ const graphPartsOf = new WeakMap<RecursiveGraph, readonly Type[]>();
 /** Whether each type holds a recursive type at any depth. */
 const recursionHeld = new WeakMap<Type, boolean>();
 
+/** What a type built from no other is built from: one array, never written to. */
+const noChildren: readonly Type[] = Object.freeze([]);
+
 /** The types `type` is built from, one level down. */
 export function typeChildren(type: Type): readonly Type[] {
   switch (type.kind) {
@@ -57,11 +60,11 @@ export function typeChildren(type: Type): readonly Type[] {
     case 'recursive':
       return graphParts(type.graph);
     case 'parameter':
-      return type.within === undefined ? [] : [type.within];
+      return type.within === undefined ? noChildren : [type.within];
     case 'literal':
     case 'primitive':
     case 'error':
-      return [];
+      return noChildren;
     default: {
       const unhandled: never = type;
       return unhandled;
@@ -238,11 +241,21 @@ function mentionsAnyOf(type: Type, keys: ReadonlySet<ParameterKey>): boolean {
   return typeChildren(type).some((child) => mentionsAnyOf(child, keys));
 }
 
-/** Whether `type` is, or is built from, a recursive type (§3.17). */
+/**
+ * Whether `type` is, or is built from, a recursive type (§3.17). A type built from no other, most
+ * of those asked, answers without a lookup: the memo's lookups were most of what asking cost.
+ */
 export function holdsRecursion(type: Type): boolean {
-  return memo(
-    recursionHeld,
-    type,
-    () => type.kind === 'recursive' || typeChildren(type).some(holdsRecursion),
-  );
+  if (type.kind === 'recursive') {
+    return true;
+  }
+  if (isLeafType(type)) {
+    return false;
+  }
+  return memo(recursionHeld, type, () => typeChildren(type).some(holdsRecursion));
+}
+
+/** Whether `type` is built from no other type. */
+export function isLeafType(type: Type): boolean {
+  return typeChildren(type).length === 0;
 }
