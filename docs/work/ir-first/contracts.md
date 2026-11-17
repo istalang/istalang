@@ -42,6 +42,6 @@ tags: [plan, rewrite, goldens, contracts]
 - **L owns** every std module's Istalang and natives, except the runtime services below. It leaves behavior unchanged on the old pipeline.
 - **R1 owns** the runtime services in Istalang (futures, resolvers, waits, `select`, slots, weak
   references), derived JSON codecs, the native contract, and the natives L leaves, ported after L
-  merges. Settle order, timer grouping, the `disposed()`/`disposing()` and end watches and resolver
-  pruning stay in the TS run for now (design decision 6, tracker Q59), as does the mock registry
-  (B115).
+  merges. Settle order, timer grouping, the `disposed()`/`disposing()` and end watches, resolver
+  pruning, the mock registry and a widened call's future following the call's stay in the TS run
+  for now (design decision 6, tracker Q59).
