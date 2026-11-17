@@ -193,8 +193,14 @@ function fieldsOf(object: RunObject, { named, persisted }: Naming): PersistedObj
   throw new Error(`A run object of no kind a snapshot knows, ${id}, is written.`);
 }
 
-/** `execution`, its frame record, what it was given and what it keeps, as a snapshot writes it. */
+/**
+ * `execution` as a snapshot writes it: its frame record, what it was given and what it keeps; a
+ * call that ended by its future alone, its frame gone with it.
+ */
 function executionOf(execution: Execution, { named, persisted }: Naming): PersistedObject {
+  if (execution.ended) {
+    return { kind: 'endedCall', id: execution.object, future: named(execution.future) };
+  }
   const { frame } = execution;
   const { kept } = execution.transients;
   return {

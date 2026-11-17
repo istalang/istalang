@@ -5,8 +5,9 @@
  * - **Frames are data** (ir-first design, decision 3): an execution is its frame record, its
  *   entry's index, the label of the `park` it stands at and its registers, so a snapshot means something only beside the
  *   Definition it names by hash.
- * - **Objects by id**: cells, futures, executions, weak references and resources, each under its
- *   id from the instance's serial, which a value names as a handle. Values are written as trees: a
+ * - **Objects by id**: cells, futures, executions, calls that ended, weak references and resources,
+ *   each under its id from the instance's serial, which a value names as a handle. A call that
+ *   ended has no frame left, but a handle to it may outlive it (a wait's, a case's). Values are written as trees: a
  *   composite two holders share comes back as two copies, which value semantics can't tell apart.
  * - **Holders are not written**: each object's count is the count of what holds it, which reading
  *   the snapshot back counts again (restore.ts), but of a disposed object, which nothing holds.
@@ -83,6 +84,11 @@ const object = z.discriminatedUnion('kind', [
       .array(z.strictObject({ function: functionId, register: registerIndex, cell: objectId }))
       .optional(),
   }),
+  /**
+   * A call that ended, kept as what still names its handle keeps it (a wait's, a case's): its
+   * future, and no frame, which ended with it.
+   */
+  z.strictObject({ kind: z.literal('endedCall'), ...identity, future: objectId }),
   z.strictObject({
     kind: z.literal('weakReference'),
     ...identity,

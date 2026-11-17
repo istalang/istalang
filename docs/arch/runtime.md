@@ -179,8 +179,8 @@ In a Definition built to run tests (spec §10):
 
 ## Snapshots (`snapshot/`)
 
-- `format.ts`: the persisted shape. Objects by id (cells, futures, executions, weak references,
-  resources, mocks); values as trees with run objects as handles; frames as data (function, the
+- `format.ts`: the persisted shape. Objects by id (cells, futures, executions, calls that ended,
+  which a handle may outlive and which keep no frame, weak references, resources, mocks); values as trees with run objects as handles; frames as data (function, the
   label of the `park` it stands at, registers, where a register may hold a `&` reference), each
   execution with the transients' cells it kept where it started (its frame's own shares are its
   transient registers); live executions, timers, watches of other instances' ends, the ready queue,

@@ -150,6 +150,12 @@ const makers: Handlers<
     objects.set(persisted.id, execution);
     objects.set(persisted.future, execution.future);
   },
+  endedCall: ({ run, objects }, persisted) => {
+    const call = new Execution(persisted.id, persisted.future, run.instance);
+    call.ended = true;
+    objects.set(persisted.id, call);
+    objects.set(persisted.future, call.future);
+  },
   weakReference: ({ objects }, weak) => {
     objects.set(weak.id, new WeakReference(weak.id, undefined as never));
   },
@@ -223,6 +229,8 @@ const fillers: Handlers<Filling, PersistedObject, [], void> = {
   execution: (reading, persisted) => {
     filledExecution(reading, persisted);
   },
+  // A call that ended holds nothing: what it held went as it ended.
+  endedCall: () => undefined,
   weakReference: ({ run, object }, persisted) => {
     const weak = object(persisted.id) as WeakReference;
     weak.target = persisted.target === undefined ? undefined : object(persisted.target);

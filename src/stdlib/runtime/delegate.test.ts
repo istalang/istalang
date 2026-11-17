@@ -171,7 +171,8 @@ describe('delegate', () => {
           expect(calls).toEqual(new Map(jobs.map((job) => [job, 1])));
         },
       ),
-      { numRuns: 15 },
+      // Jobs started, then one awaited: a committed segment then still names calls that ended.
+      { numRuns: 15, examples: [[['started', 'started', 'started', 'awaited']]] },
     );
   });
 
