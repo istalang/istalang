@@ -3,7 +3,7 @@ description: the host boundary (spec §3.6, §9) — JSON codecs as traits and d
 owner: tech-lead
 status: active
 applies_to: istalang
-last_verified: 2026-11-15
+last_verified: 2026-11-17
 last_updated: 2026-11-17
 tags: [boundary, json, externs, host, runtime, lowering]
 ---
@@ -112,7 +112,8 @@ its instance is numbered by, so its native sees only JSON:
 - A host type a `dispose` makes disposable (an extern its host implements, or code passing the
   value to the host's externs) has values with an identity of their own: `_decodeHandle` keeps
   the host's JSON in a `resource` object (`definition/tables/types.ts`, `isResourceType`), `_encodeHandle`
-  gives that JSON back, and the type entry's disposal calls the `dispose` at release. It must be
+  gives that JSON back, and the type entry's disposal calls the `dispose` at release. A snapshot
+  keeps that JSON as an extern value's payload is kept (`externPayload`), integers exact. It must be
   an `extern shared struct` or `extern live struct`, neither a value nor `sendable` (5910),
   and, where values don't cross to the host, isn't `Encodable` or `Decodable`, which imply
   Sendable, so it crosses only to its own host; an extern constant, one value for every read,
@@ -130,9 +131,11 @@ its instance is numbered by, so its native sees only JSON:
   and resolves it with JSON when it can, from anywhere: the value reaches the run between its
   segments. Or, taking none, it gives back a promise of its JSON, which resolves the future as it
   settles; a resolver taken is the one producer, so a promise an `async` extern gives back as well
-  resolves nothing, though its rejection panics. The resolver is one-shot: a second `resolve`
-  panics the run, `tryResolve` says whether it took the value, and `onCancel` callbacks run once,
-  at once, if the future is disposed first, after which it takes nothing. A promise that rejects
+  resolves nothing, though its rejection panics while nothing resolved the future. The resolver
+  is one-shot: a second `resolve` panics the run however it stands, even in the step its root
+  returned in, `tryResolve` says whether it took the value, and `onCancel` callbacks run once, at
+  once, if the future is disposed first, after which it takes nothing; one registered later runs
+  at once, and one that throws panics the run, never the host. A promise that rejects
   panics the run, with the trace of where the extern was called, and so does JSON that doesn't
   fit: no host call came with it to refuse. So does a resolver the host lets go of unresolved,
   naming the extern, once JavaScript collects it and every function of it (`FinalizationRegistry`),
@@ -151,7 +154,8 @@ two entries (`lowering/synthesized/boundary/starts.ts`):
   runs, and calls the function, giving what it gives: an async one's future, unawaited.
 - `encode` writes the outcome as `Json` with the codec of the declared result. The runtime calls it
   the moment the root's outcome settles, and the live run finishes then (spec §10): nothing readied
-  meanwhile runs, and what `main` held was disposed as it returned.
+  meanwhile runs, and what `main` held was disposed as it returned. An outcome JSON can't hold, one
+  nesting too deep, refuses the start once the run finished (`checkJsonOut`).
 
 A start is live or simple code, its head's mark (spec §3.3): ista code runs only in an instance, a
 context live code calls, so `main` is `live async fn main()`. A spawned instance whose outcome's type a codec

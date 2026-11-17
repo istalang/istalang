@@ -29,6 +29,9 @@ interpreter; a live run is a run that never commits.
   of the instance it lands in: once a rerun replaced the run (below, `Run.succeededBy`), on the object
   of the same id its snapshot read back. The world advances instances in the order their oldest
   waiting turns arrived across runs (`Run.firstArrival`), so what settles first runs first (spec §6).
+  At an instant timers come due, the instances' fire first and run to their commits, so what a
+  context answers because of them reaches a live run before its own timers due then decide what
+  waited on both (`DurableWorld.fireDue`).
 - The one `World` is `host/durable-world.ts`. `startLive` (`runtime/program.ts`) runs over it with a
   memory store that ends with the start; the host runtime runs over the host's store.
 
@@ -107,7 +110,8 @@ it as a native, with exactly the summary its extern predecessor had (spec §3.16
 - A durable instance is **resident** while the world holds it. A segment starts with what wakes it
   (a call into it, its spawn, a due timer, another instance's end) and ends at every park (each
   await commits, spec §6) or when nothing is ready. Its clock reads the time the segment started.
-- At the commit the instance is written to the store (`snapshotOf`), then what it did to others
+- At the commit the instance is written to the store (`snapshotOf`); a write the store fails
+  commits nothing, the instance read back as it last committed. Then what it did to others
   leaves it: answers to callers, the instances it spawned (made only now, so a discarded segment
   spawns nothing), its end told to watchers, its log records (to the host's reports, or to the
   `Advanced` of a host call advancing it). A panicked segment never happened (spec §5): it commits
@@ -129,8 +133,8 @@ it as a native, with exactly the summary its extern predecessor had (spec §3.16
   segment run again draws the same values.
 - **A panic** commits the instance as it stood before the failed segment, with the panic, the time
   the segment started and the call that started it, if one did (`replay`): its spawn's, or a call
-  into it. A panic no caller hears is
-  reported to the host (`HostReports.panicked`).
+  into it. A panic no caller hears is reported to the host (`HostReports.panicked`): a call let go
+  of hears none (`Invocation.hears`).
 - **Too deep to persist** (spec §5): a value nesting past `maximumDepth` panics the instance at the
   await that would commit it, named by the call that parked last.
 - Extern constants are read once per instance and kept as its context constants (spec §3.6).
@@ -190,11 +194,16 @@ In a Definition built to run tests (spec §10):
   The earliest one open serves the jobs (`runtime._served`) of every instance running its live
   code's program that began since: running then, made since, or run again by a retry, whose panic
   ended the loop serving it. A `_Runtime` is a resource whose disposal is the runtime's own
-  (`Resource.release`): it closes the runtime, and the next earliest serves.
+  (`Resource.release`): it closes the runtime, and the next earliest serves. The instances' timers
+  fire only while a runtime is open, or in a test's world, which drives its own; what is ready
+  without waiting runs regardless, a call made through a runtime since closed included. `open`
+  settles once the work it resumed ran what it had due by then (`OpenRuntimes.letOpenersGoOn`), a
+  timer that came due while none was open included.
 - `retry` restores a panicked instance as it stood before its failed segment and runs it again at
   the time it first started, replaying the call that started it (answering nobody: its caller heard
   the panic); `terminate` disposes what it held
-  then and commits it holding nothing, as happens at once to an isolated instance
+  then, a `dispose` that panics stopping none of the others (`Lifetimes.disposingPastPanics`), and
+  commits it holding nothing, as happens at once to an isolated instance
   (`runtime.isolate`, `terminatesOnPanic`, kept in its snapshot) whose segment panics; `inspect` reads the last commit: state (a finished one with
   its outcome's JSON, where encoded), and where each parked execution waits (`parkedAt`: function,
   waypoint, source location).
