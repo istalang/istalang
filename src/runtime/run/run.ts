@@ -25,6 +25,7 @@ import { Unreachable } from '../../foundation/structures/unreachable.ts';
 import { type HostFilling, stackSite } from '../natives.ts';
 import { drawOf } from '../random-draws.ts';
 import { type Arrival, Arrivals } from './arrivals.ts';
+import { ClosureCalls, directAritiesOf } from './closure-calls.ts';
 import { type DisposalSeams, disposerOf } from './disposal.ts';
 import { EndWatches, type PendingWatch } from './end-watches.ts';
 import { Executions, PARKED, STOP, STOPPED } from './executions.ts';
@@ -87,6 +88,8 @@ export class Run {
   readonly executions: Executions;
   readonly mocking: Mocking;
   readonly traces: Traces;
+  /** The calls compiled code makes through a function value of a few arguments. */
+  readonly closureCalls: ClosureCalls;
   /** The primitive operations compiled code calls rather than writes inline. */
   readonly primitives = calledPrimitives;
   /** The markers compiled code compares a frame's result and decision with. */
@@ -96,7 +99,9 @@ export class Run {
    * instance read back from a snapshot (a segment run again, §5).
    */
   onArrivalTaken: ((input: (run: Run) => void) => void) | undefined;
-  readonly #entries: readonly Entry[];
+  /** The compiled entries, by function index, once its program is instantiated over it. */
+  readonly entries: readonly Entry[];
+  readonly #directArities: Int16Array;
   readonly #natives: (index: number) => Entry;
   readonly #settler: Settler;
   readonly #guard: PanicGuard;
@@ -130,15 +135,17 @@ export class Run {
       instance: this.instance,
       lifetimes: this.lifetimes,
       queue: this.queue,
-      entry: (index) => this.#entries[index] as (frame: Frame) => unknown,
+      entry: (index) => this.entries[index] as (frame: Frame) => unknown,
       newId: () => this.newId(),
       settle: (future, value) => this.settle(future, value),
       startedTransients: () => this.transients.started(),
       guarded: (run) => this.#guard.guarded(run),
     });
     this.#natives = bindNatives(this, seams);
+    this.closureCalls = new ClosureCalls(this, definition);
+    this.#directArities = directAritiesOf(definition);
     const { site, entries } = instantiatorOf(program)(this);
-    this.#entries = entries;
+    this.entries = entries;
     this.traces = new Traces(definition, program.lines, site);
     this.#guard = new PanicGuard(this.instance, this.traces, () => this.lifetimes.passesPanics);
   }
@@ -190,11 +197,14 @@ export class Run {
 
   /** Calls entry `index` with `passed`, `closure` the function value it runs as. */
   call(index: number, passed: readonly Value[], closure?: Value): unknown {
+    const run = this.entries[index] as (...given: unknown[]) => unknown;
+    if (this.#directArities[index] === passed.length) {
+      return run(...passed, closure);
+    }
     const entry = this.definition.functions[index];
     if (entry?.kind === 'code' && startsExecution(entry)) {
       return this.executions.start(index, passed, closure);
     }
-    const run = this.#entries[index] as (...given: unknown[]) => unknown;
     if (entry?.kind !== 'code') {
       return run(...passed);
     }

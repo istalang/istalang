@@ -13,7 +13,7 @@
  */
 
 import type { Definition } from '../definition/tables/index.ts';
-import { runsOnFrames } from './calling-convention.ts';
+import { closureCallHelper, directCallArities, runsOnFrames } from './calling-convention.ts';
 import { emitEntry } from './entry.ts';
 
 /**
@@ -32,6 +32,10 @@ const helpers = [
       'start',
       'unreachableHere',
     ],
+  ],
+  [
+    'rt.closureCalls',
+    Array.from({ length: directCallArities + 1 }, (_, count) => closureCallHelper(count)),
   ],
   ['rt.lifetimes', ['hold', 'share', 'letGo', 'unwound']],
   ['rt.builders', ['items', 'entries', 'cell', 'append', 'appendEntry']],

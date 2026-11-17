@@ -63,8 +63,11 @@ the instance frozen as it stood.
 - Places (`load`, `store`, `reference`) go through the run, which writes along a path in place where
   the value is unique (`Lifetimes.withPart`); a borrowing `load` holds nothing, as lowering loads
   into an owned register what a write may change before the borrow's last use.
-- A call of a known entry is a direct call; a call of a function value goes through `callValue`; an
-  async callee starts an execution and gives its future (`Run.start`).
+- A call of a known entry is a direct call; a call of a function value of up to
+  `directCallArities` arguments (calling-convention.ts) goes through the run's `callValue0` to
+  `callValue3`, which run a plain entry taking exactly that many at once, with no array
+  (`run/closure-calls.ts`), and any other through `callValue`; an async callee starts an execution
+  and gives its future (`Run.start`).
 - `currentCall` is the frame's execution in async code and `currentExecution()` in simple code.
 - `mocked` asks the run (`Mocking.mocked`), and writes its register only with an answer, never with
   the run's marker of none (`NOT_MOCKED`); a call that is a start asks nothing, which it learns as

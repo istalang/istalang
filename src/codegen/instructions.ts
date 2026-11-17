@@ -32,6 +32,7 @@ import { disposeOf, lifetimeOf } from '../definition/tables/types.ts';
 import type { Value } from '../definition/values/values.ts';
 import { type Handlers, handlerOf } from '../foundation/structures/kind-table.ts';
 import { unreachable } from '../foundation/structures/unreachable.ts';
+import { closureCallHelper, directCallArities } from './calling-convention.ts';
 import { literal } from './literal.ts';
 import { primitiveExpressions } from './primitives.ts';
 
@@ -137,6 +138,17 @@ function argumentsOf(call: InstructionOf<'call'>): string {
   return call.arguments
     .map((argument) => (argument.kind === 'value' ? register(argument.register) : 'undefined'))
     .join(', ');
+}
+
+/**
+ * A call of the function value in `callee` with `count` arguments, `passed`: as they are through
+ * the run's helper for that many (`closureCallHelper`), which runs a plain entry at once, or in an
+ * array past `directCallArities`.
+ */
+function closureCall(callee: string, count: number, passed: string): string {
+  return count <= directCallArities
+    ? `${closureCallHelper(count)}(${[callee, passed].filter((part) => part !== '').join(', ')})`
+    : `callValue(${callee}, [${passed}])`;
 }
 
 /** The entry `dst`'s type names, a struct or enum code builds there (validation holds it to one). */
@@ -292,7 +304,7 @@ const emitters: Handlers<EntryScope, Instruction, [], string> = {
     const called =
       i.callee.kind === 'function'
         ? callExpression(scope, i.callee.function, passed)
-        : `callValue(${register(i.callee.register)}, [${passed}])`;
+        : closureCall(register(i.callee.register), i.arguments.length, passed);
     return `${register(i.dst)} = ${called};`;
   },
   currentCall: (scope, i) =>
