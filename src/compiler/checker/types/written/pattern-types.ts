@@ -135,7 +135,7 @@ type MemberNaming = Pick<
  * where the union holds them all (`case Status as s` against `Status | Int`, `case Tree as t`
  * against `Tree | String`, whose members are `Tree`'s and `String`), else every literal member of
  * that base (`case String as s` against `Status | Int`), else the type itself where an `any`
- * member took it whole (`case Int` against `Plain | any Shows`), a downcast through that member;
+ * member may hold it (`case Int` against `Plain | any Shows`), a downcast through that member;
  * every member instantiating a generic type it names. Anything else, a constant's name among them,
  * selects none here.
  */
@@ -188,7 +188,7 @@ function typeMembers(
 /**
  * The members of a union a pattern naming `type` selects (`membersNamed`): its own member, else
  * the members of the union it is where the union holds them all, else every literal member of its
- * base, else `type` itself where an `any` member took it whole.
+ * base, else `type` itself where an `any` member may hold it (`heldByAnyMember`).
  */
 export function membersOfType(
   checker: Pick<Checker, 'traitObjects'>,
@@ -210,7 +210,7 @@ export function membersOfType(
   if (literals.length > 0) {
     return literals;
   }
-  return takenWhole(members, type, checker) ? [type] : [];
+  return heldByAnyMember(members, type, checker) ? [type] : [];
 }
 
 /**
@@ -289,8 +289,8 @@ function instanceOf(type: Type, declaration: GenericDeclaration): readonly Type[
 
 /**
  * The members a literal of type `literal` selects: its own literal type's, else its base's, else
- * the literal itself through the `any` member that took it whole (§2), as `rules`
- * say: the value inside that member is the literal's own.
+ * the literal itself through an `any` member that may hold it (`heldByAnyMember`): the value
+ * inside that member is the literal's own.
  */
 export function literalMembers(
   members: readonly Type[],
@@ -303,14 +303,14 @@ export function literalMembers(
   }
   const base = baseOf(literal);
   const based = members.filter((member) => sameType(member, base));
-  return based.length === 0 && takenWhole(members, literal, checker) ? [literal] : based;
+  return based.length === 0 && heldByAnyMember(members, literal, checker) ? [literal] : based;
 }
 
 /**
  * Whether an `any` member among `members` may hold a value of `type`, one that took it whole (§2)
  * or one it converted into, so a test of it looks inside.
  */
-function takenWhole(
+function heldByAnyMember(
   members: readonly Type[],
   type: Type,
   checker: Pick<Checker, 'traitObjects'>,
