@@ -136,6 +136,8 @@ export type PersistedStatus = z.output<typeof status>;
 const body = z.strictObject({
   definition: contentHashText,
   instance: z.string(),
+  /** The instances it was spawned from, nearest first (§9). */
+  lineage: z.array(z.string()),
   status,
   /** The id the instance's next object takes. */
   serial: count,

@@ -39,7 +39,7 @@ export function heldAbove(
   index: number,
   runOf: (name: string) => Run | undefined,
 ): HeldMock | undefined {
-  for (let name = parentOf(caller.instance.name); name !== undefined; name = parentOf(name)) {
+  for (const name of caller.instance.lineage) {
     const holder = runOf(name);
     const mock = holder?.mocking.held.of(index);
     if (holder !== undefined && mock !== undefined) {
@@ -47,12 +47,6 @@ export function heldAbove(
     }
   }
   return undefined;
-}
-
-/** The instance `name` was spawned from, named before its last `/`; none for one spawned by none. */
-function parentOf(name: string): string | undefined {
-  const at = name.lastIndexOf('/');
-  return at < 0 ? undefined : name.slice(0, at);
 }
 
 /** What `held` answers `caller`'s call with `passed`, of type `type`, made the caller's own. */

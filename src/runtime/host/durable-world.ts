@@ -113,7 +113,9 @@ export class DurableWorld implements World {
     const seed = parent.draw().subarray(0, seedBytes);
     const started = () => {
       const crashEveryAwait = options.crashEveryAwait ?? owner?.crashEveryAwait ?? false;
-      const child = this.#made({ name, program: this.#programOf(parent), seed }, crashEveryAwait);
+      const lineage = [parent.instance.name, ...parent.instance.lineage];
+      const made = { name, program: this.#programOf(parent), seed, lineage };
+      const child = this.#made(made, crashEveryAwait);
       child.endWatchers.push(...(this.#awaitingSpawn.get(name) ?? []));
       this.#awaitingSpawn.delete(name);
       child.encoder = encoder;
@@ -215,7 +217,7 @@ export class DurableWorld implements World {
   #loaded(name: string, snapshot: Snapshot): Resident {
     const program = this.#bind(snapshot.definition);
     const seed = hexToBytes(snapshot.seed);
-    const made = { name, program, seed, status: snapshot.status };
+    const made = { name, program, seed, lineage: snapshot.lineage, status: snapshot.status };
     const resident = this.#made(made, snapshot.crashEveryAwait);
     resident.committed = snapshot;
     resident.encoder = snapshot.encoder;
@@ -412,7 +414,7 @@ export class DurableWorld implements World {
   /** A fresh run of `resident` over `program`, its clock reading its segment's start, its logs kept. */
   #runOf(resident: Resident, program = resident.program): Run {
     const run = this.#run(program, {
-      instance: new Instance(resident.name, true),
+      instance: new Instance(resident.name, true, resident.lineage),
       clock: { now: () => resident.startedAt, until: this.binding.clock.until },
       seed: resident.seed,
       log: (record) => resident.logs.push(record),

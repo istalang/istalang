@@ -35,6 +35,8 @@ export class Instance {
   readonly name: string;
   /** Whether it commits at every wait: ista code's instance, not the live run. */
   readonly durable: boolean;
+  /** The instances it was spawned from, nearest first (§9); none for a live run or a context. */
+  readonly lineage: readonly string[];
   readonly contextConstants = new ContextConstants();
   /** How many random draws it has made (§3.8). */
   draws = 0;
@@ -48,9 +50,10 @@ export class Instance {
   /** The futures of the calls into it still waiting, each answered once its invocation ends. */
   readonly calls = new Set<Future>();
 
-  constructor(name: string, durable: boolean) {
+  constructor(name: string, durable: boolean, lineage: readonly string[] = []) {
     this.name = name;
     this.durable = durable;
+    this.lineage = lineage;
   }
 
   /** The kind of async code it runs (§9): ista code in an ista instance, live code in a live run. */

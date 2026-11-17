@@ -71,6 +71,7 @@ export function snapshotOf(run: Run, written: Written): Snapshot {
     ...written,
     status: statusOf(written.status, persisted),
     instance: instance.name,
+    lineage: [...instance.lineage],
     serial: state.serial,
     seed: bytesToHex(run.seed),
     draws: instance.draws,

@@ -26,6 +26,8 @@ export interface ResidentMade {
   readonly program: WorldProgram;
   /** A host's for one it starts, a draw of its parent's for one spawned. */
   readonly seed: Uint8Array;
+  /** The instances it was spawned from, nearest first; none for a context. */
+  readonly lineage?: readonly string[];
   /** Where one read back from the store stands; a new one is active. */
   readonly status?: PersistedStatus;
 }
@@ -37,6 +39,8 @@ export class Resident {
   readonly name: string;
   readonly program: WorldProgram;
   readonly seed: Uint8Array;
+  /** The instances it was spawned from, nearest first (§9). */
+  readonly lineage: readonly string[];
   crashEveryAwait: boolean;
   /** The entry encoding its outcome, a spawned instance's whose type a codec writes (§9). */
   encoder: number | undefined;
@@ -78,13 +82,14 @@ export class Resident {
   spawned: string[] = [];
 
   constructor(
-    { name, program, seed, status = { kind: 'active' } }: ResidentMade,
+    { name, program, seed, lineage = [], status = { kind: 'active' } }: ResidentMade,
     crashEveryAwait: boolean,
     runOf: (resident: Resident) => Run,
   ) {
     this.name = name;
     this.program = program;
     this.seed = seed;
+    this.lineage = lineage;
     this.status = status;
     this.crashEveryAwait = crashEveryAwait;
     this.encoder = undefined;

@@ -203,10 +203,11 @@ export function atCommit(run: Run): boolean {
 }
 
 /** A snapshot of an instance that never committed: nothing in it yet. */
-function emptySnapshot({ name, seed }: Resident): Snapshot {
+function emptySnapshot({ name, lineage, seed }: Resident): Snapshot {
   return {
     definition: '',
     instance: name,
+    lineage: [...lineage],
     status: { kind: 'active' },
     serial: 0,
     seed: bytesToHex(seed),
