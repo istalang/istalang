@@ -1,13 +1,19 @@
 /**
  * A future (§3.3): what an async call, a timer or a host gives. It settles once, and calls the
  * callbacks waiting on it then (settling.ts); an async call's knows its execution, which its
- * disposal stops. One its holder widened gives its value converted (§3.14, prelude.ista
- * `_converted`), so a widened call's future stays the call's own.
+ * disposal stops. A widened call's is one of its own following the call's, which it settles with
+ * converted (§3.14, ../following.ts), leaving the call's as it is.
  */
 
 import type { Value } from '../../../definition/values/values.ts';
 import type { Execution } from './execution.ts';
 import { RunObject } from './run-object.ts';
+
+/** A future followed, and the closure converting its value: a conversion's entry. */
+export interface Following {
+  readonly future: Future;
+  readonly converter: Value;
+}
 
 export class Future extends RunObject {
   settled: boolean;
@@ -16,8 +22,10 @@ export class Future extends RunObject {
   callbacks: Waiting[] = [];
   /** Whether a case waiting on it lost: one nothing waits on any more is then given up on (§8). */
   lost: boolean;
-  /** The closures converting its value as it settles, in turn: each a conversion's entry. */
-  readonly converters: Value[] = [];
+  /** The future it follows, until that settles, and what converts its value (../following.ts). */
+  follows: Following | undefined;
+  /** The futures following it, which settle as it does. */
+  readonly followers: Future[] = [];
   /** What runs each time something comes to wait on it. */
   readonly onAwaited: Value[] = [];
   /** What of the run itself waits on it: a call into a context waits on its invocation's. */

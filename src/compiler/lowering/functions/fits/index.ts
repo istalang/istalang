@@ -276,8 +276,8 @@ export function convertingEntry(
  * converts each argument it is given into what the function takes, a `&` passed on as it is,
  * calls the function it captures, and converts what it gives. Where `to` gives a future of what a
  * plain function gives, the entry is async, so it gives a future already resolved; a future the
- * function gives is converted as it is (`convertedFuture`), so the entry starts no call of its own
- * and the function's call is the caller's. The Definition marks it `wrapping`, so a start of it
+ * function gives is followed by one of the caller's (`convertedFuture`), so the entry starts no
+ * call of its own and the function's call is the caller's. The Definition marks it `wrapping`, so a start of it
  * starts the function it wraps (§10).
  */
 export function wrappingEntry(
@@ -311,7 +311,7 @@ export function wrappingEntry(
 
 /**
  * `called`, what a function of type `from` gave, as a function of type `to` returns it: fitted to
- * its result; a future converted as it is; a plain value as an async entry gives it, in the future
+ * its result; a future followed by one of its own; a plain value as an async entry gives it, in the future
  * it resolves.
  */
 function returnedAs(

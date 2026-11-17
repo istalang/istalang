@@ -151,7 +151,14 @@ function fieldsOf(object: RunObject, { named, persisted }: Naming): PersistedObj
       })),
       lost: object.lost,
       onAwaited: object.onAwaited.map(persisted),
-      converters: object.converters.map(persisted),
+      ...(object.follows === undefined
+        ? {}
+        : {
+            follows: {
+              future: named(object.follows.future),
+              converter: persisted(object.follows.converter),
+            },
+          }),
     };
   }
   if (object instanceof Execution) {

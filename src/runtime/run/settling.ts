@@ -1,13 +1,15 @@
 /**
  * Settling futures (§8): futures one event settles together call every callback waiting on any of
  * them at once, in the settle order: by rank (prelude.ista `Resolver`), then as they were added.
- * A future widened gives its value converted (`convert`), before anything hears it.
+ * A future following one of them (following.ts) settles with them, its value converted.
  * Then the run's own listeners hear each value, such as a call into a context waiting on its
  * invocation's future; what they settle meanwhile settles together after them, as futures following
  * these do (a mock's answer, mock-answers.ts).
  */
 
 import type { Value } from '../../definition/values/values.ts';
+import { unreachable } from '../../foundation/structures/unreachable.ts';
+import { convertedFollowing, unfollowed } from './following.ts';
 import type { Lifetimes } from './lifetimes.ts';
 import type { Future } from './objects/future.ts';
 
@@ -32,7 +34,9 @@ export class Settler {
       this.#following.push(...settling);
       return;
     }
-    this.#called(this.#waitingOn(settling));
+    const followed: Value[] = [];
+    this.#called(this.#waitingOn(settling, followed));
+    this.#lifetimes.letGo(...followed);
     const following: (readonly [Future, Value])[] = [];
     this.#following = following;
     try {
@@ -49,24 +53,32 @@ export class Settler {
     }
   }
 
-  /** Settles each future not settled yet, a future listed twice with its first value; what waited. */
-  #waitingOn(settling: Settling): Waited[] {
+  /**
+   * Settles each future not settled yet, a future listed twice with its first value, and with them
+   * the futures following each (following.ts), which let go of what they followed into
+   * `followed`; what waited.
+   */
+  #waitingOn(settling: Settling, followed: Value[]): Waited[] {
     const waiting: Waited[] = [];
-    for (const [future, given] of settling) {
+    const settled = [...settling];
+    for (const [future, value] of settled) {
       if (!future.settled) {
         future.settled = true;
-        const value = future.converters
-          .splice(0)
-          .reduce(
-            (each, converter) => converted(this.#call, this.#lifetimes, each, converter),
-            given,
-          );
         future.value = value;
         for (const { callback, rank, standing, cancelled } of future.callbacks.splice(0)) {
           waiting.push({ callback, rank, value });
           this.#lifetimes.letGo(standing, cancelled);
         }
         this.#lifetimes.letGo(...future.onAwaited.splice(0));
+        for (const follower of [...future.followers]) {
+          const { converter } =
+            unfollowed(follower) ?? unreachable('A follower follows its future.');
+          followed.push(future as unknown as Value);
+          settled.push([
+            follower,
+            convertedFollowing(this.#call, this.#lifetimes, converter, value),
+          ]);
+        }
       }
     }
     return waiting;
@@ -80,18 +92,6 @@ export class Settler {
       this.#lifetimes.letGo(callback);
     }
   }
-}
-
-/** What `converter`, a future's (`Future.converters`), makes of `value`, called through `call`. */
-export function converted(
-  call: (converter: Value, value: Value) => unknown,
-  lifetimes: Lifetimes,
-  value: Value,
-  converter: Value,
-): Value {
-  const result = call(converter, value) as Value;
-  lifetimes.letGo(value, converter);
-  return result;
 }
 
 /** A callback waiting on a settled future, with its rank and the value it is called with. */

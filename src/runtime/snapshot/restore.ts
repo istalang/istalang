@@ -24,6 +24,7 @@ import type { Value } from '../../definition/values/values.ts';
 import { type Handlers, handlerOf } from '../../foundation/structures/kind-table.ts';
 import { unreachable } from '../../foundation/structures/unreachable.ts';
 import { Refusal } from '../refusal.ts';
+import { follow } from '../run/following.ts';
 import type { InstanceEnd } from '../run/instances.ts';
 import { hearsNothing, type Invocation } from '../run/invocations.ts';
 import { Cell } from '../run/objects/cell.ts';
@@ -203,12 +204,17 @@ const fillers: Handlers<Filling, PersistedObject, [], void> = {
       cancelled: restored(cancelled),
     }));
     future.onAwaited.push(...persisted.onAwaited.map(restored));
-    future.converters.push(...persisted.converters.map(restored));
+    if (persisted.follows !== undefined) {
+      const followed = object(persisted.follows.future) as Future;
+      follow(future, { future: followed, converter: restored(persisted.follows.converter) });
+    }
     const held = [
       ...(future.settled ? [future.value] : []),
       ...future.callbacks.flatMap(closuresOf),
       ...future.onAwaited,
-      ...future.converters,
+      ...(future.follows === undefined
+        ? []
+        : [future.follows.future as unknown as Value, future.follows.converter]),
     ];
     for (const each of held) {
       holds(each);

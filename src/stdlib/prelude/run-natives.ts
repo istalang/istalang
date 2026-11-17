@@ -58,11 +58,10 @@ const futureNatives = (keys: NativeKeys): RunNatives => ({
     run.settle(given(settling), given(settled));
     return null;
   },
-  [keys.of('_unshared', future)]: ([widened], { run }) => run.unshared(given(widened)),
-  [keys.of('_convertedInPlace', future, functionKey([value], parameterKey('U')))]: (
+  [keys.of('_converted', future, functionKey([value], parameterKey('U')))]: (
     [widened, converter],
     { run },
-  ) => run.convertedInPlace(given(widened), given(converter)),
+  ) => run.following(given(widened), given(converter)),
 });
 
 /** What calls readied, parked and unparked stand on. */

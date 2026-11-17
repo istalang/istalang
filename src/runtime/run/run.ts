@@ -155,6 +155,7 @@ export class Run {
       passesPanics: () => this.lifetimes.passesPanics,
       callValue: (closure) => this.callValue(closure, []),
       letGo: (...values) => this.lifetimes.letGo(...values),
+      letGoAtOnce: (...values) => this.lifetimes.apart(() => this.lifetimes.letGo(...values)),
       stop: (execution) => this.executions.stop(execution),
       settle: (future, value) => this.settle(future, value),
     };

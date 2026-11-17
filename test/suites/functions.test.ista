@@ -98,6 +98,17 @@ ista async fn widenedWaitingAt() -> Array<String>:
   await instance.idle()
   instance.waitingAt()
 
+ista fn watchedStep() -> Future<Int, "ista">:
+  const future = step()
+  future.onAwait(Resolver.of(fn(value: Int): ()))
+  future
+
+ista async fn watchedWaitingAt() -> Array<String>:
+  const widened: sendable ista async fn() -> Int? = watchedStep
+  const instance = spawn(widened)
+  await instance.idle()
+  instance.waitingAt()
+
 ista async fn worker(log: Shared<Array<String>>) -> Int:
   await select:
     case time.delay(1h): 1
@@ -132,6 +143,12 @@ ista async fn widenedSharedFuture() -> (Int?, Int):
   const stored = new Stored{future: later(6)}
   const widened: ista fn(Stored) -> Future<Int?, "ista"> = storedFuture
   (await widened(stored), await stored->future)
+
+ista async fn droppedWhileStored() -> Int:
+  const stored = new Stored{future: later(9)}
+  const widened: ista fn(Stored) -> Future<Int?, "ista"> = storedFuture
+  drop widened(stored)
+  await stored->future
 
 ista fn watched(log: Shared<Array<Int>>) -> Future<Int, "ista">:
   const future = later(7)
@@ -229,11 +246,11 @@ fn suite() -> Array<Test>: [
     async fn(): assertEq(await spawnCrashingEveryAwait(widenedAcrossCommits).result(), Ok((4, 5)))
   )
   test(
-    "a future something else holds, widened, is awaited and stays as it was for its holder"
+    "a future something else holds, widened, is followed and stays as it was for its holder"
     async fn(): assertEq(await widenedSharedFuture(), (6, 6))
   )
   test(
-    "a future a callback waits on, widened, is awaited and the callback is given its value as it was"
+    "a future a callback waits on, widened, is followed and the callback is given its value as it was"
     async fn(): assertEq(await widenedWatchedFuture(), (7, [107]))
   )
   test(
@@ -241,7 +258,15 @@ fn suite() -> Array<Test>: [
     async fn(): assertEq(await mockedGreeting(), (Ok(11), Ok(11), [(2,), (2,)]))
   )
   test(
-    "a future a weak reference refers to, widened, is awaited and stays as it was for what derefs it"
+    "a future a weak reference refers to, widened, is followed and stays as it was for what derefs it"
     async fn(): assertEq(await widenedWeaklyWatchedFuture(), (8, 108))
+  )
+  test(
+    "an async function widened whose future a callback waits on runs as its own call, with no frame of the widening"
+    async fn(): assertEq(await watchedWaitingAt(), ["step-1"])
+  )
+  test(
+    "a widened call's future dropped leaves the future it follows to what else holds it"
+    async fn(): assertEq(await droppedWhileStored(), 9)
   )
 ]

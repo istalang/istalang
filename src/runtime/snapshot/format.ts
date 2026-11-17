@@ -62,7 +62,8 @@ const object = z.discriminatedUnion('kind', [
     callbacks: z.array(waiting),
     lost: z.boolean(),
     onAwaited: z.array(value),
-    converters: z.array(value),
+    /** The future it follows, until that settles, and the closure converting its value. */
+    follows: z.strictObject({ future: objectId, converter: value }).optional(),
   }),
   z.strictObject({
     kind: z.literal('execution'),

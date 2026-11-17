@@ -9,9 +9,9 @@
  *   resolver stands for: one that can't decide any more is dropped as another comes or is asked
  *   about, and a future one of those lost on, with nothing waiting on it, is given up on, which a
  *   slot passes over (§6, §8). A withdrawn one, a `select`'s that didn't wait, gives up on nothing.
- * - A future nothing else holds, refers to weakly or waits on, widened, converts its value in
- *   place, as it settles or at once (`convertedInPlace`, settling.ts `converted`), so a widened
- *   call's future is the call's own.
+ * - A future widened is followed by one of its own (`following`, following.ts), which settles as
+ *   it does with its value converted, so a widened call's future is the call's own and the future
+ *   it follows stays as it is for whatever else reaches it.
  * - `later` readies a call of its own, as a `Resolver.of` callback and an `onCancel` run (§8).
  * - `unpark` readies a parked call to resume with its wait's decided position; a wait decided
  *   before its call parks readies it all the same, as awaiting still yields (§6), unless the call
@@ -22,10 +22,10 @@
  */
 
 import type { Value } from '../../definition/values/values.ts';
+import { convertedFollowing, follow } from './following.ts';
 import type { Execution } from './objects/execution.ts';
 import { closuresOf, Future, type Waiting } from './objects/future.ts';
 import type { Run } from './run.ts';
-import { converted } from './settling.ts';
 
 /** A callback registered on a future, with what decides it (prelude.ista `_onSettled`). */
 interface Registered {
@@ -48,10 +48,8 @@ export interface RunPrimitives {
   readonly settleAll: (futures: Value, value: Value) => void;
   readonly pendingFuture: () => Value;
   readonly settle: (future: Value, value: Value) => void;
-  /** Whether nothing but its caller holds `future`, refers to it weakly or waits on it. */
-  readonly unshared: (future: Value) => boolean;
-  /** `future`, which nothing but its caller reaches, giving what `converter` makes of its value. */
-  readonly convertedInPlace: (future: Value, converter: Value) => Value;
+  /** A future following `future`, settling with what `converter` makes of its value. */
+  readonly following: (future: Value, converter: Value) => Value;
   readonly later: (callback: Value) => void;
   readonly unpark: (call: Value, position: Value) => void;
   readonly awaiting: (call: Value, holding: Value) => void;
@@ -128,22 +126,18 @@ function futurePrimitives(run: Run) {
 /** What a future widened stands on (prelude.ista `_converted`). */
 function conversionPrimitives(run: Run) {
   return {
-    unshared: (given: Value) => {
-      const future = futureOf(given);
-      const { count, callbacks, listeners } = future;
-      const waitedOn = callbacks.length > 0 || listeners.length > 0;
-      return count <= 1 && !waitedOn && !run.weakReferences.made(future);
-    },
-    convertedInPlace: (given: Value, converter: Value) => {
-      const future = futureOf(given);
+    following: (given: Value, converter: Value) => {
+      const followed = futureOf(given);
+      const follower = new Future(run.newId());
       run.lifetimes.hold(converter);
-      if (future.settled) {
+      if (followed.settled) {
         const call = (closure: Value, value: Value) => run.callValue(closure, [value]);
-        future.value = converted(call, run.lifetimes, future.value, converter);
+        run.settle(follower, convertedFollowing(call, run.lifetimes, converter, followed.value));
       } else {
-        future.converters.push(converter);
+        run.lifetimes.hold(given);
+        follow(follower, { future: followed, converter });
       }
-      return given;
+      return follower as unknown as Value;
     },
   };
 }

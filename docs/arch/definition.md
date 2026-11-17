@@ -218,7 +218,7 @@ Instruction names are in `code`. A call is always to a function-table entry; for
 | Lambdas, local `fn`, closures (§3.14) | `closure` with captures; a captured `let` is a cell, a `const` a copy |
 | Named lambda calling itself (§3.14) | `currentClosure` |
 | Calling a function value (§3.14) | `call` with a value callee |
-| A function value widened (§3.5, §3.14) | a `closure` of its pair's `wrapping` entry, capturing the value: it converts the arguments, calls the value and converts what it gives; a future it gives is converted as it is (prelude `_converted`), so the entry is simple and the call stays the function's own; a start of it starts the function it wraps |
+| A function value widened (§3.5, §3.14) | a `closure` of its pair's `wrapping` entry, capturing the value: it converts the arguments, calls the value and converts what it gives; a future it gives is followed by one of its own, which settles with its value converted (prelude `_converted`), so the entry is simple and the call stays the function's own; a start of it starts the function it wraps |
 | A plain function made async (§3.14) | a function value widened (above): a `closure` of the pair's `wrapping` entry, capturing the plain value |
 | Annotations (§3.16) | `annotations` on functions and fields; `@Waypoint` becomes the `waypoint` of the `park` an `await` or `select` stops at |
 | `await` (§5) | a call of the prelude's `_wait` on the running call, then `_caseResolver` for case 0, handed to the operand's `onAwait` (the implicit call the checker recorded) and let go of, then `_parking(wait)` and `park`, which commits first (`lowering/calls/waits.ts`); synthesized code awaiting a future calls the prelude's `onAwait` alike |
