@@ -45,7 +45,7 @@ tags: [reuse, testing, test-kit, arbitraries, fast-check, corpus]
 - check many small `stdProgramOf` programs, each checker taking over the std modules' results checked once per file → `checkedAfterStd` (`src/compiler/compile.test-kit.ts`)
 - ask a checked `main.ista` by names as written, ask every query a tool may ask of a node, or compare two checkers' answers at every node of a module → `checkedMain`, `answersAt`, `spelledAnswers` (`src/compiler/checker/lookup/lookup.test-kit.ts`)
 - check a rule across every std module at once → `everyStdModule` (`src/stdlib/std-modules.test-kit.ts`)
-- compile in-memory sources to a `Definition` or its text (the text checked after the std modules, once per file) → `compiledDefinition`, `compiledEncoded`, `diagnosedAt`; the timeout of a test compiling whole programs case after case → `wholeProgramTimeout` (`src/compiler/compile.test-kit.ts`)
+- compile in-memory sources to a `Definition` or its encoding (a program text checked after the std modules and compiled once per file) → `compiledDefinition`, `mainDefinition`, `compiledEncoded`, `diagnosedAt`; the timeout of a test compiling whole programs case after case → `wholeProgramTimeout` (`src/compiler/compile.test-kit.ts`)
 - create a test `Runtime` (host/index.ts) with manual clock, recording store and fixed seed → `testRuntime`, `recordingStore`, `testSeed` (`src/runtime/runtime.test-kit.ts`), `ManualClock` (`src/runtime/clock.ts`)
 - list every std extern function under the key lowering gives it → `stdExterns` (`src/stdlib/std-externs.test-kit.ts`)
 - start a program's live `main` to its end and read how it ended, its outcome as JSON text → `startToEnd` (`src/runtime/runtime.test-kit.ts`)

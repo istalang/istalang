@@ -11,12 +11,7 @@ import { describe, expect, it } from 'vitest';
 import { decodeJson } from '../../../definition/formats/codec.ts';
 import { compareOrdered } from '../../../foundation/language/order.ts';
 import { startToEnd, testRuntime } from '../../../runtime/runtime.test-kit.ts';
-import { stdProgramOf } from '../../binder/bind.test-kit.ts';
-import {
-  compiledDefinition,
-  compiledEncoded,
-  wholeProgramTimeout,
-} from '../../compile.test-kit.ts';
+import { compiledEncoded, mainDefinition, wholeProgramTimeout } from '../../compile.test-kit.ts';
 
 /**
  * camelCase names whose UTF-16 order differs from any other: `aB` before `aa`, `z10` before `z9`.
@@ -73,16 +68,15 @@ function inNameOrder(fields: readonly { readonly name: string }[]): readonly str
 
 describe('struct layout', () => {
   it("lists a declared struct's fields in name order, as its shape's entry does (§3.1)", () => {
-    const program = stdProgramOf({
-      main: [
+    const { types } = mainDefinition(
+      [
         'struct P { y: Int, x: Int, aZ: Int }',
         "import * as runtime from 'runtime'\nlive async fn main() -> Int: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Int:",
         '  const p = P{y: 1, x: 2, aZ: 3}',
         '  const shape: { y: Int, x: Int, aZ: Int } = p',
         '  p.x + shape.y',
       ].join('\n'),
-    });
-    const { types } = compiledDefinition(program, 'main');
+    );
     const fieldNames = (name: string) =>
       types.flatMap((type) =>
         type.kind === 'struct' && type.name === name ? [type.fields.map((f) => f.name)] : [],
@@ -132,8 +126,7 @@ describe('struct layout', () => {
           `  const shape: { ${shapeType} } = s`,
           `  ([${reads}], [${shapeReads}])`,
         ].join('\n');
-        const program = stdProgramOf({ main });
-        const { types } = compiledDefinition(program, 'main');
+        const { types } = mainDefinition(main);
         const entry = types.find((type) => type.name === 'main.S');
         expect(entry?.kind === 'struct' && entry.fields.map((f) => f.name)).toEqual(
           inNameOrder(fields),

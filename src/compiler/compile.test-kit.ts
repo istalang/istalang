@@ -126,14 +126,26 @@ export function encodedDespiteCycles(main: string): EncodedDefinition {
   return validEncoded(lower(checker, entry));
 }
 
-/** The encoded Definition of the program rooted at `main`, beside `others`, with every std module. */
-export function compiledEncoded(main: string, others: Files = {}): EncodedDefinition {
+const mainDefinitions = new Map<string, Definition>();
+
+/**
+ * The Definition of the program rooted at `main`, beside `others`, with every std module: checked
+ * after the std modules, and compiled once per test file.
+ */
+export function mainDefinition(main: string, others: Files = {}): Definition {
   const files = { main, ...others };
-  return memo(compiledPrograms, filesKey(files), () => {
+  return memo(mainDefinitions, filesKey(files), () => {
     const program = stdProgramOf(files);
     checkedAfterStd(program);
-    return validEncoded(compiledDefinition(program, 'main'));
+    return compiledDefinition(program, 'main');
   });
+}
+
+/** The encoded Definition of the program rooted at `main`, beside `others`, with every std module. */
+export function compiledEncoded(main: string, others: Files = {}): EncodedDefinition {
+  return memo(compiledPrograms, filesKey({ main, ...others }), () =>
+    validEncoded(mainDefinition(main, others)),
+  );
 }
 
 /** The diagnostics of module `key` of `program`; throws when the program didn't load it. */
