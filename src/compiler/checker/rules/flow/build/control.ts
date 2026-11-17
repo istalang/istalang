@@ -43,7 +43,7 @@ import { unitForm } from '../../../surface/constant-form.ts';
 import type { BlockId, ValueId } from '../../../surface/flow-ir.ts';
 import type { Type } from '../../../types/type/index.ts';
 import { boolType } from '../../../types/type/primitives.ts';
-import { awaitedOf, wellKnownArguments } from '../../../types/type/well-known.ts';
+import { wellKnownArguments } from '../../../types/type/well-known.ts';
 import { presentOr } from './chains.ts';
 import type { FlowBuilder } from './flow-builder.ts';
 import { implicitCall, resolvedCall } from './implicit-calls.ts';
@@ -306,13 +306,15 @@ export function awaitFlow(builder: FlowBuilder, node: Await): ValueId {
   return givenBy(builder, node, future);
 }
 
-/** What `future` gave, once it has settled, read at `site`. */
+/**
+ * What `future` gave, once it has settled, read at `site`: of the type checking recorded there, an
+ * await's own or the target a case binds, whatever awaitable it waited through.
+ */
 function givenBy(builder: FlowBuilder, site: Await | SelectCase, future: ValueId): ValueId {
-  const awaited = builder.valueOf(future).type;
   const given =
     site.kind === 'Await'
       ? builder.temporaryOf(site)
-      : builder.temporary(site, awaited && awaitedOf(builder.inputs.checker, awaited)?.value);
+      : builder.temporary(site, builder.body.targetsOf(site)[0]?.type);
   builder.emit({ op: 'read', site, into: given, from: future, part: { kind: 'given' } });
   return given;
 }
