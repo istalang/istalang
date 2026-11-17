@@ -17,8 +17,8 @@ tags: [reuse, stdlib, natives, ranges, positions, time, decimal]
 - list every std module's source by name, or name a std module → `stdModuleSources`, `StdModuleName` (`src/stdlib/std-sources.ts`)
 - get the combined std natives table or the list of std module records → `stdNatives` (`src/stdlib/natives.ts`), `stdModules` (`src/stdlib/std-modules.ts`)
 - type a native function/table by the capabilities it uses, or throw a language panic → `Native`, `Natives`, `NativeContext`, `Panic` (`src/runtime/natives.ts`)
-- request futures, slots, weak refs or resources in a native's context → `WithFutures`, `WithSlots`, `WithWeakSide`, `WithResources` (`src/runtime/natives.ts`)
-- register a language resolver on a future, resolve one, make a `Resolver.of` or `Resolver.at` one or give one an `onCancel` callback, in a native's context → `WithWaits`, `NativeWaits` (`src/runtime/natives.ts`)
+- request futures, weak refs, resources, instances, the random source, the log, contexts, testing or the JSON written in a native's context → `WithFutures`, `WithWeakSide`, `WithResources`, `WithInstances`, `WithRandom`, `WithLogs`, `WithContexts`, `WithTesting`, `WithEncodings` (`src/runtime/natives.ts`)
+- register a resolver on a future, resolve one, make a `Resolver.of` or `Resolver.at` one, give one an `onCancel` callback, or use a slot → write it in Istalang over the prelude's futures, resolvers and `Slot<T>` (`src/stdlib/prelude/prelude.ista`), whose natives are the run's own (`src/runtime/run/run-natives.ts`); no native capability waits
 - request random, logs, instances or testing in a native's context → `WithRandom`, `WithLogs`, `WithInstances`, `WithTesting` (`src/runtime/natives.ts`)
 - reach a live run's contexts (open a runtime, call into a context, serve its jobs) in a native's context → `WithContexts`, `NativeContexts` (`src/runtime/natives.ts`)
 - read or keep the JSON the instance wrote a value as, by type, in a native's context → `WithEncodings`, `NativeEncodings` (`src/runtime/natives.ts`)
@@ -43,7 +43,7 @@ tags: [reuse, stdlib, natives, ranges, positions, time, decimal]
 - A std native's key restates its `.ista` extern's signature (`docs/audit/dry-review-2026-11-13.md`, finding 10): change both in one commit.
 - Extern types needing canonical equality keep their one form as the extern payload: `time.Zone` its canonical string, `decimal.Decimal` its units and scale, which only its module's code builds (`docs/arch/architecture.md`).
 - External input failures (`parse`, `crypto.decode`, `json.parse`) return `Result`; broken preconditions throw `Panic`; broken invariants call `unreachable`.
-- A native keeps no language value past its call outside the instance: it returns it, changes a value it takes by `&` through `NativeContext.changes`, or stores it through a capability (`NativeSlots`, `NativeFutures`, `NativeWaits`, `NativeWeakSide`, `NativeTesting`, `NativeEncodings`), never in a closure or module state. Lifetimes read holders from registers and heap objects alone (`src/runtime/lifetimes/`).
+- A native keeps no language value past its call outside the instance: it returns it, changes a value it takes by `&` through `NativeContext.changes`, or stores it through a capability (`NativeFutures`, `NativeWeakSide`, `NativeResources`, `NativeTesting`, `NativeEncodings`), never in a closure or module state. Lifetimes read holders from registers and heap objects alone (`src/runtime/run/lifetimes.ts`).
 
 ## Recipes
 

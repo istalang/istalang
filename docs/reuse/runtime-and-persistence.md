@@ -36,7 +36,7 @@ How the run works: docs/arch/runtime.md.
 - check host extern signatures across deploys → `recordExternSignatures` (`src/runtime/boundary/extern-signatures.ts`)
 - the start of a function by key, its arguments from JSON, refusing an outcome JSON can't hold → `startOf`, `jsonIn`, `checkJsonOut` (`src/runtime/boundary/starts.ts`)
 - the entry encoding a spawned instance's outcome, from its `Instance<T>` type entry → `outcomeEncoderOf` (`src/definition/tables/types.ts`)
-- create a host runtime: deploy, wake, retry, terminate, inspect → `createRuntime`, `Runtime` (`src/runtime/host/index.ts`); start a deployed program as a live run, read an outcome's JSON text, hear what instances report → `DeployedProgram`, `HostReports`, `readDefinition` (`src/runtime/host/programs.ts`); catch a host refusal → `Refusal` (`src/runtime/refusal.ts`)
+- create a host runtime: deploy, wake, retry, terminate, inspect → `createRuntime`, `Runtime` (`src/runtime/host/index.ts`); start a deployed program as a live run, read an outcome's JSON text, hear what instances report → `DeployedProgram`, `HostReports`, `deployed` (`src/runtime/host/programs.ts`); catch a host refusal → `Refusal` (`src/runtime/refusal.ts`)
 - run a program's live code to its end with a store of its own → `startLive` (`src/runtime/program.ts`); as a built module does → `program` (`src/live/program.ts`)
 - read or wait on time, real or manual → `Clock`, `realTime`, `ManualClock` (`src/runtime/clock.ts`)
 - store Definitions and snapshots in memory → `memoryStore`, `InstanceStore` (`src/runtime/store.ts`); atomically in a directory → `directoryStore` (`src/cli/directory-store.ts`)
