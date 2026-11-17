@@ -7,7 +7,8 @@
  *   shared by every flow the entry writes; a field loop's passes bind one name to several types,
  *   so each pass has its own. A read of a variable at a name is the variable's register, which
  *   nothing releases. Any other value gets the register its operation gave: owning what it made, or
- *   borrowing the part it read.
+ *   borrowing the part it read. A read something may change before its last use holds a copy of
+ *   its own instead (held-reads.ts).
  * - **Ownership** (docs/arch/definition.md, "Holders"). A value used once is moved where an
  *   instruction takes it (`CodeWriter.take`); a variable, or a value used twice, is copied. Writing
  *   a variable lets go of what it held first. A value's release lets go of its register and of
@@ -41,6 +42,7 @@ import type { Label } from '../functions/code-writer.ts';
 import type { TypedValue } from '../values/holdings.ts';
 import { exitWriters } from './exits.ts';
 import { FlowWaits } from './flow-waits.ts';
+import { heldReads, readFactsOf } from './held-reads.ts';
 import { type FlowLayout, layoutOf } from './layout.ts';
 import { operationWriters } from './operations.ts';
 import { type FlowUses, usesOf } from './uses.ts';
@@ -97,6 +99,8 @@ export class FlowWriter {
   readonly waits = new FlowWaits();
   /** The arrays what `hold`s keep is kept in, by scope and type. */
   readonly #lists = new Map<LabelledScope | 'function', Map<string, Register>>();
+  /** The reads that hold their value (held-reads.ts), decided before the flow is written. */
+  #held: ReadonlySet<ValueId> = new Set();
   /** The writes of a variable living in a cell that make its cell (variables.ts). */
   readonly declaring: ReadonlySet<Operation>;
   /** A value converted into the field a key of several names names, by the value it converts. */
@@ -118,6 +122,9 @@ export class FlowWriter {
   write(): void {
     const first = this.context.code.registerCount;
     const { order } = this.#layout;
+    const inPasses = (block: BlockId, read: () => void) =>
+      this.context.inFieldPasses(this.#layout.passesOf(block), read);
+    this.#held = heldReads(this.flow, readFactsOf(this, inPasses));
     for (const [value, until] of this.#uses.kept) {
       this.listOf(until, this.typeOf(value));
     }
@@ -246,6 +253,11 @@ export class FlowWriter {
     }
   }
 
+  /** Whether the read into `value` holds what it reads (held-reads.ts). */
+  holds(value: ValueId): boolean {
+    return this.#held.has(value);
+  }
+
   /** Makes `value` the variable's read `register` is, which nothing releases. */
   alias(value: ValueId, register: Register): void {
     this.#registers.set(value, register);
@@ -297,6 +309,10 @@ export class FlowWriter {
       return;
     }
     const shared = (this.#uses.writes.get(value) ?? 0) > 1;
+    if (known === undefined && !shared && this.#held.has(value) && code.isBorrowed(produced)) {
+      this.bind(value, code.copy(produced, span));
+      return;
+    }
     if (known === undefined && !shared && !this.#isValues(produced)) {
       this.bind(value, produced);
       return;

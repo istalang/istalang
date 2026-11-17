@@ -414,6 +414,12 @@
       "✓ aliasing › values sent through slots, inboxes and resolved futures stay as sent when the sender changes its own",
       "✓ aliasing › values given to spawn and runtime.isolate stay as given when the caller changes its own before awaiting",
       "✓ aliasing › a block expression value stays as computed when a defer changes the outer variable at block exit",
+      "✓ aliasing › a variable read keeps its value when a later operand of its expression assigns the variable",
+      "✓ aliasing › an argument keeps its value when a later argument changes a part of its variable in place",
+      "✓ aliasing › a part read as an argument holds its value when a later argument replaces it",
+      "✓ aliasing › a value read behind a handle holds it when a later argument's call replaces it",
+      "✓ aliasing › a captured variable read keeps its value when a later operand's call assigns it",
+      "✓ aliasing › a destructuring assignment takes its value apart as it was before writing any part",
       "✓ awaitables › an awaitable starts its work only once it is awaited",
       "✓ awaitables › an awaitable waits on a future through that future's onAwait",
       "✓ awaitables › an awaitable races in a select, a case's value given by its own onAwait",
@@ -477,7 +483,7 @@
       "✓ waits › a wait decides at its first case in order when several disposal watches resolve together",
       "✓ waits › waiters readied together by their timers run in execution creation order",
       "✓ waits › a waiting put's value is held by its put alone: let go of with it, or as it loses a select",
-      "67 passed, 0 failed, 0 skipped."
+      "73 passed, 0 failed, 0 skipped."
     ]
   }
 }

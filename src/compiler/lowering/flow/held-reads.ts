@@ -1,0 +1,366 @@
+/**
+ * Which reads of a flow hold the value they read (§2: a value never changes once read;
+ * docs/arch/definition.md, "Places"). A read of a variable at a name is the variable's register,
+ * and a part read out of a value borrows it: both hold nothing, and stay what was read only while
+ * what they were read out of does. A read something may change, in place or by replacing it,
+ * before its last use holds its value instead, a holder of its own, so a write in place copies and
+ * a replaced value outlives the read.
+ *
+ * - **A read's root** is the variable it reads, at a name or through the reads it is a part of;
+ *   one read out of a computed value has none, as nothing else reaches that value. Through a
+ *   handle (`behind`), what it reaches is the handle's state.
+ * - **What may change a root:** a write into its variable, whole or in part, a `&` argument rooted
+ *   at it, or its release; and, where code other than the flow's own reaches it (a cell a closure
+ *   shares, the place a `&` parameter refers to, a handle's state), anything that runs code: a
+ *   call but a native's reading only the values it is given, a conversion, a getter, a wait, a
+ *   write or a release, whose disposals run code.
+ * - **Before its last use:** on some path from the read to a use of it, or of a part read out of
+ *   it that holds nothing itself, not through the read again. A call reading it while it may change
+ *   it is such a path: the call runs on with the value it was given.
+ */
+
+import { memo } from '../../../foundation/structures/memo.ts';
+import {
+  type BlockId,
+  type Exit,
+  type FlowFunction,
+  type Operation,
+  type ValueId,
+  valuesReadBy,
+} from '../../checker/surface/flow-ir.ts';
+import { ownEntryOf } from '../tables/own-entries.ts';
+import { knownVariableRegister } from './variables.ts';
+import type { FlowWriter } from './writer.ts';
+
+/** What deciding a flow's held reads needs to know beyond the flow. */
+export interface ReadFacts {
+  /** Whether code other than the flow's own reaches what variable `value` holds. */
+  readonly reachable: (value: ValueId) => boolean;
+  /** Whether `operation`, a call, runs only a native reading the values it is given. */
+  readonly readsOnly: (operation: Operation) => boolean;
+}
+
+/**
+ * What `heldReads` needs to know of the flow `writer` writes: the variables other code reaches (a
+ * cell this flow shares with a closure or the function enclosing it, a `&` parameter's place),
+ * and the calls of a native taking values alone, each closed in its block's passes (`inPasses`).
+ */
+export function readFactsOf(
+  writer: FlowWriter,
+  inPasses: (block: BlockId, read: () => void) => void,
+): ReadFacts {
+  const { flow, context } = writer;
+  const shared = new Set(flow.captures);
+  const readingOnly = new Set<Operation>();
+  for (const [block, { operations }] of flow.blocks.entries()) {
+    for (const operation of operations) {
+      if (operation.op === 'make' && operation.made.kind === 'closure') {
+        for (const part of operation.parts) {
+          shared.add(part);
+        }
+      }
+    }
+    inPasses(block, () => {
+      for (const operation of operations) {
+        if (operation.op === 'call' && callsNativeOnValues(writer, operation)) {
+          readingOnly.add(operation);
+        }
+      }
+    });
+  }
+  const reachable = (value: ValueId) => {
+    const variable = writer.valueOf(value);
+    if (variable.kind !== 'variable') {
+      return false;
+    }
+    const register = knownVariableRegister(context, variable, writer.typeOf(value));
+    const referred = register !== undefined && context.code.typeOf(register).kind === 'reference';
+    return referred || (variable.inCell && shared.has(value));
+  };
+  return { reachable, readsOnly: (operation) => readingOnly.has(operation) };
+}
+
+/** Whether `operation` calls a native, giving it values alone, none a function to call back. */
+function callsNativeOnValues(
+  writer: FlowWriter,
+  operation: Extract<Operation, { readonly op: 'call' }>,
+): boolean {
+  const closed = writer.context.closed(operation.call);
+  return (
+    closed.kind !== 'dispatch' &&
+    ownEntryOf(writer.context.checker, closed.instance).kind === 'native' &&
+    operation.arguments.every(
+      (argument) => argument.kind === 'value' && writer.typeOf(argument.value).kind !== 'function',
+    )
+  );
+}
+
+/** What a read stays what it read while nothing changes: its variable, and whether others reach it. */
+interface Root {
+  readonly variable: ValueId | undefined;
+  readonly reachable: boolean;
+}
+
+/** An operation of a flow, or its block's exit (`index` past the last operation). */
+interface Position {
+  readonly block: BlockId;
+  readonly index: number;
+}
+
+/** The reads of `flow` that hold their value, each the value it reads into. */
+export function heldReads(flow: FlowFunction, facts: ReadFacts): ReadonlySet<ValueId> {
+  const reads = readsOf(flow, facts);
+  const uses = usesOf(flow);
+  const graph = graphOf(flow);
+  const judging = { ...facts, isVariable: (value: ValueId) => isVariableOf(flow, value) };
+  const held = new Set<ValueId>();
+  /** Where each read decided so far is used, itself or through a part of it holding nothing. */
+  const lasting = new Map<ValueId, readonly Position[]>();
+  // A part read out of a read is read after it, so it is decided first.
+  for (const [value, read] of [...reads].toSorted(([first], [second]) => second - first)) {
+    const used = [
+      ...(uses.get(value) ?? []),
+      ...read.parts.filter((part) => !held.has(part)).flatMap((part) => lasting.get(part) ?? []),
+    ];
+    lasting.set(value, used);
+    const changing = (operation: Operation) => changes(operation, read.root, judging);
+    if (changedBeforeUse(graph, { at: read.at, used }, changing)) {
+      held.add(value);
+    }
+  }
+  return held;
+}
+
+function isVariableOf(flow: FlowFunction, value: ValueId): boolean {
+  return flow.values[value]?.kind === 'variable';
+}
+
+/** A flow's blocks, and the blocks each is reached from. */
+interface Graph {
+  readonly flow: FlowFunction;
+  readonly predecessors: ReadonlyMap<BlockId, readonly BlockId[]>;
+}
+
+function graphOf(flow: FlowFunction): Graph {
+  const predecessors = new Map<BlockId, BlockId[]>();
+  for (const [block, { exit }] of flow.blocks.entries()) {
+    for (const target of targetsOf(exit)) {
+      memo(predecessors, target, () => []).push(block);
+    }
+  }
+  return { flow, predecessors };
+}
+
+/** The blocks reached from `starts` going `next`, `starts` among them. */
+function reached(starts: readonly BlockId[], next: (block: BlockId) => readonly BlockId[]) {
+  const seen = new Set<BlockId>(starts);
+  const pending = [...starts];
+  for (let block = pending.pop(); block !== undefined; block = pending.pop()) {
+    for (const each of next(block)) {
+      if (!seen.has(each)) {
+        seen.add(each);
+        pending.push(each);
+      }
+    }
+  }
+  return seen;
+}
+
+/** A read of a flow: where it is, its root, and the reads of parts of it, which borrow from it. */
+interface Read {
+  readonly at: Position;
+  readonly root: Root;
+  readonly parts: ValueId[];
+}
+
+/**
+ * Every read of `flow` with a root, by the value it reads into, taken in the order values were made,
+ * so what a read reads out of is known before it, whatever block it stands in.
+ */
+function readsOf(flow: FlowFunction, facts: ReadFacts): ReadonlyMap<ValueId, Read> {
+  const found = flow.blocks.flatMap(({ operations }, block) =>
+    operations.flatMap((operation, index) => {
+      const read = readOf(operation);
+      return read === undefined || isVariableOf(flow, read.into)
+        ? []
+        : [{ ...read, at: { block, index } }];
+    }),
+  );
+  const reads = new Map<ValueId, Read>();
+  const rootOf = (value: ValueId): Root | undefined =>
+    isVariableOf(flow, value)
+      ? { variable: value, reachable: facts.reachable(value) }
+      : reads.get(value)?.root;
+  for (const { into, from, behind, at } of found.toSorted(
+    (first, second) => first.into - second.into,
+  )) {
+    const root = rootOf(from);
+    if (root !== undefined) {
+      reads.get(from)?.parts.push(into);
+      reads.set(into, { at, root: { ...root, reachable: root.reachable || behind }, parts: [] });
+    }
+  }
+  return reads;
+}
+
+/** What `operation` reads into a temporary without making a value of its own, if it does. */
+function readOf(
+  operation: Operation,
+): { readonly into: ValueId; readonly from: ValueId; readonly behind: boolean } | undefined {
+  if (operation.op === 'copy' && operation.fit === undefined) {
+    return { into: operation.into, from: operation.from, behind: false };
+  }
+  if (operation.op === 'read' && operation.part.kind !== 'given') {
+    return { into: operation.into, from: operation.from, behind: operation.part.kind === 'behind' };
+  }
+  return undefined;
+}
+
+/** Where each value of `flow` is used: an operation reading it, or an exit testing or returning it. */
+function usesOf(flow: FlowFunction): ReadonlyMap<ValueId, readonly Position[]> {
+  const uses = new Map<ValueId, Position[]>();
+  const used = (value: ValueId, at: Position) => memo(uses, value, () => []).push(at);
+  for (const [block, { operations, exit }] of flow.blocks.entries()) {
+    for (const [index, operation] of operations.entries()) {
+      if (operation.op !== 'release' && operation.op !== 'keep') {
+        for (const value of valuesReadBy(operation)) {
+          used(value, { block, index });
+        }
+      }
+    }
+    for (const value of exitReads(exit)) {
+      used(value, { block, index: operations.length });
+    }
+  }
+  return uses;
+}
+
+function exitReads(exit: Exit): readonly ValueId[] {
+  if (exit.kind === 'branch' && 'value' in exit.test) {
+    return [exit.test.value];
+  }
+  return exit.kind === 'return' && exit.value !== undefined ? [exit.value] : [];
+}
+
+/**
+ * Whether a path from the read at `at` meets an operation `changing` finds, then a use of it in
+ * `used`, without reaching the read again; a call that changes it while using it counts. Only the
+ * blocks between the read and its uses are walked.
+ */
+function changedBeforeUse(
+  { flow, predecessors }: Graph,
+  { at, used }: { readonly at: Position; readonly used: readonly Position[] },
+  changing: (operation: Operation) => boolean,
+): boolean {
+  const key = ({ block, index }: Position) => `${String(block)}:${String(index)}`;
+  const usedAt = new Set(used.map(key));
+  if (usedAt.size === 0) {
+    return false;
+  }
+  const after = reached([at.block], (block) => targetsOf(flow.blocks[block]?.exit));
+  const before = reached(
+    used.map(({ block }) => block),
+    (block) => predecessors.get(block) ?? [],
+  );
+  const between = (block: BlockId) => after.has(block) && before.has(block);
+  const seen = new Set<string>();
+  const pending = successors(flow, at).map((position) => ({ position, changed: false }));
+  for (let next = pending.pop(); next !== undefined; next = pending.pop()) {
+    const { position, changed } = next;
+    const seenKey = `${key(position)}:${String(changed)}`;
+    if (key(position) !== key(at) && !seen.has(seenKey)) {
+      seen.add(seenKey);
+      const operation = flow.blocks[position.block]?.operations[position.index];
+      const changesHere = operation !== undefined && changing(operation);
+      if (usedAt.has(key(position)) && (changed || (changesHere && runsWhileUsing(operation)))) {
+        return true;
+      }
+      const now = changed || changesHere;
+      pending.push(
+        ...successors(flow, position)
+          .filter(({ block }) => between(block))
+          .map((each) => ({ position: each, changed: now })),
+      );
+    }
+  }
+  return false;
+}
+
+/** Whether `operation` may change what it reads while it still uses it: a call, a wait. */
+function runsWhileUsing(operation: Operation | undefined): boolean {
+  return operation?.op === 'call' || operation?.op === 'callValue' || operation?.op === 'suspend';
+}
+
+/** Where control goes from `position`: the next operation, or where its block's exit goes. */
+function successors(flow: FlowFunction, { block, index }: Position): readonly Position[] {
+  const current = flow.blocks[block];
+  if (current === undefined) {
+    return [];
+  }
+  if (index < current.operations.length) {
+    return [{ block, index: index + 1 }];
+  }
+  return targetsOf(current.exit).map((target) => ({ block: target, index: 0 }));
+}
+
+function targetsOf(exit: Exit | undefined): readonly BlockId[] {
+  switch (exit?.kind) {
+    case 'goto':
+      return [exit.to];
+    case 'branch':
+      return exit.to;
+    default:
+      return [];
+  }
+}
+
+/** Whether `operation` may change what a read of `root` reads. */
+function changes(
+  operation: Operation,
+  root: Root,
+  facts: ReadFacts & { readonly isVariable: (value: ValueId) => boolean },
+): boolean {
+  const written = writes(operation);
+  if (root.variable !== undefined && written.includes(root.variable)) {
+    return true;
+  }
+  // Writing a variable ends what it held, whose disposal runs code.
+  return root.reachable && (runsCode(operation, facts) || written.some(facts.isVariable));
+}
+
+/** The variables `operation` writes, whole or in part, by `&` or by ending them. */
+function writes(operation: Operation): readonly ValueId[] {
+  switch (operation.op) {
+    case 'write':
+      return [operation.place.root];
+    case 'call':
+    case 'callValue':
+      return [
+        operation.into,
+        ...operation.arguments.flatMap((each) => (each.kind === 'place' ? [each.place.root] : [])),
+      ];
+    case 'release':
+      return operation.values;
+    default:
+      return 'into' in operation ? [operation.into] : [];
+  }
+}
+
+/** Whether `operation` may run code that reaches what a cell, reference or handle holds. */
+function runsCode(operation: Operation, facts: ReadFacts): boolean {
+  switch (operation.op) {
+    case 'call':
+    case 'callValue':
+      return !facts.readsOnly(operation);
+    case 'copy':
+      return operation.fit !== undefined;
+    case 'read':
+      return operation.part.kind === 'required';
+    case 'write':
+    case 'suspend':
+    case 'release':
+      return true;
+    default:
+      return false;
+  }
+}

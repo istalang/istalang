@@ -71,7 +71,9 @@ values and disposes what loses its last holder in rounds, newest first (docs/arc
 
 ## Places
 
-A place is a root, a register, a cell (a variable a closure captures or a `&` passes, a shared struct's state) or a reference a `&` parameter holds, and a path of tuple, field and variant steps. `load` reads a place (into a borrowed register, a borrow; one read past a call or store that may write that place in place keeps the value as read, `readPastWrites`, which lowering decides over the whole function table, `functions/loads-past-writes.ts`), `store` writes one, changing in place where the value is unique, and `reference` makes the `&` argument a call passes; following a path never runs code.
+A place is a root, a register, a cell (a variable a closure captures or a `&` passes, a shared struct's state) or a reference a `&` parameter holds, and a path of tuple, field and variant steps. `load` reads a place (into a borrowed register, a borrow, or into an owned one, another holder), `store` writes one, changing in place where the value is unique, and `reference` makes the `&` argument a call passes; following a path never runs code.
+
+A borrow, of a register's value or of a part of it (`tupleItem`, `structField`, `variantField`, a borrowing `load`), holds nothing: it reads what it was read from only while that stays as it was. Lowering decides, per flow, which reads something may change before their last use (a write of their variable or of a part of it, a `&` argument, a release; where other code reaches it, a cell a closure shares, a `&` parameter's place, a handle's state, anything running code but a native given values alone), and makes those hold their value instead (`flow/held-reads.ts`), so a value read never changes and outlives its replacement.
 
 An indexed element is no step of a place, so every element read and write is a call: `index` and `setIndex(&container, key, value)`, as the checker resolved them for its container.
 

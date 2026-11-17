@@ -228,12 +228,10 @@ const emitters: Handlers<EntryScope, Instruction, [], string> = {
   },
   load: (scope, i) => {
     const borrowed = scope.entry.registers[i.dst]?.borrowed === true;
-    // A borrow read past a write keeps its value as read: shared, a write copies it.
-    const kept = i.readPastWrites === true ? ` share(${register(i.dst)});` : '';
     return assigned(
       i.dst,
       `load(${rootOf(i.place)}, ${pathOf(i.place)})`,
-      borrowed ? kept : held(scope, i.dst),
+      borrowed ? '' : held(scope, i.dst),
     );
   },
   store: (scope, i) => {

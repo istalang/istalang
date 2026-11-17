@@ -50,8 +50,8 @@ as the cell loses its last holder.
   maps to a primitive (`primitiveOfExtern`) has no native: a call of it is the operation, and a
   function value of it runs an entry that is.
 - Places (`load`, `store`, `reference`) go through the run, which writes along a path in place where
-  the value is unique (`Lifetimes.withPart`); a borrowing `load` marked `readPastWrites` shares what
-  it read, so a later write copies it.
+  the value is unique (`Lifetimes.withPart`); a borrowing `load` holds nothing, as lowering loads
+  into an owned register what a write may change before the borrow's last use.
 - A call of a known entry is a direct call; a call of a function value goes through `callValue`; an
   async callee starts an execution and gives its future (`Run.start`).
 - `currentCall` is the frame's execution in async code and `currentExecution()` in simple code.

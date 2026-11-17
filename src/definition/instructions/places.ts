@@ -41,15 +41,11 @@ export type Place = z.output<typeof place>;
 const newCell = defineInstruction('newCell', { dst: register, value: register });
 
 /**
- * `dst` another holder of the value at `place`, or, a borrowed register, a borrow of it; one
- * `readPastWrites` is read after a write that may change that value in place, so it keeps the
- * value as it was read (lowering's functions/loads-past-writes.ts).
+ * `dst` another holder of the value at `place`, or, a borrowed register, a borrow of it, valid
+ * while that value stays as it was: lowering loads into an owned register where anything may
+ * change it before the borrow's last use (lowering's flow/held-reads.ts).
  */
-const load = defineInstruction('load', {
-  dst: register,
-  place,
-  readPastWrites: z.literal(true).optional(),
-});
+const load = defineInstruction('load', { dst: register, place });
 
 /** Moves `value` into `place`, letting go of what the place held. */
 const store = defineInstruction('store', { place, value: register });

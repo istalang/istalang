@@ -6,10 +6,11 @@
  *   construction is built of is moved in, or copied where read again (`CodeWriter.take`).
  * - A struct is built by its fields' names, whatever order its literal gives them in; its
  *   comprehension's parts are the fields its passes visit.
- * - A `copy` out of a variable at a name is the variable's value, read in place; one into the field
- *   a key of several names names converts as the place is written (places.ts); any other is a
- *   move or copy into its own, or the conversion checking fitted. A `read` borrows a part
- *   (parts.ts).
+ * - A `copy` out of a variable at a name is the variable's value, read in place, and a `read`
+ *   borrows a part (parts.ts), each held instead where something may change it before its last
+ *   use (held-reads.ts); a copy into the field a key of several names names converts as the place
+ *   is written (places.ts); any other is a move or copy into its own, or the conversion checking
+ *   fitted.
  * - A call's `&` arguments are entered as places; a function value's pack spread passes its
  *   tuple's elements (§3.5). An `onAwait` gets the resolver of its case of the wait being opened
  *   (calls/waits.ts); `await` parks once every case has one, then takes what the future gave.
@@ -297,13 +298,15 @@ function copied(writer: FlowWriter, operation: Of<'copy'>): void {
   ) {
     const register = writer.registerOf(from);
     const rootKind = rootKindOf(writer, from);
-    if (rootKind === 'register') {
+    if (rootKind === 'register' && writer.holds(into)) {
+      writer.define(into, register, span, operation);
+    } else if (rootKind === 'register') {
       writer.alias(into, register);
     } else {
       const read = code.borrow(writer.context.tables.types.reference(writer.typeOf(from)));
       const place = { root: { kind: rootKind, register }, path: [] };
       code.emit({ kind: 'load', span, dst: read, place });
-      writer.alias(into, read);
+      writer.define(into, read, span, operation);
     }
   } else if (fit === 'intoKeyedField') {
     writer.keyed.set(into, from);
