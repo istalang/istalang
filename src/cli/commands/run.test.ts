@@ -143,7 +143,7 @@ describe('ista run', () => {
       '  @Waypoint{"stuck-slot"}',
       '  const v = await s.take()',
       '  v',
-      'live async fn main() -> Int: await runtime.run("o/1") stuck()',
+      'live async fn main() -> Int: await runtime.run("o1") stuck()',
       '',
     ].join('\n');
     const run = await ista(project({ 'main.ista': text }), 'run', 'main.ista');

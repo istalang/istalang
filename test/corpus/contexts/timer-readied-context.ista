@@ -17,7 +17,7 @@ ista async fn parent(due: time.Time) -> String:
 live async fn main() -> String:
   const due = time.now() + 5ms
   const rt = await runtime.Runtime.open(runtime.hostStore())
-  const call = rt.call("o/1") parent(due)
+  const call = rt.call("o1") parent(due)
   await select:
     case call as answer:
       drop answer

@@ -19,7 +19,7 @@ describe('the loop serving jobs', () => {
         'main.ready()': () => ready,
         'main.retried()': async () => {
           ready = true;
-          await test.runtime.retry('o/1');
+          await test.runtime.retry('o1');
           return null;
         },
       },
@@ -36,7 +36,7 @@ describe('the loop serving jobs', () => {
         '  if not ready():',
         '    panic("not ready")',
         '  const child = spawn charging()',
-        '  const own = await runtime.delegate charge("o/1")',
+        '  const own = await runtime.delegate charge("o1")',
         '  match await child.result():',
         '    case Ok(theirs): drop done.put(own + ", " + theirs)',
         '    case Err(error): drop done.put(error.message)',
@@ -44,21 +44,21 @@ describe('the loop serving jobs', () => {
         'ista async fn worked() -> String: await done.read()',
         'live async fn main() -> String:',
         '  const rt = await runtime.Runtime.open(runtime.hostStore())',
-        '  drop await rt.call("o/1") work()',
+        '  drop await rt.call("o1") work()',
         '  await time.delay(10ms)',
         '  await retried()',
-        '  match await rt.call("o/1") worked():',
+        '  match await rt.call("o1") worked():',
         '    case Ok(v): v',
         '    case Err(e): e.message',
       ),
     );
     expect(await startToEnd(test, program)).toEqual({
       kind: 'finished',
-      outcome: '"receipt for o/1, receipt for child"',
+      outcome: '"receipt for o1, receipt for child"',
     });
     expect(calls).toEqual(
       new Map([
-        ['o/1', 1],
+        ['o1', 1],
         ['child', 1],
       ]),
     );

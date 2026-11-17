@@ -18,8 +18,8 @@ ista async fn refund(order: Order) -> Int: panic("no refunds for " + order.id)
 
 live async fn main() -> Int:
   const rt = await runtime.Runtime.open(runtime.hostStore())
-  const first = rt.call("o/1") purchase(Order{id: "a", amount: 1})
-  const second = rt.call("o/1") purchase(Order{id: "b", amount: 2})
+  const first = rt.call("o1") purchase(Order{id: "a", amount: 1})
+  const second = rt.call("o1") purchase(Order{id: "b", amount: 2})
   match (await first, await second):
     case (Ok(one), Ok(two)): one * 10 + two
     case _: -1

@@ -11,7 +11,7 @@ import { recordingStore, startToEnd, testRuntime } from '../runtime.test-kit.ts'
 import { memoryStore } from '../store.ts';
 
 /**
- * A program whose first run leaves `o/1/1` waiting on a timer as it ends, and whose second opens a
+ * A program whose first run leaves `o1/1` waiting on a timer as it ends, and whose second opens a
  * runtime and waits past that timer.
  */
 const resuming = compiledEncoded(
@@ -31,8 +31,8 @@ const resuming = compiledEncoded(
     '  1',
     'live async fn main() -> Int:',
     '  if phase() == 1:',
-    '    return await runtime.run("o/1") begin()',
-    '  await runtime.run("o/2") idle()',
+    '    return await runtime.run("o1") begin()',
+    '  await runtime.run("o2") idle()',
   ),
 );
 
@@ -56,6 +56,6 @@ describe('a runtime opened over a store', () => {
     const second = testRuntime({ externs: host, store: recordingStore(store) });
     expect(await startToEnd(second, resuming)).toEqual({ kind: 'finished', outcome: '1' });
     expect(notes).toEqual(['resumed']);
-    expect(second.runtime.inspect('o/1/1').state).toMatchObject({ kind: 'finished' });
+    expect(second.runtime.inspect('o1/1').state).toMatchObject({ kind: 'finished' });
   });
 });

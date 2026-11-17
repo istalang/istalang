@@ -22,13 +22,13 @@ import { recordingStore, startToEnd, testRuntime } from '../../runtime/runtime.t
 import { memoryStore } from '../../runtime/store.ts';
 import { chargeKey, countingHost, header } from './delegate.test-kit.ts';
 
-/** A program whose `main` runs `body`, ista code, in the context "o/1". */
+/** A program whose `main` runs `body`, ista code, in the context "o1". */
 function running(...body: string[]): EncodedDefinition {
   return compiledEncoded(
     lines(
       ...header,
       ...body,
-      'live async fn main() -> String: await runtime.run("o/1") purchase("o/1")',
+      'live async fn main() -> String: await runtime.run("o1") purchase("o1")',
     ),
   );
 }
@@ -68,7 +68,7 @@ function purchaseOf(steps: readonly Step[]): {
       '    got = got + await job',
       '  got',
     ),
-    gives: ['o/1', ...named('awaited'), ...named('started')].join(''),
+    gives: ['o1', ...named('awaited'), ...named('started')].join(''),
   };
 }
 
@@ -81,9 +81,9 @@ describe('delegate', () => {
     const { host, calls } = countingHost();
     expect(await startToEnd(testRuntime({ externs: host }), purchase)).toEqual({
       kind: 'finished',
-      outcome: '"receipt for o/1!"',
+      outcome: '"receipt for o1!"',
     });
-    expect(calls).toEqual(new Map([['o/1', 1]]));
+    expect(calls).toEqual(new Map([['o1', 1]]));
   });
 
   it('runs it once when the context crashes at every await', async () => {
@@ -91,8 +91,8 @@ describe('delegate', () => {
     const ended = await startToEnd(testRuntime({ externs: host }), purchase, {
       crashEveryAwait: true,
     });
-    expect(ended).toEqual({ kind: 'finished', outcome: '"receipt for o/1!"' });
-    expect(calls).toEqual(new Map([['o/1', 1]]));
+    expect(ended).toEqual({ kind: 'finished', outcome: '"receipt for o1!"' });
+    expect(calls).toEqual(new Map([['o1', 1]]));
   });
 
   it('runs the jobs of a segment, and of one awaited later, each once', async () => {
@@ -107,12 +107,12 @@ describe('delegate', () => {
       await startToEnd(testRuntime({ externs: host }), both, { crashEveryAwait: true }),
     ).toEqual({
       kind: 'finished',
-      outcome: '"receipt for o/1receipt for o/1/2"',
+      outcome: '"receipt for o1receipt for o1/2"',
     });
     expect(calls).toEqual(
       new Map([
-        ['o/1', 1],
-        ['o/1/2', 1],
+        ['o1', 1],
+        ['o1/2', 1],
       ]),
     );
   });
@@ -140,14 +140,14 @@ describe('delegate', () => {
       once,
     );
     expect(stopped).toMatchObject({ kind: 'panicked' });
-    expect(calls).toEqual(new Map([['o/1', 1]]));
+    expect(calls).toEqual(new Map([['o1', 1]]));
 
     const resumed = await startToEnd(
       testRuntime({ externs: host, store: recordingStore(store) }),
       once,
     );
-    expect(resumed).toEqual({ kind: 'finished', outcome: '"receipt for o/1"' });
-    expect(calls).toEqual(new Map([['o/1', 2]]));
+    expect(resumed).toEqual({ kind: 'finished', outcome: '"receipt for o1"' });
+    expect(calls).toEqual(new Map([['o1', 2]]));
   });
 
   it('runs every job a committed segment still holds once, and none withdrawn or discarded', {
@@ -187,7 +187,7 @@ describe('delegate', () => {
       lines(
         "import * as runtime from 'runtime'",
         'ista async fn purchase(id: String) -> String: id',
-        'live async fn main() -> String: await runtime.run("o/1") purchase("o/1")',
+        'live async fn main() -> String: await runtime.run("o1") purchase("o1")',
       ),
     );
     expect(served(plain)).toEqual([undefined, false]);
@@ -228,9 +228,9 @@ describe('delegate', () => {
     );
     expect(await startToEnd(testRuntime({ externs: host }), droppedBeforeCommit)).toEqual({
       kind: 'finished',
-      outcome: '"else:receipt for o/1"',
+      outcome: '"else:receipt for o1"',
     });
-    expect(calls).toEqual(new Map([['o/1', 1]]));
+    expect(calls).toEqual(new Map([['o1', 1]]));
   });
 
   it('cancels a running job when its future loses an await select', async () => {
@@ -258,17 +258,17 @@ describe('delegate', () => {
         '    case time.delay(10ms):',
         '      "timed-out"',
         '  first + ":" + (await runtime.delegate charge(id))',
-        'live async fn main() -> String: await runtime.run("o/1") purchase("o/1")',
+        'live async fn main() -> String: await runtime.run("o1") purchase("o1")',
       ),
     );
     expect(
       await startToEnd(testRuntime({ externs: slowHost, store: recordingStore(store) }), raced),
     ).toEqual({
       kind: 'finished',
-      outcome: '"timed-out:receipt for o/1"',
+      outcome: '"timed-out:receipt for o1"',
     });
     expect(cancelled).toBe(1);
-    expect(calls).toEqual(new Map([['o/1', 1]]));
+    expect(calls).toEqual(new Map([['o1', 1]]));
   });
 
   it('cancels the jobs a runtime runs when it is disposed', async () => {
@@ -288,15 +288,15 @@ describe('delegate', () => {
         'extern live async fn waitCancel(id: String) -> String',
         'ista const kept = new Shared<Future<String, "ista">?>{value: none}',
         'ista async fn start() -> String:',
-        '  kept->value = runtime.delegate waitCancel("o/1")',
+        '  kept->value = runtime.delegate waitCancel("o1")',
         '  "started"',
         'ista async fn pause() -> String:',
         '  await time.delay(10ms)',
         '  "paused"',
         'live async fn main() -> String:',
         '  const rt = await runtime.Runtime.open(runtime.hostStore())',
-        '  drop await rt.call("o/1") start()',
-        '  drop await rt.call("o/1") pause()',
+        '  drop await rt.call("o1") start()',
+        '  drop await rt.call("o1") pause()',
         '  drop rt',
         '  "disposed"',
       ),
@@ -334,15 +334,15 @@ describe('delegate', () => {
         '  "done"',
         'live async fn main() -> String:',
         '  if phase() == 1:',
-        '    return await runtime.run("o/1") start()',
+        '    return await runtime.run("o1") start()',
         '  const rt = await runtime.Runtime.open(runtime.hostStore())',
-        '  _ = rt.call("o/1") delegating()',
-        '  match await rt.call("o/1") waitDone():',
+        '  _ = rt.call("o1") delegating()',
+        '  match await rt.call("o1") waitDone():',
         '    case Ok(v): v',
         '    case Err(e): e.message',
       ),
     );
-    // The first run leaves its loop's take waiting in `o/1`, which the second's job may decide.
+    // The first run leaves its loop's take waiting in `o1`, which the second's job may decide.
     expect(
       await startToEnd(testRuntime({ externs: phasedHost, store: recordingStore(store) }), program),
     ).toEqual({

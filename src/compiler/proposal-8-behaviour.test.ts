@@ -232,7 +232,7 @@ describe('proposal 8 behaviour table: kinds', () => {
         'ista async fn f() -> String:',
         '  const page = await runtime.delegate get("u")',
         '  `${page} ${await runtime.delegate charge("o/1")}`',
-        'live async fn main() -> String: await runtime.run("o/1") f()',
+        'live async fn main() -> String: await runtime.run("o1") f()',
       ),
     );
     const host = {

@@ -18,6 +18,6 @@ ista async fn refund(order: Order) -> Int: panic("no refunds for " + order.id)
 
 live async fn main() -> Int:
   const rt = await runtime.Runtime.open(runtime.hostStore())
-  match await rt.call("o/1") purchase(Order{id: "o/1", amount: 21}):
+  match await rt.call("o1") purchase(Order{id: "o/1", amount: 21}):
     case Ok(value): value
     case Err(error): error.message.length()

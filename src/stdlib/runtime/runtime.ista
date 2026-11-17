@@ -98,8 +98,10 @@ struct Call<R>:
 live fn onAwait<R>(self: Call<R>, done: Resolver<Result<R>, "live">): self.result.onAwait(done)
 
 # Runs `f` in the context named `key`, made if new (§9). Every call starts a new invocation, which
-# releasing the `Call` doesn't cancel, and what crosses into the context and back is sendable.
+# releasing the `Call` doesn't cancel, and what crosses into the context and back is sendable. A
+# key holds no `/`, which only spawned instances' names do, so no key names one of them.
 live fn call<R is Sendable>(self: Runtime, key: String, f: sendable ista async fn() -> R) -> Call<R>:
+  if "/" in key: panic("A context's key '" + key + "' holds a '/', which only spawned instances' names do (§9).")
   Call<R>{result: _call(self->_host, key, f)}
 
 live async fn _call<R is Sendable>(

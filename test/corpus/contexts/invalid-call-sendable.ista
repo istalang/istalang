@@ -1,6 +1,6 @@
 # error: 5610 at 10:22
-# error: 5610 at 16:22
-# error: 5644 at 16:29
+# error: 5610 at 16:21
+# error: 5644 at 16:28
 # error: 5101 at 17:7
 # What a context call carries crosses into its context, so its arguments and its result must be
 # sendable (§9): a runtime given as an argument, and a shared struct given back.
@@ -13,6 +13,6 @@ ista async fn sharedResult() -> Shared<Int>: new Shared{value: 1}
 
 live async fn main() -> Int:
   const rt = await runtime.Runtime.open(runtime.hostStore())
-  _ = rt.call("o/1") opened(rt)
-  _ = rt.call("o/1") sharedResult()
+  _ = rt.call("o1") opened(rt)
+  _ = rt.call("o1") sharedResult()
   1
