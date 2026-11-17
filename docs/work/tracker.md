@@ -37,7 +37,7 @@ tags: [tracker]
 
 ## Filed
 
-Open items only: an item is removed once it is resolved; git history keeps it. Each group numbers its own items and keeps counting up: the next ids are F39, P56, Q59, B121. Items filed before 2026-10-28 shared one `D` series; older docs and git history keep the closed `D` ids.
+Open items only: an item is removed once it is resolved; git history keeps it. Each group numbers its own items and keeps counting up: the next ids are F39, P56, Q59, B122. Items filed before 2026-10-28 shared one `D` series; older docs and git history keep the closed `D` ids.
 
 Size: easy (one short, local change), medium (several files or a design choice inside one layer), big (cross-layer, or a decision first). Depends on: what must happen first, or "none" when it can be done now.
 
@@ -202,3 +202,4 @@ Crashes, spec gaps, wrong or missing diagnostics, host-visible behaviour.
 | B117 | Futures settling together don't decide at the one registered earliest (spec §6): the run orders by resolver rank, then future by future. Needs a registration serial persisted in snapshots. | small | none | ir-first R1 2026-11-17 |
 | B119 | A resource or extern payload read back from a snapshot decodes safe bigints as numbers, so after a restart a host may get `7` where it gave `7n`. | small | none | ir-first R1 2026-11-17 |
 | B120 | Deploy writes the Definition to the store before checking extern signatures, so a deploy refused for changed externs still stores it (the old pipeline checked first). | small | none | ir-first R1 2026-11-17 |
+| B121 | `src/compiler/parser/parse.bench.ts` fails its own precondition on main: a spec module example now holds `…` outside a comment, so its 10k-line input has 441 scan errors and `npm run bench` stops there. Either the example or the bench's filter is wrong. | easy | none | ir-first R1 2026-11-17 |
