@@ -86,6 +86,11 @@ export interface EntryIdentity<Kind extends EntryKind> {
   readonly body?: (keys: EntryKeys, entry: EntryOf<Kind>) => string;
   /** The type whose variants a closing entry switches over; none for an entry lowered once. */
   readonly closedOver?: (entry: EntryOf<Kind>) => Type;
+  /**
+   * Whether the entry is placed where lowering first met it, which its key doesn't say: then it
+   * depends on the order a program reached it in, and no other program's entry can stand for it.
+   */
+  readonly placedWhereMet?: true;
 }
 
 /** Every kind's identity, as the kind table gives it. */

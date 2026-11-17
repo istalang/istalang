@@ -9,6 +9,8 @@
  * - **A type** by its table key (names.ts).
  * - **A node**, a lambda, a local function or a field loop's header, by its module's canonical
  *   name and where it starts there.
+ *
+ * A key spelling only what the std declares means one entry in every program over the same std.
  */
 
 import { memo } from '../../../foundation/structures/memo.ts';
@@ -24,7 +26,7 @@ import type {
 } from '../../syntax/declarations/index.ts';
 import type { VariableDeclaration } from '../../syntax/statements/index.ts';
 import { type AnchoredSpan, spanIn } from '../../syntax/tree/positions.ts';
-import { qualifiedNameOf, tableKey } from './names.ts';
+import { namesOnlyStd, qualifiedNameOf, tableKey } from './names.ts';
 
 /** A declaration an entry's key names. */
 type KeyedDeclaration =
@@ -58,6 +60,33 @@ export function entryKeysOf(checker: Checker): EntryKeys {
 }
 
 const keysByProgram = new WeakMap<Checker, EntryKeys>();
+
+/**
+ * Whether the key `spell` spells with an entry's keys names only the std's declarations and types
+ * (`namesOnlyStd`), and nodes only in its modules.
+ */
+export function spellsOnlyStd(checker: Checker, spell: (keys: EntryKeys) => string): boolean {
+  const keys = entryKeysOf(checker);
+  let onlyStd = true;
+  const inStd = (within: KeyedDeclaration) => {
+    onlyStd &&= checker.isStd(checker.moduleOf(within));
+  };
+  spell({
+    declaration: (declaration) => {
+      inStd(declaration);
+      return keys.declaration(declaration);
+    },
+    type: (type) => {
+      onlyStd &&= namesOnlyStd(checker, type);
+      return keys.type(type);
+    },
+    node: (span, within) => {
+      inStd(within);
+      return keys.node(span, within);
+    },
+  });
+  return onlyStd;
+}
 
 function declarationKey(checker: Checker, declaration: KeyedDeclaration): string {
   const name = qualifiedNameOf(checker, declaration);

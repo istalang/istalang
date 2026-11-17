@@ -8,6 +8,9 @@
  *   is written once the worklist is empty, and again whenever lowering has since added a variant.
  * - Entries lowered from one source function share the first one's number as their `body`, which
  *   `==` reads their closures by (§3.14).
+ * - An entry another program lowered (std-lowering.ts) is numbered and queued as one asked for
+ *   anew is, and taken over where it would have been lowered, so the order is the same.
+ * - What each entry's lowering asks of the tables is recorded as its own (requests.ts).
  */
 
 import type { FunctionId } from '../../../definition/operands.ts';
@@ -18,29 +21,48 @@ import type { Type } from '../../checker/types/type/index.ts';
 import { laidOutAs } from '../values/members/holdings.ts';
 import { type EntryIdentities, identityOf, type LoweredEntry } from './entries.ts';
 import type { EntryKeys } from './entry-keys.ts';
+import type { TableRequests } from './requests.ts';
 import type { TypeTable } from './type-table/index.ts';
 
 /** An entry with the index it was numbered. */
-type Numbered = LoweredEntry & { readonly index: FunctionId };
+interface Numbered {
+  readonly index: FunctionId;
+  readonly entry: LoweredEntry;
+}
+
+/** An entry still to be written: one to lower, or one another program lowered to take over. */
+type Pending =
+  | Numbered
+  | { readonly index: FunctionId; readonly adopted: () => FunctionDefinition };
+
+/** An entry this program lowered from its kind, not one it took over, nor a closing one. */
+export interface LoweredHere extends Numbered {
+  readonly definition: FunctionDefinition;
+  /** The key of the source function it runs (`EntryIdentity.body`); none for its own body. */
+  readonly body: string | undefined;
+}
 
 /** What the function table reads of the tables around it. */
 interface FunctionTableSeams {
   readonly identities: EntryIdentities;
   readonly keys: EntryKeys;
   readonly types: TypeTable;
+  readonly requests: TableRequests;
 }
 
 export class FunctionTable {
   readonly #seams: FunctionTableSeams;
   readonly #definitions: (FunctionDefinition | undefined)[] = [];
   readonly #indexes = new Map<string, FunctionId>();
-  readonly #pending: Numbered[] = [];
+  readonly #pending: Pending[] = [];
   readonly #closing: Numbered[] = [];
   /** How many variants its `any` type had when each closing entry was last written. */
   readonly #writtenFor = new Map<FunctionId, number>();
   /** The first entry of each source function, by its body key, and each later one's first. */
   readonly #bodyEntries = new Map<string, FunctionId>();
   readonly #bodies = new Map<FunctionId, FunctionId>();
+  /** Each entry lowered here from its kind, with its body key, by index. */
+  readonly #lowered = new Map<FunctionId, Pick<LoweredHere, 'entry' | 'body'>>();
 
   constructor(seams: FunctionTableSeams) {
     this.#seams = seams;
@@ -48,15 +70,40 @@ export class FunctionTable {
 
   /** The index of `entry`, keyed `key`, numbered and queued the first time it is asked for. */
   index(key: string, entry: LoweredEntry): FunctionId {
-    const { closedOver, body } = identityOf(this.#seams.identities, entry);
-    return memo(this.#indexes, key, () => {
-      const index = this.#definitions.push(undefined) - 1;
-      if (body !== undefined) {
-        this.#numberBody(`${entry.kind}:${body(this.#seams.keys, entry)}`, index);
+    return this.#numbered(key, (index) => {
+      const { closedOver, body } = identityOf(this.#seams.identities, entry);
+      const bodyKey =
+        body === undefined ? undefined : `${entry.kind}:${body(this.#seams.keys, entry)}`;
+      this.#numberBody(bodyKey, index);
+      if (closedOver === undefined) {
+        this.#lowered.set(index, { entry, body: bodyKey });
+        this.#pending.push({ index, entry });
+      } else {
+        this.#closing.push({ index, entry });
       }
-      (closedOver === undefined ? this.#pending : this.#closing).push({ ...entry, index });
-      return index;
     });
+  }
+
+  /**
+   * The index of the entry keyed `key`, numbered and queued the first time it is asked for, as
+   * `index` numbers one, to be written by `adopted` (std-reuse.ts) where it would be lowered.
+   */
+  adopt(key: string, bodyKey: string | undefined, adopted: () => FunctionDefinition): FunctionId {
+    return this.#numbered(key, (index) => {
+      this.#numberBody(bodyKey, index);
+      this.#pending.push({ index, adopted });
+    });
+  }
+
+  /** The index of the entry `key` names, numbered and queued by `queue` the first time. */
+  #numbered(key: string, queue: (index: FunctionId) => void): FunctionId {
+    const index = memo(this.#indexes, key, () => {
+      const numbered = this.#definitions.push(undefined) - 1;
+      queue(numbered);
+      return numbered;
+    });
+    this.#seams.requests.record('function', index);
+    return index;
   }
 
   /** The index of the entry keyed `key`; undefined while nothing asked for it. */
@@ -65,7 +112,10 @@ export class FunctionTable {
   }
 
   /** Notes which entry first ran the source function `bodyKey` names (`EntryIdentity.body`). */
-  #numberBody(bodyKey: string, index: FunctionId): void {
+  #numberBody(bodyKey: string | undefined, index: FunctionId): void {
+    if (bodyKey === undefined) {
+      return;
+    }
     const first = memo(this.#bodyEntries, bodyKey, () => index);
     if (first !== index) {
       this.#bodies.set(index, first);
@@ -79,23 +129,38 @@ export class FunctionTable {
    */
   lowerReached(lowerEntry: (entry: LoweredEntry) => FunctionDefinition): void {
     for (let next = this.#nextPending(); next !== undefined; next = this.#nextPending()) {
-      this.#definitions[next.index] = lowerEntry(next);
+      const pending = next;
+      this.#definitions[pending.index] = this.#seams.requests.during(
+        { kind: 'function', index: pending.index },
+        () => ('adopted' in pending ? pending.adopted() : lowerEntry(pending.entry)),
+      );
     }
   }
 
-  #nextPending(): Numbered | undefined {
+  /** Each entry lowered here from its kind, every pending one written. */
+  *loweredHere(): Iterable<LoweredHere> {
+    for (const [index, { entry, body }] of this.#lowered) {
+      const definition = this.#definitions[index];
+      if (definition === undefined) {
+        unreachable(`Function ${String(index)} was referenced but never lowered.`);
+      }
+      yield { index, entry, definition, body };
+    }
+  }
+
+  #nextPending(): Pending | undefined {
     return this.#pending.shift() ?? this.#nextStale();
   }
 
   #nextStale(): Numbered | undefined {
-    for (const entry of this.#closing) {
-      const { closedOver } = identityOf(this.#seams.identities, entry);
+    for (const closing of this.#closing) {
+      const { closedOver } = identityOf(this.#seams.identities, closing.entry);
       const variants = this.#variantsOf(
-        closedOver?.(entry) ?? unreachable('A closing entry closes over a type.'),
+        closedOver?.(closing.entry) ?? unreachable('A closing entry closes over a type.'),
       );
-      if (this.#writtenFor.get(entry.index) !== variants) {
-        this.#writtenFor.set(entry.index, variants);
-        return entry;
+      if (this.#writtenFor.get(closing.index) !== variants) {
+        this.#writtenFor.set(closing.index, variants);
+        return closing;
       }
     }
     return undefined;

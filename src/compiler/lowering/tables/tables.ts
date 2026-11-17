@@ -6,8 +6,11 @@
  *   instantiation (§3.5), which only reachability can enumerate.
  * - An entry is keyed by its kind and its identity within it, which the kind table gives
  *   (entries.ts), so one asked for twice is one entry.
- * - Types and constants are interned: one entry per distinct type (type-table.ts) or value, a
+ * - Types and constants are interned: one entry per distinct type (type-table/) or value, a
  *   value keyed by its persisted text.
+ * - An entry the std alone decides, which a program over the same std lowered before, is taken over
+ *   from it (std-lowering.ts) in place of being lowered, and once the program is lowered, its own
+ *   such entries are offered to the programs after it.
  */
 
 import { z } from 'zod';
@@ -46,9 +49,12 @@ import {
   nestedName,
   ownerDeclaration,
 } from './instances.ts';
+import type { KeptEntries } from './kept-entries.ts';
 import { orderedByKeys } from './key-order.ts';
 import { qualifiedNameOf } from './names.ts';
 import { ownEntryOf } from './own-entries.ts';
+import { type TableRequest, TableRequests } from './requests.ts';
+import { StdReuse } from './std-reuse.ts';
 import { holdsStandIn, Stencils } from './stencils.ts';
 import { TypeTable } from './type-table/index.ts';
 
@@ -68,34 +74,72 @@ export class DefinitionTables {
   readonly #starts: Definition['starts'][number][] = [];
   /** How instances are shared (stencils.ts). */
   readonly #stencils: Stencils;
-  /** Each instance entry as shared, by its own key. */
-  readonly #sharedEntries = new Map<string, LoweredEntry>();
+  /** Each instance entry as shared, by its own key, with what sharing it asked of the tables. */
+  readonly #sharedEntries = new Map<
+    string,
+    { readonly entry: LoweredEntry; readonly requests: readonly TableRequest[] }
+  >();
+  readonly #requests = new TableRequests();
+  /** Entries taken over from programs over the same std, and offered to them (std-reuse.ts). */
+  readonly #std: StdReuse;
 
   /** Whether the Definition runs tests, whose functions a mock may replace (§10). */
   readonly mocking: boolean;
 
-  /** Tables for `checker`'s program, telling entries apart by the kind table's `identities`. */
+  /**
+   * Tables for `checker`'s program, telling entries apart by the kind table's `identities`, taking
+   * over the entries `kept` holds.
+   */
   constructor(
     checker: Checker,
-    { mocking, identities }: { readonly mocking: boolean; readonly identities: EntryIdentities },
+    {
+      mocking,
+      identities,
+      kept,
+    }: {
+      readonly mocking: boolean;
+      readonly identities: EntryIdentities;
+      readonly kept: KeptEntries;
+    },
   ) {
     this.#checker = checker;
     this.mocking = mocking;
     this.#identities = identities;
     this.#keys = entryKeysOf(checker);
-    this.types = new TypeTable(checker, {
-      functionIndex: (instance) => this.index({ kind: 'instance', instance }),
-      callIndex: (call) => this.callIndex(call),
-      annotationValues: (annotations) => annotationValues(this, annotations),
-      holdsStandIn: (type) => holdsStandIn(checker, type),
-    });
+    const requests = this.#requests;
+    this.types = new TypeTable(
+      checker,
+      {
+        functionIndex: (instance) => this.index({ kind: 'instance', instance }),
+        callIndex: (call) => this.callIndex(call),
+        annotationValues: (annotations) => annotationValues(this, annotations),
+        holdsStandIn: (type) => holdsStandIn(checker, type),
+      },
+      requests,
+    );
     this.#stencils = new Stencils(checker, this.types);
-    this.#functions = new FunctionTable({ identities, keys: this.#keys, types: this.types });
+    this.#functions = new FunctionTable({
+      identities,
+      keys: this.#keys,
+      types: this.types,
+      requests,
+    });
+    this.#std = new StdReuse(kept, {
+      checker,
+      identities,
+      functions: this.#functions,
+      types: this.types,
+      requests,
+      constant: (contents) => this.constant(contents),
+      moduleIndex: (module) => this.moduleIndex(module),
+    });
   }
 
   /** The index of `module` in the module table, with its line starts for spans. */
   moduleIndex(module: ModuleId): number {
-    return memo(this.#moduleIndexes, module, () => this.#addModule(module));
+    const index = memo(this.#moduleIndexes, module, () => this.#addModule(module));
+    this.#requests.record('module', index);
+    return index;
   }
 
   /** The tree of the module at `index` of the module table, which an entry's spans point into. */
@@ -117,7 +161,9 @@ export class DefinitionTables {
    */
   constant(contents: Value): number {
     const key = encodeJson(z.encode(value, contents));
-    return memo(this.#constantIndexes, key, () => this.#constants.push(contents) - 1);
+    const index = memo(this.#constantIndexes, key, () => this.#constants.push(contents) - 1);
+    this.#requests.record('constant', index);
+    return index;
   }
 
   /**
@@ -204,7 +250,7 @@ export class DefinitionTables {
   index(given: LoweredEntry): FunctionId {
     this.#refuseStandInConversion(given);
     const entry = this.#shared(given);
-    return this.#functions.index(this.#keyOf(entry), entry);
+    return this.#std.index(this.#keyOf(entry), entry);
   }
 
   /** The index of `entry`; undefined while nothing asked for it. */
@@ -223,10 +269,17 @@ export class DefinitionTables {
     if (entry.kind !== 'instance' && entry.kind !== 'externDefaults') {
       return entry;
     }
-    return memo(this.#sharedEntries, this.#keyOf(entry), () => ({
-      ...entry,
-      instance: this.#stencils.shared(entry.instance),
-    }));
+    const key = this.#keyOf(entry);
+    const known = this.#sharedEntries.get(key);
+    if (known !== undefined) {
+      this.#requests.replayed(known.requests);
+      return known.entry;
+    }
+    const { result, requests } = this.#requests.captured(
+      (): LoweredEntry => ({ ...entry, instance: this.#stencils.shared(entry.instance) }),
+    );
+    this.#sharedEntries.set(key, { entry: result, requests });
+    return result;
   }
 
   /**
@@ -272,6 +325,7 @@ export class DefinitionTables {
   /** The finished tables, every referenced function lowered, for `purpose`, numbered by key. */
   finish(purpose: Purpose): Definition {
     const { functions, keys } = this.#functions.finished();
+    this.#std.offer({ functionKeys: keys, modules: this.#modules, constants: this.#constants });
     return orderedByKeys(
       {
         modules: this.#modules,

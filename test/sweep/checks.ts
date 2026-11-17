@@ -9,6 +9,7 @@ import { golden } from './checks/golden.ts';
 import { numbering } from './checks/numbering.ts';
 import { ownership } from './checks/ownership.ts';
 import { realTimeRun } from './checks/real-time.ts';
+import { stdReuse } from './checks/std-reuse.ts';
 import type { Check } from './swept.ts';
 
 type CheckKind =
@@ -17,7 +18,8 @@ type CheckKind =
   | 'realTime'
   | 'formatting'
   | 'numbering'
-  | 'ownership';
+  | 'ownership'
+  | 'stdReuse';
 
 export const checks = {
   golden,
@@ -26,4 +28,5 @@ export const checks = {
   formatting,
   numbering,
   ownership,
+  stdReuse,
 } satisfies Record<CheckKind, Check>;

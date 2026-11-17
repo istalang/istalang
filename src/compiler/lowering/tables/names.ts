@@ -13,6 +13,8 @@
  *   members' table keys and names each by one, and an entry a declaration doesn't name is named by
  *   its own (type-table.ts).
  * - Extern keys spell types their own way, stored (extern-keys.ts).
+ * - Whether a type names only the std's declarations is read off the same walk, so a type spelled
+ *   alike in two programs over one std is one type in both (std-lowering.ts).
  */
 
 import { qualifiedName } from '../../../foundation/language/well-known/index.ts';
@@ -103,3 +105,33 @@ function qualifiedIdentities(checker: Checker): IdentitySpelling {
 }
 
 const qualifiedByProgram = new WeakMap<Checker, IdentitySpelling>();
+
+/**
+ * Whether `type` names only declarations the std's modules make, and no `any` type, whose variants
+ * are a program's own: then its table key means one type in every program over the same std.
+ */
+export function namesOnlyStd(checker: Checker, type: Type): boolean {
+  const byKey = memo(onlyStdByProgram, checker, () => new Map<string, boolean>());
+  return memo(byKey, checker.typeKeys.typeKey(type), () => {
+    let onlyStd = true;
+    const qualified = qualifiedIdentities(checker);
+    const spelling: IdentitySpelling = {
+      ...qualified,
+      entity: (entity) => {
+        onlyStd &&= checker.isStd(checker.moduleOf(entity.declaration));
+        return qualified.entity(entity);
+      },
+      trait: (trait) => {
+        onlyStd = false;
+        return qualified.trait(trait);
+      },
+    };
+    checker.typeKeys.keyWith(type, spelling, (part) => {
+      onlyStd &&= namesOnlyStd(checker, part);
+      return tableKey(checker, part);
+    });
+    return onlyStd;
+  });
+}
+
+const onlyStdByProgram = new WeakMap<Checker, Map<string, boolean>>();

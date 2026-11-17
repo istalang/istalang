@@ -100,10 +100,12 @@ export const entryKinds: { readonly [Kind in EntryKind]: EntryKindRow<Kind> } = 
   },
   converting: {
     identity: (keys, { from, to }) => `${keys.type(from)}->${keys.type(to)}`,
+    placedWhereMet: true,
     entry: convertingEntry,
   },
   wrapping: {
     identity: (keys, { from, to }) => `${keys.type(from)}->${keys.type(to)}`,
+    placedWhereMet: true,
     entry: wrappingEntry,
   },
   dispatch: {

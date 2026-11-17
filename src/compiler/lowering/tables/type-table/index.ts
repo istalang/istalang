@@ -21,6 +21,8 @@
  *   converted from, each holding that value as its one field. A variant is added the first time
  *   lowering converts from its type, so a variant's index never changes once code names it;
  *   what switches over every variant is written once lowering has reached them all (tables.ts).
+ * - Every ask for an entry is recorded as the asking entry's (requests.ts), and each layout's own
+ *   asks as its entry's.
  */
 
 import type { TypeId } from '../../../../definition/operands.ts';
@@ -49,6 +51,7 @@ import type {
 import { baseOf } from '../../../checker/types/unions/union-members.ts';
 import { type AnyEntry, anyEnum } from '../any-entries.ts';
 import { tableKey } from '../names.ts';
+import type { TableRequests } from '../requests.ts';
 import {
   type EntryType,
   factsOf,
@@ -84,11 +87,16 @@ export class TypeTable {
    */
   readonly #keys: string[] = [];
   readonly #indexes = new Map<string, TypeId>();
+  /** The type each entry laid out here was made for; none for one taken over by key. */
+  readonly #madeFor = new Map<TypeId, Type>();
+  readonly #requests: TableRequests;
 
   readonly #layoutContext: LayoutContext;
 
-  constructor(checker: Checker, seams: TypeTableSeams) {
+  /** Tables for `checker`'s program, every ask for an entry recorded in `requests`. */
+  constructor(checker: Checker, seams: TypeTableSeams, requests: TableRequests) {
     this.#checker = checker;
+    this.#requests = requests;
     this.#layoutContext = {
       checker,
       seams,
@@ -106,6 +114,11 @@ export class TypeTable {
   /** Every entry's table key, in index order. */
   get keys(): readonly string[] {
     return this.#keys;
+  }
+
+  /** Each entry laid out from a checker's type, by index, with that type. */
+  get made(): ReadonlyMap<TypeId, Type> {
+    return this.#madeFor;
   }
 
   /** How the Definition refers to `type`. */
@@ -178,12 +191,14 @@ export class TypeTable {
   anyIndex(type: AnyType): TypeId {
     const checker = this.#checker;
     const name = tableKey(checker, type);
-    return memo(this.#indexes, name, () => {
+    const index = memo(this.#indexes, name, () => {
       const disposable = checker.reachesDisposable(type);
       const entry: AnyEntry = { kind: 'any', name, disposable, members: [] };
       this.#keys.push(name);
       return this.#entries.push(entry) - 1;
     });
+    this.#requests.record('type', index);
+    return index;
   }
 
   /**
@@ -215,21 +230,30 @@ export class TypeTable {
     return entry;
   }
 
-  /**
-   * The index of `type`'s entry, which `layout` computes. Not `memo`: the index is recorded before
-   * the layout is computed, because a recursive type's layout refers to the type itself.
-   */
   #entryOf(type: Type, layout: () => TypeDefinition): TypeId {
-    const key = tableKey(this.#checker, type);
+    return this.keyed(tableKey(this.#checker, type), layout, type);
+  }
+
+  /**
+   * The index of the entry whose table key is `key`, which `layout` computes the first time, for
+   * `madeFor` where that is a checker's type. Not `memo`: the index is recorded before the layout
+   * is computed, because a recursive type's layout refers to the type itself.
+   */
+  keyed(key: string, layout: () => TypeDefinition, madeFor?: Type): TypeId {
     const known = this.#indexes.get(key);
     if (known !== undefined) {
+      this.#requests.record('type', known);
       return known;
     }
     const index = this.#entries.length;
     this.#indexes.set(key, index);
     this.#keys.push(key);
     this.#entries.push(placeholder);
-    this.#entries[index] = layout();
+    this.#requests.record('type', index);
+    if (madeFor !== undefined) {
+      this.#madeFor.set(index, madeFor);
+    }
+    this.#entries[index] = this.#requests.during({ kind: 'type', index }, layout);
     return index;
   }
 
