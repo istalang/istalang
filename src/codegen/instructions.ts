@@ -14,7 +14,11 @@
  *   record (async today) saves its registers to it at a `park` and returns.
  */
 
-import type { Instruction, InstructionOf } from '../definition/instructions/instruction.ts';
+import {
+  type Instruction,
+  type InstructionOf,
+  operandsOf,
+} from '../definition/instructions/instruction.ts';
 import type { Place } from '../definition/instructions/places.ts';
 import type { Register } from '../definition/operands.ts';
 import type { CodeFunction, FunctionDefinition } from '../definition/tables/functions.ts';
@@ -80,19 +84,15 @@ function made(scope: EntryScope, index: Register): string {
 }
 
 /**
- * Empties the registers `moved` an instruction moved its value out of, where letting go of them
- * would count: their holder is now what the instruction made.
+ * Empties each register `instruction` moves out of (`operandsOf`), where letting go of it would
+ * count, but one it writes again: their holder is now what the instruction made.
  */
-function cleared(scope: EntryScope, moved: readonly Register[]): string {
+function movedOut(scope: EntryScope, instruction: Instruction): string {
+  const { moved, written } = operandsOf(instruction);
   return moved
-    .filter((each) => lifetime(scope, each) === 'counted')
+    .filter((each) => !written.includes(each) && lifetime(scope, each) === 'counted')
     .map((each) => ` ${register(each)} = undefined;`)
     .join('');
-}
-
-/** The collection an append moved out of, when it writes into another register. */
-function movedApart(i: { readonly dst: Register; readonly collection: Register }): Register[] {
-  return i.collection === i.dst ? [] : [i.collection];
 }
 
 /** `dst = expression`, then what its holding takes. */
@@ -153,30 +153,29 @@ const emitters: Handlers<EntryScope, Instruction, [], string> = {
     assigned(
       i.dst,
       `{ kind: 'tuple', elements: [${i.elements.map(register).join(', ')}] }`,
-      made(scope, i.dst) + cleared(scope, i.elements),
+      made(scope, i.dst) + movedOut(scope, i),
     ),
   struct: (scope, i) =>
     assigned(
       i.dst,
       `{ kind: 'struct', type: ${i.type}, fields: [${i.fields.map(register).join(', ')}] }`,
-      made(scope, i.dst) + cleared(scope, i.fields),
+      made(scope, i.dst) + movedOut(scope, i),
     ),
   variant: (scope, i) =>
     assigned(
       i.dst,
       `{ kind: 'variant', type: ${i.type}, variant: ${i.variant}, fields: [${i.fields.map(register).join(', ')}] }`,
-      made(scope, i.dst) + cleared(scope, i.fields),
+      made(scope, i.dst) + movedOut(scope, i),
     ),
   array: (scope, i) => {
     const counted = lifetime(scope, i.dst) === 'counted';
     const items = i.elements.map((element) =>
       element.spread ? `...items(${register(element.value)}, ${counted})` : register(element.value),
     );
-    const moved = i.elements.filter((element) => !element.spread).map((element) => element.value);
     return assigned(
       i.dst,
       `{ kind: 'array', elements: [${items.join(', ')}] }`,
-      made(scope, i.dst) + cleared(scope, moved),
+      made(scope, i.dst) + movedOut(scope, i),
     );
   },
   map: (scope, i) => {
@@ -186,33 +185,26 @@ const emitters: Handlers<EntryScope, Instruction, [], string> = {
         ? `...entries(${register(entry.value)}, ${counted})`
         : `[${register(entry.key)}, ${register(entry.value)}]`,
     );
-    const moved = i.entries.flatMap((entry) =>
-      entry.kind === 'entry' ? [entry.key, entry.value] : [],
-    );
     return assigned(
       i.dst,
       `mapOf([${entries.join(', ')}])`,
-      made(scope, i.dst) + cleared(scope, moved),
+      made(scope, i.dst) + movedOut(scope, i),
     );
   },
   // The collection's holder becomes `dst`'s: the same value, or the copy `owned` made of it.
   append: (scope, i) =>
-    assigned(
-      i.dst,
-      `append(${register(i.collection)}, ${register(i.item)})`,
-      cleared(scope, [i.item, ...movedApart(i)]),
-    ),
+    assigned(i.dst, `append(${register(i.collection)}, ${register(i.item)})`, movedOut(scope, i)),
   appendEntry: (scope, i) =>
     assigned(
       i.dst,
       `appendEntry(${register(i.collection)}, ${register(i.key)}, ${register(i.value)}, ${lifetime(scope, i.dst) === 'counted'})`,
-      cleared(scope, [i.key, i.value, ...movedApart(i)]),
+      movedOut(scope, i),
     ),
   closure: (scope, i) =>
     assigned(
       i.dst,
       `{ kind: 'closure', function: ${i.function}, captures: [${i.captures.map(register).join(', ')}] }`,
-      made(scope, i.dst) + cleared(scope, i.captures),
+      made(scope, i.dst) + movedOut(scope, i),
     ),
   currentClosure: (_, i) => `${register(i.dst)} = cl;`,
   tupleItem: (_, i) => `${register(i.dst)} = ${register(i.src)}.elements[${i.index}];`,
@@ -233,7 +225,7 @@ const emitters: Handlers<EntryScope, Instruction, [], string> = {
     );
     const type = scope.entry.registers[i.dst]?.type;
     const dispose = type?.kind === 'named' ? disposeOf(scope.types, type.type) : undefined;
-    const made_ = `${register(i.dst)} = cell(${register(i.value)}, ${counted}${dispose === undefined ? '' : `, ${dispose}`});${cleared(scope, [i.value])}`;
+    const made_ = `${register(i.dst)} = cell(${register(i.value)}, ${counted}${dispose === undefined ? '' : `, ${dispose}`});${movedOut(scope, i)}`;
     return shared
       ? `${made_} shareTransient(${scope.index}, ${i.dst}, ${register(i.dst)});`
       : made_;
@@ -249,7 +241,7 @@ const emitters: Handlers<EntryScope, Instruction, [], string> = {
   store: (scope, i) => {
     const counted = lifetime(scope, i.value) === 'counted';
     const written = `${storeHelpers[i.place.root.kind]}(${register(i.place.root.register)}, ${pathOf(i.place)}, ${register(i.value)}, ${counted})`;
-    const done = cleared(scope, [i.value]);
+    const done = movedOut(scope, i);
     return i.place.root.kind === 'register'
       ? `${register(i.place.root.register)} = ${written};${done}`
       : `${written};${done}`;

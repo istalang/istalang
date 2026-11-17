@@ -52,7 +52,8 @@ const owning = stateOf(['owning']);
 const moved = stateOf(['moved']);
 
 /**
- * What an instruction does to ownership: what it moves out of, and what it writes owning. A
+ * What an instruction does to ownership: what it moves out of (`operandsOf`), and what it writes
+ * owning. A
  * conditional write (`taken`) owns only on the jump to its label, as a context constant found or a
  * mock that holds: going on past it, its register stays empty.
  */
@@ -66,24 +67,18 @@ interface Effect {
 
 const none: readonly Register[] = [];
 
-const effects: Handlers<CodeFunction, Instruction, [], Partial<Effect>> = {
+const effects: Handlers<CodeFunction, Instruction, [], Partial<Omit<Effect, 'moved'>>> = {
   constant: (_, i) => ({ owned: [i.dst] }),
-  move: (_, i) => ({ moved: [i.src], owned: [i.dst] }),
+  move: (_, i) => ({ owned: [i.dst] }),
   copy: (_, i) => ({ owned: [i.dst] }),
-  tuple: (_, i) => ({ moved: i.elements, owned: [i.dst] }),
-  struct: (_, i) => ({ moved: i.fields, owned: [i.dst] }),
-  variant: (_, i) => ({ moved: i.fields, owned: [i.dst] }),
-  array: (_, i) => ({
-    moved: i.elements.filter((element) => !element.spread).map((element) => element.value),
-    owned: [i.dst],
-  }),
-  map: (_, i) => ({
-    moved: i.entries.flatMap((entry) => (entry.kind === 'entry' ? [entry.key, entry.value] : [])),
-    owned: [i.dst],
-  }),
-  append: (_, i) => ({ moved: [i.collection, i.item], owned: [i.dst] }),
-  appendEntry: (_, i) => ({ moved: [i.collection, i.key, i.value], owned: [i.dst] }),
-  closure: (_, i) => ({ moved: i.captures, owned: [i.dst] }),
+  tuple: (_, i) => ({ owned: [i.dst] }),
+  struct: (_, i) => ({ owned: [i.dst] }),
+  variant: (_, i) => ({ owned: [i.dst] }),
+  array: (_, i) => ({ owned: [i.dst] }),
+  map: (_, i) => ({ owned: [i.dst] }),
+  append: (_, i) => ({ owned: [i.dst] }),
+  appendEntry: (_, i) => ({ owned: [i.dst] }),
+  closure: (_, i) => ({ owned: [i.dst] }),
   currentClosure: (_, i) => ({ borrowed: [i.dst] }),
   tupleItem: (_, i) => ({ borrowed: [i.dst] }),
   structField: (_, i) => ({ borrowed: [i.dst] }),
@@ -92,10 +87,10 @@ const effects: Handlers<CodeFunction, Instruction, [], Partial<Effect>> = {
   not: (_, i) => ({ owned: [i.dst] }),
   order: (_, i) => ({ owned: [i.dst] }),
   primitive: (_, i) => ({ owned: [i.dst] }),
-  newCell: (_, i) => ({ moved: [i.value], owned: [i.dst] }),
+  newCell: (_, i) => ({ owned: [i.dst] }),
   load: (code, i) =>
     code.registers[i.dst]?.borrowed === true ? { borrowed: [i.dst] } : { owned: [i.dst] },
-  store: (_, i) => ({ moved: [i.value] }),
+  store: () => ({}),
   reference: (_, i) => ({ borrowed: [i.dst] }),
   transient: (_, i) => ({ borrowed: [i.dst] }),
   contextConstant: (_, i) => ({ taken: { owned: [i.dst], to: i.target } }),
@@ -103,7 +98,7 @@ const effects: Handlers<CodeFunction, Instruction, [], Partial<Effect>> = {
   jump: () => ({}),
   branch: () => ({}),
   switch: () => ({}),
-  return: (_, i) => ({ moved: [i.value], letGo: i.releasing }),
+  return: (_, i) => ({ letGo: i.releasing }),
   unreachable: () => ({}),
   call: (_, i) => ({ owned: [i.dst] }),
   currentCall: (_, i) => ({ borrowed: [i.dst] }),
@@ -117,7 +112,7 @@ const effects: Handlers<CodeFunction, Instruction, [], Partial<Effect>> = {
 function effectOf(code: CodeFunction, subject: Instruction): Effect {
   const found = handlerOf(effects, subject)(code, subject);
   return {
-    moved: found.moved ?? none,
+    moved: operandsOf(subject).moved,
     owned: found.owned ?? none,
     borrowed: found.borrowed ?? none,
     letGo: found.letGo ?? none,

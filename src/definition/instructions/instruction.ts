@@ -33,10 +33,14 @@ type InstructionKind = Instruction['kind'];
 /** One kind of instruction. */
 export type InstructionOf<Kind extends InstructionKind> = Extract<Instruction, { kind: Kind }>;
 
-/** Everything an instruction refers to, by table; `written` are the registers it writes. */
+/**
+ * Everything an instruction refers to, by table; `written` are the registers it writes, `moved`
+ * those of `read` whose holder it takes, which the ownership verifier and every backend read here.
+ */
 export interface Operands {
   readonly read: readonly Register[];
   readonly written: readonly Register[];
+  readonly moved: readonly Register[];
   readonly labels: readonly Label[];
   readonly functions: readonly FunctionId[];
   readonly types: readonly TypeId[];
@@ -45,21 +49,40 @@ export interface Operands {
 
 const operandTable: Handlers<undefined, Instruction, [], Partial<Operands>> = {
   constant: (_, i) => ({ written: [i.dst], constants: [i.constant] }),
-  move: (_, i) => ({ written: [i.dst], read: [i.src] }),
+  move: (_, i) => ({ written: [i.dst], read: [i.src], moved: [i.src] }),
   copy: (_, i) => ({ written: [i.dst], read: [i.src] }),
-  tuple: (_, i) => ({ written: [i.dst], read: i.elements }),
-  struct: (_, i) => ({ written: [i.dst], read: i.fields, types: [i.type] }),
-  variant: (_, i) => ({ written: [i.dst], read: i.fields, types: [i.type] }),
-  array: (_, i) => ({ written: [i.dst], read: i.elements.map((element) => element.value) }),
+  tuple: (_, i) => ({ written: [i.dst], read: i.elements, moved: i.elements }),
+  struct: (_, i) => ({ written: [i.dst], read: i.fields, moved: i.fields, types: [i.type] }),
+  variant: (_, i) => ({ written: [i.dst], read: i.fields, moved: i.fields, types: [i.type] }),
+  // A spread is read for its items, which the array holds anew.
+  array: (_, i) => ({
+    written: [i.dst],
+    read: i.elements.map((element) => element.value),
+    moved: i.elements.filter((element) => !element.spread).map((element) => element.value),
+  }),
   map: (_, i) => ({
     written: [i.dst],
     read: i.entries.flatMap((entry) =>
       entry.kind === 'entry' ? [entry.key, entry.value] : [entry.value],
     ),
+    moved: i.entries.flatMap((entry) => (entry.kind === 'entry' ? [entry.key, entry.value] : [])),
   }),
-  append: (_, i) => ({ written: [i.dst], read: [i.collection, i.item] }),
-  appendEntry: (_, i) => ({ written: [i.dst], read: [i.collection, i.key, i.value] }),
-  closure: (_, i) => ({ written: [i.dst], read: i.captures, functions: [i.function] }),
+  append: (_, i) => ({
+    written: [i.dst],
+    read: [i.collection, i.item],
+    moved: [i.collection, i.item],
+  }),
+  appendEntry: (_, i) => ({
+    written: [i.dst],
+    read: [i.collection, i.key, i.value],
+    moved: [i.collection, i.key, i.value],
+  }),
+  closure: (_, i) => ({
+    written: [i.dst],
+    read: i.captures,
+    moved: i.captures,
+    functions: [i.function],
+  }),
   currentClosure: (_, i) => ({ written: [i.dst] }),
   tupleItem: (_, i) => ({ written: [i.dst], read: [i.src] }),
   structField: (_, i) => ({ written: [i.dst], read: [i.src] }),
@@ -68,9 +91,9 @@ const operandTable: Handlers<undefined, Instruction, [], Partial<Operands>> = {
   not: (_, i) => ({ written: [i.dst], read: [i.src] }),
   order: (_, i) => ({ written: [i.dst], read: [i.comparison] }),
   primitive: (_, i) => ({ written: [i.dst], read: i.operands }),
-  newCell: (_, i) => ({ written: [i.dst], read: [i.value] }),
+  newCell: (_, i) => ({ written: [i.dst], read: [i.value], moved: [i.value] }),
   load: (_, i) => ({ written: [i.dst], read: [placeRoot(i.place)] }),
-  store: (_, i) => ({ read: [placeRoot(i.place), i.value] }),
+  store: (_, i) => ({ read: [placeRoot(i.place), i.value], moved: [i.value] }),
   reference: (_, i) => ({ written: [i.dst], read: [placeRoot(i.place)] }),
   transient: (_, i) => ({ written: [i.dst], labels: [i.target] }),
   contextConstant: (_, i) => ({ written: [i.dst], labels: [i.target] }),
@@ -81,7 +104,7 @@ const operandTable: Handlers<undefined, Instruction, [], Partial<Operands>> = {
     read: [i.value],
     labels: [...i.targets, ...(i.otherwise === undefined ? [] : [i.otherwise])],
   }),
-  return: (_, i) => ({ read: [i.value, ...i.releasing] }),
+  return: (_, i) => ({ read: [i.value, ...i.releasing], moved: [i.value] }),
   unreachable: () => ({}),
   call: (_, i) => ({
     written: [i.dst],
@@ -105,6 +128,7 @@ export function operandsOf(subject: Instruction): Operands {
   return {
     read: found.read ?? [],
     written: found.written ?? [],
+    moved: found.moved ?? [],
     labels: found.labels ?? [],
     functions: found.functions ?? [],
     types: found.types ?? [],
