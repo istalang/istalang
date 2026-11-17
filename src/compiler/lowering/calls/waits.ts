@@ -28,8 +28,10 @@ import {
 import { type Persistence, wellKnown } from '../../../foundation/language/well-known/index.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import { type WaitFunction, waitArguments } from '../../checker/surface/wait-calls.ts';
+import { substitutionOf } from '../../checker/surface/witness-closing.ts';
+import { substitute } from '../../checker/types/parts/substitution.ts';
 import type { NominalType, Type } from '../../checker/types/type/index.ts';
-import { intType, literalType, unitType } from '../../checker/types/type/primitives.ts';
+import { intType, literalType } from '../../checker/types/type/primitives.ts';
 import { wellKnownArguments } from '../../checker/types/type/well-known.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 import type { CodeContext } from '../context.ts';
@@ -55,7 +57,6 @@ export function openWait(context: CodeContext, mode: Persistence, span: Anchored
     {
       ...waitCall('wait', { mode: kind }),
       arguments: [handle],
-      result: wellKnownTypeOf(context, wellKnown.wait, [kind]),
     },
     span,
   );
@@ -81,22 +82,15 @@ export function caseResolver(
 ): Register {
   const { code } = context;
   const mode = literalType(open.mode);
-  const into = wellKnownTypeOf(context, wellKnown.shared, [arrayOf(context, type)]);
-  const shared = callPrelude(
-    context,
-    { ...waitCall('caseInto', { value: type, mode }), result: into },
-    span,
-  );
+  const shared = callPrelude(context, { ...waitCall('caseInto', { value: type, mode }) }, span);
   code.pin(shared);
   open.cases[position] = { shared, type };
-  const resolverType = wellKnownTypeOf(context, wellKnown.resolver, [type, mode]);
   const at = emitConstantInt(context, position, span);
   return callPrelude(
     context,
     {
       ...waitCall('caseResolver', { value: type, mode }),
       arguments: [open.wait, at, shared],
-      result: resolverType,
     },
     span,
   );
@@ -116,7 +110,6 @@ export function parked(
     {
       ...waitCall('parking', { mode: literalType(open.mode) }),
       arguments: [open.wait],
-      result: unitType,
     },
     span,
   );
@@ -134,7 +127,6 @@ export function decidedAt(context: CodeContext, open: OpenWait, span: AnchoredSp
     {
       ...waitCall('decided', { mode: literalType(open.mode) }),
       arguments: [open.wait],
-      result: intType,
     },
     span,
   );
@@ -156,7 +148,6 @@ export function caseValue(
     {
       ...waitCall('caseTaken', { value: decided.type, mode: literalType(open.mode) }),
       arguments: [decided.shared],
-      result: decided.type,
     },
     span,
   );
@@ -187,7 +178,7 @@ export function awaitFuture(
   const done = caseResolver(context, open, { type: valueType, position: 0 }, span);
   const result = callPrelude(
     context,
-    { name: awaitFunction, typeArguments: parts, arguments: [future, done], result: unitType },
+    { name: awaitFunction, typeArguments: parts, arguments: [future, done] },
     span,
   );
   code.letGo([done, result], span);
@@ -205,15 +196,17 @@ function waitCall(
   return { name: waitFunctions[name], typeArguments: waitArguments(name, waited) };
 }
 
-/** A call lowering makes of a prelude function: its name, type arguments, arguments and result. */
+/** A call lowering makes of a prelude function: its name, type arguments and arguments. */
 interface PreludeCall {
   readonly name: string;
   readonly typeArguments: readonly Type[];
   readonly arguments?: readonly Register[];
-  readonly result: Type;
 }
 
-/** Calls the prelude function `call` names, as it says; the register of what it gives. */
+/**
+ * Calls the prelude function `call` names, as it says; the register of what it gives, of the type
+ * its declaration's result is at the call's type arguments.
+ */
 function callPrelude(context: CodeContext, call: PreludeCall, span: AnchoredSpan): Register {
   const { checker, tables } = context;
   const [declaration] = checker.languageFunctions('prelude', call.name);
@@ -221,6 +214,11 @@ function callPrelude(context: CodeContext, call: PreludeCall, span: AnchoredSpan
     return unreachable(`The prelude declares no '${call.name}'.`);
   }
   const instance = rootInstance(checker, declaration, call.typeArguments);
+  const result = substitute(
+    checker.resultOf(declaration),
+    substitutionOf(instance),
+    checker.typeRules,
+  );
   return emitCall(
     context,
     {
@@ -228,13 +226,8 @@ function callPrelude(context: CodeContext, call: PreludeCall, span: AnchoredSpan
       callee: tables.index({ kind: 'instance', instance }),
       arguments: [...(call.arguments ?? [])],
     },
-    tables.types.reference(call.result),
+    tables.types.reference(result),
   );
-}
-
-/** `Array<T>` for `type`. */
-function arrayOf(context: CodeContext, type: Type): NominalType {
-  return wellKnownTypeOf(context, wellKnown.array, [type]);
 }
 
 function wellKnownTypeOf(
