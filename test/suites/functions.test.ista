@@ -145,6 +145,18 @@ ista async fn widenedWatchedFuture() -> (Int?, Array<Int>):
   await time.delay(1ms)
   (value, log->value)
 
+ista fn greetingDefault() -> Int:
+  drop greeting(2)
+  10
+
+ista async fn greeting(x: Int = greetingDefault()) -> Int: x + 1
+
+ista async fn hundredfold(x: Int) -> Int: x * 100
+
+ista async fn mockedGreeting() -> (Result<Int>, Result<Int>, Array<(Int,)>):
+  const greetings = mock(greeting, hundredfold)
+  (await spawn(greeting).result(), await runtime.isolate(greeting), greetings.calls())
+
 @Suite{"functions"}
 fn suite() -> Array<Test>: [
   test(
@@ -206,5 +218,9 @@ fn suite() -> Array<Test>: [
   test(
     "a future a callback waits on, widened, is awaited and the callback is given its value as it was"
     async fn(): assertEq(await widenedWatchedFuture(), (7, [107]))
+  )
+  test(
+    "a function started is no call of it a mock replaces, even when its default calls it first"
+    async fn(): assertEq(await mockedGreeting(), (Ok(11), Ok(11), [(2,), (2,)]))
   )
 ]

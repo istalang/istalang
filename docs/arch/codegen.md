@@ -60,8 +60,9 @@ the instance frozen as it stood.
 - A call of a known entry is a direct call; a call of a function value goes through `callValue`; an
   async callee starts an execution and gives its future (`Run.start`).
 - `currentCall` is the frame's execution in async code and `currentExecution()` in simple code.
-- `mocked` asks the run (`Run.mocked`), and writes its register only with an answer, never with
-  the run's marker of none (`NOT_MOCKED`).
+- `mocked` asks the run (`Mocking.mocked`), and writes its register only with an answer, never with
+  the run's marker of none (`NOT_MOCKED`); a call that is a start asks nothing, which it learns as
+  it enters (`startsHere`), before its prologue may call the function again.
 - A transient's cell is shared by function and register in the running execution's scope
   (`run/transients.ts`): a call finding one shares it on (`sharedTransient`), one making it shares
   its own (`shareTransient`), and each call's `return` takes back and lets go of its own share

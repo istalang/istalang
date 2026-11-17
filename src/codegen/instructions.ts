@@ -294,7 +294,7 @@ const emitters: Handlers<EntryScope, Instruction, [], string> = {
   mocked: (scope, i) => {
     const passed = i.arguments.map(register).join(', ');
     // The register holds an answer only where a mock gives one, never the marker of none.
-    return `{ const answer = mocked(${scope.index}, [${passed}]); if (answer !== NOT_MOCKED) { ${register(i.dst)} = answer; ${goTo(i.landing)} } }`;
+    return `if (!started) { const answer = mocked(${scope.index}, [${passed}]); if (answer !== NOT_MOCKED) { ${register(i.dst)} = answer; ${goTo(i.landing)} } }`;
   },
   park: (scope, i) => {
     const saved = scope.entry.registers.map((_, index) => register(index)).join(', ');

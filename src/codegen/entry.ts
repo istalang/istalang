@@ -84,7 +84,11 @@ export function emitEntry(scope: Omit<EntryScope, 'jumps'>): EmittedEntry {
   return { lines, instructions };
 }
 
-/** The lines opening the entry's function: its signature and its registers. */
+/**
+ * The lines opening the entry's function: its signature and registers, and, where a mock may
+ * replace its call, whether the call is a start, taken as it enters, before its prologue may call
+ * the function again.
+ */
 function openingLines({ entry, index, onFrames }: Omit<EntryScope, 'jumps'>): string[] {
   const registers = entry.registers.map((_, each) => register(each));
   const parameters = entry.parameters.length;
@@ -105,6 +109,9 @@ function openingLines({ entry, index, onFrames }: Omit<EntryScope, 'jumps'>): st
     if (declared.length > 0) {
       lines.push(`  let ${declared.join(', ')};`);
     }
+  }
+  if (entry.instructions.some(({ kind }) => kind === 'mocked')) {
+    lines.push(`  const started = ${onFrames ? 'frame.pc === 0 && ' : ''}startsHere(${index});`);
   }
   return lines;
 }

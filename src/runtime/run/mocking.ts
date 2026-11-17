@@ -7,6 +7,8 @@
  *   answer crosses back (mock-answers.ts).
  * - **The start stays.** The function an instance or a context's call starts with is never
  *   replaced, so a test can mock the function it calls into; one widened is the function it wraps.
+ *   The start is the first call of it to enter (`startsHere`), not the first to ask, as a call its
+ *   defaults make asks first.
  * - A call is recorded as the tuple of its arguments, a call of none as `Unit` (§10 `calls()`).
  */
 
@@ -40,16 +42,24 @@ export class Mocking {
    * instance this one was spawned from; `NOT_MOCKED` where none is held.
    */
   readonly mocked = (index: number, passed: readonly Value[]): unknown => {
-    if (this.#starting === index) {
-      this.#starting = undefined;
-      return NOT_MOCKED;
-    }
     const run = this.#run;
     const mock = this.held.of(index);
     const held = mock === undefined ? run.world.heldMock?.(run, index) : { holder: run, mock };
     return held === undefined
       ? NOT_MOCKED
       : answerOfMock(run, held, passed, this.#resultType(index));
+  };
+
+  /**
+   * Whether the call of entry `index` entering now is the start, which no mock replaces: the first
+   * to enter while it starts, before its prologue can call the function again.
+   */
+  readonly startsHere = (index: number): boolean => {
+    const starts = this.#starting === index;
+    if (starts) {
+      this.#starting = undefined;
+    }
+    return starts;
   };
 
   /** What `closure`'s function gives, started as an invocation: no mock replaces it. */

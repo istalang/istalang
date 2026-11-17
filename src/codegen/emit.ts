@@ -49,7 +49,7 @@ const helpers = [
   ['rt.places', ['load', 'storeRegister', 'storeCell', 'storeReference', 'reference']],
   ['rt.transients', ['sharedTransient', 'shareTransient', 'unshareTransient']],
   ['rt.executions', ['current: currentExecution']],
-  ['rt.mocking', ['mocked']],
+  ['rt.mocking', ['mocked', 'startsHere']],
   ['rt.signals', ['parked: PARKED', 'stopped: STOPPED', 'stop: STOP', 'notMocked: NOT_MOCKED']],
 ] as const;
 

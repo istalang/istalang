@@ -65,7 +65,7 @@ export function bindNatives(run: Run, binding: NativeBinding): (index: number) =
     );
     const mocking = run.definition.purpose.kind === 'tests';
     return ((...given: Value[]) => {
-      if (mocking) {
+      if (mocking && !run.mocking.startsHere(index)) {
         const answer = run.mocking.mocked(index, given);
         if (answer !== run.signals.notMocked) {
           return answer;
