@@ -8,7 +8,7 @@
  * - Holders are counted again, as the run that wrote the snapshot counted them: what a counted
  *   register, a counted cell, a future, a call's arguments and a context constant hold each count
  *   once (`Lifetimes.adoptRestored`). A value comes back as a tree, so each composite has the one
- *   holder it is read under.
+ *   holder it is read under. A disposed object holds nothing, its disposal having let go of it.
  */
 
 import { runsOnFrames } from '../../codegen/entry.ts';
@@ -162,20 +162,33 @@ interface Reading {
   readonly restored: (value: Value) => Value;
 }
 
-/** Fills the object `persisted` describes, counting what it holds. */
-function filled(run: Run, persisted: PersistedObject, reading: Reading): void {
-  handlerOf(fillers, persisted)({ run, ...reading }, persisted);
+/** What filling an object reads with: counting a value it holds as another holder of it. */
+interface Filling extends Reading {
+  readonly run: Run;
+  readonly holds: (value: Value | undefined) => void;
 }
 
-const fillers: Handlers<{ readonly run: Run } & Reading, PersistedObject, [], void> = {
-  cell: ({ run, object, restored }, persisted) => {
+/**
+ * Fills the object `persisted` describes, counting what it holds: nothing, once disposed, since
+ * its disposal let go of what it held, which a value of it read later still names (§7).
+ */
+function filled(run: Run, persisted: PersistedObject, reading: Reading): void {
+  const holds =
+    persisted.disposed === true
+      ? () => undefined
+      : (value: Value | undefined) => run.lifetimes.adoptRestored(value);
+  handlerOf(fillers, persisted)({ run, ...reading, holds }, persisted);
+}
+
+const fillers: Handlers<Filling, PersistedObject, [], void> = {
+  cell: ({ object, restored, holds }, persisted) => {
     const cell = object(persisted.id) as Cell;
     cell.value = restored(persisted.value);
     if (cell.counted) {
-      run.lifetimes.adoptRestored(cell.value);
+      holds(cell.value);
     }
   },
-  future: ({ run, object, restored }, persisted) => {
+  future: ({ object, restored, holds }, persisted) => {
     const future = object(persisted.id) as Future;
     future.settled = persisted.settled;
     future.value = restored(persisted.value);
@@ -195,7 +208,7 @@ const fillers: Handlers<{ readonly run: Run } & Reading, PersistedObject, [], vo
       ...future.converters,
     ];
     for (const each of held) {
-      run.lifetimes.adoptRestored(each);
+      holds(each);
     }
   },
   execution: (reading, persisted) => {
@@ -212,14 +225,17 @@ const fillers: Handlers<{ readonly run: Run } & Reading, PersistedObject, [], vo
   resource: ({ run, object }, persisted) => {
     run.resources.restored(object(persisted.id) as Resource);
   },
-  mock: ({ run, object, restored }, persisted) => {
+  mock: ({ run, object, restored, holds }, persisted) => {
     const mock = object(persisted.id) as MockObject;
     mock.replacement = restored(persisted.replacement);
     mock.calls.push(...persisted.calls.map(restored));
     for (const held of [mock.replacement, ...mock.calls]) {
-      run.lifetimes.adoptRestored(held);
+      holds(held);
     }
-    run.mocking.held.hold(mock);
+    // A disposed mock replaces nothing any more (§10).
+    if (!mock.disposed) {
+      run.mocking.held.hold(mock);
+    }
   },
 };
 
@@ -228,7 +244,7 @@ const fillers: Handlers<{ readonly run: Run } & Reading, PersistedObject, [], vo
  * counted register held.
  */
 function filledExecution(
-  { run, ...reading }: { readonly run: Run } & Reading,
+  { run, holds, ...reading }: Filling,
   persisted: Extract<PersistedObject, { readonly kind: 'execution' }>,
 ): void {
   const { object, restored } = reading;
@@ -257,15 +273,15 @@ function filledExecution(
       !slot.borrowed &&
       lifetimeOf(run.definition.types, slot.type) === 'counted'
     ) {
-      run.lifetimes.adoptRestored(register as Value | undefined);
+      holds(register as Value | undefined);
     }
   });
   for (const held of [...execution.given, ...execution.awaiting]) {
-    run.lifetimes.adoptRestored(held);
+    holds(held);
   }
   for (const { cell } of execution.transients.kept) {
     if (cell.counted) {
-      run.lifetimes.hold(cell);
+      holds(cell);
     }
   }
 }

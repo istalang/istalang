@@ -293,4 +293,39 @@ fn suite() -> Array<Test>: [test("once", once), test("once read back", onceReadB
       'mock dispose › once read back: passed',
     ]);
   });
+
+  it('of a dispose recording a value it disposed leave what that value held to its other holders, read back from a snapshot (§5, §7)', async () => {
+    const source = testModule(`
+shared struct Inner:
+  id: Int
+  log: Shared<Array<String>>
+
+fn dispose(self: Inner):
+  self->log->value.push("inner disposed")
+
+shared struct Outer:
+  inner: Inner
+
+fn dispose(self: Outer): ()
+
+ista async fn held() -> Array<String>:
+  const log = new Shared<Array<String>>{value: []}
+  const m = mock(dispose, fn(self: Outer): ())
+  const inner = new Inner{id: 1, log}
+  const outer = new Outer{inner}
+  drop outer
+  await time.delay(1ms)
+  drop inner
+  log->value.push("inner dropped")
+  _ = m
+  log->value
+
+ista async fn readBack():
+  assertEq(await testing.spawnCrashingEveryAwait(held).result(), Ok(["inner disposed", "inner dropped"]))
+
+@Suite{"mock dispose"}
+fn suite() -> Array<Test>: [test("read back", readBack)]
+`);
+    expect(outcomesOf(await reportsOf(source))).toEqual(['mock dispose › read back: passed']);
+  });
 });
