@@ -55,6 +55,16 @@ export function valueSemanticsOf(functions: readonly FunctionDefinition[]): Runt
   });
 }
 
+/**
+ * A map of `entries`, whose keys hold no closure, built outside any program: a JSON object's, a
+ * regex match's named groups. No closure among them, no function table decides their equality.
+ */
+export function closureFreeMap(entries: readonly (readonly [Value, Value])[]): MapValue {
+  return valueSemanticsOf(noFunctions).mapOf(entries);
+}
+
+const noFunctions: readonly FunctionDefinition[] = [];
+
 /** Whether two composites agree on everything but their parts. */
 function sameHead(
   left: CompositeValue,

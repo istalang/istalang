@@ -29,6 +29,7 @@ import { unreachable } from '../../foundation/structures/unreachable.ts';
 import { decodeJson, encodeJson, NestingError } from '../formats/codec.ts';
 import type { TypeId } from '../operands.ts';
 import { hasRole, type TypeDefinition, type TypeReference } from '../tables/types.ts';
+import { closureFreeMap } from './equality.ts';
 import {
   type CompositeValue,
   elementsOf,
@@ -248,13 +249,14 @@ export function jsonOfPlain(plain: unknown, shape: JsonType, depth = 0): Value {
         const items = plain.map((item: unknown) => jsonOfPlain(item, shape, depth + 1));
         return of('Array', { kind: 'array', elements: items });
       }
-      // An object's keys are distinct strings, so its map is its entries as they are.
-      return of('Map', {
-        kind: 'map',
-        entries: Object.entries(plain)
-          .filter(([, item]) => item !== undefined)
-          .map(([key, item]) => [key, jsonOfPlain(item, shape, depth + 1)] as const),
-      });
+      return of(
+        'Map',
+        closureFreeMap(
+          Object.entries(plain)
+            .filter(([, item]) => item !== undefined)
+            .map(([key, item]) => [key, jsonOfPlain(item, shape, depth + 1)]),
+        ),
+      );
     default:
       throw new JsonError(`JSON can't hold a ${typeof plain}.`);
   }
