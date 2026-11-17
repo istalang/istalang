@@ -1,9 +1,8 @@
 /**
  * Values built and read through their type entry's declaration: a struct's fields and an enum's
  * variants by name, never by position, so a value and its declaration can't drift apart
- * unnoticed. Std natives build their results this way (stdlib/values/results.ts), and so does the
- * scheduler where it hands an instance a value no instruction made, such as another instance's
- * end (§9). `Result`'s `Ok` and `Err(Error)` are built here once for both (§3.12).
+ * unnoticed. Std natives build their results this way (stdlib/values/results.ts), and the runtime
+ * reads values no instruction of its own made, such as a test's outcome, the same way.
  */
 
 import { unionLayout } from '../../foundation/language/well-known/variants.ts';

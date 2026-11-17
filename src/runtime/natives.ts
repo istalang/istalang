@@ -65,7 +65,7 @@ export interface NativeContext {
   /**
    * The changes the native makes to the value of argument `position`, which the extern takes by `&`
    * (§3.7): each in place when nothing else holds it, else in a copy that takes its place
-   * (lifetimes/in-place.ts).
+   * (run/lifetimes.ts).
    */
   readonly changes: (position: number) => ValueChanges;
   /** Where every running frame is, innermost first, as an `Error`'s `trace` reads (§3.12). */
@@ -205,7 +205,7 @@ interface NativeTesting {
   readonly handle: (type: TypeId) => Value;
 }
 
-/** The running instance's random source (§3.8 `random`, snapshot/random.ts). */
+/** The running instance's random source (§3.8 `random`, random-draws.ts). */
 interface NativeRandom {
   /** The next draw, 32 bytes; a segment that runs again draws the same ones (§5). */
   readonly draw: () => Uint8Array;

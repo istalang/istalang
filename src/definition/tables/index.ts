@@ -5,8 +5,9 @@
  * - A module carries its line starts: the runtime never sees source text, yet turns spans into
  *   locations for `Error.trace` (§3.12), a panic's trace, `waitingAt()` (§10) and the operator.
  * - **A start** is what a host may start by key (§9): a code entry lowering wrote around the
- *   function, which decodes the arguments from JSON, calls it, awaits what an async one gives, and
- *   gives its outcome as JSON (docs/arch/boundary.md), so the runtime runs a start as any call.
+ *   function, which decodes the arguments from JSON and calls it, giving what it gives, an async
+ *   one's future unawaited, so the runtime runs a start as any call; its `encode` entry writes the
+ *   outcome as JSON once it settles (docs/arch/boundary.md).
  * - **What the program is for** is one of two shapes: a program, with the start a host starts
  *   naming none (`main`'s) and the loop serving the jobs of the instances it drives (§5) when it
  *   delegates; or a test build (§10), with every `@Suite` and the testing module's code listing a

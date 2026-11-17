@@ -1,9 +1,9 @@
 /**
  * The random draws of a run (§3.8 `random`, §5), alike on every runtime: draw `n` of a source
  * seeded with `seedBytes` secret bytes is HMAC-SHA-256 keyed by the seed over `n`, 32 bytes. A run
- * that draws again from the same seed draws what it drew before, the interpreter's segment run again
- * from its snapshot or compiled JavaScript diffed against it, and no draw can be told from the others
- * without the seed, which keeps draws fit for tokens.
+ * that draws again from the same seed draws what it drew before, as a segment run again from its
+ * snapshot does, and no draw can be told from the others without the seed, which keeps draws fit
+ * for tokens.
  *
  * Hashing is computation, not I/O, so it runs on @noble/hashes, the project's one hash library,
  * which runs in Node and a browser alike.

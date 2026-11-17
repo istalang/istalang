@@ -1,7 +1,7 @@
 /**
  * Where frames are, as people read it (§3.12): one line per frame, innermost first, naming the
- * function and the source location it stands at. Every runtime prints traces here, whatever it
- * keeps of a frame, so a trace reads the same on the interpreter and on compiled JavaScript.
+ * function and the source location it stands at. Traces are printed here alone, whatever keeps the
+ * frames, so a trace reads the same wherever it is printed.
  *
  * A runtime has no source text, so a location comes from an offset and its module's line starts
  * (docs/arch/definition.md, "Types and locations"); lines and columns count from 1, as editors show

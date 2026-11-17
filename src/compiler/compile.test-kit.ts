@@ -1,7 +1,7 @@
 /**
  * Whole programs compiled and diagnosed as an app does, for the tests of every phase from the
- * checker on: the runtime and its scheduler run real programs without anyone writing their
- * instructions by hand, and a test reads one module's diagnostics by its key.
+ * checker on: the runtime runs real programs without anyone writing their instructions by hand,
+ * and a test reads one module's diagnostics by its key.
  *
  * A file checking or compiling many small programs checks the std modules once (`checkedAfterStd`),
  * each program's checker taking over their results as an editor's takes over what an edit left

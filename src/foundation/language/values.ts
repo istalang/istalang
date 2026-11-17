@@ -13,7 +13,7 @@
  *   the object itself, each table its map's alone.
  * - **Changed in place:** a value is immutable to everything but its builder: `mapOf` sets each
  *   entry in the map it builds, and the runtime changes a value in place only when nothing else
- *   holds it (runtime/lifetimes/in-place.ts). A map's entries change through `setEntryInPlace`,
+ *   holds it (runtime/run/lifetimes.ts). A map's entries change through `setEntryInPlace`,
  *   which keeps its table, so building a map key by key hashes each key once, and through
  *   `deleteEntryInPlace`; `copiedMap` copies a map with its table; `forget` drops what was derived
  *   from a value that changed otherwise.

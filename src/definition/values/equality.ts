@@ -2,8 +2,8 @@
  * The built-in `==` and map keys (§3.8, §3.9) over the runtime's values: the rules are
  * foundation/language/values.ts's, shared with compile time's constants; this module shows them the
  * runtime's values. Handles compare by identity (§3.1), an extern value by its payload's JSON.
- * Everything that compares values or builds maps at run time, the interpreter and the std natives
- * alike, uses these.
+ * Everything that compares values or builds maps at run time, the run and the std natives alike,
+ * uses these.
  *
  * A head never compares a value's type: two values compared are of one static type, so their
  * declarations agree, and only their instantiation may differ, as a value converted part by part

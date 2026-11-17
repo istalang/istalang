@@ -2,7 +2,7 @@
  * The prelude's natives over `Instance<T>` (spec §9): `spawn`, which starts one through the one
  * spawning seam every spawning native shares (runtime/natives.ts), and `result()`, a wait on the
  * instance's end, which the runtime resolves from the instance's last commit
- * (runtime/scheduler/instance/instance-ends.ts).
+ * (runtime/run/end-watches.ts).
  */
 
 import { functionKey, parameterKey } from '../../definition/extern-key.ts';

@@ -1,6 +1,6 @@
 /**
  * Tables with one handler per kind of a discriminated union: tree nodes for every phase that walks
- * the tree, instructions for load validation and the interpreter (architecture: Registries).
+ * the tree, instructions for load validation and code generation (architecture: Registries).
  *
  * A table is exhaustive by type: a new kind fails to compile until every table over its union says
  * what to do with it, which a `switch` with a `default` would let slip. Each handler receives the

@@ -1,5 +1,5 @@
 # The log module (spec §3.8): every record goes through `write`, which a test mocks to read them.
-# That a discarded segment logs nothing is the runtime's to show (runtime/scheduler/logs.test.ts).
+# That a discarded segment logs nothing is the runtime's to show (runtime/host/commits.test.ts).
 # No function of the module can fail, so it has no failing case (m4-m5.md, "Acceptance").
 
 import Suite, Test, test, assertEq, mock, calls from 'testing'

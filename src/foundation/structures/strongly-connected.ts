@@ -4,7 +4,7 @@
  * whether an edge lies on a cycle (its ends share a component).
  *
  * The walk keeps its path on a stack of its own, so a long chain can't overflow the host's stack:
- * the runtime walks graphs of heap objects with it (runtime/lifetimes/).
+ * the checker walks its graphs of types and declarations with it.
  */
 
 import { addToGroup } from './groups.ts';
