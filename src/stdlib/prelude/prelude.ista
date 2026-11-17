@@ -298,7 +298,7 @@ K fn _caseResolver<T, K in Persistence>(
   new Resolver<T, K>{decide, resolution: _caseResolution(wait, position)}
 
 # Where a case's resolver puts its value (`_caseResolver`), empty until then: an array, never an
-# optional, so a case's code is one instance for every type of value of one lifetime (§3.5).
+# optional, so a case's code is one instance for every type of value of one representation (§3.5).
 fn _caseInto<T>() -> Shared<Array<T>>: new Shared<Array<T>>{value: []}
 
 # The value a case's resolver put into `into`, taken out: a resolver outliving its wait still

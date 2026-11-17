@@ -13,7 +13,8 @@
  *   still reaches the shared value, and must not keep the value its waiter moved on with (§7).
  *
  * A case's shared value is an array, never an optional, so none of this names a union of the
- * case's type, and one instance of each serves every type of one lifetime (§3.5, tables/stencils.ts).
+ * case's type, and one instance of each serves every type of one representation (§3.5,
+ * tables/stencils.ts).
  *
  * Code with a body calls each case's `onAwait` as the checker recorded it; synthesized code awaits
  * only futures, through the prelude's.
