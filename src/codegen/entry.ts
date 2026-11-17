@@ -29,7 +29,7 @@ export function runsOnFrames(entry: CodeFunction): boolean {
 }
 
 /** An entry's function text, its lines, and the instruction each line is, by its position. */
-export interface EmittedEntry {
+interface EmittedEntry {
   readonly lines: readonly string[];
   /** The instruction each line runs, by the line's position in `lines`; -1 for no instruction. */
   readonly instructions: readonly number[];

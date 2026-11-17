@@ -29,7 +29,7 @@ import {
 import { logLine } from '../log-lines.ts';
 import { reportDiagnostics, reportUnreadable } from '../report.ts';
 
-export interface TestOptions {
+interface TestOptions {
   readonly filter?: string;
   readonly timeout: string;
 }

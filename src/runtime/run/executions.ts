@@ -36,7 +36,7 @@ export const STOPPED = Symbol('stopped');
 export const STOP = Symbol('stop');
 
 /** What executions need of their run. */
-export interface ExecutionSeams {
+interface ExecutionSeams {
   readonly definition: Definition;
   readonly instance: Instance;
   readonly lifetimes: Lifetimes;

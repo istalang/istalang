@@ -42,7 +42,7 @@ import { buildVariant, payloadOf, payloadOr } from '../values/variant-values.ts'
 type Callee = FunctionId | ClosedCall;
 
 /** What synthesized code takes and gives, and how it runs. */
-export interface SynthesizedSignature {
+interface SynthesizedSignature {
   readonly parameters: readonly TypeReference[];
   readonly captures?: readonly TypeReference[];
   readonly result: TypeReference;

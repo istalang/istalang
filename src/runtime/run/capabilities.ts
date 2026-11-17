@@ -38,7 +38,7 @@ import { referentOf } from './weak-references.ts';
 import type { TestingWorld } from './world.ts';
 
 /** What the run's capabilities read of the host: its clock and where logs go. */
-export interface CapabilitySeams {
+interface CapabilitySeams {
   readonly clock: Clock;
   readonly log: (record: LogRecord) => void;
 }

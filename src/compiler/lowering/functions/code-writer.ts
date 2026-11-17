@@ -42,7 +42,7 @@ const intType: TypeReference = { kind: 'primitive', name: 'Int' };
 export const boolType: TypeReference = { kind: 'primitive', name: 'Bool' };
 
 /** A code entry's code as written. */
-export interface WrittenCode {
+interface WrittenCode {
   readonly registers: RegisterEntry[];
   readonly instructions: Instruction[];
 }

@@ -164,7 +164,7 @@ function variantTestOf(
 }
 
 /** A value of the enum `type` in `register`, tested for its variant `name`, which has one field. */
-export interface VariantCase {
+interface VariantCase {
   readonly register: Register;
   readonly type: NominalType;
   readonly name: string;

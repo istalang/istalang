@@ -25,7 +25,7 @@ import type { Natives } from './natives.ts';
 import { memoryStore } from './store.ts';
 
 /** What every start of a program is bound to: the natives, the host's externs, a clock, a seed. */
-export interface HostBinding {
+interface HostBinding {
   readonly natives: Natives;
   readonly externs?: HostExterns;
   readonly clock: Clock;
@@ -38,7 +38,7 @@ export type LiveEnd =
   | { readonly kind: 'panicked'; readonly message: string; readonly trace: string }
   | { readonly kind: 'unsettled' };
 
-export interface LiveRun {
+interface LiveRun {
   readonly end: LiveEnd;
   readonly logs: readonly LogRecord[];
 }
@@ -53,7 +53,7 @@ export interface Start {
 }
 
 /** The code a start runs: compiled from its Definition once, unless a built program brings it. */
-export interface LiveCode {
+interface LiveCode {
   readonly code?: EmittedProgram;
   /**
    * The code each run read back from a snapshot runs: `code`, but in a test of two builds of one

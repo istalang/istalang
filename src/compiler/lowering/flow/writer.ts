@@ -59,7 +59,7 @@ import {
  * register, made the instance's context constant `name` where it is that constant's initializer,
  * at its declaration's `span`.
  */
-export type FlowEnd =
+type FlowEnd =
   | { readonly kind: 'return' }
   | { readonly kind: 'into'; readonly into: Register }
   | {

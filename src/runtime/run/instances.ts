@@ -26,7 +26,7 @@ export type InstanceEnd =
  * What waits on an instance's end, told how it ended; whether its panic is heard there (§9), which
  * stops once its caller lets go of the call.
  */
-export interface EndWatcher {
+interface EndWatcher {
   readonly answer: (end: InvocationEnd) => void;
   readonly hears: () => boolean;
 }

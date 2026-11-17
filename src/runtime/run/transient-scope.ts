@@ -7,7 +7,7 @@ import type { FunctionId, Register } from '../../definition/operands.ts';
 import type { Cell } from './objects/cell.ts';
 
 /** A transient's cell an execution keeps, visible where it started. */
-export interface KeptTransient {
+interface KeptTransient {
   readonly function: FunctionId;
   readonly register: Register;
   readonly cell: Cell;

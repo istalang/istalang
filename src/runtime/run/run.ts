@@ -52,7 +52,7 @@ import type { World } from './world.ts';
 type Entry = (...parameters: never[]) => unknown;
 
 /** What a run keeps beside its objects, as a snapshot writes it. */
-export interface PersistedRun {
+interface PersistedRun {
   readonly serial: number;
   readonly live: readonly Execution[];
   readonly timers: readonly Timer[];
