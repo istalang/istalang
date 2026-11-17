@@ -15,6 +15,7 @@ import { languageModules } from '../foundation/language/well-known/index.ts';
 import collectionsSource from './collections/collections.ista';
 import cryptoSource from './crypto/crypto.ista';
 import decimalSource from './decimal/decimal.ista';
+import endingsSource from './endings/endings.ista';
 import fanoutSource from './fanout/fanout.ista';
 import futuresSource from './futures/futures.ista';
 import inboxSource from './inbox/inbox.ista';
@@ -37,6 +38,7 @@ export const stdModuleSources = {
   [languageModules.time]: timeSource,
   [languageModules.json]: jsonSource,
   [languageModules.lifetimes]: lifetimesSource,
+  endings: endingsSource,
   futures: futuresSource,
   inbox: inboxSource,
   rpc: rpcSource,

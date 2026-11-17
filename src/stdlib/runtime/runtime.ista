@@ -31,6 +31,7 @@
 #   once it reaches `delegate`, as its job server (`_jobServer`), so one that never does lowers
 #   none of it.
 
+import resultOfEnding from 'endings'
 import Inbox from 'inbox'
 import Decodable, Encodable, Json from 'json'
 import * as json from 'json'
@@ -106,7 +107,7 @@ live async fn _call<R is Sendable>(
   key: String
   f: sendable ista async fn() -> R
 ) -> Result<R>:
-  _answer(await _called(runtime, key, f))
+  resultOfEnding(await _called(runtime, key, f))
 
 # How the call ended, as the run tells it: what it gave alone, or none with its context's panic's
 # message and trace.
@@ -123,18 +124,13 @@ live async fn _jobCall<R is Sendable>(
   key: String
   f: sendable ista async fn() -> R
 ) -> Result<R>:
-  _answer(await _jobCalled(runtime, key, f))
+  resultOfEnding(await _jobCalled(runtime, key, f))
 
 extern live fn _jobCalled<R is Sendable>(
   runtime: _Runtime
   key: String
   f: sendable ista async fn() -> R
 ) -> Future<(Array<R>, String, String), "live">
-
-# The `Result` a call into a context gives (§9): `Ok` of what it gave, or `Err` of its panic.
-fn _answer<R>(ending: (Array<R>, String, String)) -> Result<R>:
-  const value, message, trace = ending
-  if value.length() == 1: Ok(value[0]) else: Err(Error{message, code: "panic", trace})
 
 # Runs `f` in the context named `key` of a runtime over the host's store, and gives what it gave;
 # its panic panics here, as it did there (§9).
