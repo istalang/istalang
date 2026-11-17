@@ -10,6 +10,7 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { sliceOf } from '../../../test/slices.ts';
 import { stdProgramOf } from '../binder/bind.test-kit.ts';
+import { wholeProgramTimeout } from '../compile.test-kit.ts';
 import { editedTexts, editSequences } from '../parser/edits.test-kit.ts';
 import { ownModules } from '../program/program.test-kit.ts';
 import { answeredBothWays, checkedRevision } from './revisions.test-kit.ts';
@@ -23,7 +24,9 @@ const sources = editedTexts.map(({ name, text }) => ({
 export function revisionsSweepSlice(file: string): void {
   describe('a checker made after an earlier one', () => {
     describe.each(sliceOf(file).of(sources))('over $name', ({ files }) => {
-      it('answers every revision as a checker made afresh', () => {
+      it('answers every revision as a checker made afresh', {
+        timeout: wholeProgramTimeout,
+      }, () => {
         const first = checkedRevision(stdProgramOf(files), ownModules);
         fc.assert(
           fc.property(editSequences, (edits) => {

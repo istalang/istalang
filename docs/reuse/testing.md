@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-11-13
-last_updated: 2026-11-17
+last_updated: 2026-11-18
 tags: [reuse, testing, test-kit, arbitraries, fast-check, corpus]
 ---
 
@@ -26,7 +26,7 @@ tags: [reuse, testing, test-kit, arbitraries, fast-check, corpus]
 - generate random operator trees → `operatorTree`, `printFull`, `printMinimal`, `shapeOf` (`src/compiler/parser/grammar/expressions/precedence.test-kit.ts`)
 - make a real project on disk, removed after the test → `tempProject` (`src/project/project.test-kit.ts`)
 - talk LSP to a language server in memory (open, change, close documents; await published diagnostics; read highlighting decoded) → `connectedClient`, `TestClient` (`src/editor/lsp/server.test-kit.ts`)
-- run a property over every corpus and std module open in one language server → `corpusClient`, `corpusDocuments` (`src/editor/lsp/corpus-client.test-kit.ts`)
+- run a property over every corpus and std module open in one language server, made in `beforeAll` with `wholeProgramTimeout` (it resolves once the server has checked them) → `corpusClient`, `corpusDocuments` (`src/editor/lsp/corpus-client.test-kit.ts`)
 - state the diagnostics a language server must publish, as `ista check` reports them → `checked`, `projectProgram`, `uriOf` (`src/editor/lsp/diagnostics.test-kit.ts`)
 - read a signature help answer's active signature and parameter → `activeOf` (`src/editor/lsp/providers/signature-help.test-kit.ts`)
 - ask a language server for definitions or references by position, against the corpus project loaded apart → `definitionsAt`, `referencesAt`, `namesOf`, `positionOf` (`src/editor/lsp/providers/navigation/navigation.test-kit.ts`)
@@ -45,7 +45,7 @@ tags: [reuse, testing, test-kit, arbitraries, fast-check, corpus]
 - check many small `stdProgramOf` programs, each checker taking over the std modules' results checked once per file → `checkedAfterStd` (`src/compiler/compile.test-kit.ts`)
 - ask a checked `main.ista` by names as written, ask every query a tool may ask of a node, or compare two checkers' answers at every node of a module → `checkedMain`, `answersAt`, `spelledAnswers` (`src/compiler/checker/lookup/lookup.test-kit.ts`)
 - check a rule across every std module at once → `everyStdModule` (`src/stdlib/std-modules.test-kit.ts`)
-- compile in-memory sources to a `Definition` or its encoding (a program text checked after the std modules and compiled once per file) → `compiledDefinition`, `mainDefinition`, `compiledEncoded`, `diagnosedAt`; the timeout of a test compiling whole programs case after case → `wholeProgramTimeout` (`src/compiler/compile.test-kit.ts`)
+- compile in-memory sources to a `Definition` or its encoding (a program text checked after the std modules and compiled once per file) → `compiledDefinition`, `mainDefinition`, `compiledEncoded`, `diagnosedAt`; the timeout of a test, or of the setup its file's tests share, compiling whole programs case after case → `wholeProgramTimeout` (`src/compiler/compile.test-kit.ts`)
 - create a test `Runtime` (host/index.ts) with manual clock, recording store and fixed seed → `testRuntime`, `recordingStore`, `testSeed` (`src/runtime/runtime.test-kit.ts`), `ManualClock` (`src/runtime/clock.ts`)
 - list every std extern function under the key lowering gives it → `stdExterns` (`src/stdlib/std-externs.test-kit.ts`)
 - start a program's live `main` to its end and read how it ended, its outcome as JSON text → `startToEnd` (`src/runtime/runtime.test-kit.ts`)

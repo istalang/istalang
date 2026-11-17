@@ -8,6 +8,7 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { invalidPrograms, runPrograms } from '../../../../../test/corpus/programs.ts';
 import { checkProgram } from '../../../../compiler/checker/check.ts';
+import { wholeProgramTimeout } from '../../../../compiler/compile.test-kit.ts';
 import type { FieldsLiteral } from '../../../../compiler/syntax/expressions/index.ts';
 import { nodesUnder } from '../../../../compiler/syntax/tree/index.ts';
 import { spanIn } from '../../../../compiler/syntax/tree/positions.ts';
@@ -69,14 +70,14 @@ describe('field completion offers exactly what a literal may set', () => {
     literalSites(mainProgram(text)),
   );
 
-  it('in the struct literals of the corpus', () => {
+  it('in the struct literals of the corpus', { timeout: wholeProgramTimeout }, () => {
     fc.assert(
       fc.property(fc.constantFrom(...corpusSites), (site) => {
         expect(fieldMistakesOf(site)).toEqual([]);
       }),
       { numRuns: 30 },
     );
-  }, 60_000);
+  });
 
   it("leaves out a one-field struct's field once an item gives it by position", () => {
     const fieldsOffered = (...lines: readonly string[]) => {

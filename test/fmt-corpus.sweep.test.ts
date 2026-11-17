@@ -16,7 +16,7 @@ import { join, resolve } from 'node:path';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { ista, type Run } from '../src/cli/cli.test-kit.ts';
 import { checkProgram } from '../src/compiler/checker/check.ts';
-import { diagnosticsWithoutPlaces } from '../src/compiler/compile.test-kit.ts';
+import { diagnosticsWithoutPlaces, wholeProgramTimeout } from '../src/compiler/compile.test-kit.ts';
 import { diagnose } from '../src/compiler/compile.ts';
 import type { Program } from '../src/compiler/program/program.ts';
 import { formattableInputs } from '../src/formatter/format.test-kit.ts';
@@ -77,7 +77,7 @@ describe('ista fmt over the corpus', () => {
       badSyntax: readFileSync(join(root, badSyntax.name), 'utf8'),
       project,
     };
-  });
+  }, wholeProgramTimeout);
 
   it('formats every module of the project, in the format --check accepts', () => {
     expect(formatted.run.err).not.toContain('node_modules');

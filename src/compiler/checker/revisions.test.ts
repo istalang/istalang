@@ -14,6 +14,7 @@ import namesLib from '../../../test/corpus/names/lib.ista';
 import namesMain from '../../../test/corpus/names/main.ista';
 import { memo } from '../../foundation/structures/memo.ts';
 import { stdProgramOf } from '../binder/bind.test-kit.ts';
+import { wholeProgramTimeout } from '../compile.test-kit.ts';
 import {
   bodyEditChoices,
   editInsideBody,
@@ -49,7 +50,7 @@ const checkedEveryModule = (files: Files) =>
 
 const names = { 'names/main': namesMain, 'names/lib': namesLib };
 
-describe('a checker made after an earlier one', () => {
+describe('a checker made after an earlier one', { timeout: wholeProgramTimeout }, () => {
   it('answers every revision afresh after edits of an imported module, in every module', () => {
     const first = checkedRevision(stdProgramOf(names), ownModules);
     fc.assert(

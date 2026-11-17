@@ -9,6 +9,7 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { invalidPrograms, runPrograms } from '../../../../../test/corpus/programs.ts';
 import { checkProgram } from '../../../../compiler/checker/check.ts';
+import { wholeProgramTimeout } from '../../../../compiler/compile.test-kit.ts';
 import type { Call } from '../../../../compiler/syntax/expressions/calls.ts';
 import { nodesUnder } from '../../../../compiler/syntax/tree/index.ts';
 import { spanIn } from '../../../../compiler/syntax/tree/positions.ts';
@@ -103,7 +104,9 @@ describe('call argument completion', () => {
     callSites(mainProgram(text)),
   );
 
-  it('names exactly the parameters a corpus call leaves to give', () => {
+  it('names exactly the parameters a corpus call leaves to give', {
+    timeout: wholeProgramTimeout,
+  }, () => {
     const sites = fc
       .constantFrom(...corpusSites)
       .chain((site) => fc.tuple(fc.constant(site), fc.nat({ max: site.positional })));
@@ -113,7 +116,7 @@ describe('call argument completion', () => {
       }),
       { numRuns: 40 },
     );
-  }, 60_000);
+  });
 
   const plus = 'fn plus(a: Int, b = 1) -> Int: a + b';
 

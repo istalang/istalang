@@ -13,7 +13,7 @@ import { encodeDefinition } from '../../../definition/definition.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import { mainGives } from '../../../stdlib/prelude/prelude.test-kit.ts';
 import { stdProgramOf } from '../../binder/bind.test-kit.ts';
-import { compiledDefinition } from '../../compile.test-kit.ts';
+import { compiledDefinition, wholeProgramTimeout } from '../../compile.test-kit.ts';
 import { tableKey } from './names.ts';
 
 /** Declarations the written types below name. */
@@ -146,7 +146,9 @@ const written = fc
   ]);
 
 describe('table keys', () => {
-  it('tell apart every two types of distinct keys, and are one for types of one key', () => {
+  it('tell apart every two types of distinct keys, and are one for types of one key', {
+    timeout: wholeProgramTimeout,
+  }, () => {
     fc.assert(
       fc.property(written, (texts) => {
         const { checker, types, diagnosticCodes } = resolveWrittenTypes(texts, declarations);
@@ -161,7 +163,7 @@ describe('table keys', () => {
       }),
       { numRuns: 40 },
     );
-  }, 60_000);
+  });
 
   it('memoizes the table key per type key', () => {
     const { checker, types, diagnosticCodes } = resolveWrittenTypes(

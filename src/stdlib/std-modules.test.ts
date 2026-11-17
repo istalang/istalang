@@ -4,6 +4,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import { wholeProgramTimeout } from '../compiler/compile.test-kit.ts';
 import { everyStdModule } from './std-modules.test-kit.ts';
 import { stdModules } from './std-modules.ts';
 
@@ -13,7 +14,7 @@ describe('std modules', () => {
     expect(new Set(loaded)).toEqual(new Set(stdModules.map((module) => module.name)));
   });
 
-  it('check without a diagnostic', () => {
+  it('check without a diagnostic', { timeout: wholeProgramTimeout }, () => {
     const { checker, modules } = everyStdModule();
     for (const [id, module] of modules) {
       const diagnostics = [...module.tree.diagnostics, ...checker.diagnosticsOf(id)];

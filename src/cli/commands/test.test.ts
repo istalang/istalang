@@ -6,14 +6,9 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { specCode } from '../../../test/corpus/spec-examples.ts';
+import { wholeProgramTimeout } from '../../compiler/compile.test-kit.ts';
 import { tempProject as project } from '../../project/project.test-kit.ts';
 import { ista } from '../cli.test-kit.ts';
-
-/**
- * How long a run of §10's whole suite may take: each of its tests commits every segment of a whole
- * program through the snapshot codec, seconds in all, more than a unit test's default.
- */
-const wholeSuiteTimeout = 20_000;
 
 /** A line reporting one test: its mark, then its title. */
 const testLine = /^[✓✗-] /u;
@@ -184,6 +179,6 @@ describe('ista test', () => {
       ).toEqual([]);
       expect(run.code).toBe(0);
     },
-    wholeSuiteTimeout,
+    wholeProgramTimeout,
   );
 });

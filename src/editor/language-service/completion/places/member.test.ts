@@ -9,6 +9,7 @@ import { describe, expect, it } from 'vitest';
 import { invalidPrograms, runPrograms } from '../../../../../test/corpus/programs.ts';
 import { checkProgram } from '../../../../compiler/checker/check.ts';
 import { isOpaque } from '../../../../compiler/checker/types/type/computed-types.ts';
+import { wholeProgramTimeout } from '../../../../compiler/compile.test-kit.ts';
 import type { Program } from '../../../../compiler/program/program.ts';
 import { isMethod } from '../../../../compiler/syntax/declarations/methods.ts';
 import type { MemberAccess } from '../../../../compiler/syntax/expressions/index.ts';
@@ -168,14 +169,14 @@ describe('member completion offers only what resolves there', () => {
     memberSites(mainProgram(text)),
   );
 
-  it('at member accesses of the corpus', () => {
+  it('at member accesses of the corpus', { timeout: wholeProgramTimeout }, () => {
     fc.assert(
       fc.property(fc.constantFrom(...corpusSites), (site) => {
         expect(unresolvedOffers(site).filter((name) => !offeredByB104(site, name))).toEqual([]);
       }),
       { numRuns: 40 },
     );
-  }, 60_000);
+  });
 
   it.each([
     ['a function value', 'fn f(g: fn() -> Int) -> Int:', '  g.‸', '  1'],

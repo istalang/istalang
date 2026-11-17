@@ -22,6 +22,7 @@ import {
   reportedOnce,
 } from '../../foundation/diagnostics/diagnostic.test-kit.ts';
 import { preludeProgramOf } from '../binder/bind.test-kit.ts';
+import { wholeProgramTimeout } from '../compile.test-kit.ts';
 import { diagnose } from '../compile.ts';
 import { idOf } from '../program/program.test-kit.ts';
 import { inFunction, reported } from './check.test-kit.ts';
@@ -401,7 +402,7 @@ describe('checking is total', () => {
     }
   });
 
-  it('never throws on broken programs', () => {
+  it('never throws on broken programs', { timeout: wholeProgramTimeout }, () => {
     fc.assert(
       fc.property(brokenText([subsetSource, ...corpusTexts, ...modules]), (text) => {
         expect(() => reported(text)).not.toThrow();
@@ -409,5 +410,5 @@ describe('checking is total', () => {
       { numRuns: 300 },
     );
     // Each run checks a program whole, static lifetimes' summaries included.
-  }, 30_000);
+  });
 });

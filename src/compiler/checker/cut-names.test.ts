@@ -12,7 +12,7 @@ import { runPrograms } from '../../../test/corpus/programs.ts';
 import { reportedOnce } from '../../foundation/diagnostics/diagnostic.test-kit.ts';
 import { createSourceText } from '../../foundation/text/source-text.ts';
 import { stdProgramOf } from '../binder/bind.test-kit.ts';
-import { checkedAfterStd, diagnosedAt } from '../compile.test-kit.ts';
+import { checkedAfterStd, diagnosedAt, wholeProgramTimeout } from '../compile.test-kit.ts';
 import { parse } from '../parser/parse.ts';
 import { scan } from '../scanner/scan.ts';
 import { nodesUnder } from '../syntax/tree/index.ts';
@@ -79,14 +79,14 @@ function reportedAtCut({ text, from, at }: Cut): readonly string[] {
 }
 
 describe('a name cut short', () => {
-  it('is reported by the parser alone', () => {
+  it('is reported by the parser alone', { timeout: wholeProgramTimeout }, () => {
     fc.assert(
       fc.property(fc.constantFrom(...cuts), (cut) => {
         expect(reportedAtCut(cut)).toEqual([]);
       }),
       { numRuns: 300 },
     );
-  }, 30_000);
+  });
 });
 
 describe('a pattern whose type is cut short', () => {

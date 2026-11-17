@@ -93,11 +93,12 @@ export function compiledDefinition(program: Program, entry: string): Definition 
 
 /**
  * The timeout of a test that compiles whole programs, the std's Istalang included, case after case:
- * a property compiling, and most often running, a program per run, or a sweep checking a whole
- * corpus. Each program takes a tenth of a second or more, and suites of several worktrees run side
- * by side (vitest.config.ts), so such a test needs far more than the default.
+ * a property compiling, and most often running, a program per run, a sweep checking a whole
+ * corpus, or the setup a file's tests share that does. Each program takes a tenth of a second or
+ * more, and suites of several worktrees run side by side (vitest.config.ts): under a load of 21 on
+ * 12 cores the longest such test took 44 s, so it gets more than twice that.
  */
-export const wholeProgramTimeout = 60_000;
+export const wholeProgramTimeout = 120_000;
 
 const compiledPrograms = new Map<string, EncodedDefinition>();
 

@@ -5,6 +5,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import { wholeProgramTimeout } from '../../compile.test-kit.ts';
 import { idOf, moduleAt, textSpanOf } from '../../program/program.test-kit.ts';
 import { type ModuleId, type Program, programModule } from '../../program/program.ts';
 import type { Block } from '../../syntax/statements/index.ts';
@@ -195,7 +196,9 @@ const spots: readonly (readonly [string, string, readonly string[], readonly str
 ];
 
 describe('visibleAt', () => {
-  it('holds, at every name a lookup resolved, that name as it resolved', () => {
+  it('holds, at every name a lookup resolved, that name as it resolved', {
+    timeout: wholeProgramTimeout,
+  }, () => {
     const unseen = boundCorpus().flatMap(({ program, modules }) => {
       const bindings = bindProgram(program);
       return modules.flatMap((module) =>
@@ -266,7 +269,9 @@ describe('visibleAt', () => {
     ]);
   });
 
-  it("holds before a block's first statement what its first statement sees", () => {
+  it("holds before a block's first statement what its first statement sees", {
+    timeout: wholeProgramTimeout,
+  }, () => {
     expect(boundCorpus().flatMap(blocksSeeingMoreThanBefore)).toEqual([]);
   });
 

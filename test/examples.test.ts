@@ -16,6 +16,7 @@ import { execPath } from 'node:process';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { ista } from '../src/cli/cli.test-kit.ts';
+import { wholeProgramTimeout } from '../src/compiler/compile.test-kit.ts';
 import { diagnose } from '../src/compiler/compile.ts';
 import { isError } from '../src/foundation/diagnostics/diagnostic.ts';
 import { renderDiagnostics } from '../src/foundation/diagnostics/render.ts';
@@ -25,9 +26,6 @@ import { findProjectSources, loadProject, type Project } from '../src/project/pr
 const examples = fileURLToPath(new URL('../examples/', import.meta.url));
 const formBuilder = `${examples}FormBuilder`;
 const tsc = fileURLToPath(new URL('../node_modules/typescript/bin/tsc', import.meta.url));
-// Compiling FormBuilder's forms, the supplier form above all, costs seconds a run: a run takes
-// several times a test's 7 s.
-const formBuilderRun = 60_000;
 
 const projects = readdirSync(examples, { withFileTypes: true })
   .filter((entry) => entry.isDirectory())
@@ -52,9 +50,13 @@ function checked(name: string) {
 const clean = { unreadable: [], errors: [] };
 
 describe('the examples', () => {
-  it.each(projects)('%s checks with no error', (name) => {
-    expect(checked(name)).toEqual(clean);
-  });
+  it.each(projects)(
+    '%s checks with no error',
+    (name) => {
+      expect(checked(name)).toEqual(clean);
+    },
+    wholeProgramTimeout,
+  );
 
   it.each(projects)(
     '%s passes its suites',
@@ -62,7 +64,7 @@ describe('the examples', () => {
       const run = await ista(`${examples}${name}`, 'test');
       expect({ code: run.code, err: run.err }).toEqual({ code: 0, err: '' });
     },
-    formBuilderRun,
+    wholeProgramTimeout,
   );
 
   it('FormBuilder schema types (form-spec.ts and form-spec.test.ts) pass tsc --strict', () => {
@@ -130,7 +132,7 @@ describe('the examples', () => {
         value: { note: null, payment: { value: { card: { last4: '1234' }, wire: null } } },
       });
     },
-    formBuilderRun,
+    wholeProgramTimeout,
   );
 
   it(
@@ -181,6 +183,6 @@ describe('the examples', () => {
       });
       expect(hidden).toMatchObject({ _type: 'Ok', value: data });
     },
-    formBuilderRun,
+    wholeProgramTimeout,
   );
 });
