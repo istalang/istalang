@@ -12,7 +12,7 @@ import { runPrograms } from '../../../test/corpus/programs.ts';
 import { reportedOnce } from '../../foundation/diagnostics/diagnostic.test-kit.ts';
 import { createSourceText } from '../../foundation/text/source-text.ts';
 import { stdProgramOf } from '../binder/bind.test-kit.ts';
-import { diagnosedAt } from '../compile.test-kit.ts';
+import { checkedAfterStd, diagnosedAt } from '../compile.test-kit.ts';
 import { parse } from '../parser/parse.ts';
 import { scan } from '../scanner/scan.ts';
 import { nodesUnder } from '../syntax/tree/index.ts';
@@ -67,7 +67,9 @@ const cuts = runPrograms.flatMap(({ text }) => cutsOf(text));
  * What `cut` reports beyond scanning and parsing that starts at what it cuts and covers the name.
  */
 function reportedAtCut({ text, from, at }: Cut): readonly string[] {
-  const { diagnostics } = diagnosedAt(stdProgramOf({ 'main.ista': text }), 'main.ista');
+  const program = stdProgramOf({ 'main.ista': text });
+  checkedAfterStd(program);
+  const { diagnostics } = diagnosedAt(program, 'main.ista');
   return diagnostics
     .filter(({ code, span }) => code >= 3000 && span.start >= from && span.start <= at)
     .filter(({ span }) => span.end >= at)

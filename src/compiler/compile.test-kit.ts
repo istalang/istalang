@@ -49,6 +49,36 @@ function checkedWhole(program: Program): Program {
   return program;
 }
 
+/** The original `editedProgramOf` checked last, by its files' key: a test probes one at a time. */
+let lastOriginal: { readonly key: string; readonly program: Program } | undefined;
+
+/**
+ * `files`, an edit of `original`, as `stdProgramOf` makes them, made as an editor makes an edit:
+ * its trees keep the nodes the edit left alike (program.ts), and its checker takes over every
+ * result that reads only those (check.ts `checkProgram`). `original`'s own modules are checked
+ * after the std modules once, until another original is asked, so a test probing many edits of
+ * one program checks each edit alone.
+ */
+export function editedProgramOf(files: Files, original: Files): Program {
+  const key = filesKey(original);
+  if (lastOriginal?.key !== key) {
+    const program = stdProgramOf(original);
+    const checker = checkedAfterStd(program);
+    for (const name of Object.keys(original)) {
+      checker.diagnosticsOf(idOf(name));
+    }
+    lastOriginal = { key, program };
+  }
+  const program = stdProgramOf(files, lastOriginal.program);
+  checkProgram(program, { previous: lastOriginal.program });
+  return program;
+}
+
+/** One key per set of files, whatever order their names were given in. */
+function filesKey(files: Files): string {
+  return JSON.stringify(Object.entries(files).sort());
+}
+
 /** The Definition of `program` run from module `entry`; throws, listing every diagnostic, when it doesn't compile. */
 export function compiledDefinition(program: Program, entry: string): Definition {
   const compilation = compileProgram(program, idOf(entry));
@@ -99,7 +129,7 @@ export function encodedDespiteCycles(main: string): EncodedDefinition {
 /** The encoded Definition of the program rooted at `main`, beside `others`, with every std module. */
 export function compiledEncoded(main: string, others: Files = {}): EncodedDefinition {
   const files = { main, ...others };
-  return memo(compiledPrograms, JSON.stringify(Object.entries(files).sort()), () => {
+  return memo(compiledPrograms, filesKey(files), () => {
     const program = stdProgramOf(files);
     checkedAfterStd(program);
     return validEncoded(compiledDefinition(program, 'main'));
