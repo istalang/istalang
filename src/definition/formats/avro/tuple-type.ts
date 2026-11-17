@@ -1,6 +1,6 @@
 /** A tuple as Avro holds it: the record of its items, `item0` on, which Avro's names allow. */
 
-import avsc from 'avsc';
+import avsc from 'avsc/etc/browser/avsc-types.js';
 import type { AvroSchema } from './avsc-types.ts';
 
 /** The name of a tuple's item `at` as its record's field. */

@@ -1,12 +1,13 @@
 /**
- * Avro types derived from zod schemas, so a format avsc encodes keeps one description: its zod
- * schema, walked once here and never run on a value.
+ * Avro codecs derived from zod schemas, so a format avsc encodes keeps one description: its zod
+ * schema, walked once here and never run on a value. A codec takes and gives plain bytes; avsc, its
+ * types and its Buffers stay inside this folder.
  *
  * - What is walked is the in-memory side, a codec's output: avsc writes and reads the values the
  *   toolchain holds, with no pass converting them.
  * - A zod object is a named Avro record, its fields in the shape's order, so the bytes never depend
- *   on the order keys were built in. A record reads back as avsc's record instance with every field
- *   its own: an absent optional field reads back as undefined.
+ *   on the order keys were built in; it reads back as a plain object (record-type.ts), so a decoded
+ *   value is what the toolchain builds.
  * - A literal takes no bytes (constant-type.ts); a union picks its branch by the value
  *   (branches.ts), and an optional is a union whose null is the absent value.
  * - A bigint is its two's complement as Avro bytes (bigint-type.ts), so an Int of any size is
@@ -14,9 +15,10 @@
  *   tuple is a record of its items (tuple-type.ts); a custom schema declares its form (forms.ts).
  */
 
-import avsc from 'avsc';
+import avsc from 'avsc/etc/browser/avsc-types.js';
 import type { z } from 'zod';
-import type { AvroSchema, AvroType, ZodSchema } from './avsc-types.ts';
+import { avscBuffer } from './avsc-buffers.ts';
+import type { AvroSchema, ForSchemaOptions, ZodSchema } from './avsc-types.ts';
 import { BigintType } from './bigint-type.ts';
 import {
   type Branch,
@@ -28,25 +30,44 @@ import {
 import { ConstantType } from './constant-type.ts';
 import { customForm } from './forms.ts';
 import { JsonType } from './json-type.ts';
+import { type RecordSchema, RecordType } from './record-type.ts';
 import { itemField, TupleType } from './tuple-type.ts';
 import { type UnionSchema, UnionType } from './union-type.ts';
 
 const logicalTypes = {
   'istalang-bigint': BigintType,
+  'istalang-record': RecordType,
   'istalang-constant': ConstantType,
   'istalang-tuple': TupleType,
   'istalang-json': JsonType,
   'istalang-union': UnionType,
 };
 
-/** The avsc type of the values `schema` describes in memory. */
-export function avroTypeOf(schema: ZodSchema): AvroType {
-  return avsc.Type.forSchema(new SchemaWalk().schemaOf(schema), {
-    logicalTypes: logicalTypes as unknown as avsc.ForSchemaOptions['logicalTypes'],
+/** The values of a zod schema as Avro bytes, and back; each throws where they don't fit. */
+export interface AvroCodec {
+  readonly write: (value: unknown) => Uint8Array;
+  /** Reads bytes holding exactly one value. */
+  readonly read: (bytes: Uint8Array) => unknown;
+  /** Reads the value `bytes` start with, ignoring what follows; undefined where they end first. */
+  readonly readStart: (bytes: Uint8Array) => unknown;
+}
+
+/** The codec of the values `schema` describes in memory. */
+export function avroCodecOf(schema: ZodSchema): AvroCodec {
+  const type = avsc.Type.forSchema(new SchemaWalk().schemaOf(schema), {
+    logicalTypes: logicalTypes as unknown as ForSchemaOptions['logicalTypes'],
     wrapUnions: true,
     omitRecordMethods: true,
     assertLogicalTypes: true,
   });
+  return {
+    write: (value) => type.toBuffer(value),
+    read: (bytes) => type.fromBuffer(avscBuffer(bytes)),
+    readStart: (bytes) => {
+      const { value, offset } = type.decode(avscBuffer(bytes), 0);
+      return offset < 0 ? undefined : value;
+    },
+  };
 }
 
 /** One walk of a zod schema into an Avro schema, naming its records as it goes. */
@@ -105,7 +126,8 @@ class SchemaWalk {
       name: field,
       type: this.schemaOf(type),
     }));
-    return { type: 'record', name, fields };
+    const record: RecordSchema = { type: 'record', name, fields, logicalType: 'istalang-record' };
+    return record as unknown as AvroSchema;
   }
 
   #tuple(items: readonly ZodSchema[], rest: ZodSchema | null): AvroSchema {

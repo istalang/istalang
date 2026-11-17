@@ -19,7 +19,9 @@ every decision; a backend (docs/arch/codegen.md) writes what each instruction sa
 
 A Definition is persisted for an instance's whole life as avsc bytes in a version envelope
 (`formats/binary-format.ts`), keyed by their SHA-256. Its zod schema is the one description: the Avro
-type is derived from it once (`formats/avro/`), and zod never runs on a Definition. Everything that
+type is derived from it once (`formats/avro/`), and zod never runs on a Definition. A decoded
+Definition is plain objects, an absent optional field absent, as lowering builds it. avsc is
+imported through its types-only entry; a browser bundle shims the `buffer` and `util` it needs. Everything that
 carries one carries an `EncodedDefinition` (value, bytes, hash) or the text a built module embeds
 (hash and base64 bytes), both made and read by `definition.ts` alone, so a change of encoding stays
 there. The toolchain's own output is trusted: encoded once, never read back or validated again.

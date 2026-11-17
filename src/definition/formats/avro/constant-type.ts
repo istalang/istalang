@@ -3,7 +3,7 @@
  * the schema names. A record is named, so a literal can be a union's branch beside others.
  */
 
-import avsc from 'avsc';
+import avsc from 'avsc/etc/browser/avsc-types.js';
 import type { AvroSchema } from './avsc-types.ts';
 
 /** The record of no fields a literal is written as. */

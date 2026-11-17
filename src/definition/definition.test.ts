@@ -42,7 +42,7 @@ const ofConstants = (constants: Definition['constants']): Definition => ({
 describe('a Definition persisted', () => {
   it('reads back as the Definition written, keyed by the same hash', () => {
     const read = readDefinition(bytes);
-    expect(read.definition).toEqual(compiled);
+    expect(read.definition).toStrictEqual(compiled);
     expect(read.hash).toBe(hash);
     expect(encodeDefinition(read.definition).bytes).toEqual(bytes);
   });
@@ -58,7 +58,7 @@ describe('a Definition persisted', () => {
       fc.property(fc.array(valueArbitrary({ typed: true }), { maxLength: 4 }), (constants) => {
         const encoded = encodeDefinition(ofConstants(constants));
         const embedded = embeddedDefinition(embeddedText(encoded));
-        expect(embedded.definition.constants).toEqual(constants);
+        expect(embedded.definition).toStrictEqual(ofConstants(constants));
         expect(embedded.hash).toBe(encoded.hash);
         expect(encodeDefinition(embedded.definition).bytes).toEqual(encoded.bytes);
       }),

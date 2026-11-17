@@ -13,7 +13,7 @@
 import { sha256 } from '@noble/hashes/sha2.js';
 import { bytesToHex } from '@noble/hashes/utils.js';
 import { z } from 'zod';
-import { avroTypeOf } from './avro/index.ts';
+import { avroCodecOf } from './avro/index.ts';
 import { FormatError, requireEnvelope } from './format.ts';
 
 /** What `contentHash` returns, for formats that refer to content by hash. */
@@ -34,7 +34,7 @@ export interface BinaryFormat<Value> {
 const header = { format: z.string(), version: z.int() };
 
 /** The envelope alone, which every binary format's bytes start with. */
-const headerType = avroTypeOf(z.strictObject(header));
+const headerCodec = avroCodecOf(z.strictObject(header));
 
 /** Ties a body schema to a format name and version, as avsc bytes. */
 export function defineBinaryFormat<Body extends z.ZodType>(
@@ -42,20 +42,19 @@ export function defineBinaryFormat<Body extends z.ZodType>(
   version: number,
   body: Body,
 ): BinaryFormat<z.output<Body>> {
-  const envelope = avroTypeOf(z.strictObject({ ...header, body }));
+  const envelope = avroCodecOf(z.strictObject({ ...header, body }));
   return {
     write(value) {
       try {
-        return envelope.toBuffer({ format: name, version, body: value });
+        return envelope.write({ format: name, version, body: value });
       } catch (error) {
         throw new FormatError(`Invalid ${name} body: ${messageOf(error)}`, { cause: error });
       }
     },
     read(bytes) {
-      const buffer = asBuffer(bytes);
-      requireEnvelope(name, version, headerOf(buffer, name));
+      requireEnvelope(name, version, headerOf(bytes, name));
       try {
-        return (envelope.fromBuffer(buffer) as { readonly body: z.output<Body> }).body;
+        return (envelope.read(bytes) as { readonly body: z.output<Body> }).body;
       } catch (error) {
         throw new FormatError(`Invalid ${name} body: ${messageOf(error)}`, { cause: error });
       }
@@ -63,22 +62,17 @@ export function defineBinaryFormat<Body extends z.ZodType>(
   };
 }
 
-function headerOf(buffer: Buffer, name: string): { format: unknown; version: unknown } {
-  let decoded: { readonly value: unknown; readonly offset: number };
+function headerOf(bytes: Uint8Array, name: string): { format: unknown; version: unknown } {
+  let found: unknown;
   try {
-    decoded = headerType.decode(buffer, 0);
+    found = headerCodec.readStart(bytes);
   } catch (error) {
     throw new FormatError(`Not ${name} data: it has no envelope.`, { cause: error });
   }
-  if (decoded.offset < 0) {
+  if (found === undefined) {
     throw new FormatError(`Not ${name} data: it has no envelope.`);
   }
-  return decoded.value as { format: unknown; version: unknown };
-}
-
-/** `bytes` as the Buffer avsc reads, sharing their memory. */
-function asBuffer(bytes: Uint8Array): Buffer {
-  return Buffer.isBuffer(bytes) ? bytes : Buffer.from(bytes.buffer, bytes.byteOffset, bytes.length);
+  return found as { format: unknown; version: unknown };
 }
 
 function messageOf(error: unknown): string {

@@ -4,15 +4,14 @@
  * as few bytes as a long would.
  */
 
-import avsc from 'avsc';
+import avsc from 'avsc/etc/browser/avsc-types.js';
+import { avscBuffer } from './avsc-buffers.ts';
 import type { AvroSchema } from './avsc-types.ts';
 
 const byteBits = 8;
 
-const hex = 16;
-
-/** Hex digits per byte. */
-const byteDigits = 2;
+/** The values one byte holds. */
+const byteBase = 2n ** BigInt(byteBits);
 
 /** The fewest bytes of two's complement that hold `value`. */
 function byteCountOf(value: bigint): number {
@@ -29,19 +28,25 @@ export class BigintType extends avsc.types.LogicalType {
   }
 
   // biome-ignore lint/style/useThisInClassMethods: avsc calls a logical type's conversions as its methods.
-  protected override _toValue(value: unknown): Buffer {
+  protected override _toValue(value: unknown): Uint8Array {
     if (typeof value !== 'bigint') {
       throw new TypeError(`Expected an Int, not ${String(value)}.`);
     }
-    const count = byteCountOf(value);
-    const digits = BigInt.asUintN(count * byteBits, value).toString(hex);
-    return Buffer.from(digits.padStart(count * byteDigits, '0'), 'hex');
+    const bytes = new Uint8Array(byteCountOf(value));
+    let rest = BigInt.asUintN(bytes.length * byteBits, value);
+    for (let at = bytes.length - 1; at >= 0; at -= 1) {
+      bytes[at] = Number(rest % byteBase);
+      rest /= byteBase;
+    }
+    return avscBuffer(bytes);
   }
 
   // biome-ignore lint/style/useThisInClassMethods: avsc calls a logical type's conversions as its methods.
-  protected override _fromValue(bytes: Buffer): bigint {
-    return bytes.length === 0
-      ? 0n
-      : BigInt.asIntN(bytes.length * byteBits, BigInt(`0x${bytes.toString('hex')}`));
+  protected override _fromValue(bytes: Uint8Array): bigint {
+    let value = 0n;
+    for (const byte of bytes) {
+      value = value * byteBase + BigInt(byte);
+    }
+    return BigInt.asIntN(bytes.length * byteBits, value);
   }
 }

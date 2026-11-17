@@ -3,8 +3,8 @@
  * written (branches.ts) and unwrapped as it is read, so neither side sees the wrapping.
  */
 
-import avsc from 'avsc';
-import type { AvroSchema } from './avsc-types.ts';
+import avsc from 'avsc/etc/browser/avsc-types.js';
+import type { AvroSchema, WrappedUnionType } from './avsc-types.ts';
 
 /** The schema of a union: its branches, how a value picks one, and what Avro's null stands for. */
 export type UnionSchema = AvroSchema[] & {
@@ -27,7 +27,7 @@ export class UnionType extends avsc.types.LogicalType {
     super(schema as unknown as AvroSchema, options);
     this.#branchOf = schema.branchOf;
     this.#nullValue = schema.nullValue;
-    this.#names = (this.underlyingType as avsc.types.WrappedUnionType).types.map(
+    this.#names = (this.underlyingType as WrappedUnionType).types.map(
       ({ branchName }) => branchName,
     );
   }

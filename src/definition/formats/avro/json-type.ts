@@ -3,7 +3,7 @@
  * JSON text (../codec.ts), so it reads back as JSON reading gives it.
  */
 
-import avsc from 'avsc';
+import avsc from 'avsc/etc/browser/avsc-types.js';
 import { decodeJson, encodeJson } from '../codec.ts';
 
 // biome-ignore-start lint/style/useThisInClassMethods: avsc calls a logical type's conversions as its methods.

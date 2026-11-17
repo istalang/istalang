@@ -270,6 +270,13 @@ const nodeBuiltins = [
 /** A layer is a folder (`compiler/program`) or a single module (`compiler/compile` is compile.ts). */
 const layerPath = (names) => `^src/(${names.join('|')})(/|\\.ts$)`;
 
+/**
+ * The one module past the Node layers that imports a built-in: avsc takes and gives Buffers of
+ * Node's `buffer`, so bytes cross into it there, through the same module avsc requires. A browser
+ * bundle shims it for avsc anyway (src/live/browser-bundle.test.ts pins what it needs).
+ */
+const avscBuffers = '^src/definition/formats/avro/avsc-buffers\\.ts$';
+
 const parserGrammar = '^src/compiler/parser/grammar/';
 
 const parserCategory = `${parserGrammar}(expressions/|statements/|declarations/|types\\.ts$|patterns\\.ts$)`;
@@ -361,11 +368,16 @@ export default {
     },
     {
       // Compiled JavaScript runs in a browser too, so nothing its runtime library reaches, however
-      // far, is one of Node's built-ins.
+      // far, is one of Node's built-ins, but the `buffer` avsc needs, which `avscBuffers` alone
+      // imports (above).
       name: 'live-reaches-node',
       severity: 'error',
       from: { path: '^src/live/' },
-      to: { path: `^(node:)?(${nodeBuiltins.join('|')})(/|$)`, reachable: true },
+      to: {
+        path: `^(node:)?(${nodeBuiltins.join('|')})(/|$)`,
+        pathNot: '^buffer$',
+        reachable: true,
+      },
     },
     {
       name: 'checker-internals-imported',
@@ -384,6 +396,7 @@ export default {
     })),
     { from: { path: '^src/' }, to: { dependencyTypes: ['npm'] } },
     { from: { path: layerPath(nodeLayers) }, to: { dependencyTypes: ['core'] } },
+    { from: { path: avscBuffers }, to: { path: '^buffer$', dependencyTypes: ['core'] } },
     {
       // The VS Code client is bundled whole at build time, so what it imports are the package's
       // devDependencies; the package's own code, which runs from node_modules, may import none.

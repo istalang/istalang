@@ -8,7 +8,7 @@ import { stringify } from 'lossless-json';
 
 /**
  * JSON whose numbers survive a round trip unchanged: safe integers, floats, and integers beyond
- * the safe range as bigints. A whole double beyond the safe range is excluded on purpose: its
+ * the safe range as bigints; its objects are plain, as reading JSON gives them. A whole double beyond the safe range is excluded on purpose: its
  * text is an integer, which the codec reads back exactly as a bigint.
  */
 export const exactJson: fc.Arbitrary<unknown> = fc.letrec<{ json: unknown }>((tie) => ({
@@ -22,7 +22,7 @@ export const exactJson: fc.Arbitrary<unknown> = fc.letrec<{ json: unknown }>((ti
     fc.bigInt({ min: 2n ** 53n, max: 2n ** 300n }),
     fc.bigInt({ min: -(2n ** 300n), max: -(2n ** 53n) }),
     fc.array(tie('json'), { maxLength: 4 }),
-    fc.dictionary(fc.string(), tie('json'), { maxKeys: 4 }),
+    fc.dictionary(fc.string(), tie('json'), { maxKeys: 4, noNullPrototype: true }),
   ),
 })).json;
 
