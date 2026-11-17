@@ -91,6 +91,9 @@ it as a native, with exactly the summary its extern predecessor had (spec §3.16
   call's cleanup (its frame's let-gos and what it returns, which settles nothing), is collected
   `apart` from the round disposing it, each let-go as it happens, so before its value or call is
   gone (spec §7) and a `select`'s losers before its winning case's body (§8).
+- Disposal is final: an object is marked disposed as its round takes it, and a snapshot keeps the
+  mark, so no later hold counts on it, a mock recording its `dispose` call included (§10), and it
+  is never disposed twice.
 - A native's result is `adopt`ed by its declared type: a composite it built holds its parts. One
   storing an item through `&` (`push`, `setEntry`, ...) keeps it by its item type first, so the
   item, even read from the place it changes, keeps its value (`keepItems`).

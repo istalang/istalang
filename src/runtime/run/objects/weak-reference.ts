@@ -6,7 +6,7 @@ import { RunObject } from './run-object.ts';
 export class WeakReference extends RunObject {
   target: RunObject | undefined;
   /** What its `disposed()` gives (§7), made the first time it is asked for. */
-  disposed: Future | undefined;
+  whenDisposed: Future | undefined;
 
   constructor(id: number, target: RunObject) {
     super(id);

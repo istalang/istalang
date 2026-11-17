@@ -255,4 +255,42 @@ fn suite() -> Array<Test>: [test("mocked dispose", mockedDispose)]
 `);
     expect(outcomesOf(await reportsOf(source))).toEqual(['mock dispose › mocked dispose: passed']);
   });
+
+  it('of a dispose recording the disposed value never dispose it again as they are released, read back from a snapshot too (§7, §10)', async () => {
+    const source = testModule(`
+shared struct Lease:
+  id: Int
+  disposals: Shared<Int>
+
+fn dispose(self: Lease):
+  self->disposals->value += 1
+
+ista async fn recorded() -> Int:
+  const real = new Shared{value: 0}
+  let mocked = 0
+  {
+    const m = mock(dispose, fn(self: Lease): {
+      mocked += 1
+    })
+    const l = new Lease{id: 1, disposals: real}
+    drop l
+    await time.delay(1s)
+    assertEq([mocked, m.calls().length()], [1, 1])
+  }
+  real->value
+
+ista async fn once():
+  assertEq(await recorded(), 0)
+
+ista async fn onceReadBack():
+  assertEq(await (testing.spawnCrashingEveryAwait(recorded)).result(), Ok(0))
+
+@Suite{"mock dispose"}
+fn suite() -> Array<Test>: [test("once", once), test("once read back", onceReadBack)]
+`);
+    expect(outcomesOf(await reportsOf(source))).toEqual([
+      'mock dispose › once: passed',
+      'mock dispose › once read back: passed',
+    ]);
+  });
 });

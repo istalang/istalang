@@ -7,7 +7,7 @@
  *   disposed in rounds of its own as it returns, before what the disposed value held (§7).
  * - A **future** cancels what a host was to fill and the resolvers waiting on it (§6), stops its
  *   call (executions.ts), and lets go of what waits on it and of its value.
- * - A **resource** is marked disposed and forgotten, and released: by the runtime, where its
+ * - A **resource** is forgotten, and released: by the runtime, where its
  *   disposal is the runtime's own, else by its host through its type's `dispose` (§7, §9).
  * - A **mock** no call reaches any more lets go of its replacement and the calls it recorded (§10).
  * - Its weak reference is cleared first, and its `disposed()` settles once it is gone.
@@ -54,8 +54,8 @@ export function disposerOf(seams: DisposalSeams): Disposer {
   return (object) => {
     const weak = seams.weakReferences.cleared(object);
     const released = releasedBy(object, seams);
-    if (weak?.disposed !== undefined) {
-      seams.settle(weak.disposed, null);
+    if (weak?.whenDisposed !== undefined) {
+      seams.settle(weak.whenDisposed, null);
     }
     return released;
   };
@@ -72,7 +72,6 @@ function releasedBy(object: RunObject, seams: DisposalSeams): readonly Value[] {
     return releasedByFuture(object, seams);
   }
   if (object instanceof Resource) {
-    object.disposed = true;
     seams.resources.released(object);
     object.release?.();
     const dispose = seams.disposeOf(object.type);

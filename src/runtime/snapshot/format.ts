@@ -9,7 +9,7 @@
  *   id from the instance's serial, which a value names as a handle. Values are written as trees: a
  *   composite two holders share comes back as two copies, which value semantics can't tell apart.
  * - **Holders are not written**: each object's count is the count of what holds it, which reading
- *   the snapshot back counts again (restore.ts).
+ *   the snapshot back counts again (restore.ts), but of a disposed object, which nothing holds.
  * - **What ended an instance** is its status: its outcome, or its panic with the time its failed
  *   segment started, so a retry sees the same clock (§3.12), or its termination.
  */
@@ -42,17 +42,20 @@ const waiting = z.strictObject({
   cancelled: value,
 });
 
+/** What every object states: its id, and whether it was disposed, which nothing undoes (§7). */
+const identity = { id: objectId, disposed: z.literal(true).optional() };
+
 const object = z.discriminatedUnion('kind', [
   z.strictObject({
     kind: z.literal('cell'),
-    id: objectId,
+    ...identity,
     value,
     counted: z.boolean(),
     dispose: functionId.optional(),
   }),
   z.strictObject({
     kind: z.literal('future'),
-    id: objectId,
+    ...identity,
     settled: z.boolean(),
     value,
     callbacks: z.array(waiting),
@@ -61,7 +64,7 @@ const object = z.discriminatedUnion('kind', [
   }),
   z.strictObject({
     kind: z.literal('execution'),
-    id: objectId,
+    ...identity,
     future: objectId,
     function: functionId,
     pc: count,
@@ -79,20 +82,19 @@ const object = z.discriminatedUnion('kind', [
   }),
   z.strictObject({
     kind: z.literal('weakReference'),
-    id: objectId,
+    ...identity,
     target: objectId.optional(),
-    disposed: objectId.optional(),
+    whenDisposed: objectId.optional(),
   }),
   z.strictObject({
     kind: z.literal('resource'),
-    id: objectId,
+    ...identity,
     type: typeId,
     payload: externPayload,
-    disposed: z.boolean(),
   }),
   z.strictObject({
     kind: z.literal('mock'),
-    id: objectId,
+    ...identity,
     target: functionId,
     replacement: value,
     calls: z.array(value),

@@ -10,13 +10,11 @@ export class Resource extends RunObject {
   readonly payload: unknown;
   /** What disposing it does, where its disposal is the runtime's own: a runtime's stops it. */
   readonly release: (() => void) | undefined;
-  disposed: boolean;
 
   constructor(id: number, type: number, payload: unknown, release?: () => void) {
     super(id);
     this.type = type;
     this.payload = payload;
     this.release = release;
-    this.disposed = false;
   }
 }

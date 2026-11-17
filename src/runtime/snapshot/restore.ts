@@ -45,10 +45,7 @@ export function restore(
   snapshot: Snapshot,
   answers: ReadonlyMap<number, Invocation> = new Map(),
 ): void {
-  const objects = new Map<number, RunObject>();
-  for (const persisted of snapshot.objects) {
-    made(run, persisted, objects);
-  }
+  const objects = madeObjects(run, snapshot);
   // A store's snapshot naming an object it doesn't hold doesn't fit its instance: refused, as a
   // host's, before anything of it resumes.
   const object = (id: number): RunObject => {
@@ -107,6 +104,24 @@ export function restore(
   });
 }
 
+/**
+ * The objects `snapshot` names, by id, made empty, a disposed one marked before anything holding it
+ * is filled, so it counts no holder (§7).
+ */
+function madeObjects(run: Run, snapshot: Snapshot): Map<number, RunObject> {
+  const objects = new Map<number, RunObject>();
+  for (const persisted of snapshot.objects) {
+    made(run, persisted, objects);
+  }
+  for (const { id, disposed } of snapshot.objects) {
+    const disposedObject = disposed === true ? objects.get(id) : undefined;
+    if (disposedObject !== undefined) {
+      disposedObject.disposed = true;
+    }
+  }
+  return objects;
+}
+
 /** Makes the object `persisted` describes, empty, under its id; an execution makes its future. */
 function made(run: Run, persisted: PersistedObject, objects: Map<number, RunObject>): void {
   handlerOf(makers, persisted)({ run, objects }, persisted);
@@ -135,9 +150,7 @@ const makers: Handlers<
     objects.set(weak.id, new WeakReference(weak.id, undefined as never));
   },
   resource: ({ objects }, persisted) => {
-    const resource = new Resource(persisted.id, persisted.type, persisted.payload);
-    resource.disposed = persisted.disposed;
-    objects.set(persisted.id, resource);
+    objects.set(persisted.id, new Resource(persisted.id, persisted.type, persisted.payload));
   },
   mock: ({ objects }, persisted) => {
     objects.set(persisted.id, new MockObject(persisted.id, persisted.target, null));
@@ -189,8 +202,8 @@ const fillers: Handlers<{ readonly run: Run } & Reading, PersistedObject, [], vo
   weakReference: ({ run, object }, persisted) => {
     const weak = object(persisted.id) as WeakReference;
     weak.target = persisted.target === undefined ? undefined : object(persisted.target);
-    if (persisted.disposed !== undefined) {
-      weak.disposed = object(persisted.disposed) as Future;
+    if (persisted.whenDisposed !== undefined) {
+      weak.whenDisposed = object(persisted.whenDisposed) as Future;
     }
     run.weakReferences.restored(weak);
   },

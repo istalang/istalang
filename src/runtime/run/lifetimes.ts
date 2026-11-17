@@ -9,6 +9,9 @@
  *   rather than starting one of its own, but for one `apart` from it: a disposed call's cleanup,
  *   whose let-gos are disposed as they happen, as a running call's are, so before its call is gone
  *   (§7), and a `select`'s losers before its winning case's body (§8).
+ * - **Disposal is final.** An object is marked disposed as its round takes it, before its `dispose`
+ *   runs, and a hold on it counts nothing from then on: whatever reaches it later (a mock recording
+ *   its `dispose` call, §10) neither brings it back nor disposes it again as it lets go.
  * - **Heap** values reach none: nothing is counted, but a value given a second holder is marked
  *   shared, for good. A write changes a value in place only while it is unique: counted once, or
  *   never shared. A shared value is copied, its parts then shared or held by the copy too.
@@ -66,10 +69,12 @@ export class Lifetimes {
     this.#types = types;
   }
 
-  /** Another holder of `value`. */
+  /** Another holder of `value`; none of a disposed object, which nothing brings back (§7). */
   readonly hold = (value: Value | undefined): void => {
     if (value instanceof RunObject) {
-      value.count += 1;
+      if (!value.disposed) {
+        value.count += 1;
+      }
     } else if (isNode(value)) {
       this.#counts.set(value, (this.#counts.get(value) ?? 0) + 1);
     }
@@ -306,6 +311,7 @@ export class Lifetimes {
       const round = zeros.splice(0).sort((first, second) => second.object - first.object);
       const released: Value[] = [];
       for (const object of round) {
+        object.disposed = true;
         released.push(...this.#dispose(object));
       }
       for (const value of released) {

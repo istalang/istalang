@@ -264,11 +264,11 @@ export class Run {
 
   /** The future `weak`'s `disposed()` gives (§7): settled once its referent is disposed. */
   disposedOf(weak: WeakReference): Future {
-    weak.disposed ??= new Future(this.newId());
-    if (weak.target === undefined && !weak.disposed.settled) {
-      this.settle(weak.disposed, null);
+    weak.whenDisposed ??= new Future(this.newId());
+    if (weak.target === undefined && !weak.whenDisposed.settled) {
+      this.settle(weak.whenDisposed, null);
     }
-    return weak.disposed;
+    return weak.whenDisposed;
   }
 
   // The loop.

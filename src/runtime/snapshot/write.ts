@@ -120,7 +120,12 @@ interface Naming {
 }
 
 /** `object` as a snapshot writes it. */
-function objectOf(object: RunObject, { named, persisted }: Naming): PersistedObject {
+function objectOf(object: RunObject, naming: Naming): PersistedObject {
+  return { ...fieldsOf(object, naming), ...(object.disposed ? { disposed: true } : {}) };
+}
+
+/** What `object` states as its kind's. */
+function fieldsOf(object: RunObject, { named, persisted }: Naming): PersistedObject {
   const id = object.object;
   if (object instanceof Cell) {
     return {
@@ -155,7 +160,7 @@ function objectOf(object: RunObject, { named, persisted }: Naming): PersistedObj
       kind: 'weakReference',
       id,
       ...(object.target === undefined ? {} : { target: named(object.target) }),
-      ...(object.disposed === undefined ? {} : { disposed: named(object.disposed) }),
+      ...(object.whenDisposed === undefined ? {} : { whenDisposed: named(object.whenDisposed) }),
     };
   }
   if (object instanceof Resource) {
@@ -164,7 +169,6 @@ function objectOf(object: RunObject, { named, persisted }: Naming): PersistedObj
       id,
       type: object.type,
       payload: object.payload as never,
-      disposed: object.disposed,
     };
   }
   if (object instanceof MockObject) {
