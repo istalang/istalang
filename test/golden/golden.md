@@ -11,7 +11,7 @@ tags: [goldens, testing, scenarios, ir-first]
 # Goldens
 
 What programs show when run, recorded from the interpreter before the IR-first rewrite deleted it
-(`docs/work/ir-first/contracts.md`, "Goldens"), so every later pipeline is held to it.
+(`docs/work/done/ir-first/contracts.md`, "Goldens"), so every later pipeline is held to it.
 The corpus sweep runs them (`test/sweep`, its `golden` check), each subject compiled once beside
 its other checks; `GOLDEN=update` records instead of checking, in one process.
 
@@ -80,7 +80,7 @@ exports.
 
 `GOLDEN=update` records from the pipeline under test, so a recorded diff proves nothing by itself.
 A golden changes only in a commit whose change is what the golden now shows differently: a named
-spec amendment (`docs/work/ir-first/design.md`), or a fix of what the spec states, named in the
+spec amendment (`docs/work/done/ir-first/design.md`), or a fix of what the spec states, named in the
 commit. Every line the diff moves is one that change explains; a golden that moves beside a
 refactor or an unrelated fix is a regression. The `amended` goldens are never recorded: they change
 by hand, with their amendment.

@@ -192,7 +192,7 @@ drives any backend. Leaves first; each arrow is "needs".
    instance-state), shared primitives (counts, collector, settle-order, random-draws), boundary/ and the snapshot
    contract (objects, snapshot, holdings, check, random) out of the interpreter's folder; delete the
    `live-imports-interpreter` allow-list. Prereq: none. Moves ≈2.8k LOC, deletes none.
-2. **R2 Lifetimes in the IR** (designed: docs/work/ir-first/design.md (decision 4), ir-first plan G3→G4a→G4b→G4c). Deletes the (b)
+2. **R2 Lifetimes in the IR** (designed: docs/work/done/ir-first/design.md (decision 4), ir-first plan G3→G4a→G4b→G4c). Deletes the (b)
    lifetime policies (holder-writes, in-place, live reach walk ≈720) and the D7–D15 twins (≈500). Prereqs: G3 typed
    registers. R3 needs G4a/G4b.
 3. **R3 Runtime objects in Istalang:** `Future`, `Resolver`, waits, `Slot` (today `extern shared struct` in

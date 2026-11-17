@@ -1,5 +1,5 @@
 ---
-description: archived — the JavaScript backend as built before the IR-first rewrite (generators, counted registers, the live runtime library), superseded by docs/work/ir-first/design.md; read only for the rules the code being replaced encodes
+description: archived — the JavaScript backend as built before the IR-first rewrite (generators, counted registers, the live runtime library), superseded by docs/work/done/ir-first/design.md; read only for the rules the code being replaced encodes
 owner: tech-lead
 status: archived
 applies_to: istalang

@@ -63,7 +63,7 @@ export interface EmittedProgram {
 
 /**
  * The code of `definition`, its functions emitted in `order`, each index once: a test's second
- * build of one Definition takes another (docs/work/ir-first/contracts.md), meaning the same.
+ * build of one Definition takes another (docs/work/done/ir-first/contracts.md), meaning the same.
  */
 export function emitProgram(
   definition: Definition,

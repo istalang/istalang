@@ -1,6 +1,6 @@
 /**
  * The pipeline the goldens run on, and the one folder that knows it: a new pipeline replaces this
- * folder and nothing else of the runner (docs/work/ir-first/contracts.md, "Goldens").
+ * folder and nothing else of the runner (docs/work/done/ir-first/contracts.md, "Goldens").
  *
  * Today's compiles a program to its Definition, emits it as JavaScript and runs it on the one run
  * (src/runtime), on a manual clock that moves only to the next due timer, from 0, and the
@@ -121,7 +121,7 @@ async function freshHost(path: string): Promise<HostExterns> {
 
 /**
  * A second build of a Definition, which each run read back from a snapshot runs instead of the
- * first (docs/work/ir-first/contracts.md, "Typed-IR gate").
+ * first (docs/work/done/ir-first/contracts.md, "Typed-IR gate").
  */
 export type ReadBack = (definition: Definition) => EmittedProgram;
 

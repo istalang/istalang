@@ -50,7 +50,7 @@ interface LiveCode {
   readonly code?: EmittedProgram;
   /**
    * The code each run read back from a snapshot runs: `code`, but in a test of two builds of one
-   * Definition (docs/work/ir-first/contracts.md), which gives another.
+   * Definition (docs/work/done/ir-first/contracts.md), which gives another.
    */
   readonly readBack?: () => EmittedProgram;
 }

@@ -1,5 +1,5 @@
 /**
- * What running a program shows, the observation every pipeline is held to (docs/work/ir-first/
+ * What running a program shows, the observation every pipeline is held to (docs/work/done/ir-first/
  * contracts.md, "Goldens"): how it ended, its log records and the calls its host saw, in order.
  *
  * - Disposal is observed through what it does: a `dispose` that logs or calls its host shows in

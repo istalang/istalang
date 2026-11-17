@@ -2,11 +2,11 @@
  * Every program shows the same with its contexts crashing at every await (§10): each segment runs
  * again from the instance as it last committed, read back from its snapshot into a second build of
  * the same Definition, its functions emitted in a shuffled order into a fresh module, a new order
- * at every read-back (docs/work/ir-first/contracts.md, "Typed-IR gate"). So what a program shows
+ * at every read-back (docs/work/done/ir-first/contracts.md, "Typed-IR gate"). So what a program shows
  * then is what committing and restoring keep, its suspended frames spilled and restored included,
- * whichever build commits and whichever restores (docs/work/ir-first/design.md, "Verification").
+ * whichever build commits and whichever restores (docs/work/done/ir-first/design.md, "Verification").
  * It stands for the cross-check of two backends, gone with the interpreter
- * (docs/work/ir-first/coverage.md). What it holds of a program is each run it read back.
+ * (docs/work/done/ir-first/coverage.md). What it holds of a program is each run it read back.
  */
 
 import fc from 'fast-check';

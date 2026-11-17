@@ -1,7 +1,7 @@
 ---
 description: phase plan and process for the IR-first rewrite (design.md) — goldens from the interpreter, natives moved to Istalang on main, and one rewrite of everything after the checker on the ir-first branch, tested late against the goldens; read before forking, building or reviewing any ir-first phase
 owner: tech-lead
-status: active
+status: done
 applies_to: istalang
 last_verified: 2026-11-16
 last_updated: 2026-11-17

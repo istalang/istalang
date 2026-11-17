@@ -1,7 +1,7 @@
 /**
  * How long FormBuilder's supplier form takes to redraw after an input changes, compiled to
- * JavaScript (docs/work/ir-first/design.md, "Perf gates": no slower than R0's compiled code,
- * docs/work/ir-first/measurements.md), measured with `npm run bench` and kept out of
+ * JavaScript (docs/work/done/ir-first/design.md, "Perf gates": no slower than R0's compiled code,
+ * docs/work/done/ir-first/measurements.md), measured with `npm run bench` and kept out of
  * `npm run verify`.
  *
  * The form runs as a browser's host runs it: `nextEvent` resolves with each change, and the form

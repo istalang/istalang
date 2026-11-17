@@ -1,5 +1,5 @@
 /**
- * Host scenarios: what a host does to a program over time, as data (docs/work/ir-first/
+ * Host scenarios: what a host does to a program over time, as data (docs/work/done/ir-first/
  * contracts.md, "Goldens"), so every pipeline's host API is driven by the same steps and held to
  * what each step showed. A scenario is `scenarios/<name>.json`, naming its program beside it and
  * its host module, in the format `ista run --host` loads, if it has one.

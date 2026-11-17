@@ -1,5 +1,5 @@
 ---
-description: archived — the js-codegen phase plan (P1, P2 done, P3 dropped), superseded by docs/work/ir-first/plan.md
+description: archived — the js-codegen phase plan (P1, P2 done, P3 dropped), superseded by docs/work/done/ir-first/plan.md
 owner: tech-lead
 status: archived
 applies_to: istalang
@@ -17,7 +17,7 @@ Design: `design.md`.
 Sequential phases on one branch: P2 counts the objects P1 builds, and P3 changes the writes P2
 counts. Each gets qa and reviewer. P2's reviewer reviews the whole feature (`main..HEAD`), which
 makes it the merge review; the feature merges then. P3 follows on its own branch, its reviewer seeing
-its whole diff. Lifetimes then move into the IR (`docs/work/ir-first/`), so every backend runs
+its whole diff. Lifetimes then move into the IR (`docs/work/done/ir-first/`), so every backend runs
 them and none decides them.
 
 | Phase | Scope | Acceptance |

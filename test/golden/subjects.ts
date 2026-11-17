@@ -1,11 +1,11 @@
 /**
- * Everything the goldens record, by group (docs/work/ir-first/contracts.md, "Goldens"): each
+ * Everything the goldens record, by group (docs/work/done/ir-first/contracts.md, "Goldens"): each
  * subject keyed by the file it comes from, so a golden has one home beside what its source states.
  *
  * - `corpus` and `regressions`: programs whose first line states their outcome or panic, which
  *   stays the home of that result; their goldens hold the rest.
  * - `amended`: programs written by hand to a spec amendment the interpreter predates
- *   (docs/work/ir-first/design.md, "Spec amendments"), stating their results as the corpus does;
+ *   (docs/work/done/ir-first/design.md, "Spec amendments"), stating their results as the corpus does;
  *   their goldens are written by hand too.
  * - `spec-examples`: the examples of the spec and guide that are whole programs, checking clean
  *   alone and declaring a `main` a host starts, keyed by document, section and place in it, since

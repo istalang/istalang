@@ -21,4 +21,4 @@ acceptable, tests catch it). Primitive ops (Int `+`) must be as fast as hand-wri
 
 **How to apply:** plans are complete rewrite/refactoring plans (structure, deletion, one home per rule),
 never a feature or perf patch on top of what exists; no backward compatibility. Work lives in
-`docs/work/ir-first/`. Related: [[simplicity-first]], [[build-on-constructs]].
+`docs/work/done/ir-first/`. Related: [[simplicity-first]], [[build-on-constructs]].

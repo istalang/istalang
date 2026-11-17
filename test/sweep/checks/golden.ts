@@ -1,6 +1,6 @@
 /**
  * The goldens: what each subject shows when run, held to what was recorded
- * (docs/work/ir-first/contracts.md, "Goldens"; ../../golden/golden.md).
+ * (docs/work/done/ir-first/contracts.md, "Goldens"; ../../golden/golden.md).
  *
  * - A group's goldens are one JSON file, `test/golden/<group>.json`, by subject name. An entry
  *   holds only what the subject's source doesn't state, and a subject with nothing more to record

@@ -1,7 +1,7 @@
 ---
 description: the target architecture of the IR-first rewrite — every program, ista code included, lowered to one typed IR with lifetimes explicit, compiled (JS now, LLVM later) and run by one run, runtime services written in Istalang, derived JSON codecs synthesized by lowering behind one seam, the interpreter replaced by golden outputs; decisions, invariants, verification; read before planning, building or reviewing any ir-first phase, or touching lowering, the IR, the run or codegen
 owner: tech-lead
-status: active
+status: done
 applies_to: istalang
 last_verified: 2026-11-16
 last_updated: 2026-11-17

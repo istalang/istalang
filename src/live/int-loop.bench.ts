@@ -1,6 +1,6 @@
 /**
  * An `Int` loop compiled to JavaScript against the same loop written by hand over bigint, the gate
- * on primitive operations (docs/work/ir-first/design.md, "Perf gates": within 2×), measured with
+ * on primitive operations (docs/work/done/ir-first/design.md, "Perf gates": within 2×), measured with
  * `npm run bench` and kept out of `npm run verify`. What is timed is the build
  * (built-program.test-kit.ts).
  */

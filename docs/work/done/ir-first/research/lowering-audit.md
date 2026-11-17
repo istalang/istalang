@@ -11,7 +11,7 @@ tags: [audit, lowering, definition, ir, typed-registers, lifetimes, llvm, clean-
 # Lowering and Definition audit (read-only research)
 
 Evidence snapshot: `main` at `dd0df1ba`. Lifetime rules themselves are in `lifetimes-inventory.md` and
-`docs/work/ir-first/design.md` (decision 4); cited here, not redone. IDs (D1, P3…) are referenced by §4.
+`docs/work/done/ir-first/design.md` (decision 4); cited here, not redone. IDs (D1, P3…) are referenced by §4.
 
 ## 1. Map
 
@@ -220,7 +220,7 @@ makes a policy decision. Prerequisites come first; ∥ marks items independent o
 6. **Reach facts on every type entry (P5).** Then delete `counted` (W1), `plain-registers.ts`, the
    `CodeWriter` plain state, `holdsType`/`cellHolds`/`remakeCell` (M3) and extern `counted`. The biggest
    deletion: about 230 LOC in lowering, a schema field, and codegen's counted branches. Needs 5.
-7. **Lifetime instructions** per `docs/work/ir-first/design.md` (decision 4), with an ownership verifier in
+7. **Lifetime instructions** per `docs/work/done/ir-first/design.md` (decision 4), with an ownership verifier in
    `definition/validation/`. Needs 3, 5 and 6.
 8. **∥ Move the runtime value algebra out of `definition/` (D5, W2),** before a second runtime is written
    against the contract.

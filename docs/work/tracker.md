@@ -29,6 +29,7 @@ tags: [tracker]
 | Proposal 8, live and ista async (`docs/work/done/async-kinds/plan.md`; merge review closed every finding, Q52–Q55 left) | done |
 | Proposal 9, native runtime (`docs/proposals/9-native-runtime.md`), beyond async-kinds CX's minimal slice | not planned: a plan of its own |
 | Static lifetimes (`docs/work/done/static-lifetimes/plan.md`) | done (C5 dropped) |
+| IR first: everything after the checker lowered to one typed IR, JS codegen and one run (`docs/work/done/ir-first/plan.md`) | done (merge review approved; next: Q59 with P54) |
 | Proposal 13, transients and getters (`docs/work/done/transients-getters/plan.md`) | done (merge re-review approved; B87, B88 left) |
 | Proposal 14, inert functions (`docs/work/done/inert-functions/plan.md`) | done (reviewer approved, QA passed; B89 left) |
 | Computed, and FormBuilder on it (`docs/work/done/computed/plan.md`) | done (merge review approved) |
