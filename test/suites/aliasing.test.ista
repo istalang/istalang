@@ -125,6 +125,19 @@ fn capturedReadBeforeItsWrite() -> (Int, Int):
     n
   (n, bump())
 
+fn transientRead(depth: Int) -> (Array<Int>, Int):
+  transient let xs: Array<Int> = [1]
+  if depth == 0:
+    xs.push(2)
+    return ([], 0)
+  (xs, transientRead(depth - 1).1)
+
+fn handleOf(h: Shared<Array<Int>>) -> Shared<Array<Int>>: h
+
+fn readBehindComputedHandles() -> (Array<Int>, Array<Int>, Int):
+  const boxes = [new Shared<Array<Int>>{value: [1]}]
+  (boxes[0]->value, handleOf(boxes[0])->value, { boxes[0]->value.push(99); 0 })
+
 fn swapped() -> (Int, Int):
   let swap = (10, 20)
   swap.1, swap.0 = swap
@@ -170,6 +183,14 @@ fn suite() -> Array<Test>: [
   test(
     "a captured variable read keeps its value when a later operand's call assigns it"
     fn(): assertEq(capturedReadBeforeItsWrite(), (1, 2))
+  )
+  test(
+    "a transient read keeps its value when a nested call later changes it in place"
+    fn(): assertEq(transientRead(1), ([1], 0))
+  )
+  test(
+    "a value read behind a computed handle holds it when a later operand changes it in place"
+    fn(): assertEq(readBehindComputedHandles(), ([1], [1], 0))
   )
   test(
     "a destructuring assignment takes its value apart as it was before writing any part"

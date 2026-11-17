@@ -419,6 +419,8 @@
       "✓ aliasing › a part read as an argument holds its value when a later argument replaces it",
       "✓ aliasing › a value read behind a handle holds it when a later argument's call replaces it",
       "✓ aliasing › a captured variable read keeps its value when a later operand's call assigns it",
+      "✓ aliasing › a transient read keeps its value when a nested call later changes it in place",
+      "✓ aliasing › a value read behind a computed handle holds it when a later operand changes it in place",
       "✓ aliasing › a destructuring assignment takes its value apart as it was before writing any part",
       "✓ awaitables › an awaitable starts its work only once it is awaited",
       "✓ awaitables › an awaitable waits on a future through that future's onAwait",
@@ -484,7 +486,7 @@
       "✓ waits › a wait decides at its first case in order when several disposal watches resolve together",
       "✓ waits › waiters readied together by their timers run in execution creation order",
       "✓ waits › a waiting put's value is held by its put alone: let go of with it, or as it loses a select",
-      "74 passed, 0 failed, 0 skipped."
+      "76 passed, 0 failed, 0 skipped."
     ]
   }
 }

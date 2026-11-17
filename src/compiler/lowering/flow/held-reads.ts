@@ -8,12 +8,12 @@
  *
  * - **A read's root** is the variable it reads, at a name or through the reads it is a part of;
  *   one read out of a computed value has none, as nothing else reaches that value. Through a
- *   handle (`behind`), what it reaches is the handle's state.
+ *   handle (`behind`), a computed one too, what it reaches is the handle's state, others' as well.
  * - **What may change a root:** a write into its variable, whole or in part, a `&` argument rooted
  *   at it, or its release; and, where code other than the flow's own reaches it (a cell a closure
- *   shares, the place a `&` parameter refers to, a handle's state), anything that runs code: a
- *   call but a native's reading only the values it is given, a conversion, a getter, a wait, a
- *   write or a release, whose disposals run code.
+ *   or a nested call shares, the place a `&` parameter refers to, a handle's state), anything that
+ *   runs code: a call but a native's reading only the values it is given, a conversion, a getter,
+ *   a wait, a write or a release, whose disposals run code.
  * - **Before its last use:** on some path from the read to a use of it, or of a part read out of
  *   it that holds nothing itself, not through the read again. A call reading it while it may change
  *   it is such a path: the call runs on with the value it was given.
@@ -25,11 +25,11 @@ import {
   type Exit,
   type FlowFunction,
   type Operation,
+  transientsOf,
   type ValueId,
   valuesReadBy,
 } from '../../checker/surface/flow-ir.ts';
 import { ownEntryOf } from '../tables/own-entries.ts';
-import { knownVariableRegister } from './variables.ts';
 import type { FlowWriter } from './writer.ts';
 
 /** What deciding a flow's held reads needs to know beyond the flow. */
@@ -42,15 +42,16 @@ export interface ReadFacts {
 
 /**
  * What `heldReads` needs to know of the flow `writer` writes: the variables other code reaches (a
- * cell this flow shares with a closure or the function enclosing it, a `&` parameter's place),
- * and the calls of a native taking values alone, each closed in its block's passes (`inPasses`).
+ * cell this flow shares with a closure, the function enclosing it or the calls nested in it, a
+ * transient's; a `&` parameter's place), and the calls of a native taking values alone, each
+ * closed in its block's passes (`inPasses`).
  */
 export function readFactsOf(
   writer: FlowWriter,
   inPasses: (block: BlockId, read: () => void) => void,
 ): ReadFacts {
   const { flow, context } = writer;
-  const shared = new Set(flow.captures);
+  const shared = new Set([...flow.captures, ...transientsOf(flow)]);
   const readingOnly = new Set<Operation>();
   for (const [block, { operations }] of flow.blocks.entries()) {
     for (const operation of operations) {
@@ -73,8 +74,9 @@ export function readFactsOf(
     if (variable.kind !== 'variable') {
       return false;
     }
-    const register = knownVariableRegister(context, variable, writer.typeOf(value));
-    const referred = register !== undefined && context.code.typeOf(register).kind === 'reference';
+    const referred =
+      flow.parameters.includes(value) &&
+      context.code.typeOf(writer.registerOf(value)).kind === 'reference';
     return referred || (variable.inCell && shared.has(value));
   };
   return { reachable, readsOnly: (operation) => readingOnly.has(operation) };
@@ -194,10 +196,10 @@ function readsOf(flow: FlowFunction, facts: ReadFacts): ReadonlyMap<ValueId, Rea
   for (const { into, from, behind, at } of found.toSorted(
     (first, second) => first.into - second.into,
   )) {
-    const root = rootOf(from);
+    const root = behind ? { variable: rootOf(from)?.variable, reachable: true } : rootOf(from);
     if (root !== undefined) {
       reads.get(from)?.parts.push(into);
-      reads.set(into, { at, root: { ...root, reachable: root.reachable || behind }, parts: [] });
+      reads.set(into, { at, root, parts: [] });
     }
   }
   return reads;
