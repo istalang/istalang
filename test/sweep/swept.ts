@@ -4,9 +4,8 @@
  * what it shows run, each once however many checks read it, and kept no longer than its subject
  * object lives.
  *
- * - A program stating its ending, one stating nothing (a spec example's, a demo's), and one
- *   stating what the pipeline doesn't show yet (`unfixed`: a defect, or a spec amendment's while
- *   the pipeline predates them) are kinds apart, since checks hold each to different things.
+ * - A program stating its ending and one stating nothing (a spec example's, a demo's) are kinds
+ *   apart, since checks hold each to different things.
  * - `GOLDEN=update` records what the checks that record something see (`recording`), instead of
  *   checking it; one process then sweeps every subject, so each file recorded has one writer.
  */
@@ -16,15 +15,8 @@ import { type EncodedDefinition, encodeDefinition } from '../../src/definition/d
 import type { Handlers } from '../../src/foundation/structures/kind-table.ts';
 import { memo } from '../../src/foundation/structures/memo.ts';
 import type { Observation } from '../golden/observation.ts';
+import { type Compiled, compiledAt, observeCompiled } from '../golden/pipeline/index.ts';
 import {
-  type Compiled,
-  compiledAt,
-  observeCompiled,
-  runsAmendments,
-} from '../golden/pipeline/index.ts';
-import {
-  amendedGroup,
-  defectsGroup,
   type ProgramSubject,
   type ScenarioSubject,
   type SuiteSubject,
@@ -32,7 +24,7 @@ import {
 } from '../golden/subjects.ts';
 
 /** The kinds of program a check tells apart (the banner). */
-type ProgramKind = 'stating' | 'example' | 'unfixed';
+type ProgramKind = 'stating' | 'example';
 
 /** A subject, by the group whose golden file records it, as the kind of subject checks tell apart. */
 export type Swept =
@@ -69,17 +61,10 @@ export const sweptSubjects: readonly Swept[] = [...subjectGroups].flatMap(([grou
       case 'scenario':
         return { kind: subject.kind, group, subject };
       default:
-        return { kind: programKindOf(group, subject), group, subject };
+        return { kind: subject.stated === undefined ? 'example' : 'stating', group, subject };
     }
   }),
 );
-
-function programKindOf(group: string, { stated }: ProgramSubject): ProgramKind {
-  if (group === defectsGroup || (group === amendedGroup && !runsAmendments)) {
-    return 'unfixed';
-  }
-  return stated === undefined ? 'example' : 'stating';
-}
 
 /**
  * `swept` with a subject object of its own: what checks derive of a subject is kept by that object,

@@ -1,10 +1,10 @@
 ---
-description: the goldens' format, groups, fixed inputs and host-scenario steps, and how a pipeline plugs into their runner — read before adding a subject or scenario, changing what a golden records, or running the goldens on a new pipeline
+description: the goldens' format, groups, fixed inputs and host-scenario steps, how a pipeline plugs into their runner, and what may change a golden — read before adding a subject or scenario, changing what a golden records, re-recording one, or running the goldens on a new pipeline
 owner: tech-lead
 status: active
 applies_to: test/golden
-last_verified: 2026-11-16
-last_updated: 2026-11-16
+last_verified: 2026-11-17
+last_updated: 2026-11-17
 tags: [goldens, testing, scenarios, ir-first]
 ---
 
@@ -23,22 +23,16 @@ A subject's source keeps what it states, and its golden holds only the rest:
 | Group | Subjects | Its source states | Its golden holds |
 |---|---|---|---|
 | `corpus` | `test/corpus` programs with a `# outcome:`/`# panic:` header | outcome, panic message | panic frame, logs, host calls |
-| `regressions` | `src/codegen/regressions/` | the same | the same |
+| `regressions` | `test/regressions/` | the same | the same |
 | `amended` | `amended/`, written by hand to the spec amendments | the same | the same, by hand |
-| `defects` | `defects/<construct>/`, what a test of the old pipeline asserted and this one doesn't show yet | the same | nothing: expected red |
 | `spec-examples` | spec and guide examples that are whole programs declaring `main` | nothing | everything |
 | `form-builder` | FormBuilder's demos with their hosts | nothing | everything: the views are host calls |
-| `suites` | `.test.ista` modules, a std module's together, FormBuilder's, and `test/spec-suites` beside its spec code | their assertions | what `ista test` prints of a passing run |
+| `suites` | `.test.ista` modules, a std module's together, FormBuilder's, `test/suites`, and `test/spec-suites` beside its spec code | their assertions, all of it | nothing: no file, the suite passes |
 | `scenarios` | `scenarios/*.json` | the steps | what each step showed |
 
 A group is one file, `<group>.json`, keyed by subject; a subject with nothing more to record has no
 entry. Keys follow the source's path, except spec examples: `document § section #n`, since lines
 move with every edit.
-
-A `defects` program states the old assertion (`docs/work/ir-first/coverage.md`) and is checked to
-show something else, a toolchain invariant breaking on it included; a diagnostic still fails it.
-Once fixed, it fails that check, and moves to `test/corpus` under the same path with its golden
-recorded.
 
 ## What a run shows
 
@@ -77,6 +71,13 @@ with `frame`, `waiting` (`until`, `watching`) or `ready`.
 ## A new pipeline
 
 `pipeline/` is the only folder that knows the pipeline: a new one replaces it, keeping its
-exports, and sets `runsAmendments`, which turns the `amended` group from expected failures into
-checks. A golden changes only with a named spec amendment (`docs/work/ir-first/design.md`), cited
-where it changes.
+exports.
+
+## Changing a golden
+
+`GOLDEN=update` records from the pipeline under test, so a recorded diff proves nothing by itself.
+A golden changes only in a commit whose change is what the golden now shows differently: a named
+spec amendment (`docs/work/ir-first/design.md`), or a fix of what the spec states, named in the
+commit. Every line the diff moves is one that change explains; a golden that moves beside a
+refactor or an unrelated fix is a regression. The `amended` goldens are never recorded: they change
+by hand, with their amendment.

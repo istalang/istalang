@@ -1,23 +1,20 @@
 /**
- * The goldens: what each subject shows when run, held to what was recorded from the interpreter
- * before the IR-first rewrite (docs/work/ir-first/contracts.md, "Goldens"; ../../golden/golden.md).
+ * The goldens: what each subject shows when run, held to what was recorded
+ * (docs/work/ir-first/contracts.md, "Goldens"; ../../golden/golden.md).
  *
  * - A group's goldens are one JSON file, `test/golden/<group>.json`, by subject name. An entry
  *   holds only what the subject's source doesn't state, and a subject with nothing more to record
- *   has none, so the stated result keeps its one home.
+ *   has none, so the stated result keeps its one home. A suite's assertions state all of it, so a
+ *   suite has no golden: it passes.
  * - Recording writes what each subject showed instead of checking it, except the `amended`
  *   group's, written by hand to spec amendments, and keeps the goldens of subjects it didn't run.
- * - An unfixed program (../swept.ts) still shows something else than it states, so a fix turns its
- *   check red until the program moves into the corpus. A toolchain invariant breaking on one is
- *   something else shown; a diagnostic is still a failure.
  */
 
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { expect } from 'vitest';
 import { memo } from '../../../src/foundation/structures/memo.ts';
-import { Unreachable } from '../../../src/foundation/structures/unreachable.ts';
 import { type Ending, withoutEmpty } from '../../golden/observation.ts';
-import { observeSuite } from '../../golden/pipeline/index.ts';
+import { runSuite } from '../../golden/pipeline/index.ts';
 import { observeScenario } from '../../golden/pipeline/scenario-run.ts';
 import {
   amendedGroup,
@@ -74,18 +71,6 @@ async function programRun(subject: ProgramSubject): Promise<Run> {
   return { golden: withoutEmpty({ ...rest, logs, hostCalls }), stated, shown };
 }
 
-/** What running `subject` showed, or the toolchain invariant its compile or run broke. */
-async function runOrBreak(subject: ProgramSubject): Promise<Run> {
-  try {
-    return await programRun(subject);
-  } catch (error) {
-    if (error instanceof Unreachable) {
-      return { golden: {}, stated: statedEnding(subject), shown: { panic: error.message } };
-    }
-    throw error;
-  }
-}
-
 /** Holds `swept` to what it shows, its golden to what was recorded, or records it. */
 function held({ group, subject }: Swept, { golden: shownGolden, stated, shown }: Run): number {
   expect(shown).toEqual(stated);
@@ -128,15 +113,10 @@ export const golden: Check = {
   holds: {
     stating: programHeld,
     example: programHeld,
-    unfixed: async (_, { subject }) => {
-      const { stated, shown } = await runOrBreak(subject);
-      expect(shown).not.toEqual(stated);
+    suite: async (_, { subject }) => {
+      await runSuite(subject.project, subject.paths);
       return 1;
     },
-    suite: async (_, swept) =>
-      held(swept, {
-        golden: { lines: await observeSuite(swept.subject.project, swept.subject.paths) },
-      }),
     scenario: async (_, swept) =>
       held(swept, { golden: { steps: await observeScenario(swept.subject.scenario) } }),
   },

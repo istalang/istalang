@@ -36,12 +36,6 @@ import {
   panicEnding,
 } from '../observation.ts';
 
-/**
- * Whether this pipeline implements the spec amendments (docs/work/ir-first/design.md), which the
- * `amended` goldens are written to.
- */
-export const runsAmendments = true;
-
 /** A program to run: its module's text, at `path` in `directory`, and its host's module if any. */
 export interface ProgramRun {
   readonly directory: string;
@@ -175,13 +169,10 @@ export async function observeCompiled(
 }
 
 /**
- * The lines `ista test` prints for the test modules `paths` in `project`, every module under it
- * without any; throws when the run doesn't pass, whose output is no result to record.
+ * Runs the test modules `paths` in `project` as `ista test` does, every module under it without
+ * any; throws with what it printed when the run doesn't pass.
  */
-export async function observeSuite(
-  project: SuiteProject,
-  paths: readonly string[],
-): Promise<readonly string[]> {
+export async function runSuite(project: SuiteProject, paths: readonly string[]): Promise<void> {
   const directory = 'files' in project ? tempProject(project.files) : project.directory;
   let out = '';
   let err = '';
@@ -201,7 +192,6 @@ export async function observeSuite(
   if (code !== 0 || err !== '') {
     throw new Error(`ista test exited ${String(code)}:\n${out}${err}`);
   }
-  return out.trimEnd().split('\n');
 }
 
 /** `trace`'s innermost frame of the program's own, its file named relative to `directory`. */

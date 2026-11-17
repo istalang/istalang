@@ -7,19 +7,16 @@
  * - `amended`: programs written by hand to a spec amendment the interpreter predates
  *   (docs/work/ir-first/design.md, "Spec amendments"), stating their results as the corpus does;
  *   their goldens are written by hand too.
- * - `defects`: corpus programs, by construct, stating what a test of the old pipeline asserted
- *   (docs/work/ir-first/coverage.md) and the current pipeline doesn't show yet, each a reported
- *   defect; fixed, one moves to `test/corpus` under the same path.
  * - `spec-examples`: the examples of the spec and guide that are whole programs, checking clean
  *   alone and declaring a `main` a host starts, keyed by document, section and place in it, since
  *   lines move with every edit. An example that isn't one is the checker's to test.
  * - `form-builder`: FormBuilder's demos with their hosts, whose calls are the views shown.
  * - `scenarios`: host scenarios (scenarios.ts), whose goldens hold what each step showed.
  * - `suites`: `.test.ista` modules, a std module's or a project's together, whose assertions state
- *   their results; their goldens hold what `ista test` prints of them.
+ *   all of their results, so they have no goldens: they pass.
  */
 
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { diagnose } from '../../src/compiler/compile.ts';
 import { moduleIdOf } from '../../src/compiler/program/program.ts';
@@ -68,7 +65,6 @@ export function statedEnding({ stated }: ProgramSubject): Partial<Ending> | unde
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const regressions = `${root}test/regressions/`;
 const amended = fileURLToPath(new URL('./amended/', import.meta.url));
-const defects = fileURLToPath(new URL('./defects/', import.meta.url));
 const formBuilder = `${root}examples/FormBuilder/`;
 const stdlib = `${root}src/stdlib/`;
 
@@ -86,14 +82,8 @@ function corpusSubjects(): ProgramSubject[] {
   }));
 }
 
-/**
- * The programs under `directory`, each stating its outcome or panic on its first line; none where
- * it doesn't exist, as `defects` doesn't once every defect is fixed (git keeps no empty folder).
- */
+/** The programs under `directory`, each stating its outcome or panic on its first line. */
 function statingSubjects(directory: string): ProgramSubject[] {
-  if (!existsSync(directory)) {
-    return [];
-  }
   return readdirSync(directory, { recursive: true, encoding: 'utf8' })
     .filter((name) => name.endsWith('.ista'))
     .toSorted()
@@ -188,9 +178,6 @@ function suiteSubjects(): SuiteSubject[] {
   ];
 }
 
-/** The group of programs stating what the pipeline doesn't show yet, each a reported defect. */
-export const defectsGroup = 'defects';
-
 /** The group of programs written by hand to spec amendments, their goldens too. */
 export const amendedGroup = 'amended';
 
@@ -202,7 +189,6 @@ export const subjectGroups: ReadonlyMap<string, readonly Subject[]> = new Map<
   ['corpus', corpusSubjects()],
   ['regressions', statingSubjects(regressions)],
   [amendedGroup, statingSubjects(amended)],
-  [defectsGroup, statingSubjects(defects)],
   ['spec-examples', specExampleSubjects()],
   ['form-builder', formBuilderSubjects()],
   ['suites', suiteSubjects()],
