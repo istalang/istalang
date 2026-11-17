@@ -11,6 +11,7 @@
  */
 
 import { readdirSync, readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
 /** One thing a host does. */
 type Step =
@@ -50,7 +51,7 @@ export const scenarios: readonly Scenario[] = readdirSync(directory)
   .toSorted()
   .map((file) => ({
     name: file.replace(extension, ''),
-    directory: directory.pathname,
+    directory: fileURLToPath(directory),
     ...(JSON.parse(readFileSync(new URL(file, directory), 'utf8')) as Omit<
       Scenario,
       'name' | 'directory'
