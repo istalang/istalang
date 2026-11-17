@@ -13,7 +13,8 @@
  */
 
 import type { Definition } from '../definition/definition.ts';
-import { emitEntry, runsOnFrames } from './entry.ts';
+import { runsOnFrames } from './calling-convention.ts';
+import { emitEntry } from './entry.ts';
 
 /**
  * The helpers the body takes into locals, by the part of the run (runtime/run/run.ts) holding them;

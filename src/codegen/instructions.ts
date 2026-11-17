@@ -22,6 +22,7 @@ import type { TypeDefinition } from '../definition/tables/types.ts';
 import { disposeOf, lifetimeOf } from '../definition/tables/types.ts';
 import type { Value } from '../definition/values/values.ts';
 import { type Handlers, handlerOf } from '../foundation/structures/kind-table.ts';
+import { runsOnFrames } from './calling-convention.ts';
 import { literal } from './literal.ts';
 import { primitiveExpressions } from './primitives.ts';
 
@@ -139,9 +140,9 @@ function callExpression(scope: EntryScope, index: number, passed: string): strin
   if (callee === undefined || callee.kind === 'extern') {
     return `x${index}(${passed})`;
   }
-  return callee.mode === 'simple'
-    ? `f${index}(${passed}${passed === '' ? '' : ', '}undefined)`
-    : `start(${index}, [${passed}], undefined)`;
+  return runsOnFrames(callee)
+    ? `start(${index}, [${passed}], undefined)`
+    : `f${index}(${passed}${passed === '' ? '' : ', '}undefined)`;
 }
 
 const emitters: Handlers<EntryScope, Instruction, [], string> = {

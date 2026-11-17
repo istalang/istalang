@@ -11,10 +11,13 @@
  *   holder it is read under. A disposed object holds nothing, its disposal having let go of it.
  */
 
-import { runsOnFrames } from '../../codegen/entry.ts';
 import { parkAt } from '../../codegen/instructions.ts';
 import type { Definition } from '../../definition/definition.ts';
-import { type CodeFunction, transientRegistersOf } from '../../definition/tables/functions.ts';
+import {
+  type CodeFunction,
+  startsExecution,
+  transientRegistersOf,
+} from '../../definition/tables/functions.ts';
 import { lifetimeOf } from '../../definition/tables/types.ts';
 import { replacingParts } from '../../definition/values/replacing.ts';
 import type { Value } from '../../definition/values/values.ts';
@@ -298,7 +301,7 @@ function fittingEntry(
   const entry = definition.functions[persisted.function];
   const refused = (why: string) =>
     new Refusal('snapshotMismatch', `The snapshot's execution ${id} ${why}.`);
-  if (entry?.kind !== 'code' || !runsOnFrames(entry)) {
+  if (entry?.kind !== 'code' || !startsExecution(entry)) {
     throw refused(`runs ${persisted.function}, no async code entry`);
   }
   if (parkAt(entry, pc) === undefined) {

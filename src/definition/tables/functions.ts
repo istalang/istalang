@@ -97,6 +97,12 @@ export type FunctionDefinition = z.output<typeof functionDefinition>;
 export type CodeFunction = Extract<FunctionDefinition, { kind: 'code' }>;
 
 export type ExternFunction = Extract<FunctionDefinition, { kind: 'extern' }>;
+
+/** Whether a call of `entry` starts an execution of its own, which may wait: a live or ista one. */
+export function startsExecution(entry: CodeFunction): boolean {
+  return entry.mode !== 'simple';
+}
+
 const transientRegisters = new WeakMap<CodeFunction, readonly Register[]>();
 
 /**

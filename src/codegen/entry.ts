@@ -1,11 +1,10 @@
 /**
  * One code entry as one JavaScript function (docs/arch/codegen.md).
  *
- * - **Which run on frame records** is this module's one predicate, `runsOnFrames` (ir-first
- *   design, decision 3): an async entry today. Such an entry is `f<i>(frame)`: it loads its
- *   registers from the record, runs from `frame.pc`, and at a `park` saves every register back and
- *   returns, so a suspended frame is data the run keeps, spills and restores. Any other entry is a
- *   plain function, `f<i>(...parameters, closure)`, its registers locals, nesting on the JS stack.
+ * - **On a frame record** (calling-convention.ts `runsOnFrames`), an entry is `f<i>(frame)`: it
+ *   loads its registers from the record, runs from `frame.pc`, and at a `park` saves every register
+ *   back and returns, so a suspended frame is data the run keeps, spills and restores. Any other
+ *   entry is a plain function, `f<i>(...parameters, closure)`, its registers locals.
  * - **Control** goes through `pc` and a `switch` only where the entry jumps; a parked frame resumes
  *   at a case of its own past every instruction's, which takes the decision and falls into the
  *   instruction after the `park`.
@@ -25,11 +24,6 @@ import {
   register,
   resumed,
 } from './instructions.ts';
-
-/** Whether `entry` runs on a frame record the run keeps, not on the JS stack. */
-export function runsOnFrames(entry: CodeFunction): boolean {
-  return entry.mode !== 'simple';
-}
 
 /** An entry's function text, its lines, and the instruction each line is, by its position. */
 interface EmittedEntry {

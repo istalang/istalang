@@ -15,6 +15,7 @@
  * - **Natives** are bound per extern when the program loads (natives.ts).
  */
 
+import { runsOnFrames } from '../../codegen/calling-convention.ts';
 import type { EmittedProgram } from '../../codegen/emit.ts';
 import type { Definition } from '../../definition/definition.ts';
 import { disposeOf } from '../../definition/tables/types.ts';
@@ -192,7 +193,7 @@ export class Run {
   /** Calls entry `index` with `passed`, `closure` the function value it runs as. */
   call(index: number, passed: readonly Value[], closure?: Value): unknown {
     const entry = this.definition.functions[index];
-    if (entry?.kind === 'code' && entry.mode !== 'simple') {
+    if (entry?.kind === 'code' && runsOnFrames(entry)) {
       return this.executions.start(index, passed, closure);
     }
     const run = this.#entries[index] as (...given: unknown[]) => unknown;

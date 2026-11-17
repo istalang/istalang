@@ -17,8 +17,11 @@ what each instruction says and nothing else.
 
 ## Entries
 
-- **One predicate** decides an entry's calling convention: `runsOnFrames` (`entry.ts`). Every
-  backend keeps that one rule; nothing else asks whether an entry is async.
+- **One predicate** decides an entry's calling convention: `runsOnFrames`
+  (`calling-convention.ts`), which the entry's signature, compiled code's call and the run's call
+  (`Run.call`) all read. Today it is the IR's `startsExecution` (`definition/tables/functions.ts`):
+  whether a call starts an execution is the Definition's meaning, whether an entry runs on a frame
+  record the backend's choice.
 - **Simple entries** are plain functions, `fN(parameters..., cl)`, `cl` the closure they run as
   (`currentClosure`). A call leaving parameters out passes them absent, and the prologue computes
   their defaults (`given`).
