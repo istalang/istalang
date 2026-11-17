@@ -29,6 +29,7 @@ import type { FunctionContext } from '../context.ts';
 import { concreteType, variableType } from '../flow/variables.ts';
 import { writeFlow } from '../flow/writer.ts';
 import type { BodyOwner } from '../tables/instances.ts';
+import { parameterTypeOf } from '../tables/parameter-types.ts';
 import { tupleOf } from '../values/struct-values.ts';
 import type { WrittenInstruction } from './code-writer.ts';
 import type { Frame } from './frames.ts';
@@ -111,8 +112,10 @@ export function declareFrame(
 
 /** The type of the register `parameter`'s argument arrives in: a reference for a `&` parameter. */
 function parameterType(context: EntryContext, parameter: SignatureParameter) {
-  const reference = context.tables.types.reference(concreteType(context, parameter.type));
-  return parameter.reference ? ({ kind: 'reference', to: reference } as const) : reference;
+  return parameterTypeOf(context.tables.types, {
+    type: concreteType(context, parameter.type),
+    reference: parameter.reference,
+  });
 }
 
 /**

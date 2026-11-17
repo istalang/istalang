@@ -36,6 +36,7 @@ import {
   ownerDeclaration,
 } from '../../tables/instances.ts';
 import { tableKey } from '../../tables/names.ts';
+import { parameterTypeOf } from '../../tables/parameter-types.ts';
 import { convertedIntoAny } from '../../values/into-any.ts';
 import { rebuiltAs, tupleOf } from '../../values/struct-values.ts';
 import { asBase, intoUnion } from '../../values/unions.ts';
@@ -293,10 +294,7 @@ export function wrappingEntry(
   const resultFit = resultFitBetween(checker, from, to);
   const async = resultFit.kind === 'resolved';
   const code = new SynthesizedCode(lowering, at.span, {
-    parameters: to.parameters.map((parameter) => {
-      const type = tables.types.reference(parameter.type);
-      return parameter.reference ? { kind: 'reference', to: type } : type;
-    }),
+    parameters: to.parameters.map((parameter) => parameterTypeOf(tables.types, parameter)),
     captures: [tables.types.reference(from)],
     result: tables.types.reference(async ? resultFit.into : to.result),
     mode: codeModeOf(async, builtKindOf(checker, entry.to)),

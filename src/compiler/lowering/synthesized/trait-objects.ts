@@ -46,6 +46,7 @@ import type { CodeContext } from '../context.ts';
 import { fittedArguments, fittedIn, fittedResult } from '../functions/fits/index.ts';
 import { codeModeOf } from '../functions/modes.ts';
 import { tableKey } from '../tables/names.ts';
+import { parameterTypeOf } from '../tables/parameter-types.ts';
 import { convertedIntoAny } from '../values/into-any.ts';
 import { readRequiredField } from '../values/required-fields.ts';
 import { outOfUnion } from '../values/unions.ts';
@@ -71,10 +72,12 @@ export function dispatchEntry(lowering: Lowering, dispatch: Dispatch): FunctionD
   const givesFuture = awaited !== undefined;
   const kindOfDispatch = concrete(awaited?.mode ?? kindOfFunction(checker, required));
   const code = new SynthesizedCode(lowering, required.name.span, {
-    parameters: parameters.map((parameter, index) => {
-      const type = tables.types.reference(index === 0 ? on : concrete(parameter.type));
-      return parameter.reference ? { kind: 'reference', to: type } : type;
-    }),
+    parameters: parameters.map((parameter, index) =>
+      parameterTypeOf(tables.types, {
+        type: index === 0 ? on : concrete(parameter.type),
+        reference: parameter.reference,
+      }),
+    ),
     result: tables.types.reference(concrete(awaited?.value ?? checker.resultOf(required))),
     mode: codeModeOf(givesFuture, kindOfDispatch),
   });

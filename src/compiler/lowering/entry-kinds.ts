@@ -44,6 +44,7 @@ import { keyOf } from './tables/extern-keys.ts';
 import { instanceKey, nestedKey } from './tables/instances.ts';
 import { qualifiedNameOf } from './tables/names.ts';
 import { type OwnEntry, ownEntryOf } from './tables/own-entries.ts';
+import { parameterTypeOf } from './tables/parameter-types.ts';
 
 /** One kind of entry: how the tables tell two apart, and what lowering makes of one. */
 interface EntryKindRow<Kind extends EntryKind> extends EntryIdentity<Kind> {
@@ -173,12 +174,12 @@ function nativeEntry(lowering: Lowering, instance: FunctionInstance): FunctionDe
     ...tables.entryHeader(instance),
     key: keyOf(checker, declaration, parameters),
     constant: false,
-    parameters: parameters.map((parameter) => {
-      const type = tables.types.reference(
-        substitute(parameter.type, substitution, checker.typeRules),
-      );
-      return { type: parameter.reference ? { kind: 'reference', to: type } : type };
-    }),
+    parameters: parameters.map((parameter) => ({
+      type: parameterTypeOf(tables.types, {
+        type: substitute(parameter.type, substitution, checker.typeRules),
+        reference: parameter.reference,
+      }),
+    })),
     result: tables.types.reference(
       substitute(checker.resultOf(declaration), substitution, checker.typeRules),
     ),
