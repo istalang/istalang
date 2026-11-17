@@ -199,16 +199,19 @@ export class TypeTable {
   }
 
   /**
-   * The variant of `type`'s enum holding a value of `member`, a type meeting it; added when new.
+   * The variant of `type`'s enum holding a value of `member`, a type meeting it, or of a literal's
+   * base, interned as every entry is: a type test names the variant a value would be held in before
+   * lowering has met any put there, so a member is added the first time either asks.
    */
   anyVariant(type: AnyType, member: Type): number {
+    const held = baseOf(member);
     const { members } = this.#anyEntry(type);
-    const found = members.findIndex((each) => sameType(each.type, member));
+    const found = members.findIndex((each) => sameType(each.type, held));
     if (found >= 0) {
       return found;
     }
-    const name = tableKey(this.#checker, member);
-    return members.push({ type: member, name, reference: this.reference(member) }) - 1;
+    const name = tableKey(this.#checker, held);
+    return members.push({ type: held, name, reference: this.reference(held) }) - 1;
   }
 
   /** The types `type`'s variants hold so far, in variant order. */

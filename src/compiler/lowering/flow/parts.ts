@@ -21,7 +21,6 @@ import { variantNamedIn } from '../../checker/surface/named-variants.ts';
 import { unfolded } from '../../checker/types/type/computed-types.ts';
 import type { FieldMember, Type } from '../../checker/types/type/index.ts';
 import { tupleElements } from '../../checker/types/type/primitives.ts';
-import { baseOf } from '../../checker/types/unions/union-members.ts';
 import type { NodeOf } from '../../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 import { emitCall } from '../calls/emit-call.ts';
@@ -130,7 +129,7 @@ function stepRead(
       return any.kind === 'any'
         ? code.variantField(
             value.register,
-            { variant: tables.types.anyVariant(any, baseOf(step.to)), field: 0 },
+            { variant: tables.types.anyVariant(any, step.to), field: 0 },
             typed(step.to),
             span,
           )

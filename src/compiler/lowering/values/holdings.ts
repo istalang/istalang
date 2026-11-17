@@ -102,7 +102,7 @@ export function readHeld(
     ? inVariant
     : code.variantField(
         inVariant,
-        { variant: tables.types.anyVariant(inAny, baseOf(member)), field: 0 },
+        { variant: tables.types.anyVariant(inAny, member), field: 0 },
         tables.types.reference(baseOf(member)),
         span,
       );
@@ -159,7 +159,7 @@ export function heldInAny(context: CodeContext, { value, from, to }: IntoAny, sp
   const { tables, code } = context;
   const dst = code.allocate(tables.types.reference(to));
   const type = tables.types.anyIndex(to);
-  const variant = tables.types.anyVariant(to, baseOf(from));
+  const variant = tables.types.anyVariant(to, from);
   code.emit({ kind: 'variant', span, dst, type, variant, fields: [code.take(value, span)] });
   return dst;
 }
@@ -244,7 +244,7 @@ function branchOnAnyVariants(
   span: AnchoredSpan,
 ): void {
   const variants = new Set(
-    members.map((member) => context.tables.types.anyVariant(value.type, baseOf(member))),
+    members.map((member) => context.tables.types.anyVariant(value.type, member)),
   );
   const targets = Array.from({ length: Math.max(...variants) + 1 }, (_, index) =>
     variants.has(index) ? matched : otherwise,
