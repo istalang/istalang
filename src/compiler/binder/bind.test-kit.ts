@@ -10,8 +10,9 @@ import namesLib from '../../../test/corpus/names/lib.ista';
 import namesMain from '../../../test/corpus/names/main.ista';
 import { invalidPrograms, runPrograms } from '../../../test/corpus/programs.ts';
 import { type Reported, reportedIn } from '../../foundation/diagnostics/diagnostic.test-kit.ts';
+import { memo } from '../../foundation/structures/memo.ts';
 import { preludeModule, stdlibLoader, stdRoles } from '../../stdlib/stdlib-loader.ts';
-import type { Files } from '../program/program.test-kit.ts';
+import type { Files, ProgramOfOptions } from '../program/program.test-kit.ts';
 import { idOf, moduleAt, programOf } from '../program/program.test-kit.ts';
 import { type ModuleId, type Program, programModule } from '../program/program.ts';
 import { nodesUnder, parentOf } from '../syntax/tree/index.ts';
@@ -19,28 +20,35 @@ import type { Identifier } from '../syntax/tree/node.ts';
 import { bindProgram } from './bind.ts';
 import type { Entity } from './entities.ts';
 
-/** The program rooted at the first of `files`, with the prelude. */
+/**
+ * The program rooted at the first of `files`, with the prelude. Without a `previous`, the prelude
+ * is parsed once per test file, not per program.
+ */
 export function preludeProgramOf(files: Files, previous?: Program): Program {
-  return programOf(files, { previous, roles: { prelude: preludeModule() } });
+  const options = { roles: { prelude: preludeModule() } };
+  return programOf(files, {
+    ...options,
+    previous: previous ?? reusedBase('prelude-only', options),
+  });
 }
 
 /**
  * The program rooted at the first of `files` as an app loads it: with every std module. Without a
  * `previous`, the std modules every program loads are parsed once per test file, not per program.
  */
-export function stdProgramOf(files: Files, previous: Program = stdOnly()): Program {
-  return programOf(files, { previous, roles: stdRoles(), loaders: [stdlibLoader()] });
+export function stdProgramOf(files: Files, previous?: Program): Program {
+  const options = { roles: stdRoles(), loaders: [stdlibLoader()] };
+  return programOf(files, { ...options, previous: previous ?? reusedBase('std-only', options) });
 }
 
-let stdOnlyProgram: Program | undefined;
+const bases = new Map<string, Program>();
 
-/** A program of nothing but the std modules every program loads, whose trees others reuse. */
-function stdOnly(): Program {
-  stdOnlyProgram ??= programOf(
-    { 'std-only.ista': '' },
-    { roles: stdRoles(), loaders: [stdlibLoader()] },
-  );
-  return stdOnlyProgram;
+/**
+ * A program of nothing but what `options` loads beside an empty module named `name`, made once per
+ * test file: a `previous` whose trees every program loaded alike reuses.
+ */
+function reusedBase(name: string, options: ProgramOfOptions): Program {
+  return memo(bases, name, () => programOf({ [`${name}.ista`]: '' }, options));
 }
 
 /** What the binder reported in module `key` (default: the first file). */

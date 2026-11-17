@@ -46,7 +46,7 @@ export function memoryLoader(files: Files): ModuleLoader {
   return (path) => modules.get(path);
 }
 
-interface ProgramOfOptions {
+export interface ProgramOfOptions {
   /** The keys to start from; the first file by default. */
   readonly roots?: readonly string[] | undefined;
   /** The snapshot whose unchanged trees the new one reuses. */
