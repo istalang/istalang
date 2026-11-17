@@ -72,8 +72,9 @@ target. Migrating that shape costs more than writing the right one.
    - **Simple calls use the host stack,** so recursion depth is limited (the spec's floor). The IR
      states calls only, never a calling convention. Each backend has one predicate choosing which
      functions run on frame records (async entries today), and one unit turning the host's stack
-     overflow into the recursion panic. Moving recursive cycles, or every function, onto frame
-     records changes that predicate alone, in JS or LLVM.
+     overflow into the recursion panic. Calls choose by the IR fact `startsExecution`; the predicate
+     shapes entries only. Moving recursive cycles, or every function, onto frame records changes
+     that predicate and adds one synchronous frame call beside the start, in JS or LLVM.
 4. **Typed IR.**
    - **Registers:** typed, with one register per pass in field loops.
    - **Types:** every type entry states `disposable` (the checker's `reachesDisposable`) and `heap`.
