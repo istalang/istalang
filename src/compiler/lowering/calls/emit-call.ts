@@ -10,7 +10,8 @@
  * value's own type binds the required function's parameters the same way, then runs its dispatch
  * entry (§3.10). A variant's constructor called with every field runs no entry: its parameters are
  * the fields of the variant it builds in place (§3.11, values/variant-values.ts); one leaving a
- * field out runs the constructor's entry, which computes it.
+ * field out runs the constructor's entry, which computes it. A primitive operation's extern
+ * (tables/own-entries.ts) is that operation, written inline, never a call.
  *
  * This is the one place a rest parameter is made of what a call passes: an array of its items, a
  * spread's spliced in, or, for a pack, its items as single parameters and a spread's tuple as its
@@ -19,23 +20,18 @@
  */
 
 import type { Argument, Callee } from '../../../definition/instructions/calls.ts';
-import {
-  type PrimitiveOp,
-  primitiveOfExtern,
-} from '../../../definition/instructions/primitive-ops.ts';
+import type { PrimitiveOp } from '../../../definition/instructions/primitive-ops.ts';
 import type { FunctionId, Register } from '../../../definition/operands.ts';
 import type { TypeReference } from '../../../definition/tables/types.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { SignatureParameter } from '../../checker/check.ts';
 import type { RestItem } from '../../checker/surface/resolved-call.ts';
-import type { FunctionInstance } from '../../checker/surface/witness-closing.ts';
 import { substitute } from '../../checker/types/parts/substitution.ts';
 import type { Type } from '../../checker/types/type/index.ts';
 import { arrayElement } from '../../checker/types/type/well-known.ts';
-import { constructedVariant } from '../../syntax/declarations/field-defaults.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 import type { CodeContext } from '../context.ts';
-import { keyOf } from '../tables/extern-keys.ts';
+import { ownEntryOf } from '../tables/own-entries.ts';
 import { buildConstructed } from '../values/variant-values.ts';
 import {
   type ClosedCall,
@@ -52,6 +48,13 @@ interface CallToEmit {
   readonly callee: FunctionId | Callee;
   /** Each argument: a register, passed by value, or an argument as the Definition writes it. */
   readonly arguments: readonly (Register | Argument)[];
+}
+
+/** A primitive operation to write inline: where it is written, which, and its operands. */
+interface PrimitiveToEmit {
+  readonly span: AnchoredSpan;
+  readonly op: PrimitiveOp;
+  readonly operands: readonly Register[];
 }
 
 /** Writes `call`, giving a value of `result`; `dst` holds it. */
@@ -100,40 +103,34 @@ export function emitFunctionCall(
     return emitCall(context, { span, callee, arguments: parameters }, result, dst);
   }
   const { instance } = call;
-  const leftOut = parameters.some(isOmitted);
-  if (!leftOut && constructedVariant(instance.declaration) !== undefined) {
-    const fields = parameters.map(registerOf);
-    return buildConstructed(context, { instance, fields }, span, dst);
+  if (parameters.some(isOmitted)) {
+    const callee = context.tables.leavingOutIndex(instance);
+    return emitCall(context, { span, callee, arguments: parameters }, result, dst);
   }
-  const op = leftOut ? undefined : primitiveOf(context, instance);
-  if (op !== undefined) {
-    const written = dst ?? context.code.allocate(result);
-    context.code.emit({
-      kind: 'primitive',
-      span,
-      dst: written,
-      op,
-      operands: parameters.map(registerOf),
-    });
-    return written;
+  const own = ownEntryOf(context.checker, instance);
+  switch (own.kind) {
+    case 'constructor':
+      return buildConstructed(context, { instance, fields: parameters.map(registerOf) }, span, dst);
+    case 'primitive': {
+      const operands = parameters.map(registerOf);
+      return emitPrimitive(context, { span, op: own.op, operands }, result, dst);
+    }
+    default: {
+      const callee = context.tables.functionIndex(instance);
+      return emitCall(context, { span, callee, arguments: parameters }, result, dst);
+    }
   }
-  const callee = leftOut
-    ? context.tables.leavingOutIndex(instance)
-    : context.tables.functionIndex(instance);
-  return emitCall(context, { span, callee, arguments: parameters }, result, dst);
 }
 
-/**
- * The primitive operation `instance` stands for, a prelude operator's extern every backend runs
- * inline (definition/instructions/primitive-ops.ts); undefined for any other function.
- */
-function primitiveOf(context: CodeContext, instance: FunctionInstance): PrimitiveOp | undefined {
-  const { checker } = context;
-  const { declaration } = instance;
-  if (!(declaration.isExtern && checker.isStd(checker.moduleOf(declaration)))) {
-    return undefined;
-  }
-  return primitiveOfExtern[keyOf(checker, declaration, checker.parametersOf(declaration))];
+/** Writes the primitive operation `op` over `operands`, inline (primitive-ops.ts); `dst` holds it. */
+export function emitPrimitive(
+  context: CodeContext,
+  { span, op, operands }: PrimitiveToEmit,
+  result: TypeReference,
+  dst: Register = context.code.allocate(result),
+): Register {
+  context.code.emit({ kind: 'primitive', span, dst, op, operands: [...operands] });
+  return dst;
 }
 
 /** A parameter a call leaves out, which the callee computes from its default (§3.3). */
@@ -245,15 +242,15 @@ function collectedArray(
 }
 
 /**
- * The register of a value passed, which a rest parameter collects and a variant's field holds:
- * never a place, nor a field left out, which only the constructor's entry computes.
+ * The register of a value passed, which a rest parameter collects, a variant's field holds and a
+ * primitive operation takes: never a place, nor a parameter left out, which only an entry computes.
  */
 function registerOf(argument: Register | Argument): Register {
   if (typeof argument === 'number') {
     return argument;
   }
   if (argument.kind !== 'value') {
-    unreachable('A rest parameter or a variant field takes a value, never a place.');
+    unreachable('A rest parameter, a variant field or a primitive takes a value, never a place.');
   }
   return argument.register;
 }

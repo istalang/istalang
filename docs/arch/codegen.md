@@ -47,7 +47,8 @@ as the cell loses its last holder.
 
 - Primitive operations (`Int` `+`, comparisons, string concatenation, ...; `definition/instructions/
   primitive-ops.ts`) compile to inline JavaScript over the run's representation; an extern lowering
-  maps to a primitive (`primitiveOfExtern`) is never a call.
+  maps to a primitive (`primitiveOfExtern`) has no native: a call of it is the operation, and a
+  function value of it runs an entry that is.
 - Places (`load`, `store`, `reference`) go through the run, which writes along a path in place where
   the value is unique (`Lifetimes.withPart`); a borrowing `load` marked `readPastWrites` shares what
   it read, so a later write copies it.

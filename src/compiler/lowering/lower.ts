@@ -27,6 +27,7 @@ import {
   constructorEntry,
   externDefaultsEntry,
   hostExternEntry,
+  primitiveEntry,
   structEntry,
 } from './functions/built-entries.ts';
 import { asyncFitEntry, convertingEntry, wrappingEntry } from './functions/fits/index.ts';
@@ -206,6 +207,8 @@ function entryOf(
       return hostExternEntry(lowering, instance);
     case 'body':
       return bodyEntry(lowering, instance);
+    case 'primitive':
+      return primitiveEntry(lowering, instance, own.op);
     case 'native':
       return nativeEntry(lowering, instance);
     default: {

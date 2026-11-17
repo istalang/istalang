@@ -10,6 +10,7 @@ import { sameType } from '../compiler/checker/types/identity/identity.ts';
 import { isHandleType } from '../compiler/checker/types/properties/handles.ts';
 import { heldPartsOf } from '../compiler/checker/types/properties/held.ts';
 import type { Type } from '../compiler/checker/types/type/index.ts';
+import { primitiveOfExtern } from '../definition/instructions/primitive-ops.ts';
 import { derivedCodecs } from '../foundation/language/well-known/codecs.ts';
 import { disposeFunction } from '../foundation/language/well-known/implicit-calls.ts';
 import { languageModules, runtimeModule } from '../foundation/language/well-known/index.ts';
@@ -21,7 +22,8 @@ import { stdExterns } from './std-externs.test-kit.ts';
 /**
  * Externs without a native, by module and name: the runtime disposes futures, slots, mocks and
  * runtimes itself, so their `dispose` never has one, and the compiler writes the derived json
- * codecs per type (docs/arch/boundary.md).
+ * codecs per type (docs/arch/boundary.md). Primitive operations' externs, which every backend
+ * writes inline, have none either (`primitiveOfExtern`).
  */
 const withoutNative = new Set([
   `${languageModules.prelude}.${disposeFunction}`,
@@ -67,7 +69,9 @@ function heldWithin(
 describe('std natives', () => {
   it('implement exactly the callable externs the std modules declare, by the keys lowering gives', () => {
     const callable = std.externs.flatMap(({ key, module, declaration }) =>
-      withoutNative.has(`${module}.${declaration.name.text}`) ? [] : [key],
+      withoutNative.has(`${module}.${declaration.name.text}`) || key in primitiveOfExtern
+        ? []
+        : [key],
     );
     // The run's own primitives, which the prelude's futures stand on, are the run's to implement.
     const primitives = Object.keys(runNatives({} as Run));

@@ -1,10 +1,9 @@
 /**
- * The prelude's natives, right on any input: checked as properties of integer and float arithmetic
- * rather than a few chosen values. Their binding to the declared externs is checked with every std
- * module's (stdlib/natives.test.ts).
+ * The prelude's natives; their binding to the declared externs is checked with every std module's
+ * (stdlib/natives.test.ts), and its operators, primitive operations, with the run's
+ * (runtime/run/primitives.test.ts).
  */
 
-import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import type { Value } from '../../definition/values/values.ts';
 import { languageModules } from '../../foundation/language/well-known/index.ts';
@@ -24,76 +23,7 @@ function call(key: string, ...argumentValues: Value[]): Value {
   return native(argumentValues, unusedContext);
 }
 
-const nonZero = fc.bigInt().filter((value) => value !== 0n);
-const finite = fc.double({ noNaN: true, noDefaultInfinity: true });
-
 describe('prelude natives', () => {
-  it('keep integer arithmetic exact at any size', () => {
-    fc.assert(
-      fc.property(fc.bigInt(), fc.bigInt(), (left, right) => {
-        expect(call(keys.of('add', 'Int', 'Int'), left, right)).toBe(left + right);
-        expect(call(keys.of('subtract', 'Int', 'Int'), left, right)).toBe(left - right);
-        expect(call(keys.of('multiply', 'Int', 'Int'), left, right)).toBe(left * right);
-      }),
-    );
-  });
-
-  it('floor and take the divisor sign, so a == (a // b) * b + a % b', () => {
-    fc.assert(
-      fc.property(fc.bigInt(), nonZero, (dividend, divisor) => {
-        const quotient = call(keys.of('floorDivide', 'Int', 'Int'), dividend, divisor) as bigint;
-        const rest = call(keys.of('remainder', 'Int', 'Int'), dividend, divisor) as bigint;
-        expect(quotient * divisor + rest).toBe(dividend);
-        expect(rest === 0n || rest < 0n === divisor < 0n).toBe(true);
-        expect(rest < 0n ? -rest : rest).toBeLessThan(divisor < 0n ? -divisor : divisor);
-      }),
-    );
-  });
-
-  it('panic on integer division by zero', () => {
-    fc.assert(
-      fc.property(fc.bigInt(), (dividend) => {
-        for (const name of ['floorDivide', 'remainder']) {
-          expect(() => call(keys.of(name, 'Int', 'Int'), dividend, 0n)).toThrow(Panic);
-        }
-      }),
-    );
-  });
-
-  it('divide floats by zero as IEEE 754 does', () => {
-    fc.assert(
-      fc.property(finite, (fraction) => {
-        for (const zero of [0, -0]) {
-          expect(call(keys.of('divide', 'Float', 'Float'), fraction, zero)).toBe(fraction / zero);
-        }
-      }),
-    );
-  });
-
-  it('compare consistently with the order of the values', () => {
-    const consistent = <T>(key: string, left: T & Value, right: T & Value, less: boolean) => {
-      const forward = call(key, left, right) as bigint;
-      const backward = call(key, right, left) as bigint;
-      expect(forward).toBe(-backward);
-      expect(forward < 0n).toBe(less);
-    };
-    fc.assert(
-      fc.property(fc.bigInt(), fc.bigInt(), (left, right) => {
-        consistent(keys.of('compare', 'Int', 'Int'), left, right, left < right);
-      }),
-    );
-    fc.assert(
-      fc.property(finite, finite, (left, right) => {
-        consistent(keys.of('compare', 'Float', 'Float'), left, right, left < right);
-      }),
-    );
-    fc.assert(
-      fc.property(fc.string(), fc.string(), (left, right) => {
-        consistent(keys.of('compare', 'String', 'String'), left, right, left < right);
-      }),
-    );
-  });
-
   it('panic with the message panic was given', () => {
     expect(() => call('prelude.panic(String)', 'bug')).toThrow(new Panic('bug'));
   });

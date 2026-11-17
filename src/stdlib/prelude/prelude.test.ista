@@ -189,6 +189,10 @@ fn negativeShift() -> Int: 1 << -1
 
 fn cubed<T is Powerable<Int>>(x: T) -> T: x ** 3
 
+fn zeroFloorDivided() -> Int:
+  const divided: fn(Int, Int) -> Int = floorDivide
+  divided(1, 0)
+
 @Suite{"prelude › numbers"}
 fn numbers() -> Array<Test>: [
   test("an int and a float mix into a float, the int converted", fn(): {
@@ -203,6 +207,28 @@ fn numbers() -> Array<Test>: [
     match Bool.parse("True"):
       case Ok(_): panic("read True")
       case Err(error): assertEq(error.code + ": " + error.message, "parse: 'True' is not a Bool.")
+  })
+  test("an operator's function, passed as a value, computes as the operator does", async fn(): {
+    const ints: Array<fn(Int, Int) -> Int> = [
+      add
+      subtract
+      multiply
+      floorDivide
+      remainder
+      power
+    ]
+    assertEq(ints.map(fn(operator): operator(-7, 2)), [-5, -9, -14, -4, 1, 49])
+    const bits: Array<fn(Int, Int) -> Int> = [bitAnd, bitOr, bitXor, shiftLeft, shiftRight, compare]
+    assertEq(bits.map(fn(operator): operator(12, 2)), [0, 14, 14, 48, 3, 1])
+    const floats: Array<fn(Float, Float) -> Float> = [add, subtract, multiply, divide, power]
+    assertEq(floats.map(fn(operator): operator(1.5, 2.0)), [3.5, -0.5, 3.0, 0.75, 2.25])
+    const texts: Array<fn(String, String) -> Int> = [compare]
+    const joined: fn(String, String) -> String = add
+    assertEq([texts[0]("a", "b"), texts[0]("b", "a")], [-1, 1])
+    assertEq(joined("a", "b"), "ab")
+    assertEq([1.9, -1.9].map(Int.from), [1, -1])
+    assertEq([2, -3].map(Float.from), [2.0, -3.0])
+    assertEq(await expectPanic(zeroFloorDivided), "Division by zero.")
   })
   group("**", [
     test("of two ints is an exact int, grouping to the right", fn(): {

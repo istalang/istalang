@@ -6,22 +6,33 @@
  * - a derived codec's body the compiler writes from its type (docs/arch/boundary.md);
  * - a host extern's wrapper encodes and decodes around its native (§9);
  * - a function with a body is that body's code;
+ * - a prelude operator's extern standing for a primitive operation (primitive-ops.ts) is that
+ *   operation, written inline where called, so it has no native;
  * - any other extern is bound to a native: the one entry that is no code, so it computes no default
  *   a call leaves out, which an entry beside it does instead (tables.ts `leavingOutIndex`).
  * Every one of them but a native's begins with the prologue computing its defaults (§3.3).
  */
 
+import {
+  type PrimitiveOp,
+  primitiveOfExtern,
+} from '../../../definition/instructions/primitive-ops.ts';
 import { derivedCodecs } from '../../../foundation/language/well-known/codecs.ts';
 import type { Checker } from '../../checker/check.ts';
 import { isHostExtern } from '../../checker/surface/host-externs.ts';
 import type { JsonDirection } from '../../checker/surface/json-form.ts';
 import type { FunctionInstance } from '../../checker/surface/witness-closing.ts';
 import { constructedVariant, isFieldsFunction } from '../../syntax/declarations/field-defaults.ts';
+import { keyOf } from './extern-keys.ts';
 
-/** What an instance's own entry is made of; a derived codec's says which way it crosses. */
+/**
+ * What an instance's own entry is made of; a derived codec's says which way it crosses, and a
+ * primitive's which operation it is.
+ */
 type OwnEntry =
   | { readonly kind: 'struct' | 'constructor' | 'hostExtern' | 'body' | 'native' }
-  | { readonly kind: 'derivedCodec'; readonly direction: JsonDirection };
+  | { readonly kind: 'derivedCodec'; readonly direction: JsonDirection }
+  | { readonly kind: 'primitive'; readonly op: PrimitiveOp };
 
 /** What `instance`'s own entry is made of. */
 export function ownEntryOf(checker: Checker, instance: FunctionInstance): OwnEntry {
@@ -36,7 +47,19 @@ export function ownEntryOf(checker: Checker, instance: FunctionInstance): OwnEnt
   if (isHostExtern(checker, declaration)) {
     return { kind: 'hostExtern' };
   }
-  return { kind: declaration.isExtern ? 'native' : 'body' };
+  if (!declaration.isExtern) {
+    return { kind: 'body' };
+  }
+  const op = primitiveOf(checker, instance);
+  return op === undefined ? { kind: 'native' } : { kind: 'primitive', op };
+}
+
+/** The primitive operation `instance`, an extern, stands for; undefined for any other extern. */
+function primitiveOf(checker: Checker, { declaration }: FunctionInstance): PrimitiveOp | undefined {
+  if (!checker.isStd(checker.moduleOf(declaration))) {
+    return undefined;
+  }
+  return primitiveOfExtern[keyOf(checker, declaration, checker.parametersOf(declaration))];
 }
 
 /**

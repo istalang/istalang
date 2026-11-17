@@ -10,6 +10,9 @@
  * - A variant's constructor's entry builds the variant (§3.11), for a call leaving a field out and
  *   for what is handed an entry to call later, as a function value is (§3.14); a call giving every
  *   field builds it in place (values/variant-values.ts).
+ * - A primitive operation's extern (tables/own-entries.ts) has no native: its entry is the
+ *   operation, for what is handed an entry to call later, as a function value is (§3.14); a call
+ *   writes the operation in place.
  * - A host extern's one code entry is its wrapper (synthesized/boundary/host-externs.ts), which
  *   computes its defaults before calling the host's native.
  * - An extern bound to a native computes nothing, so a call leaving its defaults out, or a function
@@ -18,11 +21,12 @@
  *   giving every argument calls the extern itself.
  */
 
+import type { PrimitiveOp } from '../../../definition/instructions/primitive-ops.ts';
 import type { CodeFunction } from '../../../definition/tables/functions.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { FunctionInstance } from '../../checker/surface/witness-closing.ts';
 import type { NominalType, Type } from '../../checker/types/type/index.ts';
-import { emitCall } from '../calls/emit-call.ts';
+import { emitCall, emitPrimitive } from '../calls/emit-call.ts';
 import { hostCallOf, writeHostCall } from '../synthesized/boundary/host-externs.ts';
 import { structValue } from '../values/struct-values.ts';
 import { buildConstructed } from '../values/variant-values.ts';
@@ -34,6 +38,20 @@ export function constructorEntry(lowering: Lowering, instance: FunctionInstance)
   const { span } = instance.declaration.name;
   return builtLowering(lowering, instance).lowerBuilt((context, fields) =>
     buildConstructed(context, { instance, fields }, span),
+  );
+}
+
+/** The entry of `instance`, an extern standing for the primitive operation `op`: that operation. */
+export function primitiveEntry(
+  lowering: Lowering,
+  instance: FunctionInstance,
+  op: PrimitiveOp,
+): CodeFunction {
+  const { span } = instance.declaration.name;
+  const built = builtLowering(lowering, instance);
+  const result = lowering.tables.types.reference(built.frame.result);
+  return built.lowerBuilt((context, operands) =>
+    emitPrimitive(context, { span, op, operands }, result),
   );
 }
 

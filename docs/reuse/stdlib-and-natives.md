@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-11-13
-last_updated: 2026-11-16
+last_updated: 2026-11-17
 tags: [reuse, stdlib, natives, ranges, positions, time, decimal]
 ---
 
@@ -22,7 +22,6 @@ tags: [reuse, stdlib, natives, ranges, positions, time, decimal]
 - request random, logs, instances or testing in a native's context → `WithRandom`, `WithLogs`, `WithInstances`, `WithTesting` (`src/runtime/natives.ts`)
 - reach a live run's contexts (open a runtime, call into a context, serve its jobs) in a native's context → `WithContexts`, `NativeContexts` (`src/runtime/natives.ts`)
 - read or keep the JSON the instance wrote a value as, by type, in a native's context → `WithEncodings`, `NativeEncodings` (`src/runtime/natives.ts`)
-- generate the `Int`/`Int` and `Float`/`Float` overloads of a binary native or throw division by zero → `numeric`, `divisionByZero` (`src/stdlib/numeric.ts`)
 - hold Istalang numbers or roundings to decimal.js in a test, by `math.Rounding` mode → `decimalJsRoundings`, `roundings`, `Rounding` (`src/stdlib/math/rounding-oracle.test-kit.ts`)
 - validate or compute sequence indices, `at(i)`, or `slice(start, end)` → `checkedIndex`, `atPosition`, `sliceBounds`, `sliced` (`src/stdlib/positions.ts`)
 - select or replace sequence items by a prelude `Range` → `selectionOf`, `selected`, `splicesOf` (`src/stdlib/positions.ts`)
