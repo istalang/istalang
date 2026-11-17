@@ -31,7 +31,7 @@ import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 import { type ClosedCall, resultOfCall } from '../calls/closed-calls.ts';
 import { emitCall, emitFunctionCall, referenceTo } from '../calls/emit-call.ts';
 import { awaitFuture } from '../calls/waits.ts';
-import type { CodeContext } from '../context.ts';
+import type { CodeContext, Lowering } from '../context.ts';
 import { codeEntry } from '../functions/code-entry.ts';
 import { CodeWriter } from '../functions/code-writer.ts';
 import { emitConstant } from '../tables/constants.ts';
@@ -62,11 +62,7 @@ export class SynthesizedCode implements CodeContext {
   readonly span: AnchoredSpan;
 
   /** Code at `span` with `signature`, as a closure's entry when it has captures. */
-  constructor(
-    context: Pick<CodeContext, 'checker' | 'tables'>,
-    span: AnchoredSpan,
-    signature: SynthesizedSignature,
-  ) {
+  constructor(context: Lowering, span: AnchoredSpan, signature: SynthesizedSignature) {
     this.checker = context.checker;
     this.tables = context.tables;
     this.span = span;

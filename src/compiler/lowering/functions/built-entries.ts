@@ -27,10 +27,10 @@ import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { FunctionInstance } from '../../checker/surface/witness-closing.ts';
 import type { NominalType, Type } from '../../checker/types/type/index.ts';
 import { emitCall, emitPrimitive } from '../calls/emit-call.ts';
+import type { Lowering } from '../context.ts';
 import { hostCallOf, writeHostCall } from '../synthesized/boundary/host-externs.ts';
 import { structValue } from '../values/struct-values.ts';
 import { buildConstructed } from '../values/variant-values.ts';
-import type { Lowering } from './frames.ts';
 import { builtLowering } from './index.ts';
 
 /** The entry of `instance`, a variant's constructor: its fields built into the variant. */

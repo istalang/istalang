@@ -36,21 +36,14 @@ import type {
 import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import { emitCall, emitFunctionCall } from '../../calls/emit-call.ts';
 import { awaitFuture } from '../../calls/waits.ts';
-import type { CodeContext } from '../../context.ts';
+import type { CodeContext, Lowering } from '../../context.ts';
 import type { HostExternDeclaration } from '../../tables/entries.ts';
 import { declaredTypeOf, keyOf } from '../../tables/extern-keys.ts';
 import { rootInstance } from '../../tables/instances.ts';
 import { qualifiedNameOf } from '../../tables/names.ts';
-import type { DefinitionTables } from '../../tables/tables.ts';
 import { SynthesizedCode } from '../index.ts';
 import { codecCall } from './codec-calls.ts';
 import { emitInbound, inboundOf } from './inbound.ts';
-
-/** What writing an entry here reads. */
-interface Lowering {
-  readonly checker: Checker;
-  readonly tables: DefinitionTables;
-}
 
 /**
  * A wrapper's call to a host native, and how it reads what the native gives: its types as

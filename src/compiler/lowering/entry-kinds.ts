@@ -14,6 +14,7 @@ import { type Handlers, handlerOf } from '../../foundation/structures/kind-table
 import { unreachable } from '../../foundation/structures/unreachable.ts';
 import { type FunctionInstance, substitutionOf } from '../checker/surface/witness-closing.ts';
 import { substitute } from '../checker/types/parts/substitution.ts';
+import type { Lowering } from './context.ts';
 import { writtenBodyOf } from './functions/bodies.ts';
 import {
   constructorEntry,
@@ -23,7 +24,6 @@ import {
   structEntry,
 } from './functions/built-entries.ts';
 import { convertingEntry, wrappingEntry } from './functions/fits/index.ts';
-import type { Lowering } from './functions/frames.ts';
 import { accessorLowering, instanceLowering, nestedLowering } from './functions/index.ts';
 import { derivedCodecEntry } from './synthesized/boundary/codecs.ts';
 import {

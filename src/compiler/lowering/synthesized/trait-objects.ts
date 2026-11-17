@@ -42,7 +42,7 @@ import {
   dispatchSubstitution,
   resultOfCall,
 } from '../calls/closed-calls.ts';
-import type { CodeContext } from '../context.ts';
+import type { Lowering } from '../context.ts';
 import { fittedArguments, fittedIn, fittedResult } from '../functions/fits/index.ts';
 import { codeModeOf } from '../functions/modes.ts';
 import { tableKey } from '../tables/names.ts';
@@ -51,9 +51,6 @@ import { convertedIntoAny } from '../values/into-any.ts';
 import { readRequiredField } from '../values/required-fields.ts';
 import { outOfUnion } from '../values/unions.ts';
 import { SynthesizedCode } from './index.ts';
-
-/** What writing an entry takes: the checker and the tables. */
-type Lowering = Pick<CodeContext, 'checker' | 'tables'>;
 
 /**
  * The entry calling `dispatch`'s function for each type the value it is called on may have; a

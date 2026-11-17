@@ -38,6 +38,9 @@ export type CodeContext = Pick<
   'checker' | 'tables' | 'code' | 'constant' | 'waitingMode'
 >;
 
+/** What writing an entry takes beyond its code: the checker and the Definition's tables. */
+export type Lowering = Pick<FunctionContext, 'checker' | 'tables'>;
+
 export interface FunctionContext {
   readonly checker: Checker;
   readonly tables: DefinitionTables;

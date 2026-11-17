@@ -26,7 +26,7 @@ import { baseOf } from '../../../checker/types/unions/union-members.ts';
 import type { NodeOf } from '../../../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import { emitCall } from '../../calls/emit-call.ts';
-import type { CodeContext, FunctionContext } from '../../context.ts';
+import type { CodeContext, FunctionContext, Lowering } from '../../context.ts';
 import { SynthesizedCode } from '../../synthesized/index.ts';
 import {
   type BodyOwner,
@@ -252,7 +252,7 @@ function fitBetween(context: Pick<CodeContext, 'checker'>, from: Type, to: Type)
  * converting part by part is rebuilt here, as converting it by this entry would call itself.
  */
 export function convertingEntry(
-  lowering: Pick<CodeContext, 'checker' | 'tables'>,
+  lowering: Lowering,
   entry: Extract<ConversionEntry, { readonly kind: 'converting' }>,
 ): CodeFunction {
   const { checker, tables } = lowering;
@@ -286,7 +286,7 @@ export function convertingEntry(
  * starts the function it wraps (§10).
  */
 export function wrappingEntry(
-  lowering: Pick<CodeContext, 'checker' | 'tables'>,
+  lowering: Lowering,
   entry: Extract<ConversionEntry, { readonly kind: 'wrapping' }>,
 ): CodeFunction {
   const { checker, tables } = lowering;

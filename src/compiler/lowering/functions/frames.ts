@@ -25,15 +25,10 @@ import { markType } from '../../checker/types/type/primitives.ts';
 import type { ContextConstantDeclaration } from '../../syntax/declarations/index.ts';
 import { awaits } from '../../syntax/tokens/modifiers.ts';
 import type { Identifier } from '../../syntax/tree/node.ts';
+import type { Lowering } from '../context.ts';
 import type { BodyOwner, FieldPassStep, NestedInstance } from '../tables/instances.ts';
-import type { DefinitionTables, EntryHeader } from '../tables/tables.ts';
+import type { EntryHeader } from '../tables/tables.ts';
 import { codeModeOf } from './modes.ts';
-
-/** What lowering an entry needs from the program: its checking and the Definition's tables. */
-export interface Lowering {
-  readonly checker: Checker;
-  readonly tables: DefinitionTables;
-}
 
 /** What lowering an entry starts from: what owns its body, the body read through it, the tables. */
 interface LoweredFunction extends Lowering {

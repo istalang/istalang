@@ -37,11 +37,11 @@ import { startShapeOf } from '../../../syntax/declarations/starts.ts';
 import { awaits } from '../../../syntax/tokens/modifiers.ts';
 import type { Invalid } from '../../../syntax/tree/node.ts';
 import { emitCall } from '../../calls/emit-call.ts';
+import type { Lowering } from '../../context.ts';
 import { constantValue } from '../../tables/constants.ts';
 import type { StartTarget } from '../../tables/entries.ts';
 import { keyOf } from '../../tables/extern-keys.ts';
 import { rootInstance } from '../../tables/instances.ts';
-import type { DefinitionTables } from '../../tables/tables.ts';
 import { SynthesizedCode } from '../index.ts';
 import { codecCall } from './codec-calls.ts';
 import { jsonOf } from './host-externs.ts';
@@ -145,19 +145,13 @@ function crossing(checker: Checker, startable: Startable): Startable | undefined
 }
 
 /** Lists `startable` among what a host may start; the key it goes by. */
-export function listStart(
-  lowering: { readonly checker: Checker; readonly tables: DefinitionTables },
-  startable: Startable,
-): string {
+export function listStart(lowering: Lowering, startable: Startable): string {
   lowering.tables.startIndex(startable.target, startable.key);
   return startable.key;
 }
 
 /** The start entry of `startable`, wrapping it (the banner). */
-export function startEntry(
-  lowering: { readonly checker: Checker; readonly tables: DefinitionTables },
-  startable: Startable,
-): CodeFunction {
+export function startEntry(lowering: Lowering, startable: Startable): CodeFunction {
   const { checker, tables } = lowering;
   const { target, parameters, key, outcome } = startable;
   const json = jsonOf(checker);
@@ -182,10 +176,7 @@ export function startEntry(
 }
 
 /** The entry encoding `startable`'s outcome as `Json` (the banner). */
-export function startEncodeEntry(
-  lowering: { readonly checker: Checker; readonly tables: DefinitionTables },
-  startable: Startable,
-): CodeFunction {
+export function startEncodeEntry(lowering: Lowering, startable: Startable): CodeFunction {
   const { checker, tables } = lowering;
   const { target, outcome } = startable;
   const json = jsonOf(checker);

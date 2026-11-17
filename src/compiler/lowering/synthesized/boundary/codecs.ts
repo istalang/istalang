@@ -11,20 +11,17 @@
 
 import type { CodeFunction } from '../../../../definition/tables/functions.ts';
 import { unreachable } from '../../../../foundation/structures/unreachable.ts';
-import type { Checker } from '../../../checker/check.ts';
 import type { DerivedForm, JsonDirection } from '../../../checker/surface/json-form.ts';
 import { type FunctionInstance, substitutionOf } from '../../../checker/surface/witness-closing.ts';
 import { substitute } from '../../../checker/types/parts/substitution.ts';
 import type { Type } from '../../../checker/types/type/index.ts';
-import type { DefinitionTables } from '../../tables/tables.ts';
+import type { Lowering } from '../../context.ts';
 import { SynthesizedCode } from '../index.ts';
 import { Decoder } from './decoder.ts';
 import { Encoder } from './encoder.ts';
 
 /** What writing a codec reads: the checker, the tables, and the instance whose body it is. */
-interface CodecLowering {
-  readonly checker: Checker;
-  readonly tables: DefinitionTables;
+interface CodecLowering extends Lowering {
   readonly instance: FunctionInstance;
 }
 
