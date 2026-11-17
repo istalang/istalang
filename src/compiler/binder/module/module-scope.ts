@@ -16,6 +16,7 @@
  */
 
 import { type Convention, isPrivate } from '../../../foundation/language/naming.ts';
+import type { ModuleId } from '../../program/program.ts';
 import {
   boundName,
   type Declaration,
@@ -64,7 +65,11 @@ type Origin = 'import' | 'declaration';
 
 /** Defines every top-level name of `module` in a new scope under `parent`. */
 export function defineModuleScope(binder: LocalBinder, module: Module, parent: Scope): ModuleScope {
-  const definer = new TopLevelDefiner(binder, Scope.block(parent), functionSets(module));
+  const definer = new TopLevelDefiner(
+    binder,
+    Scope.block(parent),
+    functionSets(binder.module, module),
+  );
   for (const item of module.items) {
     if (item.kind !== 'Invalid') {
       definer.defineItem(item);
@@ -107,7 +112,7 @@ class TopLevelDefiner {
         }
         return;
       case 'NamespaceImport':
-        this.#define(item.alias, namespaceEntity(item), 'import', 'value');
+        this.#define(item.alias, namespaceEntity(this.#binder.module, item), 'import', 'value');
         return;
       case 'FunctionDeclaration':
         this.#defineFunction(item);
@@ -115,16 +120,21 @@ class TopLevelDefiner {
       case 'ExternConstantDeclaration':
       case 'ContextConstantDeclaration': {
         const { name } = item;
-        this.#define(name, variableEntity(name, item), 'declaration', 'value');
+        this.#define(name, variableEntity(this.#binder.module, name, item), 'declaration', 'value');
         return;
       }
       case 'VariableDeclaration':
         for (const name of item.targets.flatMap(targetNames)) {
-          this.#define(name, variableEntity(name, item), 'declaration', 'value');
+          this.#define(
+            name,
+            variableEntity(this.#binder.module, name, item),
+            'declaration',
+            'value',
+          );
         }
         return;
       default:
-        this.#define(item.name, typeEntity(item), 'declaration', 'type');
+        this.#define(item.name, typeEntity(this.#binder.module, item), 'declaration', 'type');
     }
   }
 
@@ -185,13 +195,13 @@ function ownNames(
 }
 
 /** A set per name of the top-level functions; static functions belong to their type instead. */
-function functionSets(module: Module): ReadonlyMap<string, FunctionsEntity> {
+function functionSets(id: ModuleId, module: Module): ReadonlyMap<string, FunctionsEntity> {
   const sets = Map.groupBy(
     declaredFunctions(module).filter((declared) => declared.owner === undefined),
     (declared) => declared.name.text,
   );
   return new Map(
-    [...sets].map(([name, overloads]) => [name, functionsEntity(name, overloads)] as const),
+    [...sets].map(([name, overloads]) => [name, functionsEntity(id, name, overloads)] as const),
   );
 }
 
@@ -209,7 +219,7 @@ function variantsOf(
       );
       const byName = new Map<string, VariantEntity>();
       for (const variant of variants) {
-        const entity = variantEntity(declaration, variant);
+        const entity = variantEntity(binder.module, declaration, variant);
         binder.record(variant.name, entity);
         byName.set(variant.name.text, entity);
       }

@@ -13,7 +13,7 @@
 
 import { languageModules } from '../../../foundation/language/well-known/index.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
-import { variableEntity } from '../../binder/entities.ts';
+import { synthesizedVariable } from '../../binder/entities.ts';
 import type { Call, CallArgument } from '../../syntax/expressions/calls.ts';
 import type { Expression } from '../../syntax/expressions/index.ts';
 import type { StringLiteral } from '../../syntax/expressions/literals/literals.ts';
@@ -51,7 +51,7 @@ export function heldConstant(value: Expression, at: AnchoredSpan, origin: Origin
     type: undefined,
     initializer: value,
   } as const);
-  const entity = variableEntity(name, declaration);
+  const entity = synthesizedVariable(name, declaration);
   bound(name, entity);
   return {
     declaration,

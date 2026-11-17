@@ -2,7 +2,7 @@
 
 They meet on **node identity**. The binder memoizes one `VariableEntity` per declaring `Identifier` and maps every name to an entity. The checker keys a variable's type and facts by that same declaring `Identifier`, and lowering later keys its register by it too.
 
-- Binding has two lifetimes: `bindModule(tree)` builds `Map<Identifier, LocalEntity>` once per tree; `link(program)` resolves free names and imports once per Program.[](source:bindmodule)
+- Binding has two lifetimes: `bindModule(tree, module)` builds `Map<Identifier, LocalEntity>` once per tree, every entity and declaration stamped with its module; `link(program)` resolves free names and imports once per Program.[](source:bindmodule)
 - Entities are made only in local binding, through `WeakMap`s keyed by syntax nodes, so an edit that keeps a segment keeps every entity in it.[](source:entities)
 - A body's records are `PassTable`s keyed by node and kept per field-loop pass; a read walks from a pass to the passes around it.[](source:passes)
 - Every `Bindings` answer the checker reads is recorded as an entry input, so incremental reuse also tracks what the binder said.[](source:inputs)

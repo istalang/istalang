@@ -319,7 +319,7 @@ describe("a function's name before a '.'", () => {
     const program = preludeProgramOf({
       main: 'fn helper(): 1\nista async fn f():\n  drop helper.bits',
     });
-    expect(bindModule(moduleAt(program, 'main').tree).paths).toEqual([]);
+    expect(bindModule(moduleAt(program, 'main').tree, idOf('main')).paths).toEqual([]);
   });
 
   it('denotes a variable that shadows the function', () => {

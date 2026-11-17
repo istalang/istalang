@@ -89,7 +89,9 @@ export function bindAliasBody(binder: LocalBinder, node: AliasBody, scope: Scope
 function bindTypeCase(binder: LocalBinder, node: TypeCase, scope: Scope): void {
   const inner = Scope.nested(scope);
   for (const { parameter } of inferTypesIn(node.pattern)) {
-    binder.declare(inner, parameter.name, typeEntity(parameter), { convention: 'type' });
+    binder.declare(inner, parameter.name, typeEntity(binder.module, parameter), {
+      convention: 'type',
+    });
   }
   binder.enter(node, inner);
   const { pattern } = node;
@@ -118,7 +120,9 @@ function bindMappedField(binder: LocalBinder, node: MappedField, scope: Scope): 
     bindType(binder, parameter.memberOf, scope);
   }
   const inner = Scope.nested(scope);
-  binder.declare(inner, parameter.name, typeEntity(parameter), { convention: 'type' });
+  binder.declare(inner, parameter.name, typeEntity(binder.module, parameter), {
+    convention: 'type',
+  });
   binder.enter(node, inner);
   bindType(binder, node.type, inner);
 }

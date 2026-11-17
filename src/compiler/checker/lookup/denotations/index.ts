@@ -14,7 +14,7 @@
  */
 
 import { type Handlers, handlerOf } from '../../../../foundation/structures/kind-table.ts';
-import { typeEntity } from '../../../binder/entities.ts';
+import { boundTypeEntity } from '../../../binder/entities.ts';
 import type { ModuleId } from '../../../program/program.ts';
 import { constructedVariant } from '../../../syntax/declarations/field-defaults.ts';
 import type { CallingNode } from '../../../syntax/expressions/calls.ts';
@@ -202,7 +202,10 @@ function associatedNamed(checker: CheckerContext, type: Type | undefined): reado
   }
   return associatedDeclarationsOn(checker, spelled.of)
     .filter((declaration) => declaration.name.text === spelled.name)
-    .map((declaration) => ({ declared: { kind: 'type', entity: typeEntity(declaration) }, type }));
+    .map((declaration) => ({
+      declared: { kind: 'type', entity: boundTypeEntity(declaration) },
+      type,
+    }));
 }
 
 /**

@@ -153,7 +153,7 @@
       "id": "moduleBindings",
       "label": "ModuleBindings",
       "kind": "record",
-      "sublabel": "memo: bindModule(tree)",
+      "sublabel": "memo: bindModule(tree, module)",
       "row": 2,
       "col": 2,
       "attributes": [
@@ -327,7 +327,7 @@
       "dot": "cyan",
       "title": "Two lifetimes",
       "items": [
-        "bindModule(tree): memoized on the SyntaxTree, rebinds only an edited module",
+        "bindModule(tree, module): memoized on the SyntaxTree, rebinds only an edited module, stamps every entity and declaration with its module",
         "link(program): memoized on the Program, cheap, redone per snapshot"
       ]
     },

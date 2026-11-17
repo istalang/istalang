@@ -23,6 +23,7 @@ import type { Diagnostic } from '../../../foundation/diagnostics/diagnostic.ts';
 import { type Convention, isUnnamed } from '../../../foundation/language/naming.ts';
 import { memo, SequenceMemo } from '../../../foundation/structures/memo.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
+import type { ModuleId } from '../../program/program.ts';
 import {
   type FunctionDeclaration,
   isGenericDeclaration,
@@ -182,6 +183,8 @@ export class LocalBinder {
   readonly walk: Walk;
   /** The tree being bound, which holds its functions' bodies. */
   readonly tree: SyntaxTree;
+  /** The module the tree is, which every entity binding makes is stamped with. */
+  readonly module: ModuleId;
   readonly #entities = new Map<Identifier, LocalEntity>();
   readonly #free: FreeName[] = [];
   readonly #paths: QualifiedPath[] = [];
@@ -190,9 +193,10 @@ export class LocalBinder {
   readonly #linkedHeads: Identifier[] = [];
   readonly #notes = new VisibilityNotes();
 
-  constructor(walk: Walk, tree: SyntaxTree) {
+  constructor(walk: Walk, tree: SyntaxTree, module: ModuleId) {
     this.walk = walk;
     this.tree = tree;
+    this.module = module;
   }
 
   /** What binding the tree produced, `topLevel` being its module's scope once defined. */
@@ -309,7 +313,7 @@ export class LocalBinder {
 
   /** Declares a camelCase variable whose declaring node is `owner`. */
   declareVariable(scope: Scope, name: Identifier, owner: VariableOwner): void {
-    this.declare(scope, name, variableEntity(name, owner), { convention: 'value' });
+    this.declare(scope, name, variableEntity(this.module, name, owner), { convention: 'value' });
   }
 
   /**
@@ -394,6 +398,7 @@ export class LocalBinder {
   #ownCallOf(node: FunctionDeclaration | Lambda): VariableEntity {
     return memo(this.#ownCalls, node, () =>
       ownCallEntity(
+        this.module,
         node,
         node.name ?? unreachable('Only a named function has a call its name reads.'),
       ),

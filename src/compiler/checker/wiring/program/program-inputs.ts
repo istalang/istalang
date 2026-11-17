@@ -12,39 +12,20 @@
  * - A bare variant is read as the one its expected type chooses, not as every variant so named, and
  *   one no enum is expected of as those its module can qualify it through, so an enum added
  *   elsewhere changes only the entries whose choice it changes.
- * - Which module declares each declaration is an input too (`DeclaringModules`): an item, a trait's
- *   member, a function the fields of an item read as (syntax/declarations/field-defaults.ts), which
- *   no tree holds, and the type parameters of each, whose constraints resolve there. What a tree
- *   declares is found once per tree, so a later Program reusing the tree reuses it; a Program's
- *   index joins its trees' the first time it is asked. A local declaration's module is the one
- *   whose tree holds it, found once on demand: only tools ask, since checking a body already knows
- *   its module.
+ * - Which module declares each declaration is a Bindings answer too (`itemModuleOf`,
+ *   `declarationModuleOf`): binding stamps every declaration of a tree with its module, items' parts
+ *   and local ones, a function the fields of an item read as among them, and keeps what the tree
+ *   declared with its bindings (binder/module/declared.ts), so nothing is indexed per Program.
  */
 
 import type { LanguageModule } from '../../../../foundation/language/well-known/index.ts';
 import type { Entries } from '../../../../foundation/structures/entries/index.ts';
 import { sameEntries, sameItems } from '../../../../foundation/structures/equality.ts';
-import { memo } from '../../../../foundation/structures/memo.ts';
-import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import type { Bindings, VariantEntity } from '../../../binder/entities.ts';
 import type { ModuleId, Program } from '../../../program/program.ts';
 import { isStdModule, programModule } from '../../../program/program.ts';
-import { fieldsFunctionsOf } from '../../../syntax/declarations/field-defaults.ts';
 import type { EnumDeclaration, FunctionDeclaration } from '../../../syntax/declarations/index.ts';
-import {
-  type Declaration,
-  type TypeParameter,
-  typeParametersOf,
-} from '../../../syntax/declarations/index.ts';
-import type { VariableDeclaration } from '../../../syntax/statements/index.ts';
-import {
-  ancestorsOf,
-  bodyOf,
-  parentOf,
-  type SyntaxNode,
-  type SyntaxTree,
-} from '../../../syntax/tree/index.ts';
-import type { NodeOf } from '../../../syntax/tree/node.ts';
+import { ancestorsOf, bodyOf, type SyntaxNode } from '../../../syntax/tree/index.ts';
 import type { CheckerNote, ProgramInputs } from '../../contexts/context.ts';
 
 /** Checking's reads of `program`, recorded in `entries`. */
@@ -118,6 +99,11 @@ export function recordedBindings(entries: Entries<CheckerNote>, bindings: Bindin
     exportsOf: entries.input({ name: 'exports of', read: bindings.exportsOf, equal: sameNames }),
     moduleOf: entries.input({ name: 'module of entity', read: bindings.moduleOf }),
     isTopLevel: entries.input({ name: 'is top level', read: bindings.isTopLevel }),
+    itemModuleOf: entries.input({ name: 'item module of', read: bindings.itemModuleOf }),
+    declarationModuleOf: entries.input({
+      name: 'declaration module of',
+      read: bindings.declarationModuleOf,
+    }),
     visibleAt: entries.input({ name: 'visible at', read: bindings.visibleAt, equal: sameNames }),
     overloadsOf: entries.input({
       name: 'overloads of',
@@ -150,80 +136,10 @@ export function recordedBindings(entries: Entries<CheckerNote>, bindings: Bindin
   };
 }
 
-/** Which module declares what, and which modules are std, each answer recorded in `entries`. */
-export function declaringInputs(entries: Entries<CheckerNote>, program: Program) {
-  const modules = new DeclaringModules(program);
-  return {
-    moduleOf: entries.input({ name: 'module of', read: modules.moduleOf }),
-    itemModuleOf: entries.input({ name: 'item module of', read: modules.itemModuleOf }),
-    isStd: entries.input({
-      name: 'is std',
-      read: (module: ModuleId | undefined) => isStdModule(program, module),
-    }),
-  };
-}
-
-const declaredByTree = new WeakMap<SyntaxTree, readonly NodeOf<string>[]>();
-
-class DeclaringModules {
-  readonly #program: Program;
-  #items: ReadonlyMap<NodeOf<string>, ModuleId> | undefined;
-  readonly #locals = new Map<NodeOf<string>, ModuleId>();
-
-  constructor(program: Program) {
-    this.#program = program;
-  }
-
-  /** The module whose item, or item's type parameter, `node` is; undefined for a local one. */
-  readonly itemModuleOf = (node: NodeOf<string>): ModuleId | undefined => {
-    this.#items ??= new Map(
-      [...this.#program.modules].flatMap(([id, { tree }]) =>
-        declaredBy(tree).map((each) => [each, id] as const),
-      ),
-    );
-    return this.#items.get(node);
-  };
-
-  /**
-   * The module declaring `declaration`, an item or a local declaration, or the type parameter of
-   * either, a mapped struct type's among them (§3.1).
-   */
-  readonly moduleOf = (declaration: Declaration | VariableDeclaration | TypeParameter): ModuleId =>
-    this.itemModuleOf(declaration) ??
-    memo(this.#locals, declaration, () => this.#moduleHolding(declaration));
-
-  #moduleHolding(node: Declaration | VariableDeclaration | TypeParameter): ModuleId {
-    for (const [id, { tree }] of this.#program.modules) {
-      if (parentOf(tree, node) !== undefined) {
-        return id;
-      }
-    }
-    return unreachable(`No module holds the ${node.kind} at ${node.span.from}.`);
-  }
-}
-
-/** What `tree` declares at its top level, inside its items, and as their type parameters. */
-function declaredBy(tree: SyntaxTree): readonly NodeOf<string>[] {
-  return memo(declaredByTree, tree, () =>
-    tree.root.items.flatMap((item) => (item.kind === 'Invalid' ? [] : declared(item))),
-  );
-}
-
-/**
- * `item`, its type parameters, a trait's members with theirs, its associated types (§3.1), and the
- * functions it reads as.
- */
-function declared(item: Declaration): readonly NodeOf<string>[] {
-  const parameters = 'typeParameters' in item ? typeParametersOf(item.typeParameters) : [];
-  const members =
-    item.kind === 'TraitDeclaration'
-      ? item.members.flatMap((member) => {
-          if (member.kind === 'FunctionDeclaration') {
-            return declared(member);
-          }
-          return member.kind === 'RequiredAssociatedType' ? [member] : [];
-        })
-      : [];
-  const associated = 'associatedTypes' in item ? item.associatedTypes : [];
-  return [item, ...parameters, ...members, ...associated, ...fieldsFunctionsOf(item)];
+/** Whether a module is std, each answer recorded in `entries`. */
+export function isStdInput(entries: Entries<CheckerNote>, program: Program) {
+  return entries.input({
+    name: 'is std',
+    read: (module: ModuleId | undefined) => isStdModule(program, module),
+  });
 }

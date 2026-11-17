@@ -128,7 +128,9 @@ function bindFieldDefaults(
   const inner = Scope.nested(scope);
   bindDefaults(binder, { node: owner, parameters: fieldsFunction.parameters }, inner, (field) => {
     if (field.name !== undefined) {
-      binder.declare(inner, field.name, variableEntity(field.name, field), { clash: false });
+      binder.declare(inner, field.name, variableEntity(binder.module, field.name, field), {
+        clash: false,
+      });
     }
   });
 }
@@ -190,7 +192,7 @@ function bindAssociatedTypes(
       binder.checkConvention(name, 'type');
       binder.report(binderDiagnostics.duplicateDeclaration(name.span, name.text));
     } else {
-      binder.declare(scope, name, typeEntity(associated), { convention: 'type' });
+      binder.declare(scope, name, typeEntity(binder.module, associated), { convention: 'type' });
     }
   }
   for (const associated of node.associatedTypes) {
@@ -243,7 +245,7 @@ function bindEnum(binder: LocalBinder, node: EnumDeclaration, scope: Scope): voi
 
 function bindTrait(binder: LocalBinder, node: TraitDeclaration, scope: Scope): void {
   const inner = Scope.nested(scope);
-  inner.define(selfType, selfEntity(node));
+  inner.define(selfType, selfEntity(binder.module, node));
   defineTypeParameters(binder, node.typeParameters, inner);
   binder.annotations(node, inner);
   binder.enter(node, inner);
@@ -262,7 +264,7 @@ function bindTrait(binder: LocalBinder, node: TraitDeclaration, scope: Scope): v
       case 'RequiredAssociatedType':
         // A requirement is reached through `Self` or a parameter, never by its bare name, so it is
         // recorded as its name's entity, the tree's own, without standing in a scope.
-        binder.record(member.name, typeEntity(member));
+        binder.record(member.name, typeEntity(binder.module, member));
         if (member.memberOf !== undefined) {
           binder.walk.type(binder, member.memberOf, inner);
         }
@@ -296,7 +298,9 @@ function typeParameterScope(
 function defineTypeParameters(binder: LocalBinder, parameters: TypeParameters, scope: Scope): void {
   const declared = typeParametersOf(parameters);
   for (const parameter of declared) {
-    binder.declare(scope, parameter.name, typeEntity(parameter), { convention: 'type' });
+    binder.declare(scope, parameter.name, typeEntity(binder.module, parameter), {
+      convention: 'type',
+    });
   }
   for (const parameter of declared) {
     const { memberOf, constraints, defaultType } = parameter;

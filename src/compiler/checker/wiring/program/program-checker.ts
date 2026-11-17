@@ -44,7 +44,7 @@ import type {
 } from '../../../syntax/declarations/index.ts';
 import type { VariableDeclaration } from '../../../syntax/statements/index.ts';
 import { awaits } from '../../../syntax/tokens/modifiers.ts';
-import type { Identifier, NodeOf } from '../../../syntax/tree/node.ts';
+import type { Identifier } from '../../../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import type { TypeNode } from '../../../syntax/types/index.ts';
 import type {
@@ -115,7 +115,7 @@ import type { TypeMatchQueries } from '../../types/written/type-match.ts';
 import { BodyChecker } from '../body/body-checker.ts';
 import type { BodyKind } from '../body/body-kinds.ts';
 import { programDisposals } from './program-disposals.ts';
-import { declaringInputs, programInputs, recordedBindings } from './program-inputs.ts';
+import { isStdInput, programInputs, recordedBindings } from './program-inputs.ts';
 import { programKinds } from './program-kinds.ts';
 import { programTypeRules } from './program-type-rules.ts';
 
@@ -145,10 +145,11 @@ export class ProgramChecker implements CheckerContext {
   readonly fitting: Fitting;
   readonly bindings: Bindings;
   readonly inputs: ProgramInputs;
-  readonly moduleOf: (declaration: Declaration | VariableDeclaration | TypeParameter) => ModuleId;
+  /** The module declaring `declaration`, an item's part or a declaration inside an item. */
+  readonly moduleOf = (declaration: Declaration | VariableDeclaration | TypeParameter): ModuleId =>
+    this.bindings.declarationModuleOf(declaration) ??
+    unreachable(`No module holds the ${declaration.kind} at ${declaration.span.from}.`);
   readonly isStd: (module: ModuleId | undefined) => boolean;
-  /** The module whose item, or item's type parameter, `node` is; undefined for a local one. */
-  readonly #itemModuleOf: (node: NodeOf<string>) => ModuleId | undefined;
   readonly #resolvedTypes: EntryTable<CheckerNote, TypeNode, Type, ModuleId>;
   readonly opaqueParametersOf: CheckerContext['opaqueParametersOf'];
   readonly disposalOf: CheckerContext['disposalOf'];
@@ -183,8 +184,7 @@ export class ProgramChecker implements CheckerContext {
     const bindings = bindProgram(program);
     this.bindings = withSynthesizedNames(recordedBindings(this.entries, bindings));
     this.inputs = programInputs(this.entries, program, bindings);
-    const declaring = declaringInputs(this.entries, program);
-    ({ moduleOf: this.moduleOf, itemModuleOf: this.#itemModuleOf, isStd: this.isStd } = declaring);
+    this.isStd = isStdInput(this.entries, program);
     this.#resolvedTypes = this.entries.table({
       name: 'resolved types',
       compute: (node, module) => resolveTypeNode(this, module, node),
@@ -203,7 +203,7 @@ export class ProgramChecker implements CheckerContext {
     });
     this.#constants = new ConstantChecks({
       checker: this,
-      moduleOfItem: this.#itemModuleOf,
+      moduleOfItem: (node) => this.bindings.itemModuleOf(node),
       checkConstant: (module, declaration, declared) =>
         this.#valueBody(module, declared).checkConstant(declaration),
     });
@@ -216,7 +216,7 @@ export class ProgramChecker implements CheckerContext {
     });
     this.#statics = new StaticFunctions(this);
     this.#typeParameters = new TypeParameters(this, (node) =>
-      node.kind === 'TypeParameter' ? declaring.moduleOf(node) : this.#itemModuleOf(node),
+      node.kind === 'TypeParameter' ? this.moduleOf(node) : this.bindings.itemModuleOf(node),
     );
     this.lifetimes = new Lifetimes(this);
     this.#moduleChecks = new ModuleChecks(this, {
@@ -343,7 +343,7 @@ export class ProgramChecker implements CheckerContext {
   #aliasModuleOf(alias: AliasDeclaration): ModuleId {
     return alias.kind === 'TypeAliasDeclaration'
       ? this.moduleOf(alias)
-      : (this.#itemModuleOf(alias) ?? unreachable("An associated type is an item's part."));
+      : (this.bindings.itemModuleOf(alias) ?? unreachable("An associated type is an item's part."));
   }
 
   get typeMatches(): TypeMatchQueries {

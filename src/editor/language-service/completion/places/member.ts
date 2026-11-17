@@ -19,9 +19,9 @@
  */
 
 import {
+  boundTypeEntity,
   type NamespaceEntity,
   namesType,
-  typeEntity,
 } from '../../../../compiler/binder/entities.ts';
 import type { Checker } from '../../../../compiler/checker/check.ts';
 import type { Type } from '../../../../compiler/checker/types/type/index.ts';
@@ -171,7 +171,7 @@ function typeMembers(
   const associated = associatedTypes.map(
     (declaration): Candidate => ({
       name: declaration.name.text,
-      subject: { kind: 'entity', entity: typeEntity(declaration) },
+      subject: { kind: 'entity', entity: boundTypeEntity(declaration) },
     }),
   );
   if (names === 'type') {

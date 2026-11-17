@@ -24,7 +24,7 @@ export function bindProgram(program: Program): Bindings {
   return memo(linked, program, () =>
     link(
       program,
-      new Map([...program.modules].map(([id, module]) => [id, bindModule(module.tree)])),
+      new Map([...program.modules].map(([id, module]) => [id, bindModule(module.tree, id)])),
     ),
   );
 }

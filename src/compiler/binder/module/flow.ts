@@ -145,7 +145,9 @@ export function underFields(binder: LocalBinder, node: OverFields, scope: Scope,
       binder.walk.type(binder, header.memberOf, scope);
     }
     const define = (variables: Scope) => {
-      binder.declare(variables, header.name, typeEntity(header), { convention: 'type' });
+      binder.declare(variables, header.name, typeEntity(binder.module, header), {
+        convention: 'type',
+      });
     };
     underBindings(binder, node, scope, { define, body });
     return;

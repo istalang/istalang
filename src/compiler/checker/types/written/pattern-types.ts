@@ -23,7 +23,7 @@
  */
 
 import { sameItems } from '../../../../foundation/structures/equality.ts';
-import { type Entity, typeEntity } from '../../../binder/entities.ts';
+import { boundTypeEntity, type Entity } from '../../../binder/entities.ts';
 import type { TypeAliasDeclaration } from '../../../syntax/declarations/index.ts';
 import type { Checker } from '../../check.ts';
 import { sameType } from '../identity/identity.ts';
@@ -88,7 +88,7 @@ export function downcastTargetOf(
 ): DowncastTarget {
   const named = patternTypeOf(
     checker,
-    entity.kind === 'variant' ? typeEntity(entity.enum) : entity,
+    entity.kind === 'variant' ? boundTypeEntity(entity.enum) : entity,
   );
   if (named.kind !== 'type' || named.type.kind === 'error') {
     return named;

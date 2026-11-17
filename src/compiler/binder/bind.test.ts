@@ -296,10 +296,10 @@ describe('incremental', () => {
     const before = preludeProgramOf(corpus);
     const after = preludeProgramOf({ ...corpus, 'names/main': `${namesMain}\n` }, before);
     const treeOf = (program: typeof before, key: string) => moduleAt(program, key).tree;
-    expect(bindModule(treeOf(after, 'names/lib'))).toBe(bindModule(treeOf(before, 'names/lib')));
-    expect(bindModule(treeOf(after, 'names/main'))).not.toBe(
-      bindModule(treeOf(before, 'names/main')),
-    );
+    const bound = (program: typeof before, key: string) =>
+      bindModule(treeOf(program, key), idOf(key));
+    expect(bound(after, 'names/lib')).toBe(bound(before, 'names/lib'));
+    expect(bound(after, 'names/main')).not.toBe(bound(before, 'names/main'));
     const shapeIn = (program: typeof before) =>
       bindProgram(program).exportsOf(idOf('names/lib')).get('Shape');
     expect(shapeIn(after)).toBe(shapeIn(before));

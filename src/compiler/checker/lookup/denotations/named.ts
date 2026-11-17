@@ -5,11 +5,11 @@
  */
 
 import {
+  boundTypeEntity,
+  boundVariantEntity,
   type Entity,
-  typeEntity,
   type VariableEntity,
   type VariantEntity,
-  variantEntity,
 } from '../../../binder/entities.ts';
 import type { ModuleId } from '../../../program/program.ts';
 import { constructedVariant } from '../../../syntax/declarations/field-defaults.ts';
@@ -93,7 +93,7 @@ function variantDenotation(entity: VariantEntity, type: Type | undefined): Denot
   const own = typeParametersOf(declaration.typeParameters).map(parameterType);
   return {
     declared: { kind: 'variant', entity },
-    type: isItsEnum ? type : nominalType(typeEntity(declaration), own),
+    type: isItsEnum ? type : nominalType(boundTypeEntity(declaration), own),
   };
 }
 
@@ -156,7 +156,7 @@ function calledDenotation(called: ResolvedCall, type: Type | undefined): Denotat
   const built = constructedVariant(called.function);
   return built === undefined
     ? functionDenotation(called.function, type)
-    : variantDenotation(variantEntity(built.enumeration, built.variant), builtType(called));
+    : variantDenotation(boundVariantEntity(built.variant), builtType(called));
 }
 
 /**
@@ -167,7 +167,7 @@ export function builtType(called: ResolvedCall): Type | undefined {
   const built = constructedVariant(called.function);
   return built === undefined || called.kind !== 'function'
     ? undefined
-    : nominalType(typeEntity(built.enumeration), called.typeArguments);
+    : nominalType(boundTypeEntity(built.enumeration), called.typeArguments);
 }
 
 export function functionDenotation(

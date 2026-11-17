@@ -21,6 +21,7 @@
 import type { Diagnostic } from '../../foundation/diagnostics/diagnostic.ts';
 import type { PrimitiveName } from '../../foundation/language/primitives.ts';
 import { memo, SequenceMemo } from '../../foundation/structures/memo.ts';
+import { unreachable } from '../../foundation/structures/unreachable.ts';
 import type { ModuleId } from '../program/program.ts';
 import type {
   AssociatedType,
@@ -47,7 +48,7 @@ import type {
 } from '../syntax/expressions/index.ts';
 import type { AsPattern, BindFieldPattern, NamePattern, RestPattern } from '../syntax/patterns.ts';
 import type { For, VariableDeclaration } from '../syntax/statements/index.ts';
-import type { Identifier } from '../syntax/tree/node.ts';
+import type { Identifier, NodeOf } from '../syntax/tree/node.ts';
 
 /**
  * The call of an async function, which the function's name denotes before a `.` inside it (§7):
@@ -82,6 +83,8 @@ export type VariableOwner =
 /** A named value: a variable, constant, parameter, binding, local function or named lambda. */
 export interface VariableEntity {
   readonly kind: 'variable';
+  /** The module whose bindings made it; none for a variable the checker synthesized. */
+  readonly module: ModuleId | undefined;
   readonly name: Identifier;
   readonly owner: VariableOwner;
 }
@@ -102,6 +105,8 @@ export function localFunctionOf(
  */
 export interface FunctionsEntity {
   readonly kind: 'functions';
+  /** The module whose bindings made it (module/bind-module.ts). */
+  readonly module: ModuleId;
   readonly name: string;
   readonly overloads: readonly FunctionDeclaration[];
 }
@@ -119,6 +124,8 @@ type TypeDeclaration =
 
 export interface TypeEntity {
   readonly kind: 'type';
+  /** The module whose bindings made it (module/bind-module.ts). */
+  readonly module: ModuleId;
   readonly declaration: TypeDeclaration;
 }
 
@@ -131,11 +138,15 @@ export interface PrimitiveEntity {
 /** `Self` inside a trait: the type that satisfies it (§3.10). */
 interface SelfEntity {
   readonly kind: 'self';
+  /** The module whose bindings made it (module/bind-module.ts). */
+  readonly module: ModuleId;
   readonly trait: TraitDeclaration;
 }
 
 export interface VariantEntity {
   readonly kind: 'variant';
+  /** The module whose bindings made it (module/bind-module.ts). */
+  readonly module: ModuleId;
   readonly enum: EnumDeclaration;
   readonly variant: Variant;
 }
@@ -152,6 +163,8 @@ export type VariantNaming = VariantEntity | VariantsEntity;
 /** `m` after `import * as m from 'path'`; the module is the one its import loaded. */
 export interface NamespaceEntity {
   readonly kind: 'namespace';
+  /** The module whose bindings made it (module/bind-module.ts). */
+  readonly module: ModuleId;
   readonly declaration: NamespaceImport;
 }
 
@@ -190,6 +203,7 @@ export function namesType(entity: Entity): entity is TypeEntity | PrimitiveEntit
 
 /** One name in a module that denotes an entity. */
 const variables = new WeakMap<Identifier, VariableEntity>();
+const synthesizedVariables = new WeakMap<Identifier, VariableEntity>();
 const ownCalls = new WeakMap<FunctionDeclaration | Lambda, VariableEntity>();
 const types = new WeakMap<TypeDeclaration, TypeEntity>();
 const selves = new WeakMap<TraitDeclaration, SelfEntity>();
@@ -197,9 +211,37 @@ const variants = new WeakMap<Variant, VariantEntity>();
 const namespaces = new WeakMap<NamespaceImport, NamespaceEntity>();
 const functionSets = new SequenceMemo<FunctionDeclaration, FunctionsEntity>();
 
-/** The variable `name` declares, `owner` declaring it. */
-export function variableEntity(name: Identifier, owner: VariableOwner): VariableEntity {
-  return memo(variables, name, () => ({ kind: 'variable', name, owner }));
+/** The variable `name` declares in `module`, `owner` declaring it. */
+export function variableEntity(
+  module: ModuleId,
+  name: Identifier,
+  owner: VariableOwner,
+): VariableEntity {
+  return memo(variables, name, () => ({ kind: 'variable', module, name, owner }));
+}
+
+/** The variable a sugar's core declares, which no module's bindings make (checker/desugaring). */
+export function synthesizedVariable(name: Identifier, owner: VariableOwner): VariableEntity {
+  return memo(synthesizedVariables, name, () => ({
+    kind: 'variable',
+    module: undefined,
+    name,
+    owner,
+  }));
+}
+
+/**
+ * The module stamped on `entity` when binding made it; none for what no module's bindings make:
+ * a primitive, a bare variant's candidates, a variable a sugar's core declares.
+ */
+export function moduleStampOf(entity: Entity): ModuleId | undefined {
+  switch (entity.kind) {
+    case 'primitive':
+    case 'variants':
+      return undefined;
+    default:
+      return entity.module;
+  }
 }
 
 /**
@@ -207,38 +249,54 @@ export function variableEntity(name: Identifier, owner: VariableOwner): Variable
  * its name, so a name before a `.` in its body reads it (§7).
  */
 export function ownCallEntity(
+  module: ModuleId,
   node: FunctionDeclaration | Lambda,
   declared: Identifier,
 ): VariableEntity {
   return memo(ownCalls, node, () => {
     const name: Identifier = { kind: 'Identifier', span: declared.span, text: declared.text };
-    return { kind: 'variable', name, owner: { kind: 'OwnCall', function: node } };
+    return { kind: 'variable', module, name, owner: { kind: 'OwnCall', function: node } };
   });
 }
 
-export function typeEntity(declaration: TypeDeclaration): TypeEntity {
-  return memo(types, declaration, () => ({ kind: 'type', declaration }));
+export function typeEntity(module: ModuleId, declaration: TypeDeclaration): TypeEntity {
+  return memo(types, declaration, () => ({ kind: 'type', module, declaration }));
+}
+
+/** The entity binding made for `declaration`, which a program's bindings declared. */
+export function boundTypeEntity(declaration: TypeDeclaration): TypeEntity {
+  return types.get(declaration) ?? unreachable(`No bindings declared ${declaration.name.text}.`);
 }
 
 /** `Self` in `trait`. */
-export function selfEntity(trait: TraitDeclaration): SelfEntity {
-  return memo(selves, trait, () => ({ kind: 'self', trait }));
+export function selfEntity(module: ModuleId, trait: TraitDeclaration): SelfEntity {
+  return memo(selves, trait, () => ({ kind: 'self', module, trait }));
 }
 
-export function variantEntity(declaration: EnumDeclaration, variant: Variant): VariantEntity {
-  return memo(variants, variant, () => ({ kind: 'variant', enum: declaration, variant }));
+export function variantEntity(
+  module: ModuleId,
+  declaration: EnumDeclaration,
+  variant: Variant,
+): VariantEntity {
+  return memo(variants, variant, () => ({ kind: 'variant', module, enum: declaration, variant }));
 }
 
-export function namespaceEntity(declaration: NamespaceImport): NamespaceEntity {
-  return memo(namespaces, declaration, () => ({ kind: 'namespace', declaration }));
+/** The entity binding made for `variant`, which a program's bindings declared. */
+export function boundVariantEntity(variant: Variant): VariantEntity {
+  return variants.get(variant) ?? unreachable(`No bindings declared ${variant.name.text}.`);
 }
 
-/** The top-level functions `overloads`, all named `name`, as one set. */
+export function namespaceEntity(module: ModuleId, declaration: NamespaceImport): NamespaceEntity {
+  return memo(namespaces, declaration, () => ({ kind: 'namespace', module, declaration }));
+}
+
+/** The top-level functions `overloads` of `module`, all named `name`, as one set. */
 export function functionsEntity(
+  module: ModuleId,
   name: string,
   overloads: readonly FunctionDeclaration[],
 ): FunctionsEntity {
-  return functionSets.get(overloads, () => ({ kind: 'functions', name, overloads }));
+  return functionSets.get(overloads, () => ({ kind: 'functions', module, name, overloads }));
 }
 
 /** The names of a whole program, bound. */
@@ -259,6 +317,17 @@ export interface Bindings {
   readonly moduleOf: (entity: Entity) => ModuleId | undefined;
   /** Whether `entity` is one of its module's top-level names rather than declared inside one. */
   readonly isTopLevel: (entity: Entity) => boolean;
+  /**
+   * The module whose item, or item's type parameter, trait member, associated type or field
+   * function, `node` is; undefined for a local declaration, or one this program doesn't hold.
+   */
+  readonly itemModuleOf: (node: NodeOf<string>) => ModuleId | undefined;
+  /**
+   * The module declaring `node`, an item's part as `itemModuleOf` finds or a declaration inside an
+   * item: a variable, a local function, a type parameter; undefined for one this program doesn't
+   * hold.
+   */
+  readonly declarationModuleOf: (node: NodeOf<string>) => ModuleId | undefined;
   /**
    * The names visible at `offset` in `module`, each with what it denotes there: its scopes'
    * (§3.4), its top level's and imports', then the prelude's exports, then, for any other name an
