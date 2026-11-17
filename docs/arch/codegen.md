@@ -43,6 +43,11 @@ its value too in a frame stopping as its call is disposed (`return STOPPED`); a 
 is emptied (`cleared`), so a register never holds what it gave away. `newCell` passes its `dispose` entry, run
 as the cell loses its last holder.
 
+An entry with counted registers runs inside a `try` whose `catch` hands them to `unwound` before
+rethrowing: a panic a termination passes over (§3.12) lets go of what every frame it unwinds
+through held, which emptying given-away registers makes exact; any other panic lets go of nothing,
+the instance frozen as it stood.
+
 ## Primitives, places and calls
 
 - Primitive operations (`Int` `+`, comparisons, string concatenation, ...; `definition/instructions/

@@ -11,11 +11,14 @@
  *   instruction after the `park`.
  * - **One instruction per line**, so a frame on the JS stack names its instruction by its line
  *   (`lines`), which traces read.
+ * - **A panic unwinding** through an entry holding counted values has it let go of them, which
+ *   the run does only where it passes the panic over (`unwound`, a termination's disposal).
  */
 
 import { endsBlock, operandsOf } from '../definition/instructions/instruction.ts';
 import type { CodeFunction } from '../definition/tables/functions.ts';
 import {
+  countedRegisters,
   type EntryScope,
   emitInstruction,
   parkResumeOf,
@@ -68,6 +71,10 @@ export function emitEntry(scope: Omit<EntryScope, 'jumps'>): EmittedEntry {
       line(`  let ${declared.join(', ')};`);
     }
   }
+  const counted = countedRegisters(scope);
+  if (counted.length > 0) {
+    line('  try {');
+  }
   if (jumps) {
     line(onFrames ? '  let pc = frame.pc;' : '  let pc = 0;');
     line('  for (;;) switch (pc) {');
@@ -87,6 +94,9 @@ export function emitEntry(scope: Omit<EntryScope, 'jumps'>): EmittedEntry {
     line('  }');
   } else if (!endsBlock(entry.instructions.at(-1) ?? ({ kind: 'return' } as never))) {
     line('  throw unreachableHere();');
+  }
+  if (counted.length > 0) {
+    line(`  } catch (error) { unwound(error, ${counted.join(', ')}); throw error; }`);
   }
   line('}');
   return { lines, instructions };

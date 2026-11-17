@@ -9,6 +9,8 @@
  *   rather than starting one of its own, but for one `apart` from it: a disposed call's cleanup,
  *   whose let-gos are disposed as they happen, as a running call's are, so before its call is gone
  *   (§7), and a `select`'s losers before its winning case's body (§8).
+ * - **A panic passed over** (a termination's, `disposingPastPanics`) lets go of what each frame it
+ *   unwinds through held (`unwound`), as its compiled code catches it on the way out.
  * - **Disposal is final.** An object is marked disposed as its round takes it, before its `dispose`
  *   runs, and a hold on it counts nothing from then on: whatever reaches it later (a mock recording
  *   its `dispose` call, §10) neither brings it back nor disposes it again as it lets go.
@@ -39,6 +41,7 @@ import {
   type Value,
 } from '../../definition/values/values.ts';
 import { WrittenJson } from '../../definition/values/written-json.ts';
+import { panicOf } from '../natives.ts';
 import type { Step } from './objects/reference.ts';
 import { RunObject } from './objects/run-object.ts';
 
@@ -166,6 +169,17 @@ export class Lifetimes {
   get passesPanics(): boolean {
     return this.#passesPanics;
   }
+
+  /**
+   * Lets go of `values`, what a frame held as `error` unwinds through it, where its panic is
+   * passed over: a termination disposes everything (§3.12). Any other panic freezes the instance
+   * as it stood, letting go of nothing.
+   */
+  readonly unwound = (error: unknown, ...values: (Value | undefined)[]): void => {
+    if (this.passesPanics && panicOf(error) !== undefined) {
+      this.letGo(...values);
+    }
+  };
 
   /** Whether `node` has one holder: changing it in place changes no other's value. */
   isUnique(node: Value): boolean {

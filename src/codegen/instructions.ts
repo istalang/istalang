@@ -40,12 +40,23 @@ export interface EntryScope {
 
 export const register = (index: Register): string => `r${index}`;
 
+/**
+ * The registers of `scope`'s entry holding counted values, which it lets go of as a panic passed
+ * over unwinds through it: a register let go of or moved out is emptied, so what one holds then
+ * is what it holds.
+ */
+export function countedRegisters(scope: Pick<EntryScope, 'entry' | 'types'>): readonly string[] {
+  return scope.entry.registers.flatMap((_, index) =>
+    lifetime(scope, index) === 'counted' ? [register(index)] : [],
+  );
+}
+
 /** Goes on at `target`. */
 function goTo(target: number): string {
   return `pc = ${target}; continue;`;
 }
 
-function lifetime(scope: EntryScope, index: Register) {
+function lifetime(scope: Pick<EntryScope, 'entry' | 'types'>, index: Register) {
   const entry = scope.entry.registers[index];
   return entry === undefined || entry.borrowed ? 'plain' : lifetimeOf(scope.types, entry.type);
 }

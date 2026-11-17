@@ -32,7 +32,7 @@ const helpers = [
       'unreachableHere',
     ],
   ],
-  ['rt.lifetimes', ['hold', 'share', 'letGo']],
+  ['rt.lifetimes', ['hold', 'share', 'letGo', 'unwound']],
   ['rt.builders', ['items', 'entries', 'cell', 'append', 'appendEntry']],
   [
     'rt.primitives',

@@ -143,7 +143,7 @@ export class Run {
     const { site, entries } = made(this);
     this.#entries = entries;
     this.traces = new Traces(definition, program.lines, site);
-    this.#guard = new PanicGuard(this.instance, this.traces);
+    this.#guard = new PanicGuard(this.instance, this.traces, () => this.lifetimes.passesPanics);
   }
 
   /** What disposing this run's objects needs of it (disposal.ts). */

@@ -312,3 +312,55 @@ describe('a panic', () => {
     },
   );
 });
+
+describe('a terminated instance', () => {
+  it("stops every call it holds though a call's cleanup panics, letting go of what each held (§3.12, §7)", async () => {
+    const records: string[] = [];
+    const test = testRuntime({
+      host: {
+        'main.makeLease(String)': ([name]) => name,
+        'main.dispose(main.Lease)': ([name]) => {
+          records.push(`disposed ${String(name)}`);
+          return null;
+        },
+        'main.record(String)': ([recordText]) => {
+          records.push(String(recordText));
+          return null;
+        },
+      },
+    });
+    const text = compiledEncoded(
+      lines(
+        "import * as runtime from 'runtime'",
+        "import * as time from 'time'",
+        'extern shared struct Lease',
+        'extern fn makeLease(name: String) -> Lease',
+        'extern fn dispose(self: Lease)',
+        'extern fn record(text: String)',
+        'ista async fn worker(name: String, panics: Bool) -> Int:',
+        '  const lease = makeLease(name)',
+        '  await select:',
+        '    case time.delay(100s): 0',
+        '    case worker.disposing():',
+        '      if panics: panic("cleanup " + name)',
+        '      record("cleanup " + name)',
+        '      _ = lease',
+        '      1',
+        'ista async fn root() -> Int:',
+        '  hold _ = worker("a", false)',
+        '  hold _ = worker("b", true)',
+        '  await time.delay(5ms)',
+        '  panic("root")',
+        'live async fn main() -> Int: await runtime.run(runtime.id()) _main()',
+        'ista async fn _main() -> Int:',
+        '  drop spawn root()',
+        '  0',
+      ),
+    );
+    await startToEnd(test, text, { instance: 'p' });
+    test.clock.set(test.clock.now() + 5n);
+    await test.runtime.wake('p/1');
+    await test.runtime.terminate('p/1');
+    expect(records).toEqual(['disposed b', 'cleanup a', 'disposed a']);
+  });
+});
