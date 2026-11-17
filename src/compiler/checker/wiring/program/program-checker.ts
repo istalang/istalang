@@ -145,11 +145,11 @@ export class ProgramChecker implements CheckerContext {
   readonly fitting: Fitting;
   readonly bindings: Bindings;
   readonly inputs: ProgramInputs;
-  /** The module declaring `declaration`, an item's part or a declaration inside an item. */
   readonly moduleOf = (declaration: Declaration | VariableDeclaration | TypeParameter): ModuleId =>
     this.bindings.declarationModuleOf(declaration) ??
     unreachable(`No module holds the ${declaration.kind} at ${declaration.span.from}.`);
   readonly isStd: (module: ModuleId | undefined) => boolean;
+  readonly blockOf: CheckerContext['blockOf'] = (m, d) => this.inputs.bodyOf(m, d);
   readonly #resolvedTypes: EntryTable<CheckerNote, TypeNode, Type, ModuleId>;
   readonly opaqueParametersOf: CheckerContext['opaqueParametersOf'];
   readonly disposalOf: CheckerContext['disposalOf'];

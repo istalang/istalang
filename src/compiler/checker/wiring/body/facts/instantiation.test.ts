@@ -59,7 +59,7 @@ describe('an instantiated body', () => {
     const instance = checker
       .bodyOf(first)
       ?.instantiated(substitutionFor(first.typeParameters, [intType]), checker);
-    const flow = written === undefined ? undefined : instance?.flowOf(written);
+    const flow = written === undefined ? undefined : instance?.flowOf(written, checker);
     const named = flow?.values.flatMap(({ type }) =>
       type === undefined ? [] : parametersIn(type),
     );

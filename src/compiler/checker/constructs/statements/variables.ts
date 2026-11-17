@@ -37,6 +37,18 @@ import { declareTargets } from '../patterns/targets.ts';
 import { checkHoldScope } from './loops.ts';
 
 /**
+ * What a body recorded of its variables, read without the scope that recorded them: a checked
+ * body keeps this, never the scope, whose handler reaches the checker that checked it.
+ */
+export interface VariableRecords {
+  readonly declaredTypeOf: (name: Identifier, pass?: Pass) => Type | undefined;
+  readonly declaredTypes: () => readonly (readonly [Identifier, Type])[];
+  readonly inCell: (name: Identifier) => boolean;
+  readonly targetsOf: (owner: TargetOwner, pass?: Pass) => readonly TargetBinding[];
+  readonly assignedOf: (assignment: Assignment, pass?: Pass) => readonly AssignedPart[];
+}
+
+/**
  * The variables of one body: each one's type by its declaring name, which were changed, and what
  * lowering reads of the declarations and assignments.
  */
@@ -51,11 +63,25 @@ export class VariableScope implements Variables {
   /** What is told of each type a name is declared at: what the function declaring it handles. */
   readonly #handles: (type: Type) => void;
 
+  /** What it recorded, over its tables alone (`VariableRecords`). */
+  readonly recorded: VariableRecords;
+
   constructor(passes: Passes, handles: (type: Type) => void = () => undefined) {
-    this.#types = passes.table();
-    this.#targets = passes.table();
-    this.#assigned = passes.table();
+    const types = passes.table<Identifier, Type>();
+    const inCell = this.#inCell;
+    const targets = passes.table<TargetOwner, readonly TargetBinding[]>();
+    const assigned = passes.table<Assignment, readonly AssignedPart[]>();
+    this.#types = types;
+    this.#targets = targets;
+    this.#assigned = assigned;
     this.#handles = handles;
+    this.recorded = {
+      declaredTypeOf: (name, pass) => types.get(name, pass),
+      declaredTypes: () => types.entries(),
+      inCell: (name) => inCell.has(name),
+      targetsOf: (owner, pass) => targets.get(owner, pass) ?? [],
+      assignedOf: (assignment, pass) => assigned.get(assignment, pass) ?? [],
+    };
   }
 
   declare(name: Identifier, type: Type): void {
@@ -101,12 +127,12 @@ export class VariableScope implements Variables {
 
   /** The type `name` was declared with; undefined for a name this body doesn't declare. */
   declaredTypeOf(name: Identifier, pass?: Pass): Type | undefined {
-    return this.#types.get(name, pass);
+    return this.recorded.declaredTypeOf(name, pass);
   }
 
   /** Every name this body declares, with the type it was declared with, in every pass. */
   declaredTypes(): readonly (readonly [Identifier, Type])[] {
-    return this.#types.entries();
+    return this.recorded.declaredTypes();
   }
 
   noteChanged(variable: VariableEntity): void {
@@ -118,15 +144,15 @@ export class VariableScope implements Variables {
   }
 
   inCell(name: Identifier): boolean {
-    return this.#inCell.has(name);
+    return this.recorded.inCell(name);
   }
 
   targetsOf(owner: TargetOwner, pass?: Pass): readonly TargetBinding[] {
-    return this.#targets.get(owner, pass) ?? [];
+    return this.recorded.targetsOf(owner, pass);
   }
 
   assignedOf(assignment: Assignment, pass?: Pass): readonly AssignedPart[] {
-    return this.#assigned.get(assignment, pass) ?? [];
+    return this.recorded.assignedOf(assignment, pass);
   }
 
   recordTargets(owner: TargetOwner, bindings: readonly TargetBinding[]): void {

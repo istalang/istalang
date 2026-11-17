@@ -174,7 +174,10 @@ function computeLeftOut(
   } else {
     const defaults = context.inDefaults();
     const end = { kind: 'into', into: owned } as const;
-    writeFlow(defaults, defaults.body.flowOf(defaultValue), { parameters: before, end });
+    writeFlow(defaults, defaults.body.flowOf(defaultValue, defaults.checker), {
+      parameters: before,
+      end,
+    });
   }
   code.jump(done, span);
   code.place(given);

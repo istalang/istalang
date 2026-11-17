@@ -315,7 +315,7 @@ describe("a body's flow", () => {
     };
     const clean = !diagnoseModule(program, module).diagnostics.some(isError);
     const missing = rootsOf(checker, tree).flatMap(({ body, roots }) => {
-      const flows = roots.map((root) => body.flowOf(root));
+      const flows = roots.map((root) => body.flowOf(root, checker));
       return missedBy(flows, { body, roots }, { local, textOf, clean });
     });
     expect(missing).toEqual([]);

@@ -383,6 +383,20 @@ export interface BodyFacts {
  */
 export type WrittenType = TypeNode | Expression;
 
+/** What building a body's flow reads of the checker asking for it (rules/flow/build/). */
+export type FlowChecker = Pick<
+  Checker,
+  | 'bindings'
+  | 'parametersOf'
+  | 'resultOf'
+  | 'fieldsOf'
+  | 'variantsOf'
+  | 'fitOf'
+  | 'typeRules'
+  | 'wellKnownType'
+  | 'blockOf'
+>;
+
 /** A checked body: its facts, and the views of it every fact is read through alike. */
 export interface CheckedBody extends BodyFacts {
   /**
@@ -405,9 +419,10 @@ export interface CheckedBody extends BodyFacts {
   readonly joinedWith: (others: readonly CheckedBody[], rules: TypeRules) => JoinedBody;
   /**
    * The flow of `root` (flow-ir.ts), one the body was checked from: a function's block, a
-   * default's value, a constant's initializer; as this view reads the body, built once.
+   * default's value, a constant's initializer; as this view reads the body, built once per
+   * `checker`, the revision asking, against which it is built.
    */
-  readonly flowOf: (root: Block | Expression) => FlowFunction;
+  readonly flowOf: (root: Block | Expression, checker: FlowChecker) => FlowFunction;
   /** The flow of a lambda or local function of the body (§3.14), as this view reads it. */
-  readonly nestedFlowOf: (node: NestedFunction) => FlowFunction;
+  readonly nestedFlowOf: (node: NestedFunction, checker: FlowChecker) => FlowFunction;
 }

@@ -23,12 +23,18 @@
 import { handlerOf } from '../../../../../foundation/structures/kind-table.ts';
 import { memo } from '../../../../../foundation/structures/memo.ts';
 import { unreachable } from '../../../../../foundation/structures/unreachable.ts';
+import type { ModuleId } from '../../../../program/program.ts';
 import type { Expression } from '../../../../syntax/expressions/index.ts';
 import type { Block, Statement } from '../../../../syntax/statements/index.ts';
 import { tailExpressionOf } from '../../../../syntax/statements/readings.ts';
 import type { SyntaxNode } from '../../../../syntax/tree/index.ts';
 import type { SignatureParameter } from '../../../check.ts';
-import { type CheckedBody, isSugar, type NestedFunction } from '../../../surface/checked-body.ts';
+import {
+  type CheckedBody,
+  type FlowChecker,
+  isSugar,
+  type NestedFunction,
+} from '../../../surface/checked-body.ts';
 import type { FlowFunction, ValueId } from '../../../surface/flow-ir.ts';
 import { closeChain, openChain } from './chains.ts';
 import { coreFlow, expressionFlows, unitAt } from './expressions.ts';
@@ -36,9 +42,14 @@ import { type Constructs, FlowBuilder, type FlowInputs } from './flow-builder.ts
 import { bindParameters } from './parts.ts';
 import { statementFlows } from './statements.ts';
 
-/** What a body's flows are built from beside the body: what building reads, and its roots. */
+/**
+ * What a body's flows are built from beside the body and the checker asking: its module, how its
+ * types read through the instantiation it is read through, and its roots. Only what checking
+ * recorded: a body a later revision takes over must not hold the checker that checked it.
+ */
 export interface FlowSource {
-  readonly inputs: Omit<FlowInputs, 'body'>;
+  readonly module: ModuleId;
+  readonly concrete: FlowInputs['concrete'];
   readonly roots: readonly FlowRoot[];
 }
 
@@ -57,22 +68,37 @@ export function flowsOf(
   bodyOf: () => CheckedBody,
 ): Pick<CheckedBody, 'flowOf' | 'nestedFlowOf'> {
   // A lambda may be both: a constant's initializer, and the function it makes.
-  const ofRoots = new Map<SyntaxNode, FlowFunction>();
-  const ofNested = new Map<NestedFunction, FlowFunction>();
-  const inputs = (): FlowInputs => ({ ...source.inputs, body: bodyOf() });
+  const ofRoots = new WeakMap<FlowChecker, Map<SyntaxNode, FlowFunction>>();
+  const ofNested = new WeakMap<FlowChecker, Map<NestedFunction, FlowFunction>>();
+  const inputs = (checker: FlowChecker): FlowInputs => ({
+    checker,
+    module: source.module,
+    localBodyOf: (declaration) => checker.blockOf(source.module, declaration),
+    concrete: source.concrete,
+    body: bodyOf(),
+  });
   return {
-    flowOf: (root) =>
-      memo(ofRoots, root, () => {
-        const { parameters } =
-          source.roots.find((each) => each.root === root) ??
-          unreachable(`No body was checked from the ${root.kind} at ${root.span.from}.`);
-        const builder = new FlowBuilder(inputs(), root, constructs);
-        bindParameters(builder, parameters);
-        const value =
-          root.kind === 'Block' ? builder.functionBlock(root) : builder.expression(root);
-        return builder.finished(value);
-      }),
-    nestedFlowOf: (node) => memo(ofNested, node, () => nestedFlow(inputs(), node)),
+    flowOf: (root, checker) =>
+      memo(
+        memo(ofRoots, checker, () => new Map()),
+        root,
+        () => {
+          const { parameters } =
+            source.roots.find((each) => each.root === root) ??
+            unreachable(`No body was checked from the ${root.kind} at ${root.span.from}.`);
+          const builder = new FlowBuilder(inputs(checker), root, constructs);
+          bindParameters(builder, parameters);
+          const value =
+            root.kind === 'Block' ? builder.functionBlock(root) : builder.expression(root);
+          return builder.finished(value);
+        },
+      ),
+    nestedFlowOf: (node, checker) =>
+      memo(
+        memo(ofNested, checker, () => new Map()),
+        node,
+        () => nestedFlow(inputs(checker), node),
+      ),
   };
 }
 

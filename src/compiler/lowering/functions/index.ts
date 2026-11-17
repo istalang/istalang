@@ -278,7 +278,7 @@ class FunctionLowering implements EntryContext {
     const value = this.code.allocate(this.tables.types.reference(this.frame.result));
     const made = this.code.newLabel();
     this.code.contextConstant(value, name, made, span);
-    const flow = this.body.flowOf(declaration.initializer);
+    const flow = this.body.flowOf(declaration.initializer, this.checker);
     const end = { kind: 'contextConstant', into: value, name, span } as const;
     writeFlow(this, flow, { parameters: [], end });
     this.code.place(made);
@@ -295,7 +295,10 @@ class FunctionLowering implements EntryContext {
 
   /** Writes the flow of `root`, a function's block or a nested function, taking `parameters`. */
   #write(root: Block | Lambda | FunctionDeclaration, parameters: readonly Register[]): void {
-    const flow = root.kind === 'Block' ? this.body.flowOf(root) : this.body.nestedFlowOf(root);
+    const flow =
+      root.kind === 'Block'
+        ? this.body.flowOf(root, this.checker)
+        : this.body.nestedFlowOf(root, this.checker);
     writeFlow(this, flow, { parameters, end: { kind: 'return' } });
   }
 

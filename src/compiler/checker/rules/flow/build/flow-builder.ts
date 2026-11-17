@@ -17,8 +17,12 @@ import type { Expression } from '../../../../syntax/expressions/index.ts';
 import type { Block, Statement } from '../../../../syntax/statements/index.ts';
 import type { SyntaxNode } from '../../../../syntax/tree/index.ts';
 import type { Identifier, Invalid, NodeOf } from '../../../../syntax/tree/node.ts';
-import type { CheckerContext } from '../../../contexts/context.ts';
-import type { CheckedBody, ValueSite, WrittenFit } from '../../../surface/checked-body.ts';
+import type {
+  CheckedBody,
+  FlowChecker,
+  ValueSite,
+  WrittenFit,
+} from '../../../surface/checked-body.ts';
 import type { ConstantForm } from '../../../surface/constant-form.ts';
 import type {
   BlockId,
@@ -41,17 +45,7 @@ import { Scopes } from './scopes.ts';
  * apart; and the body as checked.
  */
 export interface FlowInputs {
-  readonly checker: Pick<
-    CheckerContext,
-    | 'bindings'
-    | 'parametersOf'
-    | 'resultOf'
-    | 'fieldsOf'
-    | 'variantsOf'
-    | 'fitOf'
-    | 'typeRules'
-    | 'wellKnownType'
-  >;
+  readonly checker: FlowChecker;
   readonly module: ModuleId;
   readonly localBodyOf: (declaration: FunctionDeclaration) => Block | undefined;
   /**

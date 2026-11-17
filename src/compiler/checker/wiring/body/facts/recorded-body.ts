@@ -15,7 +15,7 @@ import type { StructLiterals } from '../../../constructs/expressions/structs/lit
 import type { Iterations } from '../../../constructs/loops/iteration.ts';
 import type { CheckedPatterns } from '../../../constructs/patterns/matching.ts';
 import type { LabelTargets } from '../../../constructs/statements/loops.ts';
-import type { VariableScope } from '../../../constructs/statements/variables.ts';
+import type { VariableRecords } from '../../../constructs/statements/variables.ts';
 import type { Pass, PassRecords } from '../../../contexts/passes.ts';
 import type { Desugarings } from '../../../desugaring/index.ts';
 import type { ImplicitCalls } from '../../../resolution/applying/implicit.ts';
@@ -28,9 +28,12 @@ import type { WrittenTypes } from '../written-types.ts';
 
 type BodyRecords = ReturnType<typeof bodyRecords>;
 
-/** The units of a body whose records its CheckedBody reads beside its own. */
-interface BodyUnits {
-  readonly variables: VariableScope;
+/**
+ * The units of a body whose records its CheckedBody reads beside its own: what they recorded only,
+ * so a body a later revision takes over holds nothing of the checker that checked it.
+ */
+export interface BodyUnits {
+  readonly variables: VariableRecords;
   readonly writtenTypes: WrittenTypes;
   readonly functions: FunctionScopes;
   readonly literals: StructLiterals;
@@ -45,6 +48,37 @@ interface BodyUnits {
   readonly fieldReads: FieldReads;
   readonly labels: LabelTargets;
   readonly sugars: Desugarings;
+}
+
+/**
+ * What `units`, a body checker's, recorded, as its checked body keeps them: each unit is its
+ * records, but for the variables' scope, whose handler reaches the checker, kept as its records.
+ */
+export function unitsRecorded(
+  units: Omit<BodyUnits, 'variables'> & {
+    readonly variables: { readonly recorded: VariableRecords };
+  },
+): BodyUnits {
+  const { variables, writtenTypes, functions, literals, implicit, calls, decisions } = units;
+  const { collections, valueCalls, iterations, patterns, chains, fieldReads, labels, sugars } =
+    units;
+  return {
+    variables: variables.recorded,
+    writtenTypes,
+    functions,
+    literals,
+    implicit,
+    calls,
+    decisions,
+    collections,
+    valueCalls,
+    iterations,
+    patterns,
+    chains,
+    fieldReads,
+    labels,
+    sugars,
+  };
 }
 
 /** What checking a body recorded: its own records, its units', and what it produces. */

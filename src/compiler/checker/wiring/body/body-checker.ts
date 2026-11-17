@@ -28,7 +28,6 @@ import { handlerOf } from '../../../../foundation/structures/kind-table.ts';
 import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import type { Entity, VariantEntity } from '../../../binder/entities.ts';
 import type { ModuleId } from '../../../program/program.ts';
-import type { FunctionDeclaration } from '../../../syntax/declarations/index.ts';
 import type { Expression, FieldLoopHeader } from '../../../syntax/expressions/index.ts';
 import { unparenthesized } from '../../../syntax/expressions/readings.ts';
 import type { Block, Statement, VariableDeclaration } from '../../../syntax/statements/index.ts';
@@ -92,6 +91,7 @@ import { type BodyKind, ownScopeOf } from './body-kinds.ts';
 import { bodyRecords } from './body-records.ts';
 import { BodyScopes, closed } from './body-scopes.ts';
 import { checkedAt } from './facts/index.ts';
+import { unitsRecorded } from './facts/recorded-body.ts';
 import { reportedFit } from './reported-fits.ts';
 import { WrittenTypes } from './written-types.ts';
 
@@ -204,17 +204,11 @@ export class BodyChecker implements BodyContext {
     const calls = this.calls.entries();
     const named = [...calls, ...this.calls.valueEntries()];
     checkDisposeUses(this, named, checkTestingCalls(this, calls));
-    const inputs = {
-      checker: this.checker,
-      module: this.module,
-      localBodyOf: (declaration: FunctionDeclaration) =>
-        this.checker.inputs.bodyOf(this.module, declaration),
-      concrete: (type: Type) => type,
-    };
-    const recorded = { records: this.#records, units: this, result, flows: { inputs, roots } };
+    const flows = { module: this.module, concrete: (type: Type) => type, roots };
+    const recorded = { records: this.#records, units: unitsRecorded(this), result, flows };
     const body = checkedAt(recorded, this.#passes.root);
     for (const { root } of roots) {
-      checkDropped(this, body.flowOf(root));
+      checkDropped(this, body.flowOf(root, this.checker));
     }
     return body;
   }

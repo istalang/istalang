@@ -162,7 +162,7 @@ export function closureOf(builder: FlowBuilder, node: Lambda | FunctionDeclarati
     op: 'make',
     site: node,
     into,
-    made: { kind: 'closure', function: builder.body.nestedFlowOf(node) },
+    made: { kind: 'closure', function: builder.body.nestedFlowOf(node, builder.inputs.checker) },
     parts: captures.map(({ entity }) => builder.variable(entity)),
   });
   return into;

@@ -25,5 +25,5 @@ export function subjectFlow(body: string, declarations: readonly string[] = []):
   if (subject === undefined || checked === undefined || block === undefined) {
     throw new Error('The subject was never checked.');
   }
-  return checked.flowOf(block);
+  return checked.flowOf(block, checker);
 }

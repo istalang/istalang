@@ -26,6 +26,7 @@ import {
   typeParametersOf,
 } from '../../../syntax/declarations/index.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
+import type { FlowChecker } from '../../surface/checked-body.ts';
 import type { FlowFunction } from '../../surface/flow-ir.ts';
 import { reachedCalls } from '../../surface/reach.ts';
 import { instantiatingTypesOf, type ResolvedCall } from '../../surface/resolved-call.ts';
@@ -35,28 +36,29 @@ import { mockedFunctions } from '../testing.ts';
 import { flowOpaque, type Judge } from './flow-uses.ts';
 import { isConstrained, names, opaquelyNamed } from './opaque-types.ts';
 
-type Reader = Pick<
-  CheckerContext,
-  | 'annotations'
-  | 'bodyOf'
-  | 'constraintsOf'
-  | 'defaultsOf'
-  | 'disposalOf'
-  | 'externHeldOf'
-  | 'fieldsOf'
-  | 'inputs'
-  | 'json'
-  | 'languageFunctions'
-  | 'moduleOf'
-  | 'parametersOf'
-  | 'resultOf'
-  | 'sharedValueOf'
-  | 'typeKeys'
-  | 'typeRules'
-  | 'variantsOf'
-  | 'wellKnownEntity'
-  | 'wellKnownType'
->;
+type Reader = FlowChecker &
+  Pick<
+    CheckerContext,
+    | 'annotations'
+    | 'bodyOf'
+    | 'constraintsOf'
+    | 'defaultsOf'
+    | 'disposalOf'
+    | 'externHeldOf'
+    | 'fieldsOf'
+    | 'inputs'
+    | 'json'
+    | 'languageFunctions'
+    | 'moduleOf'
+    | 'parametersOf'
+    | 'resultOf'
+    | 'sharedValueOf'
+    | 'typeKeys'
+    | 'typeRules'
+    | 'variantsOf'
+    | 'wellKnownEntity'
+    | 'wellKnownType'
+  >;
 
 /** `opaqueParametersOf` over `checker`'s entries: each function's answer an entry of its own. */
 export function opaqueParametersQuery(
@@ -157,11 +159,12 @@ class Uses {
     const checker = this.#checker;
     const declaration = this.#declaration;
     const block = checker.inputs.bodyOf(checker.moduleOf(declaration), declaration);
-    const body = block === undefined ? undefined : checker.bodyOf(declaration)?.flowOf(block);
+    const body =
+      block === undefined ? undefined : checker.bodyOf(declaration)?.flowOf(block, checker);
     const defaults = checker.defaultsOf(declaration);
     const defaultFlows = declaration.parameters.flatMap((each) =>
       each.kind === 'Parameter' && each.defaultValue !== undefined && defaults !== undefined
-        ? [defaults.flowOf(each.defaultValue)]
+        ? [defaults.flowOf(each.defaultValue, checker)]
         : [],
     );
     return [...(body === undefined ? [] : [body]), ...defaultFlows];

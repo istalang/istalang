@@ -92,8 +92,9 @@ export function instantiationBy(
     pattern: (checked) => instantiatedPattern(checked, substitution, rules),
     iteration: (form) => ({ ...form, item: concrete(form.item) }),
     chain: (link) => ({ base: concrete(link.base), carried: concrete(link.carried) }),
-    flows: ({ inputs, roots }) => ({
-      inputs: { ...inputs, concrete: (type) => concrete(inputs.concrete(type)) },
+    flows: ({ module, concrete: read, roots }) => ({
+      module,
+      concrete: (type) => concrete(read(type)),
       roots: roots.map(({ root, parameters }) => ({
         root,
         parameters: parameters.map((parameter) => ({

@@ -65,7 +65,7 @@ export function defaultsFlows(
   }
   return declaration.parameters.flatMap((parameter, index) =>
     parameter.kind === 'Parameter' && parameter.defaultValue !== undefined
-      ? [{ index, flow: defaults.flowOf(parameter.defaultValue) }]
+      ? [{ index, flow: defaults.flowOf(parameter.defaultValue, checker) }]
       : [],
   );
 }
@@ -79,7 +79,7 @@ function constantFlow(
     declaration.kind === 'ContextConstantDeclaration'
       ? checker.contextConstants.bodyOf(declaration)
       : checker.constantBodyOf(declaration);
-  return body?.flowOf(declaration.initializer);
+  return body?.flowOf(declaration.initializer, checker);
 }
 
 /**

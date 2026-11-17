@@ -25,7 +25,7 @@ import type {
   TypeParameter,
 } from '../syntax/declarations/index.ts';
 import type { Parameter } from '../syntax/expressions/index.ts';
-import type { VariableDeclaration } from '../syntax/statements/index.ts';
+import type { Block, VariableDeclaration } from '../syntax/statements/index.ts';
 import type { Identifier } from '../syntax/tree/node.ts';
 import type { FieldDeclaration } from '../syntax/types/index.ts';
 import type { AnnotationQueries } from './surface/checked-annotation.ts';
@@ -110,6 +110,11 @@ export interface Checker {
   readonly resultOf: (declaration: FunctionDeclaration) => Type;
   /** The checked body of a function with one: its expressions' types and its calls' targets. */
   readonly bodyOf: (declaration: FunctionDeclaration) => CheckedBody | undefined;
+  /**
+   * The block `declaration`, a function of `module`, has as written, none for one without; read as
+   * checking reads it, so a flow built inside a check records it (a checked body's `flowOf`).
+   */
+  readonly blockOf: (module: ModuleId, declaration: FunctionDeclaration) => Block | undefined;
   /**
    * The checked default values of a function's parameters (§3.3), as one body in which each
    * default sees the parameters before it; undefined for a function with no defaults.

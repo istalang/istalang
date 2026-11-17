@@ -331,7 +331,7 @@ export class Lifetimes {
   #flowOf(declaration: FunctionDeclaration): FlowFunction | undefined {
     const checker = this.#checker;
     const block = checker.inputs.bodyOf(checker.moduleOf(declaration), declaration);
-    return block === undefined ? undefined : checker.bodyOf(declaration)?.flowOf(block);
+    return block === undefined ? undefined : checker.bodyOf(declaration)?.flowOf(block, checker);
   }
 
   /** What `call`'s function does: a group member's guess, or its summary. */
