@@ -46,7 +46,7 @@ export function lower(checker: Checker, main: FunctionDeclaration): Definition {
 }
 
 /** A `@Suite` function (§10), with the title its annotation gives. */
-interface Suite {
+export interface Suite {
   readonly title: string;
   readonly declaration: FunctionDeclaration;
 }

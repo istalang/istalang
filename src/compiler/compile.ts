@@ -21,8 +21,8 @@ import { memo } from '../foundation/structures/memo.ts';
 import type { SourceText } from '../foundation/text/source-text.ts';
 import type { Span } from '../foundation/text/span.ts';
 import { bindProgram } from './binder/bind.ts';
-import { checkProgram } from './checker/check.ts';
-import { lower, lowerTests } from './lowering/lower.ts';
+import { type Checker, checkProgram } from './checker/check.ts';
+import { lower, lowerTests, type Suite } from './lowering/lower.ts';
 import { type ModuleId, type Program, programModule } from './program/program.ts';
 import type { FunctionDeclaration } from './syntax/declarations/index.ts';
 import { isMain } from './syntax/declarations/starts.ts';
@@ -110,23 +110,28 @@ export function compileTests(program: Program): TestCompilation {
       return { kind: 'failed' };
     }
     const checker = checkProgram(program);
-    const suites = [...program.modules].flatMap(([id, { tree, isStd }]) =>
-      isStd
-        ? []
-        : tree.root.items.flatMap((item) => {
-            const title =
-              item.kind === 'FunctionDeclaration'
-                ? checker.annotations.suiteTitleOf(id, item)
-                : undefined;
-            return item.kind === 'FunctionDeclaration' && title !== undefined
-              ? [{ title, declaration: item }]
-              : [];
-          }),
-    );
+    const suites = suitesOf(program, checker);
     return suites.length === 0
       ? { kind: 'noTests' }
       : { kind: 'compiled', definition: lowerTests(checker, suites) };
   });
+}
+
+/** Every `@Suite` function of `program`'s own modules (§10), with its title. */
+export function suitesOf(program: Program, checker: Checker): readonly Suite[] {
+  return [...program.modules].flatMap(([id, { tree, isStd }]) =>
+    isStd
+      ? []
+      : tree.root.items.flatMap((item) => {
+          const title =
+            item.kind === 'FunctionDeclaration'
+              ? checker.annotations.suiteTitleOf(id, item)
+              : undefined;
+          return item.kind === 'FunctionDeclaration' && title !== undefined
+            ? [{ title, declaration: item }]
+            : [];
+        }),
+  );
 }
 
 /** Whether any module of `program` has an error. */

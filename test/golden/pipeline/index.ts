@@ -52,9 +52,13 @@ export type SuiteProject =
 
 const ending = /\.ista$/u;
 
-/** A program compiled: what its module loaded into, and the Definition running its `main`. */
+/**
+ * A program compiled: what its module loaded into, that module, and the Definition running its
+ * `main`.
+ */
 export interface Compiled {
   readonly program: Program;
+  readonly entry: ModuleId;
   readonly definition: Definition;
 }
 
@@ -76,7 +80,7 @@ export function compiledAt(
   prepare?.(program, id);
   const compilation = compileProgram(program, id);
   if (compilation.kind === 'compiled') {
-    return { program, definition: compilation.definition };
+    return { program, entry: id, definition: compilation.definition };
   }
   const [error] = [...diagnose(program).values()].flatMap(({ diagnostics }) =>
     diagnostics.filter(isError),
