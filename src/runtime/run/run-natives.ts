@@ -8,8 +8,9 @@
  *   resolver stands for: one that can't decide any more is dropped as another comes or is asked
  *   about, and a future one of those lost on, with nothing waiting on it, is given up on, which a
  *   slot passes over (§6, §8). A withdrawn one, a `select`'s that didn't wait, gives up on nothing.
- * - A future nothing else holds, widened, converts its value in place, as it settles or at once
- *   (`_convertedInPlace`, settling.ts `converted`), so a widened call's future is the call's own.
+ * - A future nothing else holds or waits on, widened, converts its value in place, as it settles or
+ *   at once (`_convertedInPlace`, settling.ts `converted`), so a widened call's future is the
+ *   call's own.
  * - `_later` readies a call of its own, as a `Resolver.of` callback and an `onCancel` run (§8).
  * - `_unpark` readies a parked call to resume with its wait's decided position; a wait decided
  *   before its call parks readies it all the same, as awaiting still yields (§6), unless the call
@@ -98,7 +99,10 @@ function futureNatives(run: Run): Natives {
 /** What a future widened stands on (prelude.ista `_converted`). */
 function conversionNatives(run: Run): Natives {
   return {
-    'prelude._unshared(prelude.Future<T, K>)': ([given]) => futureOf(given).count <= 1,
+    'prelude._unshared(prelude.Future<T, K>)': ([given]) => {
+      const { count, callbacks, listeners } = futureOf(given);
+      return count <= 1 && callbacks.length === 0 && listeners.length === 0;
+    },
     'prelude._convertedInPlace(prelude.Future<T, K>, fn(T) -> U)': ([given, kept]) => {
       const future = futureOf(given);
       const converter = kept ?? null;

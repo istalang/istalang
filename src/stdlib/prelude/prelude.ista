@@ -56,8 +56,9 @@ K fn onAwait<T, K in Persistence>(self: Future<T, K>, done: Resolver<T, K>):
     _onSettled(self, arrived, resolution->rank, _standingOf(resolution), _cancellerOf(resolution))
 
 # A future of `T` where one of `U` is expected, as a function widened gives it (§3.14): the future
-# itself, converting its value as it settles, where nothing else holds it, so a widened call's
-# future is the call's own; else a call of its own awaiting it, leaving it as it is for its holders.
+# itself, converting its value as it settles, where nothing else holds it or waits on it, so a
+# widened call's future is the call's own; else a call of its own awaiting it, leaving it as it is
+# for its holders.
 K fn _converted<T, U, K in Persistence>(future: Future<T, K>, convert: fn(T) -> U) -> Future<U, K>:
   if _unshared(future): _convertedInPlace(future, convert)
   else: _awaitedAs(future, convert)
@@ -354,9 +355,9 @@ extern K fn _givenUp<T, K in Persistence>(future: Future<T, K>) -> Bool
 @Keeps{["future": ["callback"]]}
 extern K fn _onAwaited<T, K in Persistence>(future: Future<T, K>, callback: Fn<(), Unit, K>)
 extern K fn _pendingFuture<T, K in Persistence>() -> Future<T, K>
-# Whether nothing but its caller holds `future`.
+# Whether nothing but its caller holds `future` or waits on it: no callback, nor the run itself.
 extern K fn _unshared<T, K in Persistence>(future: Future<T, K>) -> Bool
-# `future`, which nothing but its caller holds, giving what `convert` makes of its value. It keeps
+# `future`, which nothing but its caller holds or waits on, giving what `convert` makes of its value. It keeps
 # `convert`, a conversion's entry capturing nothing, so no cycle can pass through it.
 @Keeps{[:]}
 extern K fn _convertedInPlace<T, U, K in Persistence>(

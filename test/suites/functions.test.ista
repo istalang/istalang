@@ -133,6 +133,18 @@ ista async fn widenedSharedFuture() -> (Int?, Int):
   const widened: ista fn(Stored) -> Future<Int?, "ista"> = storedFuture
   (await widened(stored), await stored->future)
 
+ista fn watched(log: Shared<Array<Int>>) -> Future<Int, "ista">:
+  const future = later(7)
+  future.onAwait(Resolver.of(fn(value: Int): log->value.push(value + 100)))
+  future
+
+ista async fn widenedWatchedFuture() -> (Int?, Array<Int>):
+  const log = new Shared<Array<Int>>{value: []}
+  const widened: ista async fn(Shared<Array<Int>>) -> Int? = watched
+  const value = await widened(log)
+  await time.delay(1ms)
+  (value, log->value)
+
 @Suite{"functions"}
 fn suite() -> Array<Test>: [
   test(
@@ -190,5 +202,9 @@ fn suite() -> Array<Test>: [
   test(
     "a future something else holds, widened, is awaited and stays as it was for its holder"
     async fn(): assertEq(await widenedSharedFuture(), (6, 6))
+  )
+  test(
+    "a future a callback waits on, widened, is awaited and the callback is given its value as it was"
+    async fn(): assertEq(await widenedWatchedFuture(), (7, [107]))
   )
 ]

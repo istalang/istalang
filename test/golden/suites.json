@@ -465,6 +465,7 @@
       "✓ functions › an async function widened gives its value converted across commits",
       "✓ functions › an async function widened gives its value converted with every segment re-run",
       "✓ functions › a future something else holds, widened, is awaited and stays as it was for its holder",
+      "✓ functions › a future a callback waits on, widened, is awaited and the callback is given its value as it was",
       "✓ holders › a _ among a destructuring's targets holds its part alone, so dropping or reassigning a named part disposes it",
       "✓ holders › break and continue release the temporaries of the statements and loops they leave",
       "✓ holders › a default's temporaries end with it, and what it holds for its function ends with the function",
@@ -488,7 +489,7 @@
       "✓ waits › a wait decides at its first case in order when several disposal watches resolve together",
       "✓ waits › waiters readied together by their timers run in execution creation order",
       "✓ waits › a waiting put's value is held by its put alone: let go of with it, or as it loses a select",
-      "78 passed, 0 failed, 0 skipped."
+      "79 passed, 0 failed, 0 skipped."
     ]
   }
 }
