@@ -256,8 +256,11 @@ const emitters: Handlers<EntryScope, Instruction, [], string> = {
   jump: (_, i) => goTo(i.target),
   branch: (_, i) => `pc = ${register(i.condition)} ? ${i.whenTrue} : ${i.whenFalse}; continue;`,
   switch: (_, i) => {
-    const otherwise = i.otherwise ?? i.targets.at(-1) ?? 0;
-    return `pc = ${literal(i.targets)}[${register(i.value)}.variant] ?? ${otherwise}; continue;`;
+    const target = `${literal(i.targets)}[${register(i.value)}.variant]`;
+    // Without `otherwise`, the targets cover every variant (definition/instructions/control.ts).
+    return i.otherwise === undefined
+      ? `pc = ${target}; if (pc === undefined) { throw unreachableHere(); } continue;`
+      : `pc = ${target} ?? ${i.otherwise}; continue;`;
   },
   return: (scope, i) => {
     const counted = i.releasing.filter((each) => lifetime(scope, each) === 'counted').map(register);
