@@ -211,6 +211,7 @@ export class DefinitionTables {
    * or, a closing entry, written once the worklist is empty and again as its `any` type grows.
    */
   index(given: LoweredEntry): FunctionId {
+    this.#refuseStandInConversion(given);
     const entry = this.#shared(given);
     const { closedOver } = identityOf(this.#identities, entry);
     const queue = closedOver === undefined ? this.#pending : this.#closing;
@@ -244,12 +245,6 @@ export class DefinitionTables {
 
   /** `entry` as it is keyed and lowered: an instance as shared (stencils.ts). */
   #shared(entry: LoweredEntry): LoweredEntry {
-    if (entry.kind === 'converting' || entry.kind === 'wrapping') {
-      if (holdsStandIn(this.#checker, entry.from) || holdsStandIn(this.#checker, entry.to)) {
-        unreachable(`A conversion of ${entry.kind} parts meets a shared instance's stand-in.`);
-      }
-      return entry;
-    }
     if (entry.kind !== 'instance' && entry.kind !== 'externDefaults') {
       return entry;
     }
@@ -257,6 +252,21 @@ export class DefinitionTables {
       ...entry,
       instance: this.#stencils.shared(entry.instance),
     }));
+  }
+
+  /**
+   * Crashes where a conversion of parts meets a shared instance's stand-in: lowering derives its
+   * rebuild from the two types' shapes, which parametricity keeps every parameter of concrete
+   * (stencils.ts `holdsStandIn`).
+   */
+  #refuseStandInConversion(entry: LoweredEntry): void {
+    const converting = entry.kind === 'converting' || entry.kind === 'wrapping';
+    if (
+      converting &&
+      (holdsStandIn(this.#checker, entry.from) || holdsStandIn(this.#checker, entry.to))
+    ) {
+      unreachable(`A conversion of ${entry.kind} parts meets a shared instance's stand-in.`);
+    }
   }
 
   /**
