@@ -8,6 +8,9 @@ export class WeakReference extends RunObject {
   /** What its `disposed()` gives (§7), made the first time it is asked for. */
   whenDisposed: Future | undefined;
 
+  /** The one weak reference to its target, which `WeakRef(x)` gives out again (§7). */
+  override readonly endsWithDisposal = false;
+
   constructor(id: number, target: RunObject) {
     super(id);
     this.target = target;

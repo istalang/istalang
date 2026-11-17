@@ -32,6 +32,9 @@ export class Execution extends RunObject {
   /** The position its wait was decided for as its call is disposed: its `disposing()` case's. */
   decidedDisposing: Value | undefined;
 
+  /** A call's handle, which `currentCall` gives out again, ends with its call, not its holders. */
+  override readonly endsWithDisposal = false;
+
   constructor(id: number, futureId: number, instance: Instance) {
     super(id);
     this.future = new Future(futureId, this);

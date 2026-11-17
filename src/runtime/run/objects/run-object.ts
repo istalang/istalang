@@ -16,6 +16,12 @@ export abstract class RunObject {
   /** Whether its disposal began; no holder counts on it from then on (lifetimes.ts). */
   disposed: boolean;
 
+  /**
+   * Whether disposing it ends it for good: all but a handle the run gives out again, a call's or a
+   * weak reference, whose last holder letting go ends nothing.
+   */
+  readonly endsWithDisposal: boolean = true;
+
   constructor(id: number) {
     this.object = id;
     this.disposed = false;

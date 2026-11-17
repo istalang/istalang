@@ -325,7 +325,7 @@ export class Lifetimes {
       const round = zeros.splice(0).sort((first, second) => second.object - first.object);
       const released: Value[] = [];
       for (const object of round) {
-        object.disposed = true;
+        object.disposed = object.endsWithDisposal;
         released.push(...this.#dispose(object));
       }
       for (const value of released) {
