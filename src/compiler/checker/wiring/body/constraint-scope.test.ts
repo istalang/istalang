@@ -12,7 +12,7 @@ import {
 } from '../../../../foundation/diagnostics/diagnostic.test-kit.ts';
 import { mainGives } from '../../../../stdlib/prelude/prelude.test-kit.ts';
 import { stdProgramOf } from '../../../binder/bind.test-kit.ts';
-import { diagnosedAt, wholeProgramTimeout } from '../../../compile.test-kit.ts';
+import { checkedAfterStd, diagnosedAt, wholeProgramTimeout } from '../../../compile.test-kit.ts';
 import { idOf } from '../../../program/program.test-kit.ts';
 import { programModule } from '../../../program/program.ts';
 import { functionsOf } from '../../../syntax/declarations/field-defaults.ts';
@@ -384,7 +384,7 @@ describe('records', () => {
   it('never keep a variable, over the corpus', { timeout: wholeProgramTimeout }, () => {
     for (const { text } of [...runPrograms, ...invalidPrograms]) {
       const program = stdProgramOf({ 'main.ista': text });
-      const checker = checkProgram(program);
+      const checker = checkedAfterStd(program);
       const { tree } = programModule(program, idOf('main.ista'));
       for (const declaration of functionsOf(tree.root)) {
         const body = checker.bodyOf(declaration);
