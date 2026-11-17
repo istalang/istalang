@@ -1,14 +1,14 @@
 /**
- * The calling convention (ir-first design, decision 3), its one home: which entries run on a frame
- * record the run keeps, `f<i>(frame)`, started as an execution of their own, and which are plain
- * functions, `f<i>(...parameters, closure)`, nesting on the JS stack. The entry's signature
- * (entry.ts), compiled code's call of it (instructions.ts) and the run's (runtime/run/run.ts) each
- * read this predicate, so moving entries onto frames changes them together.
+ * The calling convention (ir-first design, decision 3), its one home: which entries take the shape
+ * of a frame record the run keeps, `f<i>(frame)`, and which are plain functions,
+ * `f<i>(...parameters, closure)`, nesting on the JS stack. Only the entry's shape reads it (entry.ts);
+ * whether a call starts an execution is the IR's `startsExecution`, which compiled code's calls and
+ * the run's read. Every entry that starts an execution runs on frames, since its execution parks.
  */
 
 import { type CodeFunction, startsExecution } from '../definition/tables/functions.ts';
 
-/** Whether `entry` runs on a frame record the run keeps, not on the JS stack: each that starts an execution. */
+/** Whether `entry` is written over a frame record the run keeps, not as a plain function. */
 export function runsOnFrames(entry: CodeFunction): boolean {
   return startsExecution(entry);
 }

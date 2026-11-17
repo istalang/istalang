@@ -24,6 +24,7 @@ import type { Register } from '../definition/operands.ts';
 import {
   type CodeFunction,
   type FunctionDefinition,
+  startsExecution,
   transientRegistersOf,
 } from '../definition/tables/functions.ts';
 import type { TypeDefinition } from '../definition/tables/types.ts';
@@ -31,7 +32,6 @@ import { disposeOf, lifetimeOf } from '../definition/tables/types.ts';
 import type { Value } from '../definition/values/values.ts';
 import { type Handlers, handlerOf } from '../foundation/structures/kind-table.ts';
 import { unreachable } from '../foundation/structures/unreachable.ts';
-import { runsOnFrames } from './calling-convention.ts';
 import { literal } from './literal.ts';
 import { primitiveExpressions } from './primitives.ts';
 
@@ -153,7 +153,7 @@ function callExpression(scope: EntryScope, index: number, passed: string): strin
   if (callee === undefined || callee.kind === 'extern') {
     return `x${index}(${passed})`;
   }
-  return runsOnFrames(callee)
+  return startsExecution(callee)
     ? `start(${index}, [${passed}], undefined)`
     : `f${index}(${passed}${passed === '' ? '' : ', '}undefined)`;
 }
@@ -296,7 +296,7 @@ const emitters: Handlers<EntryScope, Instruction, [], string> = {
     return `${register(i.dst)} = ${called};`;
   },
   currentCall: (scope, i) =>
-    `${register(i.dst)} = ${scope.onFrames ? 'frame.execution' : 'currentExecution()'};`,
+    `${register(i.dst)} = ${startsExecution(scope.entry) ? 'frame.execution' : 'currentExecution()'};`,
   given: (_, i) => `if (${register(i.parameter)} !== undefined) { ${goTo(i.target)} }`,
   mocked: (scope, i) => {
     const passed = i.arguments.map(register).join(', ');
