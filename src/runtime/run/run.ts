@@ -29,6 +29,7 @@ import { type DisposalSeams, disposerOf } from './disposal.ts';
 import { EndWatches, type PendingWatch } from './end-watches.ts';
 import { Executions, PARKED, STOP, STOPPED } from './executions.ts';
 import type { Instance } from './instances.ts';
+import { instantiatorOf } from './instantiation.ts';
 import { type Invocation, Invocations, type RunningInvocation } from './invocations.ts';
 import { Lifetimes } from './lifetimes.ts';
 import { Mocking, NOT_MOCKED } from './mocking.ts';
@@ -136,11 +137,7 @@ export class Run {
       guarded: (run) => this.#guard.guarded(run),
     });
     this.#natives = bindNatives(this, seams);
-    const made = new Function('rt', program.body) as (rt: Run) => {
-      readonly site: Error;
-      readonly entries: readonly Entry[];
-    };
-    const { site, entries } = made(this);
+    const { site, entries } = instantiatorOf(program)(this);
     this.#entries = entries;
     this.traces = new Traces(definition, program.lines, site);
     this.#guard = new PanicGuard(this.instance, this.traces, () => this.lifetimes.passesPanics);
