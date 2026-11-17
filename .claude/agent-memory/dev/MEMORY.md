@@ -18,3 +18,4 @@
 - [Suites over corpus](feedback_suites-over-corpus.md) — ported rules as .test.ista cases by area; corpus program only for whole-program rules
 - [Agents merge themselves](feedback_agents-merge-themselves.md) — partitions rebase and ff the integration branch; no idle integrator
 - [Expert for tasks](feedback_expert-for-tasks.md) — cold agents doing work are `--agent expert`; `dev` only plans big tasks
+- [Reuse examiners](feedback_reuse-examiners.md) — re-review/QA to the same examiners; findings back to the fixer of that area

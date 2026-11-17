@@ -37,7 +37,7 @@ tags: [tracker]
 
 ## Filed
 
-Open items only: an item is removed once it is resolved; git history keeps it. Each group numbers its own items and keeps counting up: the next ids are F38, P54, Q59, B115. Items filed before 2026-10-28 shared one `D` series; older docs and git history keep the closed `D` ids.
+Open items only: an item is removed once it is resolved; git history keeps it. Each group numbers its own items and keeps counting up: the next ids are F39, P56, Q72, B122. Items filed before 2026-10-28 shared one `D` series; older docs and git history keep the closed `D` ids.
 
 Size: easy (one short, local change), medium (several files or a design choice inside one layer), big (cross-layer, or a decision first). Depends on: what must happen first, or "none" when it can be done now.
 
@@ -75,6 +75,7 @@ Language or toolchain features deferred by decision, not defects.
 | F35 | Full async panic traces in the JS backend: after an `await`, a trace holds only the frames since the call resumed, read off the JavaScript stack. A full trace needs a caller link on every live async call, paid on the hot path. | medium | js-codegen P1 | js-codegen review 2026-11-15 |
 | F36 | A keyed read (`d.city`, proposal 16) denotes its `index` call alone. Go-to-definition and rename could also reach the field its key names, as a String key does (`lookup/key-denotations.ts`), once the denotation contract says how the call and the field share one name (hover, `declarationsOf`, `lookup.sweep.test.ts`). | medium | proposal 16 | keyed-members-type-loops plan review 2026-11-15 |
 | F37 | Completion after `S[K].` (a type indexed by a key written before `.`, proposal 17) offers no static functions, as completion after a type parameter's `.` does; offer them through the field type the call reads as its owner (`namedType`, `completion/places/member.ts`). | low | proposal 17 | keyed-members-type-loops P17 review 2026-11-15 |
+| F38 | An `internal` visibility between `_` (private to its module) and public: names std modules (and later a package's modules) share without user programs seeing them. Today `endings.resultOfEnding` is public in a module nobody imports by default, which stands in for it. | medium | none | ir-first R1 2026-11-17 |
 
 ### Performance (P)
 
@@ -148,6 +149,19 @@ DRY, double standards, cohesion, layering, dead or misplaced code.
 | Q54 | `docs/work/linker/js-interpreter.md`'s Durable Objects hosting is built on `Runtime.fill` and `settle`, gone since async-kinds: a host now starts `live async fn main` as a live run that drives its contexts, and host futures are live. Redesign the hosting around live runs and contexts, or archive the section. | small | — | async-kinds merge review 2026-11-11 |
 | Q55 | Nothing holds `docs/reuse/`'s `→ symbol (path)` citations, or inline signatures in the spec's prose, to the code: fences are compiled, but a split file or a renamed export leaves a citation stale until a review finds it (the async-kinds merge review found a dozen). A test resolving each cited symbol in its cited file, with `tsm`, would. | small | none; can be done now | async-kinds merge review 2026-11-11 |
 | Q58 | `typeTextsTogether` (`checker/types/type/type-text.ts`) sets a module-global `let together` that silently changes what `typeText` and the exported `parameterText` print while it runs, and `primesOf` copies the array on each append instead of `addToGroup` (`docs/reuse/structures-and-invariants.md`). Pass the printing context explicitly. | small | none | structural-fixes merge review 2026-11-15 |
+| Q59 | ir-first design decision 6 has drifted: settle order, timer grouping, the `disposed()`/`disposing()` and end watches, and resolver standing/pruning live in the TS run, not Istalang (only the mock registry is filed, B115). Each is LLVM porting cost. Decided: the next phase after the ir-first merge, with P54, profiles them and measures each in Istalang against TS, then moves what the numbers allow. | big | ir-first merge | ir-first R1 2026-11-17 |
+| Q60 | Derived caches invalidated by hand in four places (value depths, `ValueSemantics.forget`, JSON plains, `WrittenJson.forget`), all remembered in `Lifetimes.owned`. One derived-data record per node with one forget; `WrittenJson` is per-run state and belongs in `runtime/run/`. | medium | none | ir-first R1 2026-11-17 |
+| Q61 | Codegen and the run are tied by strings: the emitted `helpers` names and `frame.pc/registers/decision/…` fields have no type linking them to `Run`/`Frame`. Codegen declares the interface, `Run` satisfies it. | medium | none | ir-first R1 2026-11-17 |
+| Q62 | Natives say "maybe absent" four ways (0/1 array, -1 then a second native, a Bool probe then a read, an Optional argument); the 0/1 → Ok/Err wrapper is written five times. One shape, one Istalang helper. | medium | none | ir-first R1 2026-11-17 |
+| Q63 | `TypeDefinition.heap` is true for every extern and shared entry, yet `lifetimeOf` demotes those to plain: one field, two meanings. Rename the lifetime class or store the distinction. | easy | none | ir-first R1 2026-11-17 |
+| Q64 | Lowering side channels: `writer.keyed` (special-cased in held-reads), a mutable `pin` flag set from 8 sites, hand-rolled well-known lookups, instruction emission outside `SynthesizedCode` (`array` in 7 places, `==` through three APIs). | medium | none | ir-first R1 2026-11-17 |
+| Q65 | Natives modules: `runtime/natives.ts` (the contract) and `run/natives.ts` (binding) share a name, not a job; `run-natives.ts` is unnamed for what it holds; stack/limit helpers sit in the natives contract. | easy | none | ir-first R1 2026-11-17 |
+| Q66 | The mock feature is split over `mocks.ts`, `mocking.ts` and `mock-answers.ts`; `World.heldMock?` is optional though always present. Pairs with B115. | medium | B115 | ir-first R1 2026-11-17 |
+| Q67 | `src/compiler/lowering/tables/extern-keys.txt`: 730 lines of corpus test keys in `src/`, checked subset-only (stale lines never fail), freezing a key spelling for no users. Decide: move to `test/golden`, or delete. | easy | decision | ir-first R1 2026-11-17 |
+| Q68 | How a derived codec instance is recognized (`own-entries.ts`, by function name) lives outside the codec module (design decision 9's one seam). | easy | none | ir-first R1 2026-11-17 |
+| Q69 | Biome's `noExcessiveLinesPerFile` (400) passes files AGENTS' plain-line rule fails (`flow/writer.ts` 447, `durable-world.ts` 443, `run.ts` 421, `lifetimes.ts` 415, `tables.ts` 414, `operations.ts` 406, `type-table.ts` 401). Align the rule and the lint, then split. | easy | none | ir-first R1 2026-11-17 |
+| Q70 | Tests: prelude service tests sit in `test/suites/`, not beside `prelude.ista`; 18 assertions pack facts into one number (`before*100 + count*10 + got`); the `runtime.run(runtime.id())` main wrapper is written in ~12 files though `mainOutcome` owns it. | medium | none | ir-first R1 2026-11-17 |
+| Q71 | `NativeFutures.resolved` is a second way to make a settled future, used only by `runtime.commit`. | easy | none | ir-first R1 2026-11-17 |
 
 ### Behaviour and correctness (B)
 
@@ -201,3 +215,4 @@ Crashes, spec gaps, wrong or missing diagnostics, host-visible behaviour.
 | B117 | Futures settling together don't decide at the one registered earliest (spec §6): the run orders by resolver rank, then future by future. Needs a registration serial persisted in snapshots. | small | none | ir-first R1 2026-11-17 |
 | B119 | A resource or extern payload read back from a snapshot decodes safe bigints as numbers, so after a restart a host may get `7` where it gave `7n`. | small | none | ir-first R1 2026-11-17 |
 | B120 | Deploy writes the Definition to the store before checking extern signatures, so a deploy refused for changed externs still stores it (the old pipeline checked first). | small | none | ir-first R1 2026-11-17 |
+| B121 | `src/compiler/parser/parse.bench.ts` fails its own precondition on main: a spec module example now holds `…` outside a comment, so its 10k-line input has 441 scan errors and `npm run bench` stops there. Either the example or the bench's filter is wrong. | easy | none | ir-first R1 2026-11-17 |
