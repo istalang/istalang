@@ -47,9 +47,9 @@ settle once and call their callbacks in rank order, park and unpark of an execut
   first. Every future a resolver is registered on resolves it as `tryResolve` does: the first
   decides. What settling a set of futures settles in turn (a
   future following another, as a mock's answer does) settles together after it
-  (`Run.settleTogether`). A future a widened function gives, which nothing else holds or waits on,
-  converts its value as it settles (`Future.converters`, prelude `_converted`, spec §3.14), so a
-  widened call's future stays the call's own, with no execution between.
+  (`Run.settleTogether`). A future a widened function gives, which nothing else holds, refers to
+  weakly or waits on, converts its value as it settles (`Future.converters`, prelude `_converted`,
+  spec §3.14), so a widened call's future stays the call's own, with no execution between.
 - **Resolvers** are shared structs of `decide` and their state, a `_Resolution<K>` (`rank`, `state`,
   `cancels`, what it comes down to deciding: a wait's case, the resolver a `Resolver.at` one decides,
   or a callback), which takes no value: only what passes a value on is compiled per awaited type, the

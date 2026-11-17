@@ -145,6 +145,23 @@ ista async fn widenedWatchedFuture() -> (Int?, Array<Int>):
   await time.delay(1ms)
   (value, log->value)
 
+shared struct WeakFuture:
+  weak: WeakRef<Future<Int, "ista">>?
+
+ista fn weaklyWatched(out: WeakFuture) -> Future<Int, "ista">:
+  const future = later(8)
+  out->weak = WeakRef(future)
+  future
+
+ista async fn widenedWeaklyWatchedFuture() -> (Int?, Int):
+  const out = new WeakFuture{weak: none}
+  const widened: ista async fn(WeakFuture) -> Int? = weaklyWatched
+  const pending = widened(out)
+  if out->weak is WeakRef<Future<Int, "ista">> as weak and weak.deref() is Future<Int, "ista"> as original:
+    const value = await original
+    (await pending, value + 100)
+  else: (none, 0)
+
 ista fn greetingDefault() -> Int:
   drop greeting(2)
   10
@@ -222,5 +239,9 @@ fn suite() -> Array<Test>: [
   test(
     "a function started is no call of it a mock replaces, even when its default calls it first"
     async fn(): assertEq(await mockedGreeting(), (Ok(11), Ok(11), [(2,), (2,)]))
+  )
+  test(
+    "a future a weak reference refers to, widened, is awaited and stays as it was for what derefs it"
+    async fn(): assertEq(await widenedWeaklyWatchedFuture(), (8, 108))
   )
 ]

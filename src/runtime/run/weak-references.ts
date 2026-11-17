@@ -22,6 +22,11 @@ export class WeakReferences {
     return made;
   }
 
+  /** Whether a weak reference to `target` was made, which may yet give it out. */
+  made(target: RunObject): boolean {
+    return this.#byTarget.has(target);
+  }
+
   /** Remembers `weak` as the one weak reference to its target, as a snapshot read back gives it. */
   restored(weak: WeakReference): void {
     if (weak.target !== undefined) {
