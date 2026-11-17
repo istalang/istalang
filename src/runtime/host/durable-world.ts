@@ -146,14 +146,16 @@ export class DurableWorld implements World {
 
   /** Makes `into` in the context `key` (§9); `answer` is told how it ended as the context commits. */
   invokeIn(caller: Run, key: string, into: CallInto, answer: (end: InvocationEnd) => void): void {
-    const crashEveryAwait = this.#live.get(caller)?.options.crashEveryAwait ?? false;
-    const program = this.#programOf(caller);
+    // Only a live run calls into a context, the call rule keeping ista code from its natives
+    // (proposal 8, Rule 2), which it makes with the run's program and options (§9, §10).
+    const { program, options } =
+      this.#live.get(caller) ?? unreachable('A context call of no live run.');
     const context =
       this.residents.get(key) ??
       this.load(key) ??
       this.#made(
         { name: key, program, seed: instanceSeed(this.binding.seed, key) },
-        crashEveryAwait,
+        options.crashEveryAwait ?? false,
       );
     const sent = { ...into, closure: copied(into.closure), passed: into.passed.map(copied) };
     const answered = (end: InvocationEnd) => {
