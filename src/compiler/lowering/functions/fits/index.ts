@@ -7,13 +7,8 @@
  * converted part by part (§3.5) is rebuilt by the entry of its pair of types where its layout
  * changes (parts.ts), each part fitted as the checker fits it.
  *
- * A plain function value made async where an async function is expected (§3.14) becomes a closure
- * capturing the plain value, whose entry is async and calls it with the arguments it is given. So
- * calling the closure starts an async function that returns at once, which gives a future already
- * resolved, and never suspends. The entry is one per site in a body's instance, so a trace through
- * it points at where the value was made async. Inside a conversion's entry, which serves every site
- * its pair is met at, a function is made async as any function converted part by part is: wrapped
- * by the entry of its pair.
+ * A function made async where an async function is expected (§3.14) is wrapped as any function
+ * converted part by part is: a closure of the `wrapping` entry of its pair of types, capturing it.
  */
 
 import type { FunctionId, Register } from '../../../../definition/operands.ts';
@@ -32,7 +27,6 @@ import { emitCall } from '../../calls/emit-call.ts';
 import type { CodeContext, FunctionContext } from '../../context.ts';
 import { SynthesizedCode } from '../../synthesized/index.ts';
 import {
-  type AsyncFit,
   type BodyOwner,
   type ConversionEntry,
   type ConversionSite,
@@ -59,13 +53,12 @@ interface FittingSite {
 }
 
 /**
- * How a fit is made where it is: the span its code points at, where an entry a conversion of parts
- * needs is named, and how a plain function is made async there.
+ * How a fit is made where it is: the span its code points at, and where an entry a conversion of
+ * parts needs is named.
  */
 interface Applying {
   readonly span: AnchoredSpan;
   readonly at: ConversionSite;
-  readonly madeAsync: (value: Register, plain: FunctionType, to: FunctionType) => Register;
 }
 
 /** `typed`, as the checker fitted it at `where`: converted, then put into a union. */
@@ -76,12 +69,7 @@ export function fittedValue(
   { owner, site }: FittingSite,
 ): Register {
   const module = context.checker.moduleOf(ownerDeclaration(owner));
-  return appliedFit(context, typed, fit, {
-    span: site.span,
-    at: { module, span: site.span },
-    madeAsync: (value, plain, made) =>
-      asyncFitClosure(context, { owner, site, type: plain, made }, value),
-  });
+  return appliedFit(context, typed, fit, { span: site.span, at: { module, span: site.span } });
 }
 
 /** `typed`, made to fit as `fit` says: converted, then put into a union. */
@@ -114,7 +102,8 @@ function convertedValue(
     }
     case 'async': {
       const { to } = conversion;
-      return { value: how.madeAsync(typed.value, functionTypeOf(typed.type), to), type: to };
+      const from = functionTypeOf(typed.type);
+      return { value: wrappedClosure(context, typed.value, { from, to }, how), type: to };
     }
     case 'shape': {
       const { to } = conversion;
@@ -166,13 +155,7 @@ function partsConverted(
   const from = unfolded(typed.type);
   const target = unfolded(to);
   if (from.kind === 'function' && target.kind === 'function') {
-    const entry = tables.conversionIndex({ kind: 'wrapping', from, to: target, at: how.at });
-    return closureOf(
-      context,
-      { entry, captures: [typed.value] },
-      tables.types.reference(to),
-      how.span,
-    );
+    return wrappedClosure(context, typed.value, { from, to: target }, how);
   }
   const entry = tables.conversionIndex({ kind: 'converting', from: typed.type, to, at: how.at });
   return emitCall(
@@ -180,6 +163,17 @@ function partsConverted(
     { span: how.span, callee: entry, arguments: [typed.value] },
     tables.types.reference(to),
   );
+}
+
+/** `value`, a function of type `from`, wrapped as one of `to`: a closure of their wrapping entry. */
+function wrappedClosure(
+  context: CodeContext,
+  value: Register,
+  { from, to }: { readonly from: FunctionType; readonly to: FunctionType },
+  { at, span }: Applying,
+): Register {
+  const entry = context.tables.conversionIndex({ kind: 'wrapping', from, to, at });
+  return closureOf(context, { entry, captures: [value] }, context.tables.types.reference(to), span);
 }
 
 /** A closure of `entry`, of `type`, capturing `captures`. */
@@ -196,24 +190,9 @@ function closureOf(
   return dst;
 }
 
-/**
- * How fits are made inside a conversion's entry: where its pair was first met, a plain function
- * made async by wrapping it, as any function converted part by part is.
- */
-function applyingIn(code: SynthesizedCode, at: ConversionSite): Applying {
-  return {
-    span: at.span,
-    at,
-    madeAsync: (value, plain, to) => {
-      const entry = code.tables.conversionIndex({ kind: 'wrapping', from: plain, to, at });
-      return closureOf(
-        code,
-        { entry, captures: [value] },
-        code.tables.types.reference(to),
-        at.span,
-      );
-    },
-  };
+/** How fits are made inside a conversion's entry: where its pair was first met. */
+function applyingIn(at: ConversionSite): Applying {
+  return { span: at.span, at };
 }
 
 /**
@@ -226,7 +205,7 @@ export function fittedIn(
   to: Type,
   at: ConversionSite,
 ): Register {
-  return appliedFit(code, typed, fitBetween(code, typed.type, to), applyingIn(code, at));
+  return appliedFit(code, typed, fitBetween(code, typed.type, to), applyingIn(at));
 }
 
 /** How a value is rebuilt inside a conversion's entry, each part fitted as the checker fits it. */
@@ -253,13 +232,7 @@ function rebuildingIn(code: SynthesizedCode, how: Applying): Rebuilding {
         },
         span,
       ),
-    wrapped: (value, from, to) =>
-      closureOf(
-        code,
-        { entry: tables.conversionIndex({ kind: 'wrapping', from, to, at }), captures: [value] },
-        tables.types.reference(to),
-        span,
-      ),
+    wrapped: (value, from, to) => wrappedClosure(code, value, { from, to }, how),
   };
 }
 
@@ -290,7 +263,7 @@ export function convertingEntry(
   if (value === undefined) {
     unreachable('A conversion takes the value it converts.');
   }
-  const how = applyingIn(code, at);
+  const how = applyingIn(at);
   const fit = fitBetween(code, from, to);
   const result =
     fit.conversion.kind === 'parts' && fit.into === undefined
@@ -388,44 +361,4 @@ function functionTypeOf(type: Type): FunctionType {
 function baseOfAll(type: Type): Type {
   const [first] = membersOf(type);
   return first === undefined ? unreachable('A union has members.') : baseOf(first);
-}
-
-/** `value`, the plain function `fit` makes async: a closure of its fit's entry. */
-function asyncFitClosure(context: CodeContext, fit: AsyncFit, value: Register): Register {
-  const entry = context.tables.asyncFitIndex(fit);
-  const type = context.tables.types.reference(fit.made);
-  return closureOf(context, { entry, captures: [value] }, type, fit.site.span);
-}
-
-/** The async entry of `fit`: it calls the value it captures with its own arguments. */
-export function asyncFitEntry(
-  context: Pick<CodeContext, 'checker' | 'tables'>,
-  fit: AsyncFit,
-): CodeFunction {
-  const { tables } = context;
-  const result = tables.types.reference(fit.type.result);
-  const code = new SynthesizedCode(context, fit.site.span, {
-    parameters: fit.type.parameters.map((parameter) => {
-      const type = tables.types.reference(parameter.type);
-      return parameter.reference ? { kind: 'reference', to: type } : type;
-    }),
-    captures: [tables.types.reference(fit.type)],
-    result,
-    mode: codeModeOf(true, builtKindOf(context.checker, fit.made)),
-  });
-  const [plain] = code.captures;
-  if (plain === undefined) {
-    unreachable('An async fit captures the function it calls.');
-  }
-  const called = emitCall(
-    code,
-    {
-      span: code.span,
-      callee: { kind: 'value', register: plain },
-      arguments: code.parameters.map((_, index) => code.passedOn(index)),
-    },
-    result,
-  );
-  code.return(called);
-  return code.entry(tables.asyncFitHeader(fit));
 }

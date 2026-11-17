@@ -39,9 +39,6 @@ import { withLoadsPastWrites } from '../functions/loads-past-writes.ts';
 import { laidOutAs } from '../values/holdings.ts';
 import { annotationValues } from './constants.ts';
 import {
-  type AsyncFit,
-  asyncFitKey,
-  asyncFitName,
   type BodyOwner,
   type ConversionEntry,
   conversionKey,
@@ -82,7 +79,6 @@ export type PendingEntry =
     }
   | { readonly kind: 'start' | 'startEncode'; readonly target: StartTarget }
   | { readonly kind: 'contextConstant'; readonly declaration: ContextConstantDeclaration }
-  | { readonly kind: 'asyncFit'; readonly fit: AsyncFit }
   | ConversionEntry;
 
 /**
@@ -192,13 +188,6 @@ export class DefinitionTables {
     return this.#ownedHeader(nested.owner, at, (where) => nestedName(this.#checker, nested, where));
   }
 
-  /** The header of an async fit's entry: named after its owner, where its site is. */
-  asyncFitHeader(fit: AsyncFit): EntryHeader {
-    return this.#ownedHeader(fit.owner, fit.site.span, (where) =>
-      asyncFitName(this.#checker, fit, where),
-    );
-  }
-
   /** The header of an entry a body owns, at `span`, named by `nameAt` from where it stands. */
   #ownedHeader(owner: BodyOwner, at: AnchoredSpan, nameAt: (where: string) => string): EntryHeader {
     const module = this.#checker.moduleOf(ownerDeclaration(owner));
@@ -292,11 +281,6 @@ export class DefinitionTables {
     }
     const key = `defaults:${instanceKey(this.#checker.typeKeys, instance)}`;
     return this.#entryIndex(key, { kind: 'externDefaults', instance });
-  }
-
-  /** The index of the async entry of a plain function made async (§3.14), lowered later too. */
-  asyncFitIndex(fit: AsyncFit): FunctionId {
-    return this.#entryIndex(asyncFitKey(this.#checker.typeKeys, fit), { kind: 'asyncFit', fit });
   }
 
   /** The index of a conversion's entry (§3.5), one per pair of types, lowered later too. */

@@ -36,7 +36,6 @@ import {
 } from '../../syntax/declarations/index.ts';
 import type { FieldLoopHeader, Lambda } from '../../syntax/expressions/index.ts';
 import type { VariableDeclaration } from '../../syntax/statements/index.ts';
-import type { NodeOf } from '../../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 import { qualifiedNameOf, tableKey } from './names.ts';
 
@@ -97,18 +96,6 @@ export function rootInstance(
 }
 
 /**
- * A plain function value made async at `site`, in the body `owner` lowers, where an async function
- * is expected (§3.14): its entry calls the value of the plain function type `type`, giving what it
- * gives as a future of `made`, the type it is made into, whose future's kind the entry runs in.
- */
-export interface AsyncFit {
-  readonly owner: BodyOwner;
-  readonly site: NodeOf<string>;
-  readonly type: FunctionType;
-  readonly made: FunctionType;
-}
-
-/**
  * A conversion of parts lowering writes an entry for (§3.5), one per pair of types, wherever the
  * pair is met: a value of `from` made to fit `to` as the checker fits them (`converting`), or a
  * function of type `from` wrapped as one of `to`, converting what it takes and gives (`wrapping`).
@@ -149,11 +136,6 @@ export function nestedKey(keys: TypeKeys, nested: NestedInstance): string {
   return `${ownerKey(keys, nested.owner)}#${keys.identityOf(nested.node)}`;
 }
 
-/** The key of an async fit's entry: its owner's, then its site's identity. */
-export function asyncFitKey(keys: TypeKeys, fit: AsyncFit): string {
-  return `${ownerKey(keys, fit.owner)}#async${keys.identityOf(fit.site)}`;
-}
-
 function ownerKey(keys: TypeKeys, owner: BodyOwner): string {
   const own =
     owner.kind === 'constant' || owner.kind === 'contextConstant'
@@ -170,11 +152,6 @@ export function nestedName(checker: Checker, nested: NestedInstance, where: stri
   const { node } = nested;
   const own = node.name === undefined ? `lambda@${where}` : node.name.text;
   return `${ownerName(checker, nested.owner)}.${own}`;
-}
-
-/** An async fit's name: its owner's, then where its site stands. */
-export function asyncFitName(checker: Checker, fit: AsyncFit, where: string): string {
-  return `${ownerName(checker, fit.owner)}.async@${where}`;
 }
 
 function ownerName(checker: Checker, owner: BodyOwner): string {

@@ -30,7 +30,7 @@ import {
   primitiveEntry,
   structEntry,
 } from './functions/built-entries.ts';
-import { asyncFitEntry, convertingEntry, wrappingEntry } from './functions/fits/index.ts';
+import { convertingEntry, wrappingEntry } from './functions/fits/index.ts';
 import type { Lowering } from './functions/frames.ts';
 import { accessorLowering, instanceLowering, nestedLowering } from './functions/index.ts';
 import { derivedCodecEntry } from './synthesized/boundary/codecs.ts';
@@ -175,8 +175,6 @@ function pendingEntry(
       return anyConversionEntry(lowering, pending.from, pending.to);
     case 'anyField':
       return anyFieldEntry(lowering, pending);
-    case 'asyncFit':
-      return asyncFitEntry(lowering, pending.fit);
     case 'converting':
       return convertingEntry(lowering, pending);
     case 'wrapping':
