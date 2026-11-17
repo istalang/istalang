@@ -6,7 +6,6 @@
  *   a code entry's operands (registers, labels, types, functions, constants) and the purpose's.
  *   Every part code steps into lands among its type's parts (./parts.ts).
  * - The purpose's `main` names a start, and no two starts share a key: a host starts one by key.
- * - A recursive alias's type is the tuple or function it unfolds to, so unfolding one ends at once.
  * - Every code entry ends where no path runs off its end, and one `wrapping` a function value
  *   captures it, as a start follows it there (§10).
  * - The call rule (foundation/language/call-rule.ts) over the entries the purpose names, which the
@@ -28,11 +27,7 @@ import { outsideIssue, referenceIssues } from './references.ts';
 
 /** Every way `definition` breaks the rules above, each a message naming where. */
 export function validationIssues(definition: Definition): readonly string[] {
-  const issues: string[] = [
-    ...referenceIssues(definition),
-    ...startIssues(definition),
-    ...aliasIssues(definition),
-  ];
+  const issues: string[] = [...referenceIssues(definition), ...startIssues(definition)];
   const { functions } = definition;
   for (const { function: called, caller, where } of purposeCalls(definition.purpose)) {
     const outside = outsideIssue('function', called, functions.length);
@@ -101,15 +96,6 @@ function startIssues({ starts, purpose }: Definition): readonly string[] {
     ...[...new Set(repeated)].map((key) => `start ${key}: another start has its key.`),
     ...(main === undefined || keys.includes(main) ? [] : [`main: no start has key ${main}.`]),
   ];
-}
-
-/** Aliases standing for no tuple or function. */
-function aliasIssues({ types }: Definition): readonly string[] {
-  return types.flatMap((entry, index) =>
-    entry.kind === 'alias' && entry.type.kind !== 'tuple' && entry.type.kind !== 'function'
-      ? [`type ${String(index)} (${entry.name}): it aliases no tuple or function.`]
-      : [],
-  );
 }
 
 /** The entries `purpose` names, each with the mark of the code calling it and where it is named. */

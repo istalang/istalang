@@ -72,7 +72,12 @@ describe("validation of the tables' references", () => {
     ],
     [
       "an alias's type outside its table",
-      withType({ kind: 'alias', name: 'A', ...common, type: outside }),
+      withType({
+        kind: 'alias',
+        name: 'A',
+        ...common,
+        type: { kind: 'tuple', elements: [outside] },
+      }),
       'type 0 (A) aliased: type 9 is outside',
     ],
     [

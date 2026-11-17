@@ -5,8 +5,8 @@
  *
  * - The type stepped into is the register's (../tables/functions.ts): every register is typed, so
  *   a part's index is checked against the code alone.
- * - A recursive alias unfolds in one step to the tuple or function it names (index.ts holds it to
- *   that); nothing else changes a type's parts.
+ * - A recursive alias unfolds in one step to the tuple or function it names (its schema allows
+ *   no other); nothing else changes a type's parts.
  */
 
 import { type Handlers, handlerOf } from '../../foundation/structures/kind-table.ts';

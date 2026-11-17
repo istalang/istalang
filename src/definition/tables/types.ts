@@ -62,6 +62,11 @@ export const typeReference = z.discriminatedUnion('kind', [
 
 export type TypeReference = z.output<typeof typeReference>;
 
+/** A tuple or function type, which has no entry of its own: what a recursive alias stands for. */
+const structuralReference = z.discriminatedUnion('kind', [tuple, functionType]);
+
+export type StructuralReference = z.output<typeof structuralReference>;
+
 const field = z.strictObject({
   name: z.string(),
   type: typeReference,
@@ -135,9 +140,7 @@ const external = z.strictObject({
 const recursiveAlias = z.strictObject({
   kind: z.literal('alias'),
   ...common,
-  get type() {
-    return typeReference;
-  },
+  type: structuralReference,
 });
 
 export const typeDefinition = z.discriminatedUnion('kind', [

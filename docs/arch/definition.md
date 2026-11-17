@@ -51,7 +51,6 @@ refused at load, never midway through an instance. It refuses:
   `variant` built of the wrong number of fields, a `switch` whose targets miss a variant with no
   `otherwise` or pass the last (`parts.ts`);
 - two starts of one key, or a `main` naming no start;
-- a recursive `alias` whose type is no tuple or function, which it stands for;
 - a handle in a constant or an annotation, which only a running instance holds;
 - an entry a purpose names that its caller may not call (a test's runner and suites ista code
   calls, the job server live code calls). A function type carries no mark, so the run holds every

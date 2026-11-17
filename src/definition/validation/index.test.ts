@@ -1,8 +1,7 @@
 /**
  * Validation (index.ts) refuses a Definition whose purpose names code its caller may not call
  * (foundation/language/call-rule.ts): a test's suites are what ista code calls. A host starts a
- * start by key, so a key names one start, `main`'s included. A recursive alias stands for the tuple or
- * function it unfolds to.
+ * start by key, so a key names one start, `main`'s included.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -10,7 +9,6 @@ import { stdProgramOf } from '../../compiler/binder/bind.test-kit.ts';
 import { compileTests } from '../../compiler/compile.ts';
 import { codeEntry, programOf, withModeChanged } from '../definition.test-kit.ts';
 import { encodeDefinition, readDefinition } from '../definition.ts';
-import type { TypeDefinition, TypeReference } from '../tables/types.ts';
 import { validationIssues } from './index.ts';
 
 describe('the call rule over the purpose', () => {
@@ -66,34 +64,5 @@ describe('the starts', () => {
       purpose: { kind: 'program', main: 'main()' },
     });
     expect(issues).toEqual([]);
-  });
-});
-
-describe('a recursive alias', () => {
-  const program = programOf([codeEntry([], [{ kind: 'unreachable', span: { start: 0, end: 0 } }])]);
-  const alias = (type: TypeReference): TypeDefinition => ({
-    kind: 'alias',
-    name: 'A',
-    arguments: [],
-    disposable: false,
-    heap: true,
-    type,
-  });
-  const int: TypeReference = { kind: 'primitive', name: 'Int' };
-
-  it.each<[string, TypeReference]>([
-    ['itself', { kind: 'named', type: 0 }],
-    ['a primitive', int],
-  ])('refuses one aliasing %s', (_, type) => {
-    expect(validationIssues({ ...program, types: [alias(type)] })).toContain(
-      'type 0 (A): it aliases no tuple or function.',
-    );
-  });
-
-  it.each<[string, TypeReference]>([
-    ['a tuple', { kind: 'tuple', elements: [int, { kind: 'named', type: 0 }] }],
-    ['a function', { kind: 'function', parameters: [int], result: { kind: 'named', type: 0 } }],
-  ])('passes one aliasing %s', (_, type) => {
-    expect(validationIssues({ ...program, types: [alias(type)] })).toEqual([]);
   });
 });

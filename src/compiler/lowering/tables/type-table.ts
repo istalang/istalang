@@ -32,6 +32,7 @@ import type { FunctionId, TypeId } from '../../../definition/operands.ts';
 import type {
   EnumRole,
   ExternRole,
+  StructuralReference,
   TypeDefinition,
   TypeReference,
 } from '../../../definition/tables/types.ts';
@@ -232,7 +233,7 @@ export class TypeTable {
    * The tuple or function `type` is, part by part: not folded, so a recursive alias's body is the
    * structure it unfolds to, never the alias again.
    */
-  #structural(type: TupleType | FunctionType): TypeReference {
+  #structural(type: TupleType | FunctionType): StructuralReference {
     return type.kind === 'tuple'
       ? { kind: 'tuple', elements: type.elements.map((element) => this.reference(element)) }
       : {
