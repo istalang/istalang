@@ -21,7 +21,7 @@ import { unreachable } from '../../foundation/structures/unreachable.ts';
 import { withHost } from '../boundary/host-natives.ts';
 import type { LogRecord, StartOptions } from '../instance-state.ts';
 import type { ContextCall, Natives } from '../natives.ts';
-import { seedBytes } from '../random-draws.ts';
+import { instanceSeed, seedBytes } from '../random-draws.ts';
 import {
   Instance,
   type InstanceEnd,
@@ -94,7 +94,7 @@ export class DurableWorld implements World {
   ): Run {
     const { clock, seed } = this.binding;
     const instance = new Instance(name, false);
-    const run = this.#run(program, { instance, clock, seed: seed(), log });
+    const run = this.#run(program, { instance, clock, seed: instanceSeed(seed, name), log });
     this.#live.set(run, { program, options });
     return run;
   }
@@ -149,7 +149,10 @@ export class DurableWorld implements World {
     const context =
       this.residents.get(key) ??
       this.load(key) ??
-      this.#made({ name: key, program, seed: this.binding.seed() }, crashEveryAwait);
+      this.#made(
+        { name: key, program, seed: instanceSeed(this.binding.seed, key) },
+        crashEveryAwait,
+      );
     const sent = { ...into, closure: copied(into.closure), passed: into.passed.map(copied) };
     const answered = (end: InvocationEnd) => {
       if (end.kind === 'returned') {

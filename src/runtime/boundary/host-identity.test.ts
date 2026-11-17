@@ -235,7 +235,7 @@ describe('a value given to a host again', () => {
       natives: stdNatives,
       externs: host,
       clock: new ManualClock(),
-      seed: () => testSeed,
+      seed: testSeed,
     };
     const { end } = await startLive(program, binding);
     if (end.kind !== 'finished') {

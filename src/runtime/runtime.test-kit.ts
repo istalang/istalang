@@ -43,7 +43,7 @@ export function recordingStore(inner: InstanceStore = memoryStore()): RecordingS
   };
 }
 
-/** The seed of every instance a test runtime starts, so its random values repeat (§3.8). */
+/** The seed of a test runtime's host, so the random values of the instances it makes repeat (§3.8). */
 export const testSeed = new Uint8Array(seedBytes);
 
 /** A test runtime's host binding, every part of it defaulted, its store recording, its clock manual. */
@@ -69,7 +69,7 @@ export function testRuntime({
   store = recordingStore(),
   clock = new ManualClock(),
   externs = {},
-  seed = () => testSeed,
+  seed = testSeed,
   reports,
 }: TestRuntimeOptions = {}): TestRuntime {
   const inner = createRuntime({

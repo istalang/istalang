@@ -27,7 +27,7 @@ async function endsAsStated(_: undefined, { subject }: { readonly subject: Progr
     natives: stdNatives,
     store: memoryStore(),
     clock: realTime,
-    seed: () => randomBytes(seedBytes),
+    seed: randomBytes(seedBytes),
     externs: await hostOf(subject),
     reports: {
       logs: (records) => logs.push(...records.map(logLine)),

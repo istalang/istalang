@@ -11,15 +11,15 @@ import type { Natives } from '../natives.ts';
 import type { InstanceStore } from '../store.ts';
 
 /**
- * The natives of the std, the host's externs written against JSON, its clock, the seed of the
- * random source of each instance it makes, the store its instances commit to, and what it hears of
- * the instances it doesn't advance itself.
+ * The natives of the std, the host's externs written against JSON, its clock, its secret seed,
+ * which each instance it makes derives its own from (random-draws.ts `instanceSeed`), the store its
+ * instances commit to, and what it hears of the instances it doesn't advance itself.
  */
 export interface HostBinding {
   readonly natives: Natives;
   readonly externs?: HostExterns;
   readonly clock: Clock;
-  readonly seed: () => Uint8Array;
+  readonly seed: Uint8Array;
   readonly store: InstanceStore;
   readonly reports?: HostReports;
 }

@@ -58,7 +58,7 @@ const runtimeOf = () =>
     natives: stdNatives,
     store: memoryStore(),
     clock: realTime,
-    seed: () => randomBytes(seedLength),
+    seed: randomBytes(seedLength),
   });
 
 const workloads = {

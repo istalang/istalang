@@ -84,7 +84,7 @@ export async function runInWorld(seams: TestSeams, call: WorldCall): Promise<End
       natives,
       store: memoryStore(),
       clock,
-      seed: () => seed,
+      seed,
       reports: { logs: (records) => logs.push(...records), panicked: failed },
     },
     () => tested,

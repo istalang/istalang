@@ -35,7 +35,7 @@ export async function observeScenario(scenario: Scenario): Promise<readonly unkn
       natives: stdNatives,
       store,
       clock,
-      seed: () => new Uint8Array(32),
+      seed: new Uint8Array(32),
       externs: host.externs,
       reports: heard.reports,
     });

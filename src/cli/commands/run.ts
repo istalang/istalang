@@ -86,7 +86,7 @@ async function run(
     natives: stdNatives,
     store,
     clock: realTime,
-    seed: () => randomBytes(seedBytes),
+    seed: randomBytes(seedBytes),
     reports,
     ...(host === undefined ? {} : { externs: host }),
   });

@@ -146,9 +146,10 @@ it as a native, with exactly the summary its extern predecessor had (spec §3.16
   over (`Arrivals.succeededBy`: what arrives later lands there), and stops at its first park, as the first
   run did; that run commits and the first run's effects never leave. Answers of calls running across
   the rerun come from the last commit (`Resident.answers`).
-- **Random source** (spec §3.8 `random`): each instance has a seed of its own, the host's `seed`
-  for a context, a draw of its parent's for a spawned instance (drawn as it spawns, so a rerun
-  spawns it alike), a test's from its title. Its snapshot keeps the seed and the draws made, so a
+- **Random source** (spec §3.8 `random`): each instance has a seed of its own: a live run's and a
+  context's derived from the host's `seed` and its name (`instanceSeed`), so no two draw alike, a
+  spawned instance's a draw of its parent's (drawn as it spawns, so a rerun spawns it alike); a
+  test's host seed is made from its title. Its snapshot keeps the seed and the draws made, so a
   segment run again draws the same values.
 - **A panic** commits the instance as it stood before the failed segment, with the panic, the time
   the segment started and the call that started it, if one did (`replay`): its spawn's, or a call
