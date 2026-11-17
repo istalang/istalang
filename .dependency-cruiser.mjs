@@ -173,6 +173,8 @@ const checkerSurface = [
   'surface/named-variants.ts',
   'surface/denotation.ts',
   'surface/host-externs.ts',
+  // The calls a wait is written through at its case's types, which lowering makes and reach counts.
+  'surface/wait-calls.ts',
   // How arguments fill a function's parameters, the one rule tools judging a function value read.
   'resolution/choosing/binding.ts',
   'types/type/index.ts',

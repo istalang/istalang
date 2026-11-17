@@ -7,6 +7,8 @@
  *
  * - Every call a written call makes, at any depth through the witnesses it passes, a requirement
  *   call included (`callsMadeWith`): which function that runs is its caller's witness.
+ * - The prelude calls each case of a wait is written through, at the case's types, from the
+ *   `onAwait` it makes (wait-calls.ts).
  * - The calls the type entries of the types it makes run, which lowering's type table makes for
  *   each instantiation: a `dispose` that runs as code (§7) and the codec writing an instance's
  *   outcome (§9), for every value its code types, its signature's, and every type a call
@@ -29,7 +31,13 @@ import { parametersIn } from '../types/parts/type-parts.ts';
 import { heldTypes } from '../types/properties/held.ts';
 import type { ParameterKey, Type } from '../types/type/index.ts';
 import { wellKnownArguments } from '../types/type/well-known.ts';
-import { callsMadeWith, instantiatingTypesOf, type ResolvedCall } from './resolved-call.ts';
+import {
+  callsMadeWith,
+  instantiatingTypesOf,
+  type MadeCall,
+  type ResolvedCall,
+} from './resolved-call.ts';
+import { waitCalls, waitCaseOfCall } from './wait-calls.ts';
 
 /** A call a function's code reaches, and the node making it. */
 interface ReachedCall {
@@ -45,6 +53,7 @@ type ReachSeams = Pick<
   | 'resultOf'
   | 'disposalOf'
   | 'json'
+  | 'languageFunctions'
   | 'wellKnownType'
   | 'fieldsOf'
   | 'variantsOf'
@@ -68,7 +77,10 @@ export function reachedCalls(
   const own = new Set<ParameterKey>(typeParametersOf(declaration.typeParameters));
   const written = [checker.bodyOf(declaration), checker.defaultsOf(declaration)]
     .flatMap((body) => body?.madeCalls() ?? [])
-    .flatMap(({ site, call }) => callsMadeWith(call).map((each) => ({ site, call: each })));
+    .flatMap((recorded) => [
+      ...callsMadeWith(recorded.call).map((each) => ({ site: recorded.site, call: each })),
+      ...waitCallsOf(checker, recorded).map((each) => ({ site: recorded.site, call: each })),
+    ]);
   const left = new Map<FunctionDeclaration, readonly Type[]>();
   const leftBy = (call: ResolvedCall): readonly Type[] => {
     const renewed = call.kind === 'function' && call.typeArguments.some((type) => names(type, own));
@@ -103,6 +115,15 @@ export function reachedCalls(
     ),
   );
   return [...written, ...entries];
+}
+
+/** The calls the wait `made`, an `onAwait` a case makes, is written through (wait-calls.ts). */
+function waitCallsOf(checker: ReachSeams, made: MadeCall): readonly ResolvedCall[] {
+  if (made.kind !== 'call' || made.role !== 'onAwait') {
+    return [];
+  }
+  const waited = waitCaseOfCall(checker, made.call);
+  return waited === undefined ? [] : waitCalls(checker, waited);
 }
 
 /** The types `declaration`'s code makes: each expression's its bodies type, and its signature's. */

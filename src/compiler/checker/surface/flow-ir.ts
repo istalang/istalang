@@ -104,7 +104,7 @@ export type Argument =
  * (§3.3); the `variant`-th variant of the enum `type` (its fields in order); a closure of a nested
  * function and the values it captures; or a function named as a value, which `call` runs.
  */
-type Made =
+export type Made =
   | { readonly kind: 'struct' | 'handle'; readonly fields: readonly (string | undefined)[] }
   | { readonly kind: 'tuple' }
   | { readonly kind: 'array' | 'map'; readonly spreads: readonly number[] }

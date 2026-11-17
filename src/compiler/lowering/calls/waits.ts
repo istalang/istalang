@@ -26,6 +26,7 @@ import {
 } from '../../../foundation/language/well-known/implicit-calls.ts';
 import { type Persistence, wellKnown } from '../../../foundation/language/well-known/index.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
+import { type WaitFunction, waitArguments } from '../../checker/surface/wait-calls.ts';
 import type { NominalType, Type } from '../../checker/types/type/index.ts';
 import { intType, literalType, unitType } from '../../checker/types/type/primitives.ts';
 import { wellKnownArguments } from '../../checker/types/type/well-known.ts';
@@ -47,14 +48,13 @@ export function openWait(context: CodeContext, mode: Persistence, span: Anchored
   const call = wellKnownTypeOf(context, wellKnown.call, []);
   const handle = code.borrow(tables.types.reference(call));
   code.emit({ kind: 'currentCall', span, dst: handle });
-  const kind = [literalType(mode)];
+  const kind = literalType(mode);
   const wait = callPrelude(
     context,
     {
-      name: waitFunctions.wait,
-      typeArguments: kind,
+      ...waitCall('wait', { mode: kind }),
       arguments: [handle],
-      result: wellKnownTypeOf(context, wellKnown.wait, kind),
+      result: wellKnownTypeOf(context, wellKnown.wait, [kind]),
     },
     span,
   );
@@ -79,22 +79,21 @@ export function caseResolver(
   span: AnchoredSpan,
 ): Register {
   const { code } = context;
+  const mode = literalType(open.mode);
   const into = wellKnownTypeOf(context, wellKnown.shared, [arrayOf(context, type)]);
   const shared = callPrelude(
     context,
-    { name: waitFunctions.caseInto, typeArguments: [type], result: into },
+    { ...waitCall('caseInto', { value: type, mode }), result: into },
     span,
   );
   code.pin(shared);
   open.cases[position] = { shared, type };
-  const mode = literalType(open.mode);
   const resolverType = wellKnownTypeOf(context, wellKnown.resolver, [type, mode]);
   const at = emitConstantInt(context, position, span);
   return callPrelude(
     context,
     {
-      name: waitFunctions.caseResolver,
-      typeArguments: [type, mode],
+      ...waitCall('caseResolver', { value: type, mode }),
       arguments: [open.wait, at, shared],
       result: resolverType,
     },
@@ -114,8 +113,7 @@ export function parked(
   const parking = callPrelude(
     context,
     {
-      name: waitFunctions.parking,
-      typeArguments: [literalType(open.mode)],
+      ...waitCall('parking', { mode: literalType(open.mode) }),
       arguments: [open.wait],
       result: unitType,
     },
@@ -133,8 +131,7 @@ export function decidedAt(context: CodeContext, open: OpenWait, span: AnchoredSp
   return callPrelude(
     context,
     {
-      name: waitFunctions.decided,
-      typeArguments: [literalType(open.mode)],
+      ...waitCall('decided', { mode: literalType(open.mode) }),
       arguments: [open.wait],
       result: intType,
     },
@@ -156,8 +153,7 @@ export function caseValue(
   return callPrelude(
     context,
     {
-      name: waitFunctions.caseTaken,
-      typeArguments: [decided.type],
+      ...waitCall('caseTaken', { value: decided.type, mode: literalType(open.mode) }),
       arguments: [decided.shared],
       result: decided.type,
     },
@@ -198,6 +194,14 @@ export function awaitFuture(
   const value = caseValue(context, open, 0, span);
   code.letGo(waitRegisters(open), span);
   return value;
+}
+
+/** The prelude function a wait calls as `name`, at the types of `waited` it takes (wait-calls.ts). */
+function waitCall(
+  name: WaitFunction,
+  waited: Parameters<typeof waitArguments>[1],
+): Pick<PreludeCall, 'name' | 'typeArguments'> {
+  return { name: waitFunctions[name], typeArguments: waitArguments(name, waited) };
 }
 
 /** A call lowering makes of a prelude function: its name, type arguments, arguments and result. */

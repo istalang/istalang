@@ -205,7 +205,13 @@ interface ComputedRequirement {
  * closure calls later, and the node naming it.
  */
 export type MadeCall =
-  | { readonly kind: 'call'; readonly site: NodeOf<string>; readonly call: ResolvedCall }
+  | {
+      readonly kind: 'call';
+      readonly site: NodeOf<string>;
+      readonly call: ResolvedCall;
+      /** The role the language makes it in, where no call is written for it. */
+      readonly role?: ImplicitRole;
+    }
   | { readonly kind: 'value'; readonly site: FunctionNaming; readonly call: ResolvedCall };
 
 /**

@@ -14,7 +14,7 @@
  */
 
 import type { Register } from '../../../definition/operands.ts';
-import { type Persistence, wellKnown } from '../../../foundation/language/well-known/index.ts';
+import type { Persistence } from '../../../foundation/language/well-known/index.ts';
 import { memo } from '../../../foundation/structures/memo.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type {
@@ -24,10 +24,10 @@ import type {
   Operation,
   ValueId,
 } from '../../checker/surface/flow-ir.ts';
+import { waitCaseOf } from '../../checker/surface/wait-calls.ts';
 import { substitute } from '../../checker/types/parts/substitution.ts';
 import type { Type } from '../../checker/types/type/index.ts';
 import { intType } from '../../checker/types/type/primitives.ts';
-import { wellKnownArguments } from '../../checker/types/type/well-known.ts';
 import { selectCasesOf } from '../../syntax/expressions/readings.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 import { type ClosedCall, calledParameters, substitutionOfCall } from '../calls/closed-calls.ts';
@@ -159,14 +159,11 @@ function resolverArguments(writer: FlowWriter, closed: ClosedCall): readonly [Ty
     done === undefined
       ? undefined
       : substitute(done, substitutionOfCall(checker, closed), checker.typeRules);
-  const [given, mode] =
-    (resolver === undefined
-      ? undefined
-      : wellKnownArguments(checker, wellKnown.resolver, resolver)) ?? [];
-  if (given === undefined || mode?.kind !== 'literal') {
+  const waited = resolver === undefined ? undefined : waitCaseOf(checker, resolver);
+  if (waited === undefined || waited.mode.kind !== 'literal') {
     return unreachable(`An onAwait takes no resolver at ${closed.kind}.`);
   }
-  return [given, mode.value === 'ista' ? 'ista' : 'live'];
+  return [waited.value, waited.mode.value === 'ista' ? 'ista' : 'live'];
 }
 
 /** An `await` (`suspend` at one): parks until its case decides its wait, then takes its value. */
