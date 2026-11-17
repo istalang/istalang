@@ -9,10 +9,11 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
+import { slowTestTimeout } from '../../../test/timeouts.ts';
 import { encodeDefinition } from '../../definition/definition.ts';
 import { isError } from '../../foundation/diagnostics/diagnostic.ts';
 import { stdProgramOf } from '../binder/bind.test-kit.ts';
-import { checkedAfterStd, wholeProgramTimeout } from '../compile.test-kit.ts';
+import { checkedAfterStd } from '../compile.test-kit.ts';
 import { diagnose, mainOf } from '../compile.ts';
 import { idOf } from '../program/program.test-kit.ts';
 import { lower } from './lower.ts';
@@ -62,30 +63,28 @@ function checkedProgram() {
 }
 
 describe('a program lowered', () => {
-  it(
-    'gives one Definition whichever pending entry lowering takes next',
-    () => {
-      const { checker, entry } = checkedProgram();
-      const hashOf = (order?: (count: number) => number) =>
-        encodeDefinition(
-          lower(checker, entry, {
-            std: new StdLowering(),
-            ...(order === undefined ? {} : { order }),
-          }),
-        ).hash;
-      const asked = hashOf();
-      fc.assert(
-        fc.property(fc.array(fc.nat(), { minLength: 1, maxLength: 64 }), (picks) => {
-          let next = 0;
-          const order = (count: number) => {
-            next += 1;
-            return (picks[next % picks.length] ?? 0) % count;
-          };
-          expect(hashOf(order)).toBe(asked);
+  it('gives one Definition whichever pending entry lowering takes next', {
+    timeout: slowTestTimeout,
+  }, () => {
+    const { checker, entry } = checkedProgram();
+    const hashOf = (order?: (count: number) => number) =>
+      encodeDefinition(
+        lower(checker, entry, {
+          std: new StdLowering(),
+          ...(order === undefined ? {} : { order }),
         }),
-        { numRuns: 8 },
-      );
-    },
-    wholeProgramTimeout,
-  );
+      ).hash;
+    const asked = hashOf();
+    fc.assert(
+      fc.property(fc.array(fc.nat(), { minLength: 1, maxLength: 64 }), (picks) => {
+        let next = 0;
+        const order = (count: number) => {
+          next += 1;
+          return (picks[next % picks.length] ?? 0) % count;
+        };
+        expect(hashOf(order)).toBe(asked);
+      }),
+      { numRuns: 8 },
+    );
+  });
 });

@@ -4,11 +4,10 @@
  * the type checking declared it with.
  */
 
-import { beforeAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { InlayHintRequest } from 'vscode-languageserver/node';
 import { checkProgram } from '../../../compiler/checker/check.ts';
 import { typeText } from '../../../compiler/checker/types/type/type-text.ts';
-import { wholeProgramTimeout } from '../../../compiler/compile.test-kit.ts';
 import { parameterNames } from '../../../compiler/syntax/expressions/parameters.ts';
 import { targetNames } from '../../../compiler/syntax/patterns.ts';
 import { declaredTargets } from '../../../compiler/syntax/statements/targets.ts';
@@ -16,20 +15,15 @@ import { nodesUnder, type SyntaxNode } from '../../../compiler/syntax/tree/index
 import { type Identifier, isMissingName } from '../../../compiler/syntax/tree/node.ts';
 import { spanIn } from '../../../compiler/syntax/tree/positions.ts';
 import {
-  corpusClient,
   programDocuments as documents,
   corpusProgram as program,
+  sharedCorpusClient,
 } from '../corpus-client.test-kit.ts';
 import { rangeOf } from '../locations.ts';
-import type { TestClient } from '../server.test-kit.ts';
 
 const checker = checkProgram(program);
 
-let client: TestClient;
-
-beforeAll(async () => {
-  client = await corpusClient();
-}, wholeProgramTimeout);
+const client = sharedCorpusClient();
 
 function untypedNames(node: SyntaxNode): readonly Identifier[] {
   if (node.kind === 'VariableDeclaration' && node.type === undefined) {
@@ -76,7 +70,7 @@ describe('inlay hints over the corpus', () => {
           ? []
           : [hintAt(spanIn(tree, name.span).end, `: ${typeText(type)}`)];
       });
-    const hints = await client.connection.sendRequest(InlayHintRequest.type, {
+    const hints = await client().connection.sendRequest(InlayHintRequest.type, {
       textDocument: { uri },
       range: rangeOf(tree.source, { start: 0, end: tree.source.text.length }),
     });

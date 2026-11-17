@@ -12,6 +12,7 @@ import { fileURLToPath } from 'node:url';
 import { Rolldown } from 'tsdown';
 import { expect, it } from 'vitest';
 import { istaTextPlugin } from '../../scripts/ista-text-plugin.ts';
+import { slowTestTimeout } from '../../test/timeouts.ts';
 
 const entry = fileURLToPath(new URL('program.ts', import.meta.url));
 
@@ -52,6 +53,6 @@ async function nodeBuiltinsReached(): Promise<readonly string[]> {
   return [...reached].toSorted((left, right) => left.localeCompare(right));
 }
 
-it('needs of Node exactly the built-ins avsc requires', { timeout: 60_000 }, async () => {
+it('needs of Node exactly the built-ins avsc requires', { timeout: slowTestTimeout }, async () => {
   expect(await nodeBuiltinsReached()).toEqual(shimmed);
 });

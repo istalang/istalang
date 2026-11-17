@@ -10,7 +10,7 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { wholeProgramTimeout } from '../../src/compiler/compile.test-kit.ts';
+import { slowTestTimeout } from '../timeouts.ts';
 import { codesOf, runMain } from '../written-types.test-kit.ts';
 import { generatedFieldsArbitrary } from './computed.test-kit.ts';
 
@@ -90,7 +90,7 @@ describe('elements holding keys', () => {
   });
 
   it('agree over any struct, as the array literal written out per field', {
-    timeout: wholeProgramTimeout,
+    timeout: slowTestTimeout,
   }, async () => {
     await fc.assert(
       fc.asyncProperty(generatedFieldsArbitrary, async (fields) => {
@@ -190,7 +190,7 @@ describe('a struct comprehension', () => {
 
 describe('the commute law of a struct comprehension', () => {
   it('agrees: generic and instantiated, over the concrete struct, and written out by hand', {
-    timeout: wholeProgramTimeout,
+    timeout: slowTestTimeout,
   }, async () => {
     await fc.assert(
       fc.asyncProperty(generatedFieldsArbitrary, async (fields) => {
@@ -225,7 +225,7 @@ describe('the commute law of a struct comprehension', () => {
   });
 
   it('evaluates the named fields as written, then the comprehension in name order', {
-    timeout: wholeProgramTimeout,
+    timeout: slowTestTimeout,
   }, async () => {
     await fc.assert(
       fc.asyncProperty(generatedFieldsArbitrary, fc.nat(), async (fields, cut) => {

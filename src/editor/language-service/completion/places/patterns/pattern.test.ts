@@ -10,8 +10,8 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { runPrograms } from '../../../../../../test/corpus/programs.ts';
+import { slowTestTimeout } from '../../../../../../test/timeouts.ts';
 import { checkProgram } from '../../../../../compiler/checker/check.ts';
-import { wholeProgramTimeout } from '../../../../../compiler/compile.test-kit.ts';
 import { patternHead } from '../../../../../compiler/syntax/patterns.ts';
 import { extentIn, nodesUnder } from '../../../../../compiler/syntax/tree/index.ts';
 import { type Diagnostic, isError } from '../../../../../foundation/diagnostics/diagnostic.ts';
@@ -157,7 +157,7 @@ function fieldMisfitsOf({ text, start, end, open, named }: (typeof fieldSites)[n
 }
 
 describe('pattern completion offers what fits the matched value', () => {
-  it('at the start of the corpus patterns', { timeout: wholeProgramTimeout }, () => {
+  it('at the start of the corpus patterns', { timeout: slowTestTimeout }, () => {
     fc.assert(
       fc.property(fc.constantFrom(...patternSites), (site) => {
         expect(misfitsOf(site)).toEqual([]);
@@ -166,7 +166,7 @@ describe('pattern completion offers what fits the matched value', () => {
     );
   });
 
-  it('offering the word each corpus pattern starts with', { timeout: wholeProgramTimeout }, () => {
+  it('offering the word each corpus pattern starts with', { timeout: slowTestTimeout }, () => {
     fc.assert(
       fc.property(fc.constantFrom(...wordSites), ({ site: { text, start, end }, word }) => {
         fc.pre(errorsIn(text, text, start, end).length === 0);
@@ -177,7 +177,7 @@ describe('pattern completion offers what fits the matched value', () => {
     );
   });
 
-  it("in the corpus struct patterns' braces", { timeout: wholeProgramTimeout }, () => {
+  it("in the corpus struct patterns' braces", { timeout: slowTestTimeout }, () => {
     fc.assert(
       fc.property(fc.constantFrom(...fieldSites), (site) => {
         expect(fieldMisfitsOf(site)).toEqual([]);

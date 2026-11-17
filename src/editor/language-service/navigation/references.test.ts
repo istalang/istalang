@@ -5,9 +5,9 @@
 
 import { describe, expect, it } from 'vitest';
 import { corpusDirectory } from '../../../../test/corpus/programs.ts';
+import { slowTestTimeout } from '../../../../test/timeouts.ts';
 import type { Entity } from '../../../compiler/binder/entities.ts';
 import { checkProgram } from '../../../compiler/checker/check.ts';
-import { wholeProgramTimeout } from '../../../compiler/compile.test-kit.ts';
 import type { Program } from '../../../compiler/program/program.ts';
 import { nodesUnder } from '../../../compiler/syntax/tree/index.ts';
 import { findProjectSources, loadProject } from '../../../project/project.ts';
@@ -114,7 +114,7 @@ function missedUses(
 
 describe('the names denoting a declaration across the corpus', () => {
   it("include every use the binder resolves to the declaration's entity", {
-    timeout: wholeProgramTimeout,
+    timeout: slowTestTimeout,
   }, () => {
     const { program } = loadProject(corpusDirectory, findProjectSources(corpusDirectory));
     const byEntity = namesByEntity(program);

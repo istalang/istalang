@@ -12,9 +12,9 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import namesLib from '../../../test/corpus/names/lib.ista';
 import namesMain from '../../../test/corpus/names/main.ista';
+import { slowTestTimeout } from '../../../test/timeouts.ts';
 import { memo } from '../../foundation/structures/memo.ts';
 import { stdProgramOf } from '../binder/bind.test-kit.ts';
-import { wholeProgramTimeout } from '../compile.test-kit.ts';
 import {
   bodyEditChoices,
   editInsideBody,
@@ -50,8 +50,10 @@ const checkedEveryModule = (files: Files) =>
 
 const names = { 'names/main': namesMain, 'names/lib': namesLib };
 
-describe('a checker made after an earlier one', { timeout: wholeProgramTimeout }, () => {
-  it('answers every revision afresh after edits of an imported module, in every module', () => {
+describe('a checker made after an earlier one', () => {
+  it('answers every revision afresh after edits of an imported module, in every module', {
+    timeout: slowTestTimeout,
+  }, () => {
     const first = checkedRevision(stdProgramOf(names), ownModules);
     fc.assert(
       fc.property(editSequences, (edits) => {
@@ -77,6 +79,7 @@ describe('a checker made after an earlier one', { timeout: wholeProgramTimeout }
 
   it.each(twoModules)(
     'checks no body but the edited module of $name, and no std body again',
+    { timeout: slowTestTimeout },
     ({ files, edited }) => {
       const first = checkedEveryModule(files);
       fc.assert(

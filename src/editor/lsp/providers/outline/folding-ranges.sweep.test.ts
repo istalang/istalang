@@ -1,19 +1,13 @@
-import { beforeAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { FoldingRangeRequest } from 'vscode-languageserver/node';
-import { wholeProgramTimeout } from '../../../../compiler/compile.test-kit.ts';
 import { extentIn, nodesUnder, type SyntaxTree } from '../../../../compiler/syntax/tree/index.ts';
 import { spanIn } from '../../../../compiler/syntax/tree/positions.ts';
 import { lineMapOf } from '../../../../foundation/text/line-map.ts';
 import type { Span } from '../../../../foundation/text/span.ts';
 import { allTokensOf } from '../../../language-service/reading/tokens.ts';
-import { corpusClient, corpusDocuments } from '../../corpus-client.test-kit.ts';
-import type { TestClient } from '../../server.test-kit.ts';
+import { corpusDocuments, sharedCorpusClient } from '../../corpus-client.test-kit.ts';
 
-let client: TestClient;
-
-beforeAll(async () => {
-  client = await corpusClient();
-}, wholeProgramTimeout);
+const client = sharedCorpusClient();
 
 interface Fold {
   readonly startLine: number;
@@ -90,7 +84,8 @@ function bracketFoldables(
 
 async function foldsOf(uri: string): Promise<readonly Fold[]> {
   return (
-    (await client.connection.sendRequest(FoldingRangeRequest.type, { textDocument: { uri } })) ?? []
+    (await client().connection.sendRequest(FoldingRangeRequest.type, { textDocument: { uri } })) ??
+    []
   );
 }
 

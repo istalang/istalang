@@ -9,9 +9,9 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
+import { slowTestTimeout } from '../../../../../test/timeouts.ts';
 import { reportedNothing } from '../../../../foundation/diagnostics/diagnostic.test-kit.ts';
 import { mainGives } from '../../../../stdlib/prelude/prelude.test-kit.ts';
-import { wholeProgramTimeout } from '../../../compile.test-kit.ts';
 import { lines } from '../../../parser/parse.test-kit.ts';
 import { reported } from '../../check.test-kit.ts';
 
@@ -99,7 +99,7 @@ describe('a member of a recursive union flattened into a recursive union', () =>
   });
 
   it('is selected by type patterns at every level, through a chain of any length, one type', {
-    timeout: wholeProgramTimeout,
+    timeout: slowTestTimeout,
   }, async () => {
     await fc.assert(
       fc.asyncProperty(

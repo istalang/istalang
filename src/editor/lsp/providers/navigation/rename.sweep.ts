@@ -2,13 +2,15 @@
  * Renaming through the server across the corpus: a rename keeps every diagnostic and every renamed
  * name denoting what it did.
  *
- * It runs in slices, one per `rename-<n>.sweep.test.ts` beside this module (test/slices.ts), each
- * with a server of its own: every name of the computed programs is dealt round them, and so are
- * the two sampled properties.
+ * Every rename re-diagnoses the whole corpus, a tenth of a second or more, so the work is split
+ * into tests: one per name of the programs of computed types, every one renamed, and a sampled
+ * property's runs `runsPerTest` a test, slow-tier work (test/timeouts.ts). The tests are
+ * dealt round slices, one per `rename-<n>.sweep.test.ts` beside this module (test/slices.ts), each
+ * with a server of its own.
  */
 
 import fc from 'fast-check';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   PrepareRenameRequest,
   RenameRequest,
@@ -16,8 +18,8 @@ import {
 } from 'vscode-languageserver/node';
 import { corpusDirectory } from '../../../../../test/corpus/programs.ts';
 import { sliceOf } from '../../../../../test/slices.ts';
+import { slowTestTimeout } from '../../../../../test/timeouts.ts';
 import { checkProgram } from '../../../../compiler/checker/check.ts';
-import { wholeProgramTimeout } from '../../../../compiler/compile.test-kit.ts';
 import { diagnoseModule } from '../../../../compiler/compile.ts';
 import {
   isStdModule,
@@ -38,7 +40,7 @@ import {
 } from '../../../language-service/navigation/declarations.ts';
 import { namesDenoting } from '../../../language-service/navigation/references.ts';
 import { renamingAt } from '../../../language-service/navigation/rename.ts';
-import { corpusClient, corpusProgram } from '../../corpus-client.test-kit.ts';
+import { corpusProgram, sharedCorpusClient } from '../../corpus-client.test-kit.ts';
 import { moduleIdOfUri, rangeOf } from '../../locations.ts';
 import { projectProgramLoader } from '../../project-loader.ts';
 import type { TestClient } from '../../server.test-kit.ts';
@@ -195,68 +197,68 @@ async function renamingProblems(
   ];
 }
 
-/** A sampled property: renaming `numRuns` of `names` keeps what each meant. */
+/** A sampled property: renaming `runsPerTest` of `names` in each of `tests` keeps what each meant. */
 interface Sampled {
   readonly name: string;
   readonly names: () => readonly NamePlace[];
-  readonly numRuns: number;
+  readonly tests: number;
 }
 
-/** The sampled properties, each one slice's. */
+/** The renames a test of a sampled property makes. */
+const runsPerTest = 20;
+
 const sampled: readonly Sampled[] = [
   {
     name: 'keeps every diagnostic, and every renamed name denoting what it did',
     names: () => renamable,
-    numRuns: 40,
+    tests: 2,
   },
   {
     name: 'spells shorthands out, keeping what they mean',
     names: () => renamable.filter(hasShorthand),
-    numRuns: 20,
+    tests: 1,
   },
 ];
 
-/** A slice's longest wait: every rename re-diagnoses the whole corpus, a tenth of a second each. */
-const sliceTimeout = 240_000;
+/** Each test of the sampled properties, numbered when its property has more than one. */
+const sampledTests = sampled.flatMap(({ name, names, tests }) =>
+  Array.from({ length: tests }, (_, index) => ({
+    name: tests === 1 ? name : `${name}, sample ${index + 1} of ${tests}`,
+    names,
+  })),
+);
 
-/** Registers the sampled property as a test, each rename sent to the server `client()` answers with. */
-function sampledTest({ name, names, numRuns }: Sampled, client: () => TestClient): void {
-  it(name, { timeout: sliceTimeout }, async () => {
-    const sample = names();
-    expect(sample.length).toBeGreaterThan(0);
-    await fc.assert(
-      fc.asyncProperty(fc.constantFrom(...sample), async (declaring) => {
-        expect(await renamingProblems(client(), declaring)).toEqual([]);
-      }),
-      { numRuns },
-    );
-  });
-}
+/** Every name of the programs of computed types, renamed each, not sampled, by where it stands. */
+const computedNames = renamable.flatMap((declaring) =>
+  declaring.module.includes('/computed/')
+    ? [{ declaring, at: `${declaring.module} ${spelledName(declaring.name)}` }]
+    : [],
+);
 
 /** Registers the renames of the slice `file` (its `import.meta.url`), against a server of its own. */
 export function renameSlice(file: string): void {
   const slice = sliceOf(file);
-  let client: TestClient;
-
-  beforeAll(async () => {
-    client = await corpusClient();
-  }, wholeProgramTimeout);
-
-  const server = () => client;
+  const client = sharedCorpusClient();
 
   describe('renaming across the corpus', () => {
-    for (const property of slice.of(sampled)) {
-      sampledTest(property, server);
+    for (const { name, names } of slice.of(sampledTests)) {
+      it(name, { timeout: slowTestTimeout }, async () => {
+        const sample = names();
+        expect(sample.length).toBeGreaterThan(0);
+        await fc.assert(
+          fc.asyncProperty(fc.constantFrom(...sample), async (declaring) => {
+            expect(await renamingProblems(client(), declaring)).toEqual([]);
+          }),
+          { numRuns: runsPerTest },
+        );
+      });
     }
 
-    it('keeps what a program of computed types means, renaming each name it may', {
-      timeout: sliceTimeout,
-    }, async () => {
-      const keyed = slice.of(renamable.filter(({ module }) => module.includes('/computed/')));
-      expect(keyed.length).toBeGreaterThan(0);
-      const problems = await Promise.all(keyed.map((each) => renamingProblems(client, each)));
-      expect(problems.flat()).toEqual([]);
-      // Every name of every computed program, not a sample, dealt round the slices.
-    });
+    it.each(slice.of(computedNames))(
+      'keeps what a program of computed types means, renaming $at',
+      async ({ declaring }) => {
+        expect(await renamingProblems(client(), declaring)).toEqual([]);
+      },
+    );
   });
 }

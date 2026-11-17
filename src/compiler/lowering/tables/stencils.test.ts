@@ -6,8 +6,9 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import { slowTestTimeout } from '../../../../test/timeouts.ts';
 import { mainGives } from '../../../stdlib/prelude/prelude.test-kit.ts';
-import { compiledEncoded, wholeProgramTimeout } from '../../compile.test-kit.ts';
+import { compiledEncoded } from '../../compile.test-kit.ts';
 
 /** A disposable whose disposal counts itself in `count`. */
 const lease = `shared struct Lease:
@@ -41,54 +42,44 @@ function callsAtEveryClass(name: string): readonly string[] {
 }
 
 describe('a generic function using its type parameter only opaquely', () => {
-  it(
-    'is one entry per representation, a stand-in named by its parameter',
-    () => {
-      const names = entryNames('fn keep<T>(x: T) -> (T, T): (x, x)', callsAtEveryClass('keep'));
-      expect(names.filter((name) => name.startsWith('main.keep')).sort()).toEqual([
-        'main.keep<Int>',
-        'main.keep<String>',
-        'main.keep<T>',
-        'main.keep<T>',
-      ]);
-    },
-    wholeProgramTimeout,
-  );
+  it('is one entry per representation, a stand-in named by its parameter', {
+    timeout: slowTestTimeout,
+  }, () => {
+    const names = entryNames('fn keep<T>(x: T) -> (T, T): (x, x)', callsAtEveryClass('keep'));
+    expect(names.filter((name) => name.startsWith('main.keep')).sort()).toEqual([
+      'main.keep<Int>',
+      'main.keep<String>',
+      'main.keep<T>',
+      'main.keep<T>',
+    ]);
+  });
 
-  it(
-    'leaves a heap value it copied as its caller holds it, changed in place by one holder only',
-    async () => {
-      const body = 'let pair = keep([1])\npair.0.push(2)\npair.1.length()';
-      expect(await mainGives('Int', body, 'fn keep<T>(x: T) -> (T, T): (x, x)')).toBe(1);
-    },
-    wholeProgramTimeout,
-  );
+  it('leaves a heap value it copied as its caller holds it, changed in place by one holder only', {
+    timeout: slowTestTimeout,
+  }, async () => {
+    const body = 'let pair = keep([1])\npair.0.push(2)\npair.1.length()';
+    expect(await mainGives('Int', body, 'fn keep<T>(x: T) -> (T, T): (x, x)')).toBe(1);
+  });
 
-  it(
-    'disposes a counted value once its last holder lets go of it',
-    async () => {
-      const body = [
-        'const count = new Shared<Int>{value: 0}',
-        'const pair = keep(new Lease{count})',
-        'drop pair',
-        'count->value',
-      ].join('\n');
-      expect(await mainGives('Int', body, `${lease}\nfn keep<T>(x: T) -> (T, T): (x, x)`)).toBe(1);
-    },
-    wholeProgramTimeout,
-  );
+  it('disposes a counted value once its last holder lets go of it', {
+    timeout: slowTestTimeout,
+  }, async () => {
+    const body = [
+      'const count = new Shared<Int>{value: 0}',
+      'const pair = keep(new Lease{count})',
+      'drop pair',
+      'count->value',
+    ].join('\n');
+    expect(await mainGives('Int', body, `${lease}\nfn keep<T>(x: T) -> (T, T): (x, x)`)).toBe(1);
+  });
 });
 
 describe('a generic function whose type parameter a union names', () => {
-  it(
-    'is one entry per type',
-    () => {
-      const names = entryNames('fn wrap<T>(x: T) -> T?: x', ['wrap(1)', 'wrap("s")']);
-      expect(names.filter((name) => name.startsWith('main.wrap'))).toEqual([
-        'main.wrap<Int>',
-        'main.wrap<String>',
-      ]);
-    },
-    wholeProgramTimeout,
-  );
+  it('is one entry per type', { timeout: slowTestTimeout }, () => {
+    const names = entryNames('fn wrap<T>(x: T) -> T?: x', ['wrap(1)', 'wrap("s")']);
+    expect(names.filter((name) => name.startsWith('main.wrap'))).toEqual([
+      'main.wrap<Int>',
+      'main.wrap<String>',
+    ]);
+  });
 });

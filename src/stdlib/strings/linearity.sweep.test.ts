@@ -6,6 +6,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import { slowTestTimeout } from '../../../test/timeouts.ts';
 import { compiledEncoded } from '../../compiler/compile.test-kit.ts';
 import type { EncodedDefinition } from '../../definition/definition.ts';
 import { startToEnd, testRuntime } from '../../runtime/runtime.test-kit.ts';
@@ -50,12 +51,12 @@ async function runTime(expression: string): Promise<{ time: number; ended: strin
 describe('string code', () => {
   it.each(Object.entries(operations))(
     '%s takes time linear in its text',
+    { timeout: slowTestTimeout },
     async (_, run) => {
       const small = await runTime(run(4000));
       const large = await runTime(run(40_000));
       expect([small.ended, large.ended]).toEqual(['finished', 'finished']);
       expect(large.time / small.time).toBeLessThan(15);
     },
-    300_000,
   );
 });

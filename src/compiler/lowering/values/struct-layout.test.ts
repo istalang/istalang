@@ -8,10 +8,11 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
+import { slowTestTimeout } from '../../../../test/timeouts.ts';
 import { decodeJson } from '../../../definition/formats/codec.ts';
 import { compareOrdered } from '../../../foundation/language/order.ts';
 import { startToEnd, testRuntime } from '../../../runtime/runtime.test-kit.ts';
-import { compiledEncoded, mainDefinition, wholeProgramTimeout } from '../../compile.test-kit.ts';
+import { compiledEncoded, mainDefinition } from '../../compile.test-kit.ts';
 
 /**
  * camelCase names whose UTF-16 order differs from any other: `aB` before `aa`, `z10` before `z9`.
@@ -112,7 +113,7 @@ describe('struct layout', () => {
   });
 
   it('gives every field its value, defaults evaluated in declaration order', {
-    timeout: wholeProgramTimeout,
+    timeout: slowTestTimeout,
   }, async () => {
     await fc.assert(
       fc.asyncProperty(declaredFields, async (fields) => {

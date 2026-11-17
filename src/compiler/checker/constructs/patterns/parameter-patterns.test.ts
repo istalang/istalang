@@ -8,9 +8,9 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
+import { slowTestTimeout } from '../../../../../test/timeouts.ts';
 import { reportedOnce } from '../../../../foundation/diagnostics/diagnostic.test-kit.ts';
 import { mainGives } from '../../../../stdlib/prelude/prelude.test-kit.ts';
-import { wholeProgramTimeout } from '../../../compile.test-kit.ts';
 import { lines } from '../../../parser/parse.test-kit.ts';
 import { reported } from '../../check.test-kit.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
@@ -326,7 +326,7 @@ describe('equivalence property: parameter pattern vs body destructuring (§5, no
     });
 
   it('runs a function taking a parameter pattern to the exact same value as one destructuring in its first line', {
-    timeout: wholeProgramTimeout,
+    timeout: slowTestTimeout,
   }, async () => {
     await fc.assert(
       fc.asyncProperty(patternCases, async (testCase) => {

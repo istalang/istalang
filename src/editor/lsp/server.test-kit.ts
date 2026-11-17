@@ -6,11 +6,15 @@
  * Clients are shut down once their test file is done, so one server can serve every test of a file.
  * A client never sends `exit`, which would end the test's process, as the protocol has it end the
  * server's.
+ *
+ * An error the server logs fails every wait for diagnostics, with what it logged: a compiler bug
+ * while diagnosing a module publishes nothing for it (diagnostics.ts), so the wait would otherwise
+ * last until its test's limit and end without the stack naming the bug.
  */
 
 import { PassThrough } from 'node:stream';
 import { pathToFileURL } from 'node:url';
-import { afterAll } from 'vitest';
+import { afterAll, beforeAll } from 'vitest';
 import {
   createConnection,
   createProtocolConnection,
@@ -21,6 +25,8 @@ import {
   InitializedNotification,
   InitializeRequest,
   type InitializeResult,
+  LogMessageNotification,
+  MessageType,
   type ProtocolConnection,
   PublishDiagnosticsNotification,
   SemanticTokensRequest,
@@ -29,6 +35,7 @@ import {
   StreamMessageWriter,
 } from 'vscode-languageserver/node';
 import { addToGroup } from '../../foundation/structures/groups.ts';
+import { unreachable } from '../../foundation/structures/unreachable.ts';
 import { serveLanguage } from './server.ts';
 
 const shutdowns: (() => Promise<void>)[] = [];
@@ -58,6 +65,28 @@ interface HighlightedToken {
   readonly type: string;
 }
 
+/** A wait for the next diagnostics published for one document. */
+interface DiagnosticsWait {
+  readonly resolve: (diagnostics: readonly Diagnostic[]) => void;
+  readonly reject: (error: Error) => void;
+}
+
+/**
+ * The client `connect` makes before the tests of the calling file or `describe` block, which they
+ * share: a test calls the function returned. Making it gets `timeout`, as a hook's work is its
+ * tests'.
+ */
+export function sharedClient(
+  connect: () => Promise<TestClient>,
+  timeout?: number,
+): () => TestClient {
+  let client: TestClient | undefined;
+  beforeAll(async () => {
+    client = await connect();
+  }, timeout);
+  return () => client ?? unreachable('A shared client is read before its tests start.');
+}
+
 /** Starts a server for the project at `root` and connects a client to it. */
 export async function connectedClient(root: string): Promise<TestClient> {
   const toServer = new PassThrough();
@@ -75,10 +104,17 @@ export async function connectedClient(root: string): Promise<TestClient> {
     connection.dispose();
     toServer.end();
   });
-  const waiting = new Map<string, ((diagnostics: readonly Diagnostic[]) => void)[]>();
+  const waiting = new Map<string, DiagnosticsWait[]>();
   connection.onNotification(PublishDiagnosticsNotification.type, ({ uri, diagnostics }) => {
-    for (const resolve of waiting.get(uri)?.splice(0) ?? []) {
+    for (const { resolve } of waiting.get(uri)?.splice(0) ?? []) {
       resolve(diagnostics);
+    }
+  });
+  connection.onNotification(LogMessageNotification.type, ({ type, message }) => {
+    if (type === MessageType.Error) {
+      for (const { reject } of [...waiting.values()].flatMap((waits) => waits.splice(0))) {
+        reject(new Error(message));
+      }
     }
   });
   connection.listen();
@@ -112,8 +148,8 @@ export async function connectedClient(root: string): Promise<TestClient> {
         textDocument: { uri },
       }),
     nextDiagnostics: (uri) =>
-      new Promise((resolve) => {
-        addToGroup(waiting, uri, resolve);
+      new Promise((resolve, reject) => {
+        addToGroup(waiting, uri, { resolve, reject });
       }),
     highlighted: async (uri) => {
       const tokens = await connection.sendRequest(SemanticTokensRequest.type, {

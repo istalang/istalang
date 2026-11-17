@@ -8,12 +8,13 @@
 
 import fc from 'fast-check';
 import { describe, expect, it, vi } from 'vitest';
+import { slowTestTimeout } from '../../../../test/timeouts.ts';
 import { resolveWrittenTypes } from '../../../../test/written-types.test-kit.ts';
 import { encodeDefinition } from '../../../definition/definition.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import { mainGives } from '../../../stdlib/prelude/prelude.test-kit.ts';
 import { stdProgramOf } from '../../binder/bind.test-kit.ts';
-import { compiledDefinition, wholeProgramTimeout } from '../../compile.test-kit.ts';
+import { compiledDefinition } from '../../compile.test-kit.ts';
 import { tableKey } from './names.ts';
 
 /** Declarations the written types below name. */
@@ -147,7 +148,7 @@ const written = fc
 
 describe('table keys', () => {
   it('tell apart every two types of distinct keys, and are one for types of one key', {
-    timeout: wholeProgramTimeout,
+    timeout: slowTestTimeout,
   }, () => {
     fc.assert(
       fc.property(written, (texts) => {

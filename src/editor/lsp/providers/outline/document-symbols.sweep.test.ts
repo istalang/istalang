@@ -1,6 +1,5 @@
-import { beforeAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { type DocumentSymbol, DocumentSymbolRequest } from 'vscode-languageserver/node';
-import { wholeProgramTimeout } from '../../../../compiler/compile.test-kit.ts';
 import {
   boundName,
   type Declaration,
@@ -10,14 +9,9 @@ import { targetNames } from '../../../../compiler/syntax/patterns.ts';
 import { type Identifier, isMissingName } from '../../../../compiler/syntax/tree/node.ts';
 import { type AnchoredSpan, spanIn } from '../../../../compiler/syntax/tree/positions.ts';
 import { lineMapOf } from '../../../../foundation/text/line-map.ts';
-import { corpusClient, corpusDocuments } from '../../corpus-client.test-kit.ts';
-import type { TestClient } from '../../server.test-kit.ts';
+import { corpusDocuments, sharedCorpusClient } from '../../corpus-client.test-kit.ts';
 
-let client: TestClient;
-
-beforeAll(async () => {
-  client = await corpusClient();
-}, wholeProgramTimeout);
+const client = sharedCorpusClient();
 
 /** A declared name, and the names of the members declared inside it. */
 interface Declared {
@@ -76,7 +70,7 @@ describe('the outline', () => {
   it.each(corpusDocuments)(
     'lists every declaration with its members: $uri',
     async ({ uri, tree }) => {
-      const symbols = ((await client.connection.sendRequest(DocumentSymbolRequest.type, {
+      const symbols = ((await client().connection.sendRequest(DocumentSymbolRequest.type, {
         textDocument: { uri },
       })) ?? []) as readonly DocumentSymbol[];
       const lines = lineMapOf(tree.source);

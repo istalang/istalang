@@ -5,8 +5,8 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import { slowTestTimeout } from '../../../../test/timeouts.ts';
 import { mainGives } from '../../../stdlib/prelude/prelude.test-kit.ts';
-import { wholeProgramTimeout } from '../../compile.test-kit.ts';
 
 const declarations = [
   'fn made<T>(x: T) -> fn() -> Int: fn() -> Int: 1',
@@ -29,18 +29,14 @@ describe('two function values', () => {
     ['of one lambda with captures that differ', 'capturing(1, 1) == capturing([1], 2)', false],
   ])(
     'are equal as their body and captures are: %s',
+    { timeout: slowTestTimeout },
     async (_, comparison, equal) => {
       expect(await mainGives('Bool', comparison, declarations)).toBe(equal);
     },
-    wholeProgramTimeout,
   );
 
-  it(
-    'of one body are one map key',
-    async () => {
-      const body = 'const keyed = [made(1): 1, made([1]): 2]\nkeyed.size()';
-      expect(await mainGives('Int', body, declarations)).toBe(1);
-    },
-    wholeProgramTimeout,
-  );
+  it('of one body are one map key', { timeout: slowTestTimeout }, async () => {
+    const body = 'const keyed = [made(1): 1, made([1]): 2]\nkeyed.size()';
+    expect(await mainGives('Int', body, declarations)).toBe(1);
+  });
 });

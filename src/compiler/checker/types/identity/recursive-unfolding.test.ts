@@ -7,9 +7,9 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
+import { slowTestTimeout } from '../../../../../test/timeouts.ts';
 import { mainGives } from '../../../../stdlib/prelude/prelude.test-kit.ts';
 import { stdProgramOf } from '../../../binder/bind.test-kit.ts';
-import { wholeProgramTimeout } from '../../../compile.test-kit.ts';
 import { lines } from '../../../parser/parse.test-kit.ts';
 import { idOf } from '../../../program/program.test-kit.ts';
 import { programModule } from '../../../program/program.ts';
@@ -111,7 +111,7 @@ describe('a recursive use and what it unfolds to', () => {
   });
 
   it('build a literal of any nesting to one value, against the alias or its body written out', {
-    timeout: wholeProgramTimeout,
+    timeout: slowTestTimeout,
   }, async () => {
     await fc.assert(
       fc.asyncProperty(fc.constantFrom(...kinds), fc.nat({ max: 3 }), async (kind, depth) => {
@@ -134,7 +134,7 @@ describe('a recursive use and what it unfolds to', () => {
   });
 
   it('build a literal mixing items only checking types with items of other types, wherever it goes', {
-    timeout: wholeProgramTimeout,
+    timeout: slowTestTimeout,
   }, async () => {
     await fc.assert(
       fc.asyncProperty(mixedItems, async (literal) => {

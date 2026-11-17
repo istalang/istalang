@@ -11,6 +11,7 @@ import { describe, expect, it } from 'vitest';
 import { PublishDiagnosticsNotification, ShutdownRequest } from 'vscode-languageserver/node';
 import { brokenText } from '../../../test/broken.ts';
 import { corpusFiles } from '../../../test/corpus/programs.ts';
+import { slowTestTimeout } from '../../../test/timeouts.ts';
 import { tempProject } from '../../project/project.test-kit.ts';
 import { checked, projectProgram, uriOf } from './diagnostics.test-kit.ts';
 import { connectedClient } from './server.test-kit.ts';
@@ -44,7 +45,9 @@ function checkedAs(root: string, text: string) {
 }
 
 describe('the diagnostics an open document gets', () => {
-  it("follow each change, as ista check would report the changed file's", async () => {
+  it("follow each change, as ista check would report the changed file's", {
+    timeout: slowTestTimeout,
+  }, async () => {
     const root = tempProject({ 'main.ista': '' });
     const uri = uriOf(join(root, 'main.ista'));
     const client = await connectedClient(root);

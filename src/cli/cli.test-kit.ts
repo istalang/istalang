@@ -7,6 +7,7 @@ import { spawnSync } from 'node:child_process';
 import process from 'node:process';
 import { PassThrough, Readable } from 'node:stream';
 import { fileURLToPath } from 'node:url';
+import { testTimeout } from '../../test/timeouts.ts';
 import { runCli } from './cli.ts';
 
 /** The built `ista` executable, which the test setup builds before any test runs. */
@@ -50,7 +51,7 @@ export function istaProcess(cwd: string, ...args: string[]): Run {
   const run = spawnSync(process.execPath, [builtCli, ...args], {
     cwd,
     encoding: 'utf8',
-    timeout: 20_000,
+    timeout: testTimeout,
   });
   return { code: run.status, out: run.stdout, err: run.stderr };
 }

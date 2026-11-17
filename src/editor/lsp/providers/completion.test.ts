@@ -10,7 +10,7 @@
  */
 
 import { pathToFileURL } from 'node:url';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   type CompletionItem,
   CompletionRequest,
@@ -20,15 +20,14 @@ import { corpusDirectory } from '../../../../test/corpus/programs.ts';
 import { isLookedUp, resolvedNames } from '../../../compiler/binder/bind.test-kit.ts';
 import { checkProgram } from '../../../compiler/checker/check.ts';
 import { checkerDiagnostics } from '../../../compiler/checker/diagnostics/index.ts';
-import { wholeProgramTimeout } from '../../../compiler/compile.test-kit.ts';
 import { nodesUnder } from '../../../compiler/syntax/tree/index.ts';
 import type { Identifier } from '../../../compiler/syntax/tree/node.ts';
 import { spanIn } from '../../../compiler/syntax/tree/positions.ts';
 import { isError } from '../../../foundation/diagnostics/diagnostic.ts';
 import {
-  corpusClient,
   programDocuments as documents,
   corpusProgram as program,
+  sharedCorpusClient,
 } from '../corpus-client.test-kit.ts';
 import { rangeOf } from '../locations.ts';
 import { connectedClient, type TestClient } from '../server.test-kit.ts';
@@ -41,11 +40,7 @@ const ruledOut = ({ code }: { readonly code: number }) =>
 
 // biome-ignore lint/suspicious/noSkippedTests: times out under load; disabled until it is made faster
 describe.skip('completion over the corpus', () => {
-  let client: TestClient;
-
-  beforeAll(async () => {
-    client = await corpusClient();
-  }, wholeProgramTimeout);
+  const client = sharedCorpusClient();
 
   it.each(documents)('$uri', async ({ uri, module, tree }) => {
     const notAnnotations = checker
@@ -74,7 +69,7 @@ describe.skip('completion over the corpus', () => {
         .filter((name) => !inError(name))
         .map(async (name: Identifier) => {
           const position = rangeOf(tree.source, spanIn(tree, name.span)).end;
-          const items = await client.connection.sendRequest(CompletionRequest.type, {
+          const items = await client().connection.sendRequest(CompletionRequest.type, {
             textDocument: { uri },
             position,
           });

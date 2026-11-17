@@ -8,8 +8,8 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { invalidPrograms, runPrograms } from '../../../../../test/corpus/programs.ts';
+import { slowTestTimeout } from '../../../../../test/timeouts.ts';
 import { checkProgram } from '../../../../compiler/checker/check.ts';
-import { wholeProgramTimeout } from '../../../../compiler/compile.test-kit.ts';
 import type { Call } from '../../../../compiler/syntax/expressions/calls.ts';
 import { nodesUnder } from '../../../../compiler/syntax/tree/index.ts';
 import { spanIn } from '../../../../compiler/syntax/tree/positions.ts';
@@ -105,7 +105,7 @@ describe('call argument completion', () => {
   );
 
   it('names exactly the parameters a corpus call leaves to give', {
-    timeout: wholeProgramTimeout,
+    timeout: slowTestTimeout,
   }, () => {
     const sites = fc
       .constantFrom(...corpusSites)

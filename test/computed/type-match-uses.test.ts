@@ -13,8 +13,8 @@ import { typeKeys } from '../../src/compiler/checker/types/identity/type-keys.ts
 import { substitute, substituteKept } from '../../src/compiler/checker/types/parts/substitution.ts';
 import { unfoldRecursive } from '../../src/compiler/checker/types/type/computed-types.ts';
 import { intType } from '../../src/compiler/checker/types/type/primitives.ts';
-import { wholeProgramTimeout } from '../../src/compiler/compile.test-kit.ts';
 import type { FunctionDeclaration } from '../../src/compiler/syntax/declarations/index.ts';
+import { slowTestTimeout } from '../timeouts.ts';
 import { codesOf, resolveWrittenTypes, runMain, spelledTypeOf } from '../written-types.test-kit.ts';
 
 /** `Data<D>` is recursive for a `Node`, which holds nodes, and plain for a `Leaf`. */
@@ -163,7 +163,7 @@ describe('a `struct{…}` literal passed as a call argument', () => {
   });
 
   it('agrees with the literal given the parameter type, for any fields a call decides', {
-    timeout: wholeProgramTimeout,
+    timeout: slowTestTimeout,
   }, async () => {
     const field = fc.constantFrom(
       { type: 'Array<Int>', literal: '[]', length: 'x.f.length()' },

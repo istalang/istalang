@@ -6,9 +6,10 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
+import { slowTestTimeout } from '../../../../../test/timeouts.ts';
 import { startToEnd, testRuntime } from '../../../../runtime/runtime.test-kit.ts';
 import { entityOfName, stdProgramOf } from '../../../binder/bind.test-kit.ts';
-import { compiledEncoded, wholeProgramTimeout } from '../../../compile.test-kit.ts';
+import { compiledEncoded } from '../../../compile.test-kit.ts';
 
 const words = /^[a-z ]{0,6}$/u;
 const letters = /^[a-z]{1,6}$/u;
@@ -32,7 +33,7 @@ const emailDeclarations = [
 
 describe('type patterns', () => {
   it('match exactly the values converted from their type into an any', {
-    timeout: wholeProgramTimeout,
+    timeout: slowTestTimeout,
   }, async () => {
     const converted = fc.oneof(
       ...typedValues.map(([type, literals]) => literals.map((literal) => ({ type, literal }))),

@@ -9,14 +9,13 @@
  * corpus program twice, so one server taking them all holds its worker for minutes.
  */
 
-import { beforeAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { type Position, SignatureHelpRequest } from 'vscode-languageserver/node';
 import { sliceOf } from '../../../../test/slices.ts';
-import { wholeProgramTimeout } from '../../../compiler/compile.test-kit.ts';
 import { nodesUnder } from '../../../compiler/syntax/tree/index.ts';
 import { spanIn } from '../../../compiler/syntax/tree/positions.ts';
 import type { SourceText } from '../../../foundation/text/source-text.ts';
-import { corpusClient, programDocuments as documents } from '../corpus-client.test-kit.ts';
+import { programDocuments as documents, sharedCorpusClient } from '../corpus-client.test-kit.ts';
 import { rangeOf } from '../locations.ts';
 import type { TestClient } from '../server.test-kit.ts';
 import { activeOf } from './signature-help.test-kit.ts';
@@ -69,17 +68,13 @@ const argumentEnds = documents
 
 /** Registers the cuts of the slice `file` (its `import.meta.url`), against a server of its own. */
 export function leftOpenSlice(file: string): void {
-  let client: TestClient;
-
-  beforeAll(async () => {
-    client = await corpusClient();
-  }, wholeProgramTimeout);
+  const client = sharedCorpusClient();
 
   describe('signature help over the corpus', () => {
     it.each(sliceOf(file).of(argumentEnds))(
       '$uri $at, the call left open',
       async ({ uri, source, end }) => {
-        expect(await leftOpenMismatch(client, uri, source, end)).toEqual([]);
+        expect(await leftOpenMismatch(client(), uri, source, end)).toEqual([]);
       },
     );
   });

@@ -11,8 +11,8 @@
  */
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { wholeProgramTimeout } from '../../src/compiler/compile.test-kit.ts';
 import { sliceOf } from '../slices.ts';
+import { slowTestTimeout } from '../timeouts.ts';
 import { checks } from './checks.ts';
 import { type Held, recording, type Swept, sweptSubjects, visitOf } from './swept.ts';
 
@@ -68,14 +68,10 @@ function describeSubject(swept: Swept, tallies: ReadonlyMap<string, Tally>): voi
       if (handler !== undefined) {
         tally.registered += 1;
         // biome-ignore lint/suspicious/useExpect: each check asserts what it holds (checks/).
-        it(
-          kind,
-          async () => {
-            tally.ran += 1;
-            tally.held += await handler(undefined, visiting.current as Swept);
-          },
-          wholeProgramTimeout,
-        );
+        it(kind, { timeout: slowTestTimeout }, async () => {
+          tally.ran += 1;
+          tally.held += await handler(undefined, visiting.current as Swept);
+        });
       }
     }
   });

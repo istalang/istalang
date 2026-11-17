@@ -7,7 +7,7 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { wholeProgramTimeout } from '../../src/compiler/compile.test-kit.ts';
+import { slowTestTimeout } from '../timeouts.ts';
 import { codesOf, runMain } from '../written-types.test-kit.ts';
 import { type GeneratedField, generatedFieldsArbitrary } from './computed.test-kit.ts';
 
@@ -175,7 +175,7 @@ function onlyFor(type: GeneratedField['type'], v: string): string {
 
 describe('the commute law for decided conditions', () => {
   it('agrees: a generic loop instantiated, the loop over the struct, and the body by hand', {
-    timeout: wholeProgramTimeout,
+    timeout: slowTestTimeout,
   }, async () => {
     const fieldsAndTarget = generatedFieldsArbitrary.chain((fields) =>
       fc.tuple(fc.constant(fields), fc.constantFrom(...fields.map((f) => f.name))),

@@ -7,16 +7,19 @@
  * answering.
  */
 
-import { beforeAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import type { Location } from 'vscode-languageserver/node';
-import { wholeProgramTimeout } from '../../../../compiler/compile.test-kit.ts';
+import { slowTestTimeout } from '../../../../../test/timeouts.ts';
 import type { StringLiteral } from '../../../../compiler/syntax/expressions/literals/literals.ts';
 import type { SyntaxTree } from '../../../../compiler/syntax/tree/index.ts';
 import type { Identifier } from '../../../../compiler/syntax/tree/node.ts';
 import { spanIn } from '../../../../compiler/syntax/tree/positions.ts';
 import { addToGroup } from '../../../../foundation/structures/groups.ts';
-import { corpusClient, corpusDocuments, type OpenDocument } from '../../corpus-client.test-kit.ts';
-import type { TestClient } from '../../server.test-kit.ts';
+import {
+  corpusDocuments,
+  type OpenDocument,
+  sharedCorpusClient,
+} from '../../corpus-client.test-kit.ts';
 import {
   definitionsAt,
   namesOf,
@@ -25,11 +28,7 @@ import {
   referencesAt,
 } from './navigation.test-kit.ts';
 
-let client: TestClient;
-
-beforeAll(async () => {
-  client = await corpusClient();
-}, wholeProgramTimeout);
+const client = sharedCorpusClient();
 
 /** Where `name` stands in the document `uri` holding `tree`. */
 function locationOf(uri: string, tree: SyntaxTree, name: Identifier | StringLiteral): Location {
@@ -45,7 +44,7 @@ async function landingsIn({ uri, tree }: OpenDocument) {
   const landings = await Promise.all(
     namesOf(tree).map(async (name) => {
       const location = locationOf(uri, tree, name);
-      const declarations = await definitionsAt(client, uri, location.range.start);
+      const declarations = await definitionsAt(client(), uri, location.range.start);
       return declarations.map((declaration) => ({ declaration, use: placeOf(location) }));
     }),
   );
@@ -83,8 +82,8 @@ async function mismatchesIn(
       if (names === undefined) {
         return [];
       }
-      const all = (await referencesAt(client, location, true)).map(placeOf);
-      const uses = (await referencesAt(client, location, false)).map(placeOf);
+      const all = (await referencesAt(client(), location, true)).map(placeOf);
+      const uses = (await referencesAt(client(), location, false)).map(placeOf);
       const expected = new Set(names);
       const expectedUses = new Set(names.filter((each) => each !== declaration));
       return isSetOf(all, expected) && isSetOf(uses, expectedUses) ? [] : [declaration];
@@ -95,7 +94,7 @@ async function mismatchesIn(
 
 describe('the references of a declaration', () => {
   it('are the names whose definition is it, in every module', {
-    timeout: wholeProgramTimeout,
+    timeout: slowTestTimeout,
   }, async () => {
     const byDeclaration = await namesByDeclaration();
     const mismatched: string[] = [];

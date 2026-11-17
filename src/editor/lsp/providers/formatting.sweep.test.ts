@@ -1,22 +1,16 @@
-import { beforeAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { DocumentFormattingRequest } from 'vscode-languageserver/node';
-import { wholeProgramTimeout } from '../../../compiler/compile.test-kit.ts';
 import { formatTree } from '../../../formatter/format.ts';
-import { corpusClient, corpusDocuments } from '../corpus-client.test-kit.ts';
-import type { TestClient } from '../server.test-kit.ts';
+import { corpusDocuments, sharedCorpusClient } from '../corpus-client.test-kit.ts';
 
-let client: TestClient;
-
-beforeAll(async () => {
-  client = await corpusClient();
-}, wholeProgramTimeout);
+const client = sharedCorpusClient();
 
 describe('formatting a document', () => {
   it.each(corpusDocuments)(
     'gives the canonical format as one edit of the whole text, or none: $uri',
     async ({ uri, text, tree }) => {
       const edits =
-        (await client.connection.sendRequest(DocumentFormattingRequest.type, {
+        (await client().connection.sendRequest(DocumentFormattingRequest.type, {
           textDocument: { uri },
           options: { tabSize: 8, insertSpaces: false },
         })) ?? [];

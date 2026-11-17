@@ -10,15 +10,11 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { stdProgramOf } from '../src/compiler/binder/bind.test-kit.ts';
 import { isCycle } from '../src/compiler/checker/rules/lifetimes/lifetimes.test-kit.ts';
-import {
-  checkedAfterStd,
-  compiledEncoded,
-  diagnosedAt,
-  wholeProgramTimeout,
-} from '../src/compiler/compile.test-kit.ts';
+import { checkedAfterStd, compiledEncoded, diagnosedAt } from '../src/compiler/compile.test-kit.ts';
 import { isError } from '../src/foundation/diagnostics/diagnostic.ts';
 import { startToEnd, testRuntime } from '../src/runtime/runtime.test-kit.ts';
 import { cyclicPrograms } from './cyclic-programs.ts';
+import { slowTestTimeout } from './timeouts.ts';
 
 const declarations = [
   "import Inbox from 'inbox'",
@@ -189,7 +185,7 @@ describe('static lifetimes over fragment soups', () => {
   });
 
   it('runs every program it accepts to its end, and rejects only for cycles', {
-    timeout: wholeProgramTimeout,
+    timeout: slowTestTimeout,
   }, async () => {
     await fc.assert(
       fc.asyncProperty(fc.array(fc.constantFrom(...fragments), { maxLength: 8 }), async (body) => {

@@ -5,8 +5,9 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import { slowTestTimeout } from '../../../../test/timeouts.ts';
 import { stdProgramOf } from '../../binder/bind.test-kit.ts';
-import { compiledDefinition, wholeProgramTimeout } from '../../compile.test-kit.ts';
+import { compiledDefinition } from '../../compile.test-kit.ts';
 
 const main = [
   "import * as runtime from 'runtime'",
@@ -20,14 +21,10 @@ const main = [
 ].join('\n');
 
 describe("a recursive alias's entry", () => {
-  it(
-    'unfolds to its tuple or function',
-    () => {
-      const { types } = compiledDefinition(stdProgramOf({ 'main.ista': main }), 'main.ista');
-      const bodies = types.flatMap((entry) => (entry.kind === 'alias' ? [entry.type.kind] : []));
-      expect(bodies).toEqual(expect.arrayContaining(['tuple', 'function']));
-      expect(bodies.every((kind) => kind === 'tuple' || kind === 'function')).toBe(true);
-    },
-    wholeProgramTimeout,
-  );
+  it('unfolds to its tuple or function', { timeout: slowTestTimeout }, () => {
+    const { types } = compiledDefinition(stdProgramOf({ 'main.ista': main }), 'main.ista');
+    const bodies = types.flatMap((entry) => (entry.kind === 'alias' ? [entry.type.kind] : []));
+    expect(bodies).toEqual(expect.arrayContaining(['tuple', 'function']));
+    expect(bodies.every((kind) => kind === 'tuple' || kind === 'function')).toBe(true);
+  });
 });

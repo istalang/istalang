@@ -7,12 +7,13 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
+import { slowTestTimeout } from '../../../../test/timeouts.ts';
 import { encodeDefinition } from '../../../definition/definition.ts';
 import { isError } from '../../../foundation/diagnostics/diagnostic.ts';
 import { memo } from '../../../foundation/structures/memo.ts';
 import { stdProgramOf } from '../../binder/bind.test-kit.ts';
 import type { Checker } from '../../checker/check.ts';
-import { checkedAfterStd, wholeProgramTimeout } from '../../compile.test-kit.ts';
+import { checkedAfterStd } from '../../compile.test-kit.ts';
 import { diagnose, mainOf, suitesOf } from '../../compile.ts';
 import { idOf } from '../../program/program.test-kit.ts';
 import { lower, lowerTests } from '../lower.ts';
@@ -138,36 +139,32 @@ function loweredHash(subject: Subject, std: StdLowering): string {
 const coldHashes = new Map<Subject, string>();
 
 describe('a program lowered after others over its std', () => {
-  it(
-    'lowers to what it lowers to with nothing kept, whatever came before it',
-    () => {
-      fc.assert(
-        fc.property(
-          fc.shuffledSubarray([...programs], { minLength: 2 }),
-          fc.integer({ min: 1, max: 2 }),
-          (order, times) => {
-            const std = new StdLowering();
-            const lowered = order.flatMap((each) => Array.from({ length: times }, () => each));
-            for (const subject of lowered) {
-              const cold = memo(coldHashes, subject, () => loweredHash(subject, new StdLowering()));
-              expect(loweredHash(subject, std)).toBe(cold);
-            }
-          },
-        ),
-        { numRuns: 6 },
-      );
-    },
-    wholeProgramTimeout,
-  );
+  it('lowers to what it lowers to with nothing kept, whatever came before it', {
+    timeout: slowTestTimeout,
+  }, () => {
+    fc.assert(
+      fc.property(
+        fc.shuffledSubarray([...programs], { minLength: 2 }),
+        fc.integer({ min: 1, max: 2 }),
+        (order, times) => {
+          const std = new StdLowering();
+          const lowered = order.flatMap((each) => Array.from({ length: times }, () => each));
+          for (const subject of lowered) {
+            const cold = memo(coldHashes, subject, () => loweredHash(subject, new StdLowering()));
+            expect(loweredHash(subject, std)).toBe(cold);
+          }
+        },
+      ),
+      { numRuns: 6 },
+    );
+  });
 
-  it(
-    "lowers a test build mocking a std generic as with nothing kept, after one that doesn't mock it",
-    () => {
-      const [unmocked, mocked] = programs.slice(-2) as [Subject, Subject];
-      const std = new StdLowering();
-      loweredHash(unmocked, std);
-      expect(loweredHash(mocked, std)).toBe(loweredHash(mocked, new StdLowering()));
-    },
-    wholeProgramTimeout,
-  );
+  it("lowers a test build mocking a std generic as with nothing kept, after one that doesn't mock it", {
+    timeout: slowTestTimeout,
+  }, () => {
+    const [unmocked, mocked] = programs.slice(-2) as [Subject, Subject];
+    const std = new StdLowering();
+    loweredHash(unmocked, std);
+    expect(loweredHash(mocked, std)).toBe(loweredHash(mocked, new StdLowering()));
+  });
 });

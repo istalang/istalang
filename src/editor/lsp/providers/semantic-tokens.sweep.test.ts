@@ -1,5 +1,4 @@
-import { beforeAll, describe, expect, it } from 'vitest';
-import { wholeProgramTimeout } from '../../../compiler/compile.test-kit.ts';
+import { describe, expect, it } from 'vitest';
 import { scan } from '../../../compiler/scanner/scan.ts';
 import { isKeyword, type Token } from '../../../compiler/syntax/tokens/index.ts';
 import {
@@ -9,14 +8,9 @@ import {
 } from '../../../compiler/syntax/tree/index.ts';
 import { spanIn } from '../../../compiler/syntax/tree/positions.ts';
 import { lineMapOf } from '../../../foundation/text/line-map.ts';
-import { corpusClient, corpusDocuments } from '../corpus-client.test-kit.ts';
-import type { TestClient } from '../server.test-kit.ts';
+import { corpusDocuments, sharedCorpusClient } from '../corpus-client.test-kit.ts';
 
-let client: TestClient;
-
-beforeAll(async () => {
-  client = await corpusClient();
-}, wholeProgramTimeout);
+const client = sharedCorpusClient();
 
 const punctuation = new Set(['(', ')', '[', ']', '{', '}', ',', ':', ';', '.']);
 const literals = {
@@ -82,7 +76,7 @@ describe('highlighting', () => {
   it.each(corpusDocuments)(
     'gives every token but punctuation a kind: $uri',
     async ({ uri, tree }) => {
-      const decoded = await client.highlighted(uri);
+      const decoded = await client().highlighted(uri);
       const shownAt = new Map(
         decoded.map((token) => [`${token.line}:${token.character}`, token.type]),
       );
@@ -107,7 +101,7 @@ describe('highlighting', () => {
   );
 
   it.each(corpusDocuments)('never overlaps or crosses a line: $uri', async ({ uri, tree }) => {
-    const decoded = await client.highlighted(uri);
+    const decoded = await client().highlighted(uri);
     const lines = lineMapOf(tree.source);
     const crossing = decoded.filter(({ line, character, length }) => {
       const start = lines.offsetAt({ line, column: character });

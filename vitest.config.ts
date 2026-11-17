@@ -13,11 +13,8 @@
  * test keeps nothing but what it derives from its inputs, nothing that hangs on which files ran
  * before. A sweep too long for one file runs in slices side by side (test/slices.ts).
  *
- * A test gets 20 s, not vitest's 5: suites of several worktrees run side by side, and at a load of
- * 21 on 12 cores a test takes four to five times what it takes alone. One compiling whole programs
- * case after case, and the setup a file's tests share that does (a corpus server's first check),
- * takes `wholeProgramTimeout` (src/compiler/compile.test-kit.ts). A test taking more than a third
- * of its limit under that load is made faster, sliced, or given the longer limit if it qualifies.
+ * A test's limit, longer than vitest's 5 s since suites of several worktrees run side by side,
+ * and the slow tier's, are in test/timeouts.ts.
  *
  * `.ista` imports become their text through the same plugin the build uses, so tests see what the
  * package embeds. The package is built before the tests run, so the CLI's end-to-end test always
@@ -30,6 +27,7 @@
 
 import { configDefaults, defineConfig } from 'vitest/config';
 import { istaTextPlugin } from './scripts/ista-text-plugin.ts';
+import { testTimeout } from './test/timeouts.ts';
 
 const tests = ['src/**/*.test.ts', 'test/**/*.test.ts', 'scripts/**/*.test.ts'];
 
@@ -46,7 +44,7 @@ export default defineConfig({
   test: {
     globalSetup: ['scripts/build-before-tests.ts'],
     server: { deps: { external: [/\/dist\//u] } },
-    testTimeout: 20_000,
+    testTimeout,
     projects: [
       {
         extends: true,

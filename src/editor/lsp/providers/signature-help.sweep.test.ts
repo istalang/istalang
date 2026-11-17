@@ -5,13 +5,12 @@
  * its type, the argument's own parameter active.
  */
 
-import { beforeAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { type SignatureHelp, SignatureHelpRequest } from 'vscode-languageserver/node';
 import { checkProgram } from '../../../compiler/checker/check.ts';
 import { parameterOfArgument } from '../../../compiler/checker/surface/resolved-call.ts';
 import { typeText } from '../../../compiler/checker/types/type/type-text.ts';
 import { wellKnownArguments } from '../../../compiler/checker/types/type/well-known.ts';
-import { wholeProgramTimeout } from '../../../compiler/compile.test-kit.ts';
 import type { ModuleId } from '../../../compiler/program/program.ts';
 import type { Call } from '../../../compiler/syntax/expressions/calls.ts';
 import { calledName } from '../../../compiler/syntax/expressions/readings.ts';
@@ -22,21 +21,16 @@ import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import { createSourceText } from '../../../foundation/text/source-text.ts';
 import { signatureOf } from '../../language-service/signatures/signatures.ts';
 import {
-  corpusClient,
   programDocuments as documents,
   corpusProgram as program,
+  sharedCorpusClient,
 } from '../corpus-client.test-kit.ts';
 import { rangeOf } from '../locations.ts';
-import type { TestClient } from '../server.test-kit.ts';
 import { activeOf } from './signature-help.test-kit.ts';
 
 const checker = checkProgram(program);
 
-let client: TestClient;
-
-beforeAll(async () => {
-  client = await corpusClient();
-}, wholeProgramTimeout);
+const client = sharedCorpusClient();
 
 /**
  * What the active signature must be, at each written argument: its label's start, and the
@@ -135,7 +129,7 @@ describe('signature help over the corpus', () => {
     const wrong = await Promise.all(
       asked.map(async ({ at, index, expected }) => {
         const position = rangeOf(tree.source, { start: at, end: at }).start;
-        const help = await client.connection.sendRequest(SignatureHelpRequest.type, {
+        const help = await client().connection.sendRequest(SignatureHelpRequest.type, {
           textDocument: { uri },
           position,
         });
@@ -164,12 +158,12 @@ describe('signature help over the corpus', () => {
       '',
     ].join('\n');
     const at = text.indexOf('show(v)') + 'show('.length;
-    await client.change(uri, text);
-    const help = await client.connection.sendRequest(SignatureHelpRequest.type, {
+    await client().change(uri, text);
+    const help = await client().connection.sendRequest(SignatureHelpRequest.type, {
       textDocument: { uri },
       position: rangeOf(createSourceText(uri, text), { start: at, end: at }).start,
     });
-    await client.change(uri, tree.source.text);
+    await client().change(uri, tree.source.text);
     const none: NoneActive = {
       kind: 'none',
       labels: ['fn show(x: Int) -> Int', 'fn show(x: String) -> Int'],

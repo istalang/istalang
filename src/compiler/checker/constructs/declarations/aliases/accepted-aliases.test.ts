@@ -6,8 +6,9 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
+import { slowTestTimeout } from '../../../../../../test/timeouts.ts';
 import { stdProgramOf } from '../../../../binder/bind.test-kit.ts';
-import { checkedAfterStd, wholeProgramTimeout } from '../../../../compile.test-kit.ts';
+import { checkedAfterStd } from '../../../../compile.test-kit.ts';
 import { compileProgram, diagnose } from '../../../../compile.ts';
 import { idOf } from '../../../../program/program.test-kit.ts';
 import { programModule } from '../../../../program/program.ts';
@@ -79,7 +80,7 @@ function unexplained(type: Type): string | undefined {
 
 describe('a program the checker accepts', () => {
   it('uses no type a diagnostic should have explained, and lowers', {
-    timeout: wholeProgramTimeout,
+    timeout: slowTestTimeout,
   }, () => {
     fc.assert(
       fc.property(typeBuilt, typeBuilt, dataBuilt, (a, b, data) => {

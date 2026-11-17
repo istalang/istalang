@@ -8,13 +8,13 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
+import { slowTestTimeout } from '../../../../../../test/timeouts.ts';
 import {
   reportedNothing,
   reportedOnce,
 } from '../../../../../foundation/diagnostics/diagnostic.test-kit.ts';
 import { mainGives } from '../../../../../stdlib/prelude/prelude.test-kit.ts';
 import { stdProgramOf } from '../../../../binder/bind.test-kit.ts';
-import { wholeProgramTimeout } from '../../../../compile.test-kit.ts';
 import { parserDiagnostics } from '../../../../parser/diagnostics.ts';
 import { lines } from '../../../../parser/parse.test-kit.ts';
 import { idOf } from '../../../../program/program.test-kit.ts';
@@ -386,7 +386,7 @@ describe('commutation property: indented values vs brace and bracket literals (Â
   })).val;
 
   it('checks to the same type and runs to the same value whether written indented or with braces/brackets', {
-    timeout: wholeProgramTimeout,
+    timeout: slowTestTimeout,
   }, async () => {
     await fc.assert(
       fc.asyncProperty(nestedValues, async (generated) => {

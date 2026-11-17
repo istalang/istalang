@@ -13,8 +13,8 @@ import namesLib from '../../../test/corpus/names/lib.ista';
 import namesMain from '../../../test/corpus/names/main.ista';
 import { invalidPrograms, runPrograms } from '../../../test/corpus/programs.ts';
 import { sliceOf } from '../../../test/slices.ts';
+import { slowTestTimeout } from '../../../test/timeouts.ts';
 import { stdProgramOf } from '../binder/bind.test-kit.ts';
-import { wholeProgramTimeout } from '../compile.test-kit.ts';
 import { stdTests } from '../parser/edits.test-kit.ts';
 import { ownModules } from '../program/program.test-kit.ts';
 import type { Program } from '../program/program.ts';
@@ -122,7 +122,7 @@ export function orderSweepSlice(file: string): void {
   describe('a checker', () => {
     describe.each(slice.of(sources))('over $name', (source) => {
       it('gives each module the diagnostics of asking in load order, whatever was asked first', {
-        timeout: wholeProgramTimeout,
+        timeout: slowTestTimeout,
       }, () => {
         const program = source.program();
         const asked = askable(program, source.withStd);

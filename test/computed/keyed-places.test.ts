@@ -8,7 +8,7 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { wholeProgramTimeout } from '../../src/compiler/compile.test-kit.ts';
+import { slowTestTimeout } from '../timeouts.ts';
 import { codesOf, runMain } from '../written-types.test-kit.ts';
 
 describe('a write through a key of several names', () => {
@@ -79,7 +79,7 @@ const names = ['delta', 'alpha', 'omega', 'beta'];
 
 describe('writes through a generic key commute with the substituted program', () => {
   it('a key of several names, or of one, converts each write as writing the field by name does', {
-    timeout: wholeProgramTimeout,
+    timeout: slowTestTimeout,
   }, async () => {
     await fc.assert(
       fc.asyncProperty(

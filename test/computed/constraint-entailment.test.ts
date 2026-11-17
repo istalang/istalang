@@ -10,7 +10,8 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { stdProgramOf } from '../../src/compiler/binder/bind.test-kit.ts';
 import { checkerDiagnostics } from '../../src/compiler/checker/diagnostics/index.ts';
-import { diagnosedAt, wholeProgramTimeout } from '../../src/compiler/compile.test-kit.ts';
+import { diagnosedAt } from '../../src/compiler/compile.test-kit.ts';
+import { slowTestTimeout } from '../timeouts.ts';
 import { codesOf } from '../written-types.test-kit.ts';
 
 const traits = [
@@ -102,7 +103,7 @@ function meets(constraint: string, value: string): boolean {
 
 describe('implying a struct constraint', () => {
   it('is sound: every struct meeting the given constraint meets the needed one', {
-    timeout: wholeProgramTimeout,
+    timeout: slowTestTimeout,
   }, () => {
     fc.assert(
       fc.property(

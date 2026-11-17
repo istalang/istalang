@@ -6,13 +6,13 @@
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { corpusDirectory, corpusFiles } from '../../../test/corpus/programs.ts';
-import { wholeProgramTimeout } from '../../compiler/compile.test-kit.ts';
+import { slowTestTimeout } from '../../../test/timeouts.ts';
 import { checked, projectProgram, uriOf } from './diagnostics.test-kit.ts';
 import { connectedClient } from './server.test-kit.ts';
 
 describe('the diagnostics an open document gets', () => {
   it('are what ista check reports for its module, for every corpus module', {
-    timeout: wholeProgramTimeout,
+    timeout: slowTestTimeout,
   }, async () => {
     const client = await connectedClient(corpusDirectory);
     const files = corpusFiles.map(({ name, text }) => ({

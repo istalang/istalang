@@ -8,11 +8,10 @@
  * (a `Missing` one) has nothing to hover over.
  */
 
-import { beforeAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { type Hover, HoverRequest, MarkupContent } from 'vscode-languageserver/node';
 import { checkProgram } from '../../../compiler/checker/check.ts';
 import { typeText } from '../../../compiler/checker/types/type/type-text.ts';
-import { wholeProgramTimeout } from '../../../compiler/compile.test-kit.ts';
 import type { ModuleId } from '../../../compiler/program/program.ts';
 import type { Expression } from '../../../compiler/syntax/expressions/index.ts';
 import {
@@ -26,20 +25,15 @@ import { spanIn } from '../../../compiler/syntax/tree/positions.ts';
 import type { TypeNode } from '../../../compiler/syntax/types/index.ts';
 import { shownAs } from '../../language-service/hover.ts';
 import {
-  corpusClient,
   programDocuments as documents,
   corpusProgram as program,
+  sharedCorpusClient,
 } from '../corpus-client.test-kit.ts';
 import { rangeOf } from '../locations.ts';
-import type { TestClient } from '../server.test-kit.ts';
 
 const checker = checkProgram(program);
 
-let client: TestClient;
-
-beforeAll(async () => {
-  client = await corpusClient();
-}, wholeProgramTimeout);
+const client = sharedCorpusClient();
 
 /** What `node` denotes: an identifier's denotations, or the field a key names (§3.1). */
 function denotationsAt(module: ModuleId, node: SyntaxNode) {
@@ -117,7 +111,7 @@ describe('hover over the corpus', () => {
         }
         const position = rangeOf(tree.source, { start: offset, end: offset }).start;
         const hover = shownText(
-          await client.connection.sendRequest(HoverRequest.type, {
+          await client().connection.sendRequest(HoverRequest.type, {
             textDocument: { uri },
             position,
           }),

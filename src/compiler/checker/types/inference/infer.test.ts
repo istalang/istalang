@@ -6,9 +6,10 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
+import { slowTestTimeout } from '../../../../../test/timeouts.ts';
 import { stdProgramOf } from '../../../binder/bind.test-kit.ts';
 import { binderDiagnostics } from '../../../binder/diagnostics.ts';
-import { diagnosedAt, wholeProgramTimeout } from '../../../compile.test-kit.ts';
+import { diagnosedAt } from '../../../compile.test-kit.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 
 /** Arguments of different types, some fitting each other only by the implicit wrap (§2). */
@@ -35,7 +36,7 @@ function reportedErrors(main: string): readonly number[] {
 
 describe('type-argument inference', () => {
   it('reports the same for every order of the same arguments', {
-    timeout: wholeProgramTimeout,
+    timeout: slowTestTimeout,
   }, () => {
     fc.assert(
       fc.property(

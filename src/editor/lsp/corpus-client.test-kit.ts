@@ -6,6 +6,7 @@
 
 import { pathToFileURL } from 'node:url';
 import { corpusDirectory, corpusFiles } from '../../../test/corpus/programs.ts';
+import { slowTestTimeout } from '../../../test/timeouts.ts';
 import { parse } from '../../compiler/parser/parse.ts';
 import type { ModuleId, Program } from '../../compiler/program/program.ts';
 import { scan } from '../../compiler/scanner/scan.ts';
@@ -14,7 +15,7 @@ import { createSourceText } from '../../foundation/text/source-text.ts';
 import { stdModuleSources } from '../../stdlib/std-sources.ts';
 import { moduleIdOfUri } from './locations.ts';
 import { projectProgramLoader } from './project-loader.ts';
-import { connectedClient, type TestClient } from './server.test-kit.ts';
+import { connectedClient, sharedClient, type TestClient } from './server.test-kit.ts';
 
 export interface OpenDocument {
   readonly uri: string;
@@ -37,11 +38,16 @@ function openDocument(uri: string, text: string): OpenDocument {
 }
 
 /**
- * A client of a server for the corpus directory, with every document of `corpusDocuments` open, once
- * the server published their diagnostics: it has checked the whole program then, so a test's first
- * request costs what it asks, not that check.
+ * A client of a server for the corpus directory, with every document of `corpusDocuments` open,
+ * shared by the tests of the calling file or `describe` block (`sharedClient`). It is ready once the
+ * server published their diagnostics: it has checked the whole program then, so a test's first
+ * request costs what it asks, not that check, which is slow-tier work.
  */
-export async function corpusClient(): Promise<TestClient> {
+export function sharedCorpusClient(): () => TestClient {
+  return sharedClient(corpusClient, slowTestTimeout);
+}
+
+async function corpusClient(): Promise<TestClient> {
   const client = await connectedClient(corpusDirectory);
   const diagnosed = Promise.all(corpusDocuments.map(({ uri }) => client.nextDiagnostics(uri)));
   await Promise.all(corpusDocuments.map(({ uri, text }) => client.open(uri, text)));

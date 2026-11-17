@@ -9,7 +9,7 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { wholeProgramTimeout } from '../../src/compiler/compile.test-kit.ts';
+import { slowTestTimeout } from '../timeouts.ts';
 import { codesOf, hoverCodeAt, runMain } from '../written-types.test-kit.ts';
 import { generatedFieldsArbitrary } from './computed.test-kit.ts';
 
@@ -243,7 +243,7 @@ describe('a field loop in an editor', () => {
 
 describe('the commute law of a field loop', () => {
   it('agrees: generic and instantiated, over the concrete struct, and written out by hand', {
-    timeout: wholeProgramTimeout,
+    timeout: slowTestTimeout,
   }, async () => {
     await fc.assert(
       fc.asyncProperty(generatedFieldsArbitrary, async (fields) => {

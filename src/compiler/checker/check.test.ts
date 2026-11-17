@@ -16,13 +16,13 @@ import { brokenText } from '../../../test/broken.ts';
 import { runPrograms } from '../../../test/corpus/programs.ts';
 import { type SpecExample, specExamples } from '../../../test/corpus/spec-examples.ts';
 import { subsetSource } from '../../../test/subset.ts';
+import { slowTestTimeout } from '../../../test/timeouts.ts';
 import {
   reportedIn,
   reportedNothing,
   reportedOnce,
 } from '../../foundation/diagnostics/diagnostic.test-kit.ts';
 import { preludeProgramOf } from '../binder/bind.test-kit.ts';
-import { wholeProgramTimeout } from '../compile.test-kit.ts';
 import { diagnose } from '../compile.ts';
 import { idOf } from '../program/program.test-kit.ts';
 import { inFunction, reported } from './check.test-kit.ts';
@@ -402,7 +402,7 @@ describe('checking is total', () => {
     }
   });
 
-  it('never throws on broken programs', { timeout: wholeProgramTimeout }, () => {
+  it('never throws on broken programs', { timeout: slowTestTimeout }, () => {
     fc.assert(
       fc.property(brokenText([subsetSource, ...corpusTexts, ...modules]), (text) => {
         expect(() => reported(text)).not.toThrow();

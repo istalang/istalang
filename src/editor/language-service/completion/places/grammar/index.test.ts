@@ -12,7 +12,7 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { runPrograms } from '../../../../../../test/corpus/programs.ts';
-import { wholeProgramTimeout } from '../../../../../compiler/compile.test-kit.ts';
+import { slowTestTimeout } from '../../../../../../test/timeouts.ts';
 import { parserDiagnostics } from '../../../../../compiler/parser/diagnostics.ts';
 import { parse } from '../../../../../compiler/parser/parse.ts';
 import { scan } from '../../../../../compiler/scanner/scan.ts';
@@ -117,7 +117,7 @@ describe('completion offers the words the grammar takes where it stands', () => 
   const statements = programs.flatMap(statementSites);
   const operands = programs.flatMap(operandSites);
 
-  it('at the statements of the corpus', { timeout: wholeProgramTimeout }, () => {
+  it('at the statements of the corpus', { timeout: slowTestTimeout }, () => {
     fc.assert(
       fc.property(fc.constantFrom(...statements), (site) => {
         expect(misofferedWords(site)).toEqual([]);
@@ -126,7 +126,7 @@ describe('completion offers the words the grammar takes where it stands', () => 
     );
   });
 
-  it('at the declared values of the corpus', { timeout: wholeProgramTimeout }, () => {
+  it('at the declared values of the corpus', { timeout: slowTestTimeout }, () => {
     fc.assert(
       fc.property(fc.constantFrom(...operands), (site) => {
         expect(misofferedWords(site)).toEqual([]);

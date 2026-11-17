@@ -27,7 +27,7 @@ import { cursorAt } from '../../language-service/completion/cursor.ts';
 import { type PlaceKind, placeAt } from '../../language-service/completion/place.ts';
 import { mainProgram } from '../../language-service/language-service.test-kit.ts';
 import { checkedModule } from '../../language-service/reading/checked-module.ts';
-import { connectedClient, type TestClient } from '../server.test-kit.ts';
+import { connectedClient, sharedClient, type TestClient } from '../server.test-kit.ts';
 import {
   type Answer,
   type Expect,
@@ -114,16 +114,7 @@ export interface Scenario {
 
 /** A client of a server for the corpus project, shared by the scenarios of one file. */
 export function completionClient(): () => TestClient {
-  let client: TestClient | undefined;
-  beforeAll(async () => {
-    client = await connectedClient(corpusDirectory);
-  });
-  return () => {
-    if (client === undefined) {
-      throw new Error('the client starts before the tests');
-    }
-    return client;
-  };
+  return sharedClient(() => connectedClient(corpusDirectory));
 }
 
 let documents = 0;
