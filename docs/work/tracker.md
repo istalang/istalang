@@ -38,7 +38,7 @@ tags: [tracker]
 
 ## Filed
 
-Open items only: an item is removed once it is resolved; git history keeps it. Each group numbers its own items and keeps counting up: the next ids are F39, P57, Q80, B123. Items filed before 2026-10-28 shared one `D` series; older docs and git history keep the closed `D` ids.
+Open items only: an item is removed once it is resolved; git history keeps it. Each group numbers its own items and keeps counting up: the next ids are F39, P57, Q81, B123. Items filed before 2026-10-28 shared one `D` series; older docs and git history keep the closed `D` ids.
 
 Size: easy (one short, local change), medium (several files or a design choice inside one layer), big (cross-layer, or a decision first). Depends on: what must happen first, or "none" when it can be done now.
 
@@ -170,6 +170,7 @@ DRY, double standards, cohesion, layering, dead or misplaced code.
 | Q77 | `startLive` composes its own `DurableWorld` instead of `createRuntime({...binding, store: memoryStore()})` with the code injected, so `istalang/live` and `istalang/runtime` differ: live drops unheard context panics (`panicked: () => undefined`) that the runtime reports (§9). | medium | none | ir-first R1 2026-11-17 |
 | Q78 | `HostBinding` (`runtime/host/binding.ts`) isn't in the package exports, so a host can't name `createRuntime`'s parameter. Export it (decide the subpath). | easy | none | ir-first R1 2026-11-17 |
 | Q79 | Two places derive "the entry a built value's register type names": codegen's `builtType` and validation's `builtEntry` (`validation/parts.ts`). One `builtEntryOf(entry, dst, types)` in `definition/tables/`. | easy | none | ir-first R1 2026-11-17 |
+| Q80 | No type ties `ClosureCalls`' `callValue0..3` to `directCallArities` (`codegen/calling-convention.ts`): raising the constant emits `callValue4` with nothing behind it, failing only at the first 4-argument call. A `satisfies Record<`callValue${…}`, …>` or a test over every `closureCallHelper(n)`. | easy | none | 2026-11-17 |
 
 ### Behaviour and correctness (B)
 
