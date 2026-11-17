@@ -28,7 +28,11 @@ import { outsideIssue, referenceIssues } from './references.ts';
 
 /** Every way `definition` breaks the rules above, each a message naming where. */
 export function validationIssues(definition: Definition): readonly string[] {
-  const issues: string[] = [...referenceIssues(definition), ...startIssues(definition)];
+  const issues: string[] = [
+    ...referenceIssues(definition),
+    ...startIssues(definition),
+    ...keyIssues(definition),
+  ];
   const { functions } = definition;
   for (const { function: called, caller, where } of purposeCalls(definition.purpose)) {
     const outside = outsideIssue('function', called, functions.length);
@@ -95,6 +99,19 @@ function startIssues({ starts, purpose }: Definition): readonly string[] {
   return [
     ...[...new Set(repeated)].map((key) => `start ${key}: another start has its key.`),
     ...(main === undefined || keys.includes(main) ? [] : [`main: no start has key ${main}.`]),
+  ];
+}
+
+/** Whether each function has a key, the keys ascending, so a key finds its function's number. */
+function keyIssues({ functions, functionKeys }: Definition): readonly string[] {
+  const unordered = functionKeys.findIndex(
+    (key, at) => at > 0 && key <= (functionKeys[at - 1] ?? key),
+  );
+  return [
+    ...(functionKeys.length === functions.length
+      ? []
+      : [`keys: ${String(functionKeys.length)} keys for ${String(functions.length)} functions.`]),
+    ...(unordered < 0 ? [] : [`keys: key ${String(unordered)} isn't above the one before.`]),
   ];
 }
 

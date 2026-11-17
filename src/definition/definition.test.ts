@@ -34,6 +34,7 @@ const ofConstants = (constants: Definition['constants']): Definition => ({
   modules: [],
   types: [],
   functions: [],
+  functionKeys: [],
   constants,
   starts: [],
   purpose: { kind: 'program' },

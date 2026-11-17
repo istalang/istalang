@@ -24,7 +24,7 @@ import { validationIssues } from './validation/index.ts';
 
 const name = 'istalang-definition';
 
-const version = 5;
+const version = 6;
 
 const definitionFormat = defineBinaryFormat(name, version, tables);
 

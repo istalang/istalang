@@ -45,7 +45,7 @@ describe('a generic function using its type parameter only opaquely', () => {
     'is one entry per representation, a stand-in named by its parameter',
     () => {
       const names = entryNames('fn keep<T>(x: T) -> (T, T): (x, x)', callsAtEveryClass('keep'));
-      expect(names.filter((name) => name.startsWith('main.keep'))).toEqual([
+      expect(names.filter((name) => name.startsWith('main.keep')).sort()).toEqual([
         'main.keep<Int>',
         'main.keep<String>',
         'main.keep<T>',

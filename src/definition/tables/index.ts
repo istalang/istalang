@@ -56,6 +56,8 @@ export const tables = z.strictObject({
   modules: z.array(sourceModule),
   types: z.array(typeDefinition),
   functions: z.array(functionDefinition),
+  /** Each function's key (../function-keys.ts), ascending: a function's number is its key's place. */
+  functionKeys: z.array(z.bigint()),
   constants: z.array(value),
   starts: z.array(start),
   purpose,

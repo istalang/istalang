@@ -36,12 +36,16 @@ export function codeEntry(
   };
 }
 
-/** A program of one module, `main`, and of `functions`, its one constant `Unit`, with no start. */
+/**
+ * A program of one module, `main`, and of `functions`, keyed by their places, its one constant
+ * `Unit`, with no start.
+ */
 export function programOf(functions: readonly FunctionDefinition[]): Definition {
   return {
     modules: [{ id: 'main', lineStarts: [0] }],
     types: [],
     functions: [...functions],
+    functionKeys: functions.map((_, at) => BigInt(at)),
     constants: [null],
     starts: [],
     purpose: { kind: 'program' },

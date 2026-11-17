@@ -116,6 +116,8 @@ export class TypeTable {
   readonly #seams: TypeTableSeams;
   /** Each entry, an `any` type's as the members its enum is built from. */
   readonly #entries: (TypeDefinition | AnyEntry)[] = [];
+  /** Each entry's table key (names.ts), which the Definition is numbered by (key-order.ts). */
+  readonly #keys: string[] = [];
   readonly #indexes = new Map<string, TypeId>();
 
   constructor(checker: Checker, seams: TypeTableSeams) {
@@ -126,6 +128,11 @@ export class TypeTable {
   /** Every entry made so far, in index order. */
   get entries(): readonly TypeDefinition[] {
     return this.#entries.map((entry) => (entry.kind === 'any' ? anyEnum(entry) : entry));
+  }
+
+  /** Every entry's table key, in index order. */
+  get keys(): readonly string[] {
+    return this.#keys;
   }
 
   /** How the Definition refers to `type`. */
@@ -201,6 +208,7 @@ export class TypeTable {
       const name = tableKey(checker, type);
       const disposable = checker.reachesDisposable(type);
       const entry: AnyEntry = { kind: 'any', name, disposable, members: [] };
+      this.#keys.push(name);
       return this.#entries.push(entry) - 1;
     });
   }
@@ -246,6 +254,7 @@ export class TypeTable {
     }
     const index = this.#entries.length;
     this.#indexes.set(key, index);
+    this.#keys.push(tableKey(this.#checker, type));
     this.#entries.push(placeholder);
     this.#entries[index] = layout();
     return index;

@@ -48,6 +48,7 @@ import {
   nestedName,
   ownerDeclaration,
 } from './instances.ts';
+import { orderedByKeys } from './key-order.ts';
 import { qualifiedNameOf } from './names.ts';
 import { ownEntryOf } from './own-entries.ts';
 import { holdsStandIn, Stencils } from './stencils.ts';
@@ -332,7 +333,7 @@ export class DefinitionTables {
     this.#functions[index] = entry;
   }
 
-  /** The finished tables, every referenced function lowered, for `purpose`. */
+  /** The finished tables, every referenced function lowered, for `purpose`, numbered by key. */
   finish(purpose: Purpose): Definition {
     const functions = this.#functions.map((entry, index) => {
       if (entry === undefined) {
@@ -341,13 +342,17 @@ export class DefinitionTables {
       const body = this.#bodies.get(index);
       return body === undefined ? entry : { ...entry, body };
     });
-    return {
-      modules: this.#modules,
-      types: [...this.types.entries],
-      functions,
-      constants: this.#constants,
-      starts: this.#starts,
-      purpose,
-    };
+    const spelled = [...this.#functionIndexes].sort(([, a], [, b]) => a - b).map(([key]) => key);
+    return orderedByKeys(
+      {
+        modules: this.#modules,
+        types: [...this.types.entries],
+        functions,
+        constants: this.#constants,
+        starts: this.#starts,
+        purpose,
+      },
+      { functions: spelled, types: this.types.keys },
+    );
   }
 }
