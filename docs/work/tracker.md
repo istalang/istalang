@@ -38,7 +38,7 @@ tags: [tracker]
 
 ## Filed
 
-Open items only: an item is removed once it is resolved; git history keeps it. Each group numbers its own items and keeps counting up: the next ids are F39, P57, Q81, B123. Items filed before 2026-10-28 shared one `D` series; older docs and git history keep the closed `D` ids.
+Open items only: an item is removed once it is resolved; git history keeps it. Each group numbers its own items and keeps counting up: the next ids are F39, P58, Q83, B123. Items filed before 2026-10-28 shared one `D` series; older docs and git history keep the closed `D` ids.
 
 Size: easy (one short, local change), medium (several files or a design choice inside one layer), big (cross-layer, or a decision first). Depends on: what must happen first, or "none" when it can be done now.
 
@@ -168,7 +168,7 @@ DRY, double standards, cohesion, layering, dead or misplaced code.
 | Q80 | No type ties `ClosureCalls`' `callValue0..3` to `directCallArities` (`codegen/calling-convention.ts`): raising the constant emits `callValue4` with nothing behind it, failing only at the first 4-argument call. A `satisfies Record<`callValue${…}`, …>` or a test over every `closureCallHelper(n)`. | easy | none | 2026-11-17 |
 | Q81 | Where a Definition's references live is listed by hand twice beside the schema walk (`definition/references.ts`): validation's `holdingsOf` (`validation/references.ts`) and `operandsOf`'s `functions`/`constants`. Validation could walk the schema, checking each reference's range, if the walk takes values on a stack of its own: validation reads bytes from outside, whose values may nest past the host's stack. | medium | none | b115-mocks 2026-11-17 |
 | Q82 | Instance sharing reads which functions the program's test modules mock (`mockedFunctions`, checker `opaqueParametersOf`), so a program build whose program holds test modules mocking std functions could lower a std entry differently from the one the std lowering cache kept (`tables/std-lowering.ts`). Confirm no program build holds test modules, or key the cache by the mocked set. | easy | none | b115-mocks 2026-11-17 |
-| P56 | The std lowering cache is keyed by the whole set of std modules a program loads (`tables/std-lowering.ts`), so programs loading different sets (FormBuilder, the std tests) share none of its entries: FormBuilder's warm lowering gains ~10% against the std tests' ~2×. Key kept entries by the std modules they depend on. | medium | none | b115-mocks 2026-11-17 |
+| P57 | The std lowering cache is keyed by the whole set of std modules a program loads (`tables/std-lowering.ts`), so programs loading different sets (FormBuilder, the std tests) share none of its entries: FormBuilder's warm lowering gains ~10% against the std tests' ~2×. Key kept entries by the std modules they depend on. | medium | none | b115-mocks 2026-11-17 |
 
 ### Behaviour and correctness (B)
 
