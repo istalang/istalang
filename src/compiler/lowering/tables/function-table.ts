@@ -3,7 +3,8 @@
  * first time it is asked for and lowered afterwards from a worklist, so a call can name one that
  * isn't lowered yet, including itself.
  *
- * - A **pending** entry is lowered once, in the order entries were first asked for.
+ * - A **pending** entry is lowered once, the first asked for first unless the tables were given an
+ *   order of their own (`PendingOrder`).
  * - A **closing** entry switches over every variant of an `any` type's enum so far (entries.ts): it
  *   is written once the worklist is empty, and again whenever lowering has since added a variant.
  * - Entries lowered from one source function share the first one's number as their `body`, which
@@ -42,12 +43,19 @@ export interface LoweredHere extends Numbered {
   readonly body: string | undefined;
 }
 
+/** Which of `count` pending entries, the first asked for first, is lowered next. */
+export type PendingOrder = (count: number) => number;
+
+/** The first pending entry: lowering's own order. */
+export const firstPending: PendingOrder = () => 0;
+
 /** What the function table reads of the tables around it. */
 interface FunctionTableSeams {
   readonly identities: EntryIdentities;
   readonly keys: EntryKeys;
   readonly types: TypeTable;
   readonly requests: TableRequests;
+  readonly order: PendingOrder;
 }
 
 export class FunctionTable {
@@ -149,7 +157,8 @@ export class FunctionTable {
   }
 
   #nextPending(): Pending | undefined {
-    return this.#pending.shift() ?? this.#nextStale();
+    const [next] = this.#pending.splice(this.#seams.order(this.#pending.length), 1);
+    return next ?? this.#nextStale();
   }
 
   #nextStale(): Numbered | undefined {

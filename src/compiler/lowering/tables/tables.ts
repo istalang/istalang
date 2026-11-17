@@ -41,7 +41,7 @@ import {
   type StartTarget,
 } from './entries.ts';
 import { type EntryKeys, entryKeysOf } from './entry-keys.ts';
-import { FunctionTable } from './function-table.ts';
+import { FunctionTable, firstPending, type PendingOrder } from './function-table.ts';
 import {
   type BodyOwner,
   instanceName,
@@ -96,10 +96,12 @@ export class DefinitionTables {
       rebindable,
       identities,
       kept,
+      order = firstPending,
     }: {
       readonly rebindable: boolean;
       readonly identities: EntryIdentities;
       readonly kept: KeptEntries;
+      readonly order?: PendingOrder;
     },
   ) {
     this.#checker = checker;
@@ -123,6 +125,7 @@ export class DefinitionTables {
       keys: this.#keys,
       types: this.types,
       requests,
+      order,
     });
     this.#std = new StdReuse(kept, {
       checker,

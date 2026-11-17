@@ -20,7 +20,7 @@ function loweredAlike(_: undefined, { subject }: { readonly subject: ProgramSubj
   if (main === undefined) {
     throw new Error(`${subject.name} has no main.`);
   }
-  const alone = lower(checkProgram(program), main, new StdLowering());
+  const alone = lower(checkProgram(program), main, { std: new StdLowering() });
   expect(encodeDefinition(alone).hash).toBe(encodedOf(subject).hash);
   return 1;
 }

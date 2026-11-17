@@ -129,8 +129,8 @@ function loweredHash(subject: Subject, std: StdLowering): string {
   const main = 'main' in subject.files ? mainOf(program, idOf('main')) : undefined;
   const definition =
     main === undefined
-      ? lowerTests(checker, suitesOf(program, checker), std)
-      : lower(checker, main, std);
+      ? lowerTests(checker, suitesOf(program, checker), { std })
+      : lower(checker, main, { std });
   return encodeDefinition(definition).hash;
 }
 

@@ -9,6 +9,7 @@
  *
  * An entry only the std decides is taken over from a program over the same std lowered before
  * (tables/std-lowering.ts), kept per process unless a caller passes the kept entries to read.
+ * Which entry is lowered next is the caller's to choose too (`LoweringOptions.order`).
  */
 
 import type { FunctionId } from '../../definition/operands.ts';
@@ -23,9 +24,19 @@ import type { FunctionDeclaration } from '../syntax/declarations/index.ts';
 import { entryKinds, loweredEntry } from './entry-kinds.ts';
 import { listStart, startableOf, startables } from './synthesized/boundary/starts.ts';
 import { entryKeysOf } from './tables/entry-keys.ts';
+import type { PendingOrder } from './tables/function-table.ts';
 import { rootInstance } from './tables/instances.ts';
 import { type StdLowering, stdLoweringOf } from './tables/std-lowering.ts';
 import { DefinitionTables } from './tables/tables.ts';
+
+/**
+ * What a caller may choose of a lowering: the std lowering to take entries over from, the
+ * process's by default; and the order entries are lowered in, which a Definition never shows.
+ */
+export interface LoweringOptions {
+  readonly std?: StdLowering;
+  readonly order?: PendingOrder;
+}
 
 /**
  * The tables of `checker`'s program, a test build's functions' slots `rebindable` (§10), taking over
@@ -35,22 +46,31 @@ import { DefinitionTables } from './tables/tables.ts';
 function tablesOf(
   checker: Checker,
   rebindable: boolean,
-  std: StdLowering = stdLoweringOf(checker.program),
+  { std = stdLoweringOf(checker.program), order }: LoweringOptions,
 ): DefinitionTables {
   const keys = entryKeysOf(checker);
   const mocked = [...checker.mockedFunctions()]
     .filter((declaration) => checker.isStd(checker.moduleOf(declaration)))
     .map((declaration) => keys.declaration(declaration));
   const kept = std.of({ rebindable, mocked });
-  return new DefinitionTables(checker, { rebindable, identities: entryKinds, kept });
+  return new DefinitionTables(checker, {
+    rebindable,
+    identities: entryKinds,
+    kept,
+    ...(order === undefined ? {} : { order }),
+  });
 }
 
 /**
  * The Definition of everything `main` and the program's startable functions reach (§9): `main` is
  * started through its start entry, as a host starts any of the others.
  */
-export function lower(checker: Checker, main: FunctionDeclaration, std?: StdLowering): Definition {
-  const tables = tablesOf(checker, false, std);
+export function lower(
+  checker: Checker,
+  main: FunctionDeclaration,
+  options: LoweringOptions = {},
+): Definition {
+  const tables = tablesOf(checker, false, options);
   const started = startableOf(checker, main);
   if (started === undefined) {
     unreachable("'main' can't be started; the checker should have said why.");
@@ -81,9 +101,9 @@ export interface Suite {
 export function lowerTests(
   checker: Checker,
   suites: readonly Suite[],
-  std?: StdLowering,
+  options: LoweringOptions = {},
 ): Definition {
-  const tables = tablesOf(checker, true, std);
+  const tables = tablesOf(checker, true, options);
   const indexOf = (declaration: FunctionDeclaration) =>
     tables.index({ kind: 'instance', instance: rootInstance(checker, declaration) });
   const runner = (name: string) =>
