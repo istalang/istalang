@@ -32,6 +32,7 @@ import { type ClosedCall, resultOfCall } from '../calls/closed-calls.ts';
 import { emitCall, emitFunctionCall, referenceTo } from '../calls/emit-call.ts';
 import { awaitFuture } from '../calls/waits.ts';
 import type { CodeContext } from '../context.ts';
+import { codeEntry } from '../functions/code-entry.ts';
 import { CodeWriter } from '../functions/code-writer.ts';
 import { emitConstant } from '../tables/constants.ts';
 import type { DefinitionTables, EntryHeader } from '../tables/tables.ts';
@@ -205,18 +206,13 @@ export class SynthesizedCode implements CodeContext {
 
   /** The finished entry, named and placed by `header`. */
   entry(header: EntryHeader): CodeFunction {
-    const { registers, instructions } = this.code.finish(
-      this.tables.treeAt(header.module),
-      this.span,
-    );
-    return {
-      kind: 'code',
-      ...header,
+    return codeEntry(this.code, {
+      header,
       mode: this.mode,
       parameters: this.parameters.map(() => ({ hasDefault: false })),
       captures: this.captures.length,
-      registers,
-      instructions,
-    };
+      tree: this.tables.treeAt(header.module),
+      span: this.span,
+    });
   }
 }

@@ -59,6 +59,7 @@ import {
   ownerDeclaration,
 } from '../tables/instances.ts';
 import type { DefinitionTables } from '../tables/tables.ts';
+import { codeEntry } from './code-entry.ts';
 import { CodeWriter } from './code-writer.ts';
 import { fittedValue } from './fits/index.ts';
 import {
@@ -305,17 +306,14 @@ class FunctionLowering implements EntryContext {
   /** The finished entry, taking `parameters`. */
   #entry(parameters: readonly EntryParameter[]): CodeFunction {
     const { header, mode, captures } = this.frame;
-    const { tree } = programModule(this.checker.program, this.module);
-    const { registers, instructions } = this.code.finish(tree, this.frame.function.span);
-    return {
-      kind: 'code',
-      ...header,
+    return codeEntry(this.code, {
+      header,
       mode,
-      parameters: parameters.map(({ hasDefault }) => ({ hasDefault })),
+      parameters,
       captures: captures.length,
-      registers,
-      instructions,
-    };
+      tree: programModule(this.checker.program, this.module).tree,
+      span: this.frame.function.span,
+    });
   }
 
   constant(value: Value, type: Type, span: AnchoredSpan): Register {
