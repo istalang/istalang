@@ -9,6 +9,7 @@
 
 import { beforeAll, describe, expect, it } from 'vitest';
 import type { Location } from 'vscode-languageserver/node';
+import { wholeProgramTimeout } from '../../../../compiler/compile.test-kit.ts';
 import type { StringLiteral } from '../../../../compiler/syntax/expressions/literals/literals.ts';
 import type { SyntaxTree } from '../../../../compiler/syntax/tree/index.ts';
 import type { Identifier } from '../../../../compiler/syntax/tree/node.ts';
@@ -28,7 +29,7 @@ let client: TestClient;
 
 beforeAll(async () => {
   client = await corpusClient();
-});
+}, wholeProgramTimeout);
 
 /** Where `name` stands in the document `uri` holding `tree`. */
 function locationOf(uri: string, tree: SyntaxTree, name: Identifier | StringLiteral): Location {
@@ -93,7 +94,9 @@ async function mismatchesIn(
 }
 
 describe('the references of a declaration', () => {
-  it('are the names whose definition is it, in every module', async () => {
+  it('are the names whose definition is it, in every module', {
+    timeout: wholeProgramTimeout,
+  }, async () => {
     const byDeclaration = await namesByDeclaration();
     const mismatched: string[] = [];
     for (const document of corpusDocuments) {
@@ -101,5 +104,5 @@ describe('the references of a declaration', () => {
       mismatched.push(...(await mismatchesIn(document, byDeclaration)));
     }
     expect(mismatched).toEqual([]);
-  }, 120_000);
+  });
 });

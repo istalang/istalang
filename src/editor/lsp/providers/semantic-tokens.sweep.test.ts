@@ -1,4 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest';
+import { wholeProgramTimeout } from '../../../compiler/compile.test-kit.ts';
 import { scan } from '../../../compiler/scanner/scan.ts';
 import { isKeyword, type Token } from '../../../compiler/syntax/tokens/index.ts';
 import {
@@ -15,7 +16,7 @@ let client: TestClient;
 
 beforeAll(async () => {
   client = await corpusClient();
-});
+}, wholeProgramTimeout);
 
 const punctuation = new Set(['(', ')', '[', ']', '{', '}', ',', ':', ';', '.']);
 const literals = {

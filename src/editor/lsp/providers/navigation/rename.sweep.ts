@@ -17,6 +17,7 @@ import {
 import { corpusDirectory } from '../../../../../test/corpus/programs.ts';
 import { sliceOf } from '../../../../../test/slices.ts';
 import { checkProgram } from '../../../../compiler/checker/check.ts';
+import { wholeProgramTimeout } from '../../../../compiler/compile.test-kit.ts';
 import { diagnoseModule } from '../../../../compiler/compile.ts';
 import {
   isStdModule,
@@ -239,7 +240,7 @@ export function renameSlice(file: string): void {
 
   beforeAll(async () => {
     client = await corpusClient();
-  });
+  }, wholeProgramTimeout);
 
   const server = () => client;
 

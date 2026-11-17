@@ -12,6 +12,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { type Hover, HoverRequest, MarkupContent } from 'vscode-languageserver/node';
 import { checkProgram } from '../../../compiler/checker/check.ts';
 import { typeText } from '../../../compiler/checker/types/type/type-text.ts';
+import { wholeProgramTimeout } from '../../../compiler/compile.test-kit.ts';
 import type { ModuleId } from '../../../compiler/program/program.ts';
 import type { Expression } from '../../../compiler/syntax/expressions/index.ts';
 import {
@@ -38,7 +39,7 @@ let client: TestClient;
 
 beforeAll(async () => {
   client = await corpusClient();
-});
+}, wholeProgramTimeout);
 
 /** What `node` denotes: an identifier's denotations, or the field a key names (§3.1). */
 function denotationsAt(module: ModuleId, node: SyntaxNode) {

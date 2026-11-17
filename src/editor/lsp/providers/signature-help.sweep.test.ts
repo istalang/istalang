@@ -11,6 +11,7 @@ import { checkProgram } from '../../../compiler/checker/check.ts';
 import { parameterOfArgument } from '../../../compiler/checker/surface/resolved-call.ts';
 import { typeText } from '../../../compiler/checker/types/type/type-text.ts';
 import { wellKnownArguments } from '../../../compiler/checker/types/type/well-known.ts';
+import { wholeProgramTimeout } from '../../../compiler/compile.test-kit.ts';
 import type { ModuleId } from '../../../compiler/program/program.ts';
 import type { Call } from '../../../compiler/syntax/expressions/calls.ts';
 import { calledName } from '../../../compiler/syntax/expressions/readings.ts';
@@ -35,7 +36,7 @@ let client: TestClient;
 
 beforeAll(async () => {
   client = await corpusClient();
-});
+}, wholeProgramTimeout);
 
 /**
  * What the active signature must be, at each written argument: its label's start, and the

@@ -36,10 +36,16 @@ function openDocument(uri: string, text: string): OpenDocument {
   return { uri, text, tree: parse(source, scan(source)) };
 }
 
-/** A client of a server for the corpus directory, with every document of `corpusDocuments` open. */
+/**
+ * A client of a server for the corpus directory, with every document of `corpusDocuments` open, once
+ * the server published their diagnostics: it has checked the whole program then, so a test's first
+ * request costs what it asks, not that check.
+ */
 export async function corpusClient(): Promise<TestClient> {
   const client = await connectedClient(corpusDirectory);
+  const diagnosed = Promise.all(corpusDocuments.map(({ uri }) => client.nextDiagnostics(uri)));
   await Promise.all(corpusDocuments.map(({ uri, text }) => client.open(uri, text)));
+  await diagnosed;
   return client;
 }
 

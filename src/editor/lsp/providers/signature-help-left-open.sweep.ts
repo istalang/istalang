@@ -12,6 +12,7 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { type Position, SignatureHelpRequest } from 'vscode-languageserver/node';
 import { sliceOf } from '../../../../test/slices.ts';
+import { wholeProgramTimeout } from '../../../compiler/compile.test-kit.ts';
 import { nodesUnder } from '../../../compiler/syntax/tree/index.ts';
 import { spanIn } from '../../../compiler/syntax/tree/positions.ts';
 import type { SourceText } from '../../../foundation/text/source-text.ts';
@@ -72,7 +73,7 @@ export function leftOpenSlice(file: string): void {
 
   beforeAll(async () => {
     client = await corpusClient();
-  });
+  }, wholeProgramTimeout);
 
   describe('signature help over the corpus', () => {
     it.each(sliceOf(file).of(argumentEnds))(

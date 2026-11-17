@@ -1,5 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { type DocumentSymbol, DocumentSymbolRequest } from 'vscode-languageserver/node';
+import { wholeProgramTimeout } from '../../../../compiler/compile.test-kit.ts';
 import {
   boundName,
   type Declaration,
@@ -16,7 +17,7 @@ let client: TestClient;
 
 beforeAll(async () => {
   client = await corpusClient();
-});
+}, wholeProgramTimeout);
 
 /** A declared name, and the names of the members declared inside it. */
 interface Declared {

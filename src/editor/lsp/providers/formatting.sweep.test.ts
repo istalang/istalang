@@ -1,5 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { DocumentFormattingRequest } from 'vscode-languageserver/node';
+import { wholeProgramTimeout } from '../../../compiler/compile.test-kit.ts';
 import { formatTree } from '../../../formatter/format.ts';
 import { corpusClient, corpusDocuments } from '../corpus-client.test-kit.ts';
 import type { TestClient } from '../server.test-kit.ts';
@@ -8,7 +9,7 @@ let client: TestClient;
 
 beforeAll(async () => {
   client = await corpusClient();
-});
+}, wholeProgramTimeout);
 
 describe('formatting a document', () => {
   it.each(corpusDocuments)(

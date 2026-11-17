@@ -1,5 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { FoldingRangeRequest } from 'vscode-languageserver/node';
+import { wholeProgramTimeout } from '../../../../compiler/compile.test-kit.ts';
 import { extentIn, nodesUnder, type SyntaxTree } from '../../../../compiler/syntax/tree/index.ts';
 import { spanIn } from '../../../../compiler/syntax/tree/positions.ts';
 import { lineMapOf } from '../../../../foundation/text/line-map.ts';
@@ -12,7 +13,7 @@ let client: TestClient;
 
 beforeAll(async () => {
   client = await corpusClient();
-});
+}, wholeProgramTimeout);
 
 interface Fold {
   readonly startLine: number;

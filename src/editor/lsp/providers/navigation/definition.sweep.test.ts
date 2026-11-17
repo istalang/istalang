@@ -1,4 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest';
+import { wholeProgramTimeout } from '../../../../compiler/compile.test-kit.ts';
 import { spanIn } from '../../../../compiler/syntax/tree/positions.ts';
 import { nameAt } from '../../../language-service/navigation/declarations.ts';
 import { corpusClient, corpusDocuments, corpusProgram } from '../../corpus-client.test-kit.ts';
@@ -10,7 +11,7 @@ let client: TestClient;
 
 beforeAll(async () => {
   client = await corpusClient();
-});
+}, wholeProgramTimeout);
 
 describe('going to a definition', () => {
   it.each(corpusDocuments)(

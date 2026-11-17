@@ -8,6 +8,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { InlayHintRequest } from 'vscode-languageserver/node';
 import { checkProgram } from '../../../compiler/checker/check.ts';
 import { typeText } from '../../../compiler/checker/types/type/type-text.ts';
+import { wholeProgramTimeout } from '../../../compiler/compile.test-kit.ts';
 import { parameterNames } from '../../../compiler/syntax/expressions/parameters.ts';
 import { targetNames } from '../../../compiler/syntax/patterns.ts';
 import { declaredTargets } from '../../../compiler/syntax/statements/targets.ts';
@@ -28,7 +29,7 @@ let client: TestClient;
 
 beforeAll(async () => {
   client = await corpusClient();
-});
+}, wholeProgramTimeout);
 
 function untypedNames(node: SyntaxNode): readonly Identifier[] {
   if (node.kind === 'VariableDeclaration' && node.type === undefined) {

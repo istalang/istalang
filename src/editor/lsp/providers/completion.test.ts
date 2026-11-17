@@ -20,6 +20,7 @@ import { corpusDirectory } from '../../../../test/corpus/programs.ts';
 import { isLookedUp, resolvedNames } from '../../../compiler/binder/bind.test-kit.ts';
 import { checkProgram } from '../../../compiler/checker/check.ts';
 import { checkerDiagnostics } from '../../../compiler/checker/diagnostics/index.ts';
+import { wholeProgramTimeout } from '../../../compiler/compile.test-kit.ts';
 import { nodesUnder } from '../../../compiler/syntax/tree/index.ts';
 import type { Identifier } from '../../../compiler/syntax/tree/node.ts';
 import { spanIn } from '../../../compiler/syntax/tree/positions.ts';
@@ -44,7 +45,7 @@ describe.skip('completion over the corpus', () => {
 
   beforeAll(async () => {
     client = await corpusClient();
-  });
+  }, wholeProgramTimeout);
 
   it.each(documents)('$uri', async ({ uri, module, tree }) => {
     const notAnnotations = checker
