@@ -342,58 +342,38 @@ export const maximumDepth = 256;
 
 /** How deep `candidate` nests: 0 for a primitive, one more than its deepest part for a composite. */
 export function depthOf(candidate: Value): number {
-  return isComposite(candidate) ? summaryOf(candidate).depth : 0;
+  return isComposite(candidate) ? compositeDepthOf(candidate) : 0;
 }
-
-/** What one walk learns of a composite: how deep it nests, and the objects its handles name. */
-interface Summary {
-  readonly depth: number;
-  readonly handles: readonly number[];
-}
-
-const noHandles: readonly number[] = [];
 
 /**
- * Each composite's summary, derived once and kept until the runtime changes the composite in place
- * (`forgetSummary`), so a value walked before is free: its parts are never listed again.
+ * Each composite's depth, derived once and kept until the runtime changes the composite in place
+ * (`forgetDepth`), so a value walked before is free: its parts are never listed again.
  */
-const summaries = new WeakMap<CompositeValue, Summary>();
+const depths = new WeakMap<CompositeValue, number>();
 
-/** Forgets `composite`'s summary, once it changed in place (runtime/lifetimes/in-place.ts). */
-export function forgetSummary(composite: CompositeValue): void {
-  summaries.delete(composite);
+/** Forgets `composite`'s depth, once it changed in place (`Lifetimes.owned`). */
+export function forgetDepth(composite: CompositeValue): void {
+  depths.delete(composite);
 }
 
-function summaryOf(candidate: CompositeValue): Summary {
+function compositeDepthOf(candidate: CompositeValue): number {
   const pending: CompositeValue[] = [candidate];
   for (let top = pending.at(-1); top !== undefined; top = pending.at(-1)) {
-    const parts = summaries.has(top) ? [] : childValues(top).filter(isComposite);
-    const unknown = parts.filter((part) => !summaries.has(part));
+    const parts = depths.has(top) ? [] : childValues(top).filter(isComposite);
+    const unknown = parts.filter((part) => !depths.has(part));
     if (unknown.length > 0) {
       pushAll(pending, unknown);
     } else {
       pending.pop();
-      summaries.set(top, summaries.get(top) ?? summaryOver(top, parts));
+      depths.set(top, depths.get(top) ?? depthOver(parts));
     }
   }
-  return summaries.get(candidate) ?? { depth: 0, handles: noHandles };
+  return depths.get(candidate) ?? 0;
 }
 
-/** The summary of `composite`, whose composite `parts` are summarized already. */
-function summaryOver(composite: CompositeValue, parts: readonly CompositeValue[]): Summary {
-  if (composite.kind === 'handle') {
-    return { depth: 1, handles: [composite.object] };
-  }
-  let deepest = 0;
-  const handles = new Set<number>();
-  for (const part of parts) {
-    const known = summaries.get(part);
-    deepest = Math.max(deepest, known?.depth ?? 0);
-    for (const object of known?.handles ?? noHandles) {
-      handles.add(object);
-    }
-  }
-  return { depth: 1 + deepest, handles: handles.size === 0 ? noHandles : [...handles] };
+/** The depth of a composite whose composite `parts` have their depths known already. */
+function depthOver(parts: readonly CompositeValue[]): number {
+  return 1 + parts.reduce((deepest, part) => Math.max(deepest, depths.get(part) ?? 0), 0);
 }
 
 function floatOnDisk(number: number): number | SpecialFloat {

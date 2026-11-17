@@ -17,7 +17,7 @@
  *   never shared. A shared value is copied, its parts then shared or held by the copy too.
  * - **Plain** values are neither: `hold` and `letGo` pass over anything that isn't an object.
  * - A value changed in place forgets what was derived from it (its hash, its map's table, its
- *   summary, the JSON written of it and the host's object of that JSON), so derived data stays
+ *   depth, the JSON written of it and the host's object of that JSON), so derived data stays
  *   keyed by values that never change under it. The JSON the run wrote values as is kept here
  *   (`written`), each held for good: shared, so no part of it changes in place.
  * - A native builds its result around values it borrowed, where compiled code moves each part in:
@@ -34,7 +34,7 @@ import { forgetPlainOf } from '../../definition/values/json-values.ts';
 import {
   type CompositeValue,
   childValues,
-  forgetSummary,
+  forgetDepth,
   isComposite,
   type Value,
 } from '../../definition/values/values.ts';
@@ -199,7 +199,7 @@ export class Lifetimes {
   owned(node: CompositeValue): CompositeValue {
     if (this.isUnique(node)) {
       forgetDerived(node);
-      forgetSummary(node);
+      forgetDepth(node);
       forgetPlainOf(node);
       this.written.forget(node);
       return node;
