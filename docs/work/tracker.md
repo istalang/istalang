@@ -37,7 +37,7 @@ tags: [tracker]
 
 ## Filed
 
-Open items only: an item is removed once it is resolved; git history keeps it. Each group numbers its own items and keeps counting up: the next ids are F39, P56, Q79, B122. Items filed before 2026-10-28 shared one `D` series; older docs and git history keep the closed `D` ids.
+Open items only: an item is removed once it is resolved; git history keeps it. Each group numbers its own items and keeps counting up: the next ids are F39, P56, Q80, B123. Items filed before 2026-10-28 shared one `D` series; older docs and git history keep the closed `D` ids.
 
 Size: easy (one short, local change), medium (several files or a design choice inside one layer), big (cross-layer, or a decision first). Depends on: what must happen first, or "none" when it can be done now.
 
@@ -168,6 +168,7 @@ DRY, double standards, cohesion, layering, dead or misplaced code.
 | Q76 | The `startEncode` entry kind only forwards to the codec, while the type table reaches the same encoder directly. Delete the kind, or record why its trace name matters. | easy | none | ir-first R1 2026-11-17 |
 | Q77 | `startLive` composes its own `DurableWorld` instead of `createRuntime({...binding, store: memoryStore()})` with the code injected, so `istalang/live` and `istalang/runtime` differ: live drops unheard context panics (`panicked: () => undefined`) that the runtime reports (§9). | medium | none | ir-first R1 2026-11-17 |
 | Q78 | `HostBinding` (`runtime/host/binding.ts`) isn't in the package exports, so a host can't name `createRuntime`'s parameter. Export it (decide the subpath). | easy | none | ir-first R1 2026-11-17 |
+| Q79 | Two places derive "the entry a built value's register type names": codegen's `builtType` and validation's `builtEntry` (`validation/parts.ts`). One `builtEntryOf(entry, dst, types)` in `definition/tables/`. | easy | none | ir-first R1 2026-11-17 |
 
 ### Behaviour and correctness (B)
 
@@ -222,3 +223,4 @@ Crashes, spec gaps, wrong or missing diagnostics, host-visible behaviour.
 | B119 | A resource or extern payload read back from a snapshot decodes safe bigints as numbers, so after a restart a host may get `7` where it gave `7n`. | small | none | ir-first R1 2026-11-17 |
 | B120 | Deploy writes the Definition to the store before checking extern signatures, so a deploy refused for changed externs still stores it (the old pipeline checked first). | small | none | ir-first R1 2026-11-17 |
 | B121 | `src/compiler/parser/parse.bench.ts` fails its own precondition on main: a spec module example now holds `…` outside a comment, so its 10k-line input has 441 scan errors and `npm run bench` stops there. Either the example or the bench's filter is wrong. | easy | none | ir-first R1 2026-11-17 |
+| B122 | A type test, and a union read, through a union with two `any` members that may both hold M checks only `holdingMember`'s one choice: `any Show | any Debug` holding an `any Debug` built from a Counter misses `case Counter`. Make the test plural (every member that may hold M; `branchOnHeld`'s per-variant targets support it) and the read switch on the union variant. | medium | none | ir-first R1 2026-11-17 |
