@@ -22,7 +22,7 @@ import { unreachable } from '../../foundation/structures/unreachable.ts';
 import type { SourceText } from '../../foundation/text/source-text.ts';
 import type { Span } from '../../foundation/text/span.ts';
 import type { Workspace } from '../language-service/workspace.ts';
-import { rangeOf } from './locations.ts';
+import { rangeOf, uriOf } from './locations.ts';
 
 /** How long changes must pause before a pass runs. */
 const quietMilliseconds = 50;
@@ -52,7 +52,7 @@ export function diagnosticsPublisher(
       try {
         const diagnosed = workspace.diagnosticsOf(module);
         connection.sendDiagnostics({
-          uri: module,
+          uri: uriOf(module),
           diagnostics:
             diagnosed?.diagnostics.map((diagnostic) =>
               lspDiagnostic(workspace, diagnosed.source, diagnostic),
@@ -71,7 +71,7 @@ export function diagnosticsPublisher(
       pending = setTimeout(publish, quietMilliseconds);
     },
     clear: (module) => {
-      connection.sendDiagnostics({ uri: module, diagnostics: [] });
+      connection.sendDiagnostics({ uri: uriOf(module), diagnostics: [] });
     },
     stop: () => {
       clearTimeout(pending);
@@ -95,7 +95,7 @@ function lspDiagnostic(
       const tree =
         workspace.treeOf(module) ??
         unreachable(`A related location stands in ${module}, which the workspace doesn't hold.`);
-      return { location: { uri: module, range: rangeOf(tree.source, span) }, message };
+      return { location: { uri: uriOf(module), range: rangeOf(tree.source, span) }, message };
     }),
   };
 }

@@ -1,15 +1,19 @@
 /**
  * What an editor shows for the spot under a pointer: for a name, what it denotes there, each
- * declaration as a line of code with its type, and the docstring of what it names; for any other
- * expression or written type, its type. A type written through a spelling, an alias, an associated
- * type or a struct's keys, shows what it names beside it (`writtenAndNamedText`); one known only by
- * its bounds, an opaque type, shows them: `T.Data is Encodable` (`shownText`).
+ * declaration as code with its type, and what documents what it names (the comments right above
+ * it, then its docstring, reading/documentation.ts); for any other expression or written type, its
+ * type; and for both, the declared types the code names, to link to (type-links.ts). A type
+ * written through a spelling, an alias, an associated type or a struct's keys, shows what it names
+ * beside it (`writtenAndNamedText`); one known only by its bounds, an opaque type, shows them:
+ * `T.Data is Encodable` (`shownText`).
  *
  * A name is answered through the identifier query (checker denotation.ts), as going to its
  * definition is, so the two never disagree; a String literal naming a field as its key (§3.1),
  * through the key query, as the field it names. A shorthand, `Pair{first}`, names a field and a
  * variable, and shows both. A function shows its signature, which spells its type with its
- * parameters' names, and so does a variant with fields, its constructor's (§3.11), before its enum.
+ * parameters' names, and so does a variant with fields, its constructor's (§3.11), before its enum;
+ * a struct, an enum or a trait shows its declaration, then how the type reads where it is named,
+ * unless the declaration's header reads so (hover-code.ts lays both out).
  * A call pattern's argument written by position shows the field it gives, as checking recorded it
  * and as a named one's name does, before what its own text shows; inside a pattern taking a value
  * apart, itself included, only that pattern's parts show what they give.
@@ -33,18 +37,27 @@ import type { Identifier } from '../../compiler/syntax/tree/node.ts';
 import { spanIn } from '../../compiler/syntax/tree/positions.ts';
 import type { TypeNode } from '../../compiler/syntax/types/index.ts';
 import type { Span } from '../../foundation/text/span.ts';
+import { signatureCode, typeDeclarationCode } from './hover-code.ts';
 import { type CheckedModule, checkedModule } from './reading/checked-module.ts';
-import { docstringOf } from './reading/docstrings.ts';
+import { documentationOf } from './reading/documentation.ts';
 import { identifierAt } from './reading/identifier-at.ts';
 import { importedModule } from './reading/namespaces.ts';
-import { signatureOf } from './signatures/signatures.ts';
+import { type TypeLink, typeLinks } from './type-links.ts';
 
 interface Hover {
   /** The name or expression hovered over. */
   readonly span: Span;
-  /** Each declaration the name denotes, or the expression's type, as a line of code. */
+  /** Each declaration the name denotes, or the expression's type, as code. */
   readonly code: readonly string[];
+  /** The declared types the code names, each once, where each is declared (type-links.ts). */
+  readonly links: readonly TypeLink[];
   readonly doc: string | undefined;
+}
+
+/** A hover as found, before the types it shows link to their declarations. */
+interface Found extends Omit<Hover, 'links'> {
+  /** The types the code shows. */
+  readonly types: readonly Type[];
 }
 
 /**
@@ -68,14 +81,19 @@ export function hoverAt(program: Program, module: ModuleId, offset: number): Hov
   // Right after a name, the name is the one under the cursor, as `nameHover` reads it below.
   const around = ending === undefined ? chain : nodesAt(checked.tree, offset - 1);
   const position = positionalArgumentOf(chain) ?? positionalArgumentOf(around);
-  if (position !== undefined) {
-    return argumentHover(checked, position);
+  const found =
+    position === undefined
+      ? (innermostHover(checked, chain) ?? (ending && nameHover(checked, ending)))
+      : argumentHover(checked, position);
+  if (found === undefined) {
+    return undefined;
   }
-  return innermostHover(checked, chain) ?? (ending && nameHover(checked, ending));
+  const { types, ...shown } = found;
+  return { ...shown, links: typeLinks(checked.checker, types) };
 }
 
 /** The hover of the innermost of `nodes`, root to innermost, that has a name or a type. */
-function innermostHover(checked: CheckedModule, nodes: readonly SyntaxNode[]): Hover | undefined {
+function innermostHover(checked: CheckedModule, nodes: readonly SyntaxNode[]): Found | undefined {
   for (const node of nodes.toReversed()) {
     const found = nodeHover(checked, node);
     if (found !== undefined) {
@@ -135,20 +153,19 @@ function byPosition({ kind }: PatternArgument): boolean {
 function argumentHover(
   checked: CheckedModule,
   { call, argument, inside }: PositionalArgument,
-): Hover | undefined {
+): Found | undefined {
   const { checker, module, tree } = checked;
   const found = innermostHover(checked, inside);
   const field = checker.lookup.bodyHolding(module, call)?.fieldGivenBy(argument);
   if (field === undefined) {
     return found;
   }
-  const fieldLines = denotationLines(checker, field.name, {
-    declared: { kind: 'field', field },
-    type: field.type,
-  });
+  const denotation: Denotation = { declared: { kind: 'field', field }, type: field.type };
+  const fieldLines = denotationLines(checker, field.name, denotation);
   return {
     span: found?.span ?? spanIn(tree, argument.span),
     code: [...fieldLines, ...(found?.code ?? [])],
+    types: [...shownTypes(checker, denotation), ...(found?.types ?? [])],
     doc: found?.doc,
   };
 }
@@ -183,7 +200,7 @@ export function shownAs(node: SyntaxNode): SyntaxNode | undefined {
   return showing === undefined ? node : showing(node);
 }
 
-function nodeHover(checked: CheckedModule, node: SyntaxNode): Hover | undefined {
+function nodeHover(checked: CheckedModule, node: SyntaxNode): Found | undefined {
   const shown = shownAs(node);
   if (shown !== node) {
     return shown === undefined ? undefined : nodeHover(checked, shown);
@@ -195,6 +212,7 @@ function nodeHover(checked: CheckedModule, node: SyntaxNode): Hover | undefined 
     (type && {
       span: spanIn(checked.tree, node.span),
       code: [shownText(checked.checker, type)],
+      types: [type],
       doc: undefined,
     })
   );
@@ -212,7 +230,7 @@ function isName(node: SyntaxNode): node is Identifier | StringLiteral {
 function nameHover(
   { checker, module, tree }: CheckedModule,
   name: Identifier | StringLiteral,
-): Hover | undefined {
+): Found | undefined {
   const denotations =
     name.kind === 'Identifier'
       ? checker.lookup.denotationsOf(module, name)
@@ -224,8 +242,9 @@ function nameHover(
   return {
     span: spanIn(tree, name.span),
     code: denotations.flatMap((denotation) => denotationLines(checker, text, denotation)),
+    types: denotations.flatMap((denotation) => shownTypes(checker, denotation)),
     doc: denotations
-      .map(({ declared }) => docstringOf(checker, declared))
+      .map(({ declared }) => documentationOf(checker, declared))
       .find((doc) => doc !== undefined),
   };
 }
@@ -256,19 +275,50 @@ function denotationLines(
     `(${kind}) ${name}${type === undefined ? '' : `: ${shownText(checker, type)}`}`;
   switch (declared.kind) {
     case 'function': {
-      const signature = signatureOf(checker, declared.declaration).label;
+      const signature = signatureCode(checker, declared.declaration);
       return type === undefined ? [signature] : [signature, shownText(checker, type)];
     }
-    case 'type':
-      return [`(type) ${type === undefined ? name : shownText(checker, type)}`];
+    case 'type': {
+      const text = type === undefined ? name : shownText(checker, type);
+      const { entity } = declared;
+      const declaration = entity.kind === 'type' ? typeDeclarationCode(checker, entity) : undefined;
+      // A type read with its arguments, or through another name, shows how it reads here too.
+      const readsAsDeclared = declaration?.split('\n')[0]?.includes(text) === true;
+      return [
+        ...(declaration === undefined ? [] : [declaration]),
+        ...(readsAsDeclared ? [] : [`(type) ${text}`]),
+      ];
+    }
     case 'namespace':
       return [`(module) ${importedModule(checker, declared.entity)?.name ?? name}`];
     case 'variant': {
       const constructs = fieldsFunctionOf(declared.entity.enum, declared.entity.variant);
-      const signature = constructs && signatureOf(checker, constructs).label;
+      const signature = constructs && signatureCode(checker, constructs);
       return signature === undefined ? [typed('variant')] : [signature, typed('variant')];
     }
     default:
       return [typed(declared.kind)];
+  }
+}
+
+/**
+ * The types a denotation's code shows: a function's parameters' and result's, a type's fields',
+ * and any denotation's own.
+ */
+function shownTypes(checker: Checker, { declared, type }: Denotation): readonly Type[] {
+  const own = type === undefined ? [] : [type];
+  switch (declared.kind) {
+    case 'function': {
+      const { declaration } = declared;
+      const parameters = checker.parametersOf(declaration).map((parameter) => parameter.type);
+      return [...parameters, checker.resultOf(declaration), ...own];
+    }
+    case 'type':
+      return [
+        ...own,
+        ...(type === undefined ? [] : (checker.fieldsOf(type) ?? []).map((field) => field.type)),
+      ];
+    default:
+      return own;
   }
 }

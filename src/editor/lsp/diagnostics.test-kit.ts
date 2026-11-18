@@ -13,6 +13,7 @@ import type { SourceText } from '../../foundation/text/source-text.ts';
 import type { Span } from '../../foundation/text/span.ts';
 import { moduleIdOfFile } from '../../project/file-loader.ts';
 import { findProjectSources, loadProject } from '../../project/project.ts';
+import { uriOf } from './locations.ts';
 
 /** What `ista check` reports in `file` of `program`, as a client receives it. */
 export function checked(program: Program, file: string) {
@@ -25,7 +26,7 @@ export function checked(program: Program, file: string) {
     message,
     relatedInformation: related.map((each) => ({
       location: {
-        uri: each.module,
+        uri: uriOf(each.module),
         range: rangeIn(programModule(program, each.module).tree.source, each.span),
       },
       message: each.message,
@@ -55,4 +56,4 @@ export function projectProgram(root: string): Program {
 }
 
 /** The URI a client opens `file` under. */
-export const uriOf = (file: string) => pathToFileURL(file).href;
+export const fileUriOf = (file: string) => pathToFileURL(file).href;

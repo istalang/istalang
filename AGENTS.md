@@ -57,7 +57,7 @@ Top-level folders are toolchain features. Their layers and contracts are in `doc
 - `editor/`: editor support, from features to protocol to client.
   - `language-service/`: what an editor asks of a project, with no protocol and no I/O: the workspace (open texts and the program they make, `workspace.ts`), one module or folder per feature, and what features read of a module at a spot (`reading/`).
   - `lsp/`: the language server over vscode-languageserver; `server.ts` composes it, `providers/` holds one provider per request (the navigation ones in `providers/navigation/`, the outline ones in `providers/outline/`), and `ista lsp` runs it.
-  - `vscode-client/`: the VS Code extension's client of `ista lsp`: `extension.ts` activates it and serves the `std:` documents, `server-command.ts` picks the `ista lsp` process a workspace runs. It imports of the server only `editor/lsp/std-source-request.ts`.
+  - `vscode-client/`: the VS Code extension's client of `ista lsp`: `extension.ts` activates it and serves the `std:` documents, `server-command.ts` picks the `ista lsp` process a workspace runs. It imports of the server only `editor/lsp/client-protocol.ts`.
 - `cli/`: the `ista` app. `cli.ts` is its composition root, `compile-entry.ts` compiles the program `run` and `build` take, `host-module.ts` loads the host externs of `run --host`, `report.ts` renders diagnostics, and `commands/` holds one module per subcommand.
 
 Use a phase or feature folder only through its entry module. Upward imports and import cycles fail lint. Layers are an allow-list in `.dependency-cruiser.mjs`: a new folder can import nothing until you list it there.

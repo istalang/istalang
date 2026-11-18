@@ -132,6 +132,7 @@ describe('hover', () => {
   it('shows a written type with its type arguments', () => {
     const pair = ['struct Pair<A, B>:', '  first: A', '  second: B', ''];
     expect(hover(...pair, 'fn f(p: Pa‸ir<Int, String>) -> Int: 1')?.code).toEqual([
+      'struct Pair<A, B> { first: A, second: B }',
       '(type) Pair<Int, String>',
     ]);
     expect(hover('fn f(p: (Int‸, String)) -> Int: 1')?.code).toEqual(['(Int, String)']);
@@ -294,15 +295,13 @@ describe('hover', () => {
 
   it('shows the declaration an annotation names even where the parser rejected the annotation', () => {
     const tag = 'struct Tag { label: String }';
-    expect(hover(tag, 'fn f<S is struct { @Ta‸g{"a"} n: Int }>(s: S): ()')?.code).toEqual([
-      '(type) Tag',
-    ]);
+    expect(hover(tag, 'fn f<S is struct { @Ta‸g{"a"} n: Int }>(s: S): ()')?.code).toEqual([tag]);
     expect(hover(tag, 'const xs: Array<Int> =', '  @Tag{la‸bel: "a"}', '  - 1')?.code).toEqual([
       '(field) label: String',
     ]);
     expect(hover(tag, 'type Out<T> = match T:', '  @Ta‸g{"a"}', '  case _: Int')?.code).toEqual([
-      '(type) Tag',
+      tag,
     ]);
-    expect(hover(tag, 'extern struct Handle:', '  @Ta‸g{"a"}')?.code).toEqual(['(type) Tag']);
+    expect(hover(tag, 'extern struct Handle:', '  @Ta‸g{"a"}')?.code).toEqual([tag]);
   });
 });

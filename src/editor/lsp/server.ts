@@ -54,7 +54,7 @@ export function serveLanguage(connection: Connection, cwd: string): void {
     const workspace = new Workspace(projectProgramLoader(projectRootOf(params, cwd)));
     syncDocuments(connection, workspace);
     for (const provider of providers) {
-      provider.register(connection, workspace);
+      provider.register(connection, workspace, params.capabilities);
     }
     const capabilities: ServerCapabilities = Object.assign(
       { textDocumentSync: TextDocumentSyncKind.Full },

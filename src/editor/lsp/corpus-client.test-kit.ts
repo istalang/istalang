@@ -8,12 +8,12 @@ import { pathToFileURL } from 'node:url';
 import { corpusDirectory, corpusFiles } from '../../../test/corpus/programs.ts';
 import { slowTestTimeout } from '../../../test/timeouts.ts';
 import { parse } from '../../compiler/parser/parse.ts';
-import type { ModuleId, Program } from '../../compiler/program/program.ts';
+import { type ModuleId, type Program, stdModuleIdOf } from '../../compiler/program/program.ts';
 import { scan } from '../../compiler/scanner/scan.ts';
 import type { SyntaxTree } from '../../compiler/syntax/tree/index.ts';
 import { createSourceText } from '../../foundation/text/source-text.ts';
 import { stdModuleSources } from '../../stdlib/std-sources.ts';
-import { moduleIdOfUri } from './locations.ts';
+import { moduleIdOfUri, uriOf } from './locations.ts';
 import { projectProgramLoader } from './project-loader.ts';
 import { connectedClient, sharedClient, type TestClient } from './server.test-kit.ts';
 
@@ -24,12 +24,14 @@ export interface OpenDocument {
   readonly tree: SyntaxTree;
 }
 
-/** Every corpus module, by its file's URI, then every std module, by its `std:` URI. */
+/** Every corpus module, by its file's URI, then every std module, by its document's (`uriOf`). */
 export const corpusDocuments: readonly OpenDocument[] = [
   ...corpusFiles.map(({ name, text }) =>
     openDocument(pathToFileURL(`${corpusDirectory}${name}`).href, text),
   ),
-  ...Object.entries(stdModuleSources).map(([name, text]) => openDocument(`std:${name}`, text)),
+  ...Object.entries(stdModuleSources).map(([name, text]) =>
+    openDocument(uriOf(stdModuleIdOf(name)), text),
+  ),
 ];
 
 function openDocument(uri: string, text: string): OpenDocument {

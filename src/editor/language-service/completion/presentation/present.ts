@@ -25,7 +25,7 @@ import { boolType } from '../../../../compiler/checker/types/type/primitives.ts'
 import { slotText, typeText } from '../../../../compiler/checker/types/type/type-text.ts';
 import { hasDefault } from '../../../../compiler/syntax/declarations/index.ts';
 import { type Handlers, handlerOf } from '../../../../foundation/structures/kind-table.ts';
-import { docstringOf } from '../../reading/docstrings.ts';
+import { documentationOf } from '../../reading/documentation.ts';
 import { signatureOf } from '../../signatures/signatures.ts';
 import type { Candidate, Subject } from '../candidate.ts';
 import type { Cursor } from '../cursor.ts';
@@ -112,7 +112,7 @@ const presenters: Handlers<Presenting, Subject, [name: string], Shown> = {
   read: ({ cursor: { checker } }, { read: { declaration, type } }) => ({
     kind: 'field',
     detail: typeText(type),
-    ...documented(docstringOf(checker, { kind: 'function', declaration })),
+    ...documented(documentationOf(checker, { kind: 'function', declaration })),
     gives: [type],
   }),
   function: (presenting, { declaration, through }, name) => {
@@ -120,7 +120,7 @@ const presenters: Handlers<Presenting, Subject, [name: string], Shown> = {
     return {
       kind: through === 'value' ? 'method' : 'function',
       detail: signatureOf(checker, declaration).label,
-      ...documented(docstringOf(checker, { kind: 'function', declaration })),
+      ...documented(documentationOf(checker, { kind: 'function', declaration })),
       priority: 1,
       gives: [
         checker.resultOf(declaration),

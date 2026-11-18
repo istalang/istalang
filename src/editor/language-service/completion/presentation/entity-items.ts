@@ -1,6 +1,6 @@
 /**
  * How a name a scope offers shows (present.ts): what the binder says it denotes decides its kind,
- * its detail and its docstring, as hover reads them (reading/docstrings.ts,
+ * its detail and its documentation, as hover reads them (reading/documentation.ts,
  * signatures/signatures.ts), so the two never disagree.
  *
  * - A name's group is where it comes from: declared inside a function (a local), at its module's
@@ -25,7 +25,7 @@ import type { ModuleId } from '../../../../compiler/program/program.ts';
 import { isMethod } from '../../../../compiler/syntax/declarations/methods.ts';
 import { type Handlers, handlerOf } from '../../../../foundation/structures/kind-table.ts';
 import { unreachable } from '../../../../foundation/structures/unreachable.ts';
-import { docstringOf } from '../../reading/docstrings.ts';
+import { documentationOf } from '../../reading/documentation.ts';
 import { importedModule } from '../../reading/namespaces.ts';
 import { signatureOf } from '../../signatures/signatures.ts';
 import type { CompletionKind, RankGroup } from './item.ts';
@@ -88,7 +88,7 @@ const entityItems: Handlers<Presenting, Entity, [name: string], Shown> = {
     return {
       kind: variableKind(checker, entity),
       ...(type === undefined ? {} : { detail: typeText(type), gives: [type] }),
-      ...documented(docstringOf(checker, { kind: 'variable', entity })),
+      ...documented(documentationOf(checker, { kind: 'variable', entity })),
       commit: goesOn,
     };
   },
@@ -101,7 +101,7 @@ const entityItems: Handlers<Presenting, Entity, [name: string], Shown> = {
         ? {}
         : {
             detail: signatureOf(checker, first).label,
-            ...documented(docstringOf(checker, { kind: 'function', declaration: first })),
+            ...documented(documentationOf(checker, { kind: 'function', declaration: first })),
           }),
       gives: overloads.flatMap((overload) =>
         isMethod(overload)
@@ -121,7 +121,7 @@ const entityItems: Handlers<Presenting, Entity, [name: string], Shown> = {
     return {
       kind,
       detail,
-      ...documented(docstringOf(checker, { kind: 'type', entity })),
+      ...documented(documentationOf(checker, { kind: 'type', entity })),
       commit: goesOn,
       ...(presenting.place.kind === 'annotation'
         ? annotationValue(
@@ -142,7 +142,7 @@ const entityItems: Handlers<Presenting, Entity, [name: string], Shown> = {
     return {
       kind: 'module',
       ...(imported === undefined ? {} : { detail: imported.name }),
-      ...documented(docstringOf(checker, { kind: 'namespace', entity })),
+      ...documented(documentationOf(checker, { kind: 'namespace', entity })),
       commit: goesOn,
     };
   },

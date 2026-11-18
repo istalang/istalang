@@ -84,7 +84,9 @@ describe('hover on indented values, parameter patterns and recursive aliases (no
         '    retry:',
         '      backoffMs: 100',
       )?.code,
-    ).toEqual(['(type) Service']);
+    ).toEqual([
+      ['struct Service:', '  name: String', '  replicas: Int = 1', '  retry: Retry'].join('\n'),
+    ]);
   });
 });
 

@@ -38,7 +38,7 @@ tags: [tracker]
 
 ## Filed
 
-Open items only: an item is removed once it is resolved; git history keeps it. Each group numbers its own items and keeps counting up: the next ids are F40, P59, Q89, B123. Items filed before 2026-10-28 shared one `D` series; older docs and git history keep the closed `D` ids.
+Open items only: an item is removed once it is resolved; git history keeps it. Each group numbers its own items and keeps counting up: the next ids are F40, P59, Q90, B123. Items filed before 2026-10-28 shared one `D` series; older docs and git history keep the closed `D` ids.
 
 Size: easy (one short, local change), medium (several files or a design choice inside one layer), big (cross-layer, or a decision first). Depends on: what must happen first, or "none" when it can be done now.
 
@@ -171,6 +171,7 @@ DRY, double standards, cohesion, layering, dead or misplaced code.
 | P58 | Every entry that read an `any` type's variants is lowered again each time that type gains one (lowering/tables/function-table.ts), so the rewrites grow with the square of the conversions into one `any` type met late. Std tests and FormBuilder don't show it; measure a trait-object-heavy program before it matters. | medium | none | b115-mocks review 2026-11-18 |
 | Q84 | A conversion or wrapping entry stands in the prelude as a whole, so a panic trace through a wrapped closure shows a synthetic prelude frame. Hide synthesized conversion frames in traces (runtime/run/traces.ts), as a `rebound` frame is hidden. | easy | none | b115-mocks review 2026-11-18 |
 | Q85 | The rule "a test taking more than a third of its limit under load is made faster, sliced, or given the longer limit" (vitest.config.ts) lives only in a comment: nothing reports a test drifting toward its limit, so the next drift surfaces as a flaky timeout again. A reporter comparing each test's and hook's duration with its own limit (warning past a third) would hold it. | small | none | test-timeouts review 2026-11-18 |
+| Q89 | Completion doesn't offer `for` where a corpus program's declared value starts: `completion/places/grammar/index.test.ts` "at the declared values of the corpus" fails with seed 1736343051, path 25 (test/corpus/shapes/identity.ista, offset 1065, an indented value's entry after `const v: {…} =`); it fails at `HEAD` too, likely since the corpus was reformatted. | small | none | hover-docs 2026-11-18 |
 | F39 | `Mock<F>` can't name its calls' type: a struct takes no pack, and a type `match` can't `infer` `Fn`'s parameter tuple (`case Fn<infer A, infer R, infer K is Mark, infer S is Sendability>` fails 5690/5131) nor reduce over a generic `Fn<A, R, M>`. So testing.ista recovers it through a transient rendezvous (`_offer`, `_metCalls`). Either feature lets `Mock` hold `_calls: Shared<Array<ArgsOf<F>>>` and deletes the rendezvous; weigh against the spec cost. | medium | none | b115-mocks review 2026-11-17 |
 
 ### Behaviour and correctness (B)

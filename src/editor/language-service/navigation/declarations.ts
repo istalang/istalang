@@ -18,10 +18,10 @@ import { type Checker, checkProgram } from '../../../compiler/checker/check.ts';
 import type { Denotation } from '../../../compiler/checker/surface/denotation.ts';
 import { type ModuleId, type Program, programModule } from '../../../compiler/program/program.ts';
 import type { StringLiteral } from '../../../compiler/syntax/expressions/literals/literals.ts';
-import { type Identifier, isMissingName } from '../../../compiler/syntax/tree/node.ts';
+import type { Identifier } from '../../../compiler/syntax/tree/node.ts';
 import { spanIn, startTogether } from '../../../compiler/syntax/tree/positions.ts';
-import { type Handlers, handlerOf } from '../../../foundation/structures/kind-table.ts';
 import type { Span } from '../../../foundation/text/span.ts';
+import { declaringNameOf } from '../reading/declaring-node.ts';
 import { identifierAt, stringLiteralAt } from '../reading/identifier-at.ts';
 
 type Declared = Denotation['declared'];
@@ -63,7 +63,7 @@ function declarationsOf(
       ? checker.lookup.denotationsOf(module, name)
       : checker.lookup.keyDenotationsOf(module, name);
   const found = denotations.flatMap(({ declared }) => {
-    const at = handlerOf(declaringNames, declared)(checker, declared);
+    const at = declaringNameOf(checker, declared);
     return at === undefined ? [] : [{ declared, at }];
   });
   return found.filter(
@@ -138,21 +138,4 @@ export function nameAt(program: Program, module: ModuleId, offset: number): Name
   );
   const values = spelled.filter(({ declared }) => declared.kind !== 'field');
   return { name, declarations, targets: values.length > 0 ? values : spelled };
-}
-
-const declaringNames: Handlers<Checker, Declared, [], NamePlace | undefined> = {
-  variable: ({ bindings }, { entity }) => named(bindings.moduleOf(entity), entity.name),
-  field: (_, { field }) =>
-    field.declared === undefined
-      ? undefined
-      : named(field.declared.module, field.declared.node.name),
-  variant: ({ bindings }, { entity }) => named(bindings.moduleOf(entity), entity.variant.name),
-  function: (checker, { declaration }) => named(checker.moduleOf(declaration), declaration.name),
-  type: ({ bindings }, { entity }) =>
-    entity.kind === 'type' ? named(bindings.moduleOf(entity), entity.declaration.name) : undefined,
-  namespace: ({ bindings }, { entity }) => named(bindings.moduleOf(entity), entity.imported.alias),
-};
-
-function named(module: ModuleId | undefined, name: Identifier): NamePlace | undefined {
-  return module === undefined || isMissingName(name) ? undefined : { module, name };
 }

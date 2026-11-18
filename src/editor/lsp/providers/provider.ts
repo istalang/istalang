@@ -5,10 +5,19 @@
  * without its handlers or the other way around.
  */
 
-import type { Connection, ServerCapabilities } from 'vscode-languageserver/node';
+import type {
+  ClientCapabilities,
+  Connection,
+  ServerCapabilities,
+} from 'vscode-languageserver/node';
 import type { Workspace } from '../../language-service/workspace.ts';
 
 export interface Provider {
   readonly capabilities: ServerCapabilities;
-  readonly register: (connection: Connection, workspace: Workspace) => void;
+  /** Registers the handlers, answering as the client's capabilities let them. */
+  readonly register: (
+    connection: Connection,
+    workspace: Workspace,
+    client: ClientCapabilities,
+  ) => void;
 }

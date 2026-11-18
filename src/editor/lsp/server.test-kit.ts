@@ -16,6 +16,7 @@ import { PassThrough } from 'node:stream';
 import { pathToFileURL } from 'node:url';
 import { afterAll, beforeAll } from 'vitest';
 import {
+  type ClientCapabilities,
   createConnection,
   createProtocolConnection,
   type Diagnostic,
@@ -87,8 +88,14 @@ export function sharedClient(
   return () => client ?? unreachable('A shared client is read before its tests start.');
 }
 
-/** Starts a server for the project at `root` and connects a client to it. */
-export async function connectedClient(root: string): Promise<TestClient> {
+/**
+ * Starts a server for the project at `root` and connects a client to it, which announces
+ * `capabilities`.
+ */
+export async function connectedClient(
+  root: string,
+  capabilities: ClientCapabilities = {},
+): Promise<TestClient> {
   const toServer = new PassThrough();
   const toClient = new PassThrough();
   serveLanguage(
@@ -121,7 +128,7 @@ export async function connectedClient(root: string): Promise<TestClient> {
   const initialized = await connection.sendRequest(InitializeRequest.type, {
     processId: null,
     rootUri: pathToFileURL(root).href,
-    capabilities: {},
+    capabilities,
     workspaceFolders: null,
   });
   await connection.sendNotification(InitializedNotification.type, {});

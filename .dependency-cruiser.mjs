@@ -119,7 +119,7 @@ const layers = {
   ],
   // The VS Code client, bundled on its own into the extension (.vscode/extensions/ista): of the
   // server it shares only the protocol's request, so no server code reaches the bundle.
-  'editor/vscode-client': ['editor/lsp/std-source-request'],
+  'editor/vscode-client': ['editor/lsp/client-protocol'],
   definition: ['foundation/text'],
   // The one run executes the code codegen emits from a Definition.
   runtime: ['definition', 'foundation/text', 'codegen'],
