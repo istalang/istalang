@@ -1,0 +1,10 @@
+# outcome: [24,3,7,true]
+# disable-ista-formatter
+# The bitwise operators bind as Python's (§3.9): the shifts below `+`, then `&`, `^` and `|`, all
+# above the comparisons. The formatter would add parentheses to every line here, so it is off.
+
+import * as runtime from 'runtime'
+
+live async fn main() -> (Int, Int, Int, Bool): await runtime.run(runtime.id()) _main()
+
+ista async fn _main() -> (Int, Int, Int, Bool): (1 + 2 << 3, 1 | 2 & 3, 6 ^ 3 & 1, 4 & 6 == 4)

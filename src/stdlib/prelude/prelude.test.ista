@@ -261,10 +261,6 @@ fn numbers() -> Array<Test>: [
     test("shifts left without bound and right toward negative infinity", fn(): {
       assertEq([1 << 70, -9 >> 1, 5 >> 10, 3 << 0], [1180591620717411303424, -5, 0, 3])
     })
-    test("bind as Python's: shifts below +, then &, ^ and |, all above comparisons", fn(): {
-      assertEq([1 + 2 << 3, 1 | 2 & 3, 6 ^ 3 & 1], [24, 3, 7])
-      assert(4 & 6 == 4)
-    })
     test("a negative shift count panics", async fn(): {
       assertEq(await expectPanic(negativeShift), "A shift count can't be negative, as -1 is.")
     })

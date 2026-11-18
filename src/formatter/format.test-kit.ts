@@ -71,8 +71,10 @@ export function roundTripOf(text: string) {
 /**
  * `tree` dumped as formatting keeps it: its items other than imports, in order, then what its
  * imports bind, one entry per item and path, sorted, since the formatter merges and sorts them and
- * drops a name a `*` of its path binds too (imports.ts); and a struct value in braces or indented
- * alike, whose form its width picks (expressions/struct-values.ts).
+ * drops a name a `*` of its path binds too (imports.ts); a struct value in braces or indented
+ * alike, whose form its width picks (expressions/struct-values.ts); and an expression with or
+ * without parentheses, which the formatter adds where they clarify
+ * (expressions/clarifying-parentheses.ts) and the tree's shape already says.
  */
 function dumpAsFormatted(tree: SyntaxTree): string {
   const { items } = tree.root;
@@ -92,13 +94,17 @@ function dumpAsFormatted(tree: SyntaxTree): string {
     item.items.filter(binds(item)).map((each) => `${dump(tree, item.path)} ${dump(tree, each)}`),
   );
   const others = items.filter((item) => item.kind !== 'ImportDeclaration');
-  return [...imported.toSorted(), ...others.map((item) => dumpViewed(tree, item, asBraced))].join(
-    '\n',
-  );
+  return [
+    ...imported.toSorted(),
+    ...others.map((item) => dumpViewed(tree, item, asFormatted)),
+  ].join('\n');
 }
 
-/** A struct value as the literal in braces it builds; any other node as it is. */
-function asBraced(node: SyntaxNode): SyntaxNode {
+/** A struct value as the literal in braces it builds, an expression without parentheses. */
+function asFormatted(node: SyntaxNode): SyntaxNode {
+  if (node.kind === 'Parenthesized') {
+    return asFormatted(node.expression);
+  }
   if (node.kind !== 'IndentedValue' || !isStructShaped(node)) {
     return node;
   }

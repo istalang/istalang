@@ -21,6 +21,7 @@ import { asCompact } from '../layout/compact.ts';
 import { angled, bracketed, enclosed, hasComments, hugging, tupleList } from '../layout/lists.ts';
 import { oneLine } from '../layout/widths.ts';
 import type { Printer, Printers } from '../printer.ts';
+import { isClarified } from './clarifying-parentheses.ts';
 import { opened } from './indented-values.ts';
 
 const { group, indent, join, line, softline } = builders;
@@ -92,16 +93,23 @@ type Operation = readonly [string, Expression];
 /**
  * `a + b - c` as its first operand and the operations after it, so the whole run breaks as one: a
  * left operand that is itself an operation joins the run, unless a comment is placed on it, which
- * must print around it.
+ * must print around it, or it takes clarifying parentheses.
  */
 function operationChain(printer: Printer, node: Binary): readonly [Expression, ...Operation[]] {
   const operations: Operation[] = [];
   let current: Expression = node;
-  while (current.kind === 'Binary' && (current === node || !hasComments(printer, current))) {
+  const joins = (operand: Binary) =>
+    !(hasComments(printer, operand) || isClarified(printer.tree, operand));
+  while (current.kind === 'Binary' && (current === node || joins(current))) {
     operations.unshift([current.operator, current.right]);
     current = current.left;
   }
   return [current, ...operations];
+}
+
+/** `doc`, `node`'s, in the parentheses it takes as an operand of its parent, if any. */
+function clarified(printer: Printer, node: Expression, doc: builders.Doc): builders.Doc {
+  return isClarified(printer.tree, node) ? ['(', doc, ')'] : doc;
 }
 
 /** Kinds that lay out lines of their own: a run holding one can't stay on one line. */
@@ -324,16 +332,17 @@ export const expressionPrinters: Printers<ExpressionKind> = {
   Await: (printer, node) => ['await ', printer.print(node.operand)],
   Binary: (printer, node) => {
     const [first, ...operations] = operationChain(printer, node);
-    return operatorRun(printer, node, first ?? node, operations);
+    return clarified(printer, node, operatorRun(printer, node, first ?? node, operations));
   },
   ChainedComparison: (printer, node) => {
     const [first, ...rest] = node.operands;
     const operations = rest.map(
       (operand, index): Operation => [node.operators[index] ?? '', operand],
     );
-    return operatorRun(printer, node, first ?? node, operations);
+    return clarified(printer, node, operatorRun(printer, node, first ?? node, operations));
   },
-  Is: (printer, node) => [printer.print(node.subject), ' is ', printer.print(node.pattern)],
+  Is: (printer, node) =>
+    clarified(printer, node, [printer.print(node.subject), ' is ', printer.print(node.pattern)]),
   Range: (printer, node) => [
     node.start === undefined ? '' : printer.print(node.start),
     node.isInclusive ? '..=' : '..',
