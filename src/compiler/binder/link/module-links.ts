@@ -19,8 +19,8 @@ export interface ModuleLinks {
   /** Free names and the later parts of qualified names. */
   readonly resolved: Map<Identifier, Entity>;
   readonly imports: Map<ImportPlaceholder, Entity>;
-  /** The names its `*` imports bind (star-imports.ts). */
-  readonly starred: ReadonlyMap<string, Entity>;
+  /** Per name, the distinct entities its `*` imports bind (star-imports.ts). */
+  readonly starred: ReadonlyMap<string, readonly Entity[]>;
   /** Names that linking found denote nothing, though their tree resolved them or left them free. */
   readonly refused: Set<Identifier>;
   readonly diagnostics: Diagnostic<AnchoredSpan>[];

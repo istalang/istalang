@@ -101,6 +101,11 @@ export const binderDiagnostics = defineDiagnostics('binder', {
     message: (name: string) =>
       `'${name}' is no module's namespace or enum, so no name follows its '.'.`,
   },
+  ambiguousName: {
+    code: 4022,
+    message: (name: string) =>
+      `'${name}' is ambiguous here: a '*' import gives it, and so does another import, a declaration or the prelude (§3.13).`,
+  },
   transientReads: {
     code: 4021,
     message: (name: string) =>

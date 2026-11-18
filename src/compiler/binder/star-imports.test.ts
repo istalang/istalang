@@ -1,7 +1,8 @@
 /**
  * `import *` and namespaces among an import's items (§3.13): `*` binds every export under its own
- * name, as if each were listed, so a body's free name finds it, and a name it brings that anything
- * else at the top level binds, another `*` among them, is reported once, on the `*`.
+ * name, as if each were listed, so a body's free name finds it. A name it brings that something
+ * else gives too, another `*`, the module's own declaration or import, or the prelude, is
+ * ambiguous only where it is used, and reported there; two ways to the same entity are one.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -41,25 +42,40 @@ describe('import *', () => {
     expect(boundReport({ main, lib })).toEqual(reportedNothing);
   });
 
-  it.each([
-    ['a declaration', "import * from 'lib'\nfn a(): 5", d.importClash, 'a'],
-    ['a named import', "import * from 'lib'\nimport c as a from 'other'", d.duplicateImport, 'a'],
-    ['a named import of the same export', "import (*, a) from 'lib'", d.duplicateImport, 'a'],
-    ['a namespace', "import * from 'lib'\nimport * as b from 'other'", d.duplicateImport, 'b'],
-    ['another *', "import * from 'lib'\nimport * from 'other'", d.duplicateImport, 'b'],
-  ])('reports a name it shares with %s once, on the *', (_, main, rule, name) => {
-    const files = { main, lib, other };
-    expect(boundReport(files)).toEqual(reportedOnce(rule.code, '*'));
-    const [reported] = bindProgram(preludeProgramOf(files)).diagnosticsOf(idOf('main'));
-    expect(reported?.message).toContain(`'${name}'`);
+  const shared: readonly (readonly [string, string, string])[] = [
+    ['a declaration', "import * from 'lib'\nfn a(): 5", 'a'],
+    ['a named import', "import * from 'lib'\nimport c as a from 'other'", 'a'],
+    ['a namespace', "import * from 'lib'\nimport * as b from 'other'", 'b'],
+    ['another *', "import * from 'lib'\nimport * from 'other'", 'b'],
+  ];
+
+  it.each(shared)('reports nothing for a name it shares with %s, while unused', (_, main) => {
+    expect(boundReport({ main, lib, other })).toEqual(reportedNothing);
   });
 
-  it('reuses a prelude name as a named import does: a function joins, anything else clashes', () => {
-    expect(
-      boundReport({ main: "import * from 'lib'", lib: 'fn add(a: Bool, b: Bool): a' }),
-    ).toEqual(reportedNothing);
-    expect(boundReport({ main: "import * from 'lib'", lib: 'struct Error { x: Int }' })).toEqual(
-      reportedOnce(d.preludeClash.code, '*'),
+  it.each(shared)('reports a name it shares with %s once, where used', (_, main, name) => {
+    const used = `${main}\nfn use() -> Int: ${name}`;
+    expect(boundReport({ main: used, lib, other })).toEqual(
+      reportedOnce(d.ambiguousName.code, name),
     );
+  });
+
+  it('takes two ways to one export as one', () => {
+    const main = "import (*, a) from 'lib'\nimport * from 'lib'\nfn f() -> Int: a() + b()";
+    expect(boundReport({ main, lib })).toEqual(reportedNothing);
+  });
+
+  it('meets the prelude as a named import does: a function joins, anything else is ambiguous', () => {
+    const adds = {
+      main: "import * from 'lib'\nfn f() -> Bool: add(true, false)",
+      lib: 'fn add(a: Bool, b: Bool): a',
+    };
+    expect(boundReport(adds)).toEqual(reportedNothing);
+    const errors = {
+      main: "import * from 'lib'\nfn f(e: Error): 1",
+      lib: 'struct Error { x: Int }',
+    };
+    expect(boundReport(errors)).toEqual(reportedOnce(d.ambiguousName.code, 'Error'));
+    expect(boundReport({ ...errors, main: "import * from 'lib'" })).toEqual(reportedNothing);
   });
 });

@@ -112,6 +112,11 @@ export interface LocalResult {
    */
   readonly linkedHeads: readonly Identifier[];
   readonly free: readonly FreeName[];
+  /**
+   * Uses of what the module's top level declares or imports, which a `*` import's name of theirs
+   * makes ambiguous (../link/star-imports.ts).
+   */
+  readonly topLevelUses: readonly Identifier[];
   readonly paths: readonly QualifiedPath[];
   readonly diagnostics: readonly Diagnostic<AnchoredSpan>[];
   readonly visibility: Visibility;
@@ -187,6 +192,7 @@ export class LocalBinder {
   readonly module: ModuleId;
   readonly #entities = new Map<Identifier, LocalEntity>();
   readonly #free: FreeName[] = [];
+  readonly #topLevelUses: Identifier[] = [];
   readonly #paths: QualifiedPath[] = [];
   readonly #diagnostics: Diagnostic<AnchoredSpan>[] = [];
   readonly #ownCalls = new Map<FunctionDeclaration | Lambda, VariableEntity>();
@@ -206,6 +212,7 @@ export class LocalBinder {
       ownCalls: this.#ownCalls,
       linkedHeads: this.#linkedHeads,
       free: this.#free,
+      topLevelUses: this.#topLevelUses,
       paths: this.#paths,
       diagnostics: this.#diagnostics,
       visibility: this.#notes.visibility(topLevel),
@@ -244,6 +251,9 @@ export class LocalBinder {
       this.#free.push({ name, role, miss: scope.explainMiss(name.text), variants });
     } else {
       this.record(name, entity);
+      if (scope.resolvesAtTopLevel(name.text)) {
+        this.#topLevelUses.push(name);
+      }
     }
   }
 

@@ -3,7 +3,8 @@
  *
  * - An import names an export of the module its path loaded. A private name (`_x`) is reported as
  *   private, anything else missing as not exported. `import *` binds every export
- *   (star-imports.ts), which a free name finds before the prelude's.
+ *   (star-imports.ts), which a free name finds before the prelude's; a use it makes ambiguous is
+ *   reported there.
  * - Only a test module may import `testing`, or another test module (§10).
  * - The prelude is every module's outer scope. Reusing one of its names at the top level is an
  *   error, except for a function, declared or imported, which joins the prelude's overloads of its
@@ -34,13 +35,12 @@
 
 import type { Diagnostic } from '../../../foundation/diagnostics/diagnostic.ts';
 import { addToGroup } from '../../../foundation/structures/groups.ts';
-import { memo, SequenceMemo } from '../../../foundation/structures/memo.ts';
+import { memo } from '../../../foundation/structures/memo.ts';
 import { type ModuleId, type Program, programModule } from '../../program/program.ts';
 import type {
   EnumDeclaration,
   FunctionDeclaration,
   ImportDeclaration,
-  Module,
 } from '../../syntax/declarations/index.ts';
 import type { Identifier, NodeOf } from '../../syntax/tree/node.ts';
 import { diagnosticIn } from '../../syntax/tree/positions.ts';
@@ -68,15 +68,14 @@ import {
 import { exportedTo, type LinkedModules } from './exported.ts';
 import { type ModuleLinks, resolvedImport } from './module-links.ts';
 import { type AliasLookup, qualifierOf } from './qualifiers.ts';
-import { linkStarImports } from './star-imports.ts';
+import {
+  beyondTopLevel,
+  linkStarImports,
+  refuseAmbiguousUses,
+  unambiguous,
+} from './star-imports.ts';
 import { checkTestImports, meetPrelude } from './top-level-rules.ts';
-
-/**
- * Per module, the empty function set each called name no scope defines denotes. It is kept while
- * the module's items are, as entities are kept with their nodes (entities.ts), so an edit inside a
- * body keeps it, and everything the checker took over about it.
- */
-const unseenFunctions = new SequenceMemo<Module['items'][number], Map<string, FunctionsEntity>>();
+import { unseenFunction } from './unseen-functions.ts';
 
 /** Every module's own bindings (`locals`), linked across `program`. */
 export function link(program: Program, locals: ReadonlyMap<ModuleId, ModuleBindings>): Bindings {
@@ -110,7 +109,8 @@ class Linker {
   readonly #variantsByName = new Map<string, VariantEntity[]>();
   readonly #variantsOfEnum = new Map<EnumDeclaration, ReadonlyMap<string, VariantEntity>>();
   readonly #overloads = new Map<FunctionsEntity, readonly FunctionDeclaration[]>();
-  readonly #beyond = new Map<ModuleId, ReadonlyMap<string, Entity>>();
+  readonly #beyond = new Map<ModuleId, ReadonlyMap<string, readonly Entity[]>>();
+  readonly #beyondOne = new Map<ModuleId, ReadonlyMap<string, Entity>>();
 
   constructor(program: Program, locals: ReadonlyMap<ModuleId, ModuleBindings>) {
     this.#program = program;
@@ -138,31 +138,32 @@ class Linker {
       : (links.resolved.get(name) ?? resolvedImport(links, links.local.entities.get(name)));
   }
 
-  /**
-   * What `name` denotes at the top level of `module`: its own name or import, else what it sees
-   * beyond (`#beyondTopLevel`).
-   */
+  /** What `name` denotes at the top level of `module`: its own name or import, else beyond it. */
   topLevelNamed(module: ModuleId, name: string): Entity | undefined {
     const links = this.#links.get(module);
     const own = links?.local.topLevel.get(name)?.entity;
     const linked = links === undefined ? undefined : resolvedImport(links, own);
-    return linked ?? this.#beyondTopLevel(module).get(name);
+    return linked ?? this.#unambiguous(module).get(name);
   }
 
   topLevelNames(module: ModuleId): readonly string[] {
     const own = this.#links.get(module)?.local.topLevel.keys() ?? [];
-    return [...new Set([...own, ...this.#beyondTopLevel(module).keys()])];
+    return [...new Set([...own, ...this.#unambiguous(module).keys()])];
   }
 
   /**
-   * What `module` sees past its own top level, in the order a free name resolves: the names its
-   * `*` imports bind over the prelude's. The one home of that order, which every lookup reads.
+   * What `module` sees past its own top level, per name (star-imports.ts `beyondTopLevel`): the
+   * one home of the order a free name resolves in, which every lookup reads.
    */
-  #beyondTopLevel(module: ModuleId): ReadonlyMap<string, Entity> {
-    return memo(this.#beyond, module, () => {
-      const prelude = this.#preludeFor(module)?.exports ?? [];
-      return new Map([...prelude, ...(this.#links.get(module)?.starred ?? [])]);
-    });
+  #beyondTopLevel(module: ModuleId): ReadonlyMap<string, readonly Entity[]> {
+    return memo(this.#beyond, module, () =>
+      beyondTopLevel(this.#links.get(module)?.starred ?? new Map(), this.#preludeFor(module)),
+    );
+  }
+
+  /** The names beyond `module`'s top level that denote one entity, each with it. */
+  #unambiguous(module: ModuleId): ReadonlyMap<string, Entity> {
+    return memo(this.#beyondOne, module, () => unambiguous(this.#beyondTopLevel(module)));
   }
 
   transientsOf(module: ModuleId): readonly VariableEntity[] {
@@ -211,7 +212,7 @@ class Linker {
     // A later entry hides an earlier one, as a free name resolves; an import that failed hides too.
     const visible = new Map<string, Entity | undefined>([
       ...variants,
-      ...this.#beyondTopLevel(module),
+      ...this.#unambiguous(module),
       ...linked,
     ]);
     return new Map(
@@ -249,12 +250,9 @@ class Linker {
     if (local === undefined) {
       return;
     }
-    const diagnostics: ModuleLinks['diagnostics'] = [];
-    const prelude = this.#preludeFor(id);
-    const starred = linkStarImports(local, diagnostics, {
+    const starred = linkStarImports(local, {
       loadedBy: (declaration) => this.#loadedBy(id, declaration),
       exportsOf: (module) => this.#locals.get(module)?.exports,
-      prelude,
     });
     const links: ModuleLinks = {
       module: id,
@@ -263,7 +261,7 @@ class Linker {
       imports: new Map(),
       starred,
       refused: new Set(),
-      diagnostics,
+      diagnostics: [],
     };
     this.#links.set(id, links);
     for (const placeholder of local.imports) {
@@ -276,7 +274,7 @@ class Linker {
         links.imports.set(placeholder, entity);
       }
     }
-    meetPrelude(links, prelude);
+    meetPrelude(links, this.#preludeFor(id));
     checkTestImports(this.#program, id, links);
   }
 
@@ -289,6 +287,7 @@ class Linker {
     for (const free of links.local.free) {
       this.#resolveFree(id, links, free);
     }
+    refuseAmbiguousUses(links);
     for (const head of links.local.linkedHeads) {
       this.#refuseFunctionHead(id, links, head);
     }
@@ -313,9 +312,14 @@ class Linker {
   }
 
   #resolveFree(id: ModuleId, links: ModuleLinks, { name, role, miss, variants }: FreeName): void {
+    const [beyond, ...others] = this.#beyondTopLevel(id).get(name.text) ?? [];
+    if (others.length > 0) {
+      links.diagnostics.push(binderDiagnostics.ambiguousName(name.span, name.text));
+      return;
+    }
     const isVariant = variants !== undefined && this.variantsNamed(name.text).length > 0;
     const entity =
-      this.#beyondTopLevel(id).get(name.text) ??
+      beyond ??
       (isVariant ? variants : undefined) ??
       (role === 'callee' && miss === undefined ? this.#unseenFunction(id, name.text) : undefined);
     if (entity !== undefined) {
@@ -337,13 +341,7 @@ class Linker {
   }
 
   #unseenFunction(id: ModuleId, name: string): FunctionsEntity {
-    const { items } = programModule(this.#program, id).tree.root;
-    const ofModule = unseenFunctions.get(items, () => new Map<string, FunctionsEntity>());
-    const entity = memo(
-      ofModule,
-      name,
-      () => ({ kind: 'functions', module: id, name, overloads: [] }) as const,
-    );
+    const entity = unseenFunction(id, programModule(this.#program, id).tree.root.items, name);
     this.#unseen.add(entity);
     return entity;
   }

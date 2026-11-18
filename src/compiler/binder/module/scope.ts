@@ -167,17 +167,25 @@ export class Scope {
   }
 
   lookup(name: string): LocalEntity | undefined {
-    return this.#lookup(name, false);
+    const defining = this.#definingScope(name, false);
+    return defining === undefined ? undefined : defining.#defined.get(name);
   }
 
-  #lookup(name: string, fenced: boolean): LocalEntity | undefined {
+  /** Whether `name` resolves here to what the module's top level defines. */
+  resolvesAtTopLevel(name: string): boolean {
+    const defining = this.#definingScope(name, false);
+    return defining !== undefined && !defining.#isLocal && defining.#parent !== undefined;
+  }
+
+  /** The scope whose definition of `name` a lookup here finds. */
+  #definingScope(name: string, fenced: boolean): Scope | undefined {
     const own = this.#defined.get(name);
     if (own !== undefined && !this.#hides(own, fenced)) {
-      return own;
+      return this;
     }
     return this.#parent === undefined
       ? undefined
-      : this.#parent.#lookup(name, fenced || this.#fenced);
+      : this.#parent.#definingScope(name, fenced || this.#fenced);
   }
 
   /** Why `name` resolves to nothing here, when some enclosing scope knows. */

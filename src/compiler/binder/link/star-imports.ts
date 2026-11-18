@@ -1,67 +1,99 @@
 /**
  * `import * from 'path'` (§3.13): every export of the module the path loaded, bound under its own
- * name, as if the import listed each. Its names are known only once the program is, so they are
- * bound while linking, and a free name finds them before the prelude's (index.ts).
+ * name, as if the import listed each. Its names are known only once the program is, so linking
+ * binds them, and a free name finds them before the prelude's (index.ts).
  *
- * No name is bound twice, so nothing shadows implicitly: a name a `*` brings that the module's top
- * level already binds, by a declaration or an import, or that an earlier `*` brought, is reported
- * on the `*`, and the explicit binding, or the earlier `*`'s, keeps it. A prelude name is reused
- * as by any import: only a function joins the prelude's overloads (top-level-rules.ts).
+ * A name is ambiguous only where it is used, never where it is imported: a use finding two
+ * different things, through two `*` imports, a `*` and the module's own declaration or import, or
+ * a `*` and the prelude, is reported there (index.ts). An unused one costs nothing, so a module
+ * adding an export breaks no importer that doesn't use it. Two ways to one entity are one, and a
+ * function a `*` brings joins the prelude's overloads of its name, as one imported by name does
+ * (top-level-rules.ts).
  *
  * Only exports are brought, never a private name, even into a test module, which names a private
  * declaration only by importing it by name (§10).
  */
 
-import type { Diagnostic } from '../../../foundation/diagnostics/diagnostic.ts';
 import type { ModuleId } from '../../program/program.ts';
 import type { ImportDeclaration } from '../../syntax/declarations/index.ts';
-import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 import { binderDiagnostics } from '../diagnostics.ts';
 import type { Entity } from '../entities.ts';
 import type { ModuleBindings } from '../module/bind-module.ts';
+import { type ModuleLinks, resolvedImport } from './module-links.ts';
 import { reusesPrelude } from './top-level-rules.ts';
 
-/** What one module's `*` imports read: the module an import loaded, its exports, the prelude. */
+/** What one module's `*` imports read: the module an import loaded, and that module's exports. */
 export interface StarImportSources {
   readonly loadedBy: (declaration: ImportDeclaration) => ModuleId | undefined;
   readonly exportsOf: (module: ModuleId) => ReadonlyMap<string, Entity> | undefined;
-  readonly prelude: ModuleBindings | undefined;
 }
 
-/** The names the module `local` bound binds through its `*` imports, each clash reported. */
+/** Per name, the distinct entities the `*` imports of the module `local` bound bind. */
 export function linkStarImports(
   local: ModuleBindings,
-  diagnostics: Diagnostic<AnchoredSpan>[],
   sources: StarImportSources,
-): ReadonlyMap<string, Entity> {
-  const starred = new Map<string, Entity>();
-  for (const { imported, declaration } of local.starImports) {
+): ReadonlyMap<string, readonly Entity[]> {
+  const starred = new Map<string, Entity[]>();
+  for (const { declaration } of local.starImports) {
     const module = sources.loadedBy(declaration);
     const exports = module === undefined ? undefined : sources.exportsOf(module);
     for (const [text, entity] of exports ?? []) {
-      const clash = clashOf(local, starred, text);
-      if (clash !== undefined) {
-        diagnostics.push(clash(imported.span, text));
-      } else if (reusesPrelude(text, entity, sources.prelude)) {
-        diagnostics.push(binderDiagnostics.preludeClash(imported.span, text));
-      } else {
-        starred.set(text, entity);
+      const known = starred.get(text);
+      if (known === undefined) {
+        starred.set(text, [entity]);
+      } else if (!known.includes(entity)) {
+        known.push(entity);
       }
     }
   }
   return starred;
 }
 
-/** The rule a `*` binding `text` breaks against what the module bound before, if any. */
-function clashOf(local: ModuleBindings, starred: ReadonlyMap<string, Entity>, text: string) {
-  if (starred.has(text)) {
-    return binderDiagnostics.duplicateImport;
+/**
+ * Per name, what a module sees past its own top level: the distinct entities its `*` imports bind,
+ * with the prelude's beside them unless each joins it, else the prelude's alone. One entity is
+ * what the name denotes; several make a use of it ambiguous (banner).
+ */
+export function beyondTopLevel(
+  starred: ReadonlyMap<string, readonly Entity[]>,
+  prelude: ModuleBindings | undefined,
+): ReadonlyMap<string, readonly Entity[]> {
+  const beyond = new Map<string, readonly Entity[]>(
+    [...(prelude?.exports ?? [])].map(([text, entity]) => [text, [entity]]),
+  );
+  for (const [text, entities] of starred) {
+    const preludeEntity = prelude?.exports.get(text);
+    const reuses = entities.some((entity) => reusesPrelude(text, entity, prelude));
+    beyond.set(
+      text,
+      preludeEntity !== undefined && reuses ? [...entities, preludeEntity] : entities,
+    );
   }
-  const own = local.topLevel.get(text)?.entity;
-  if (own === undefined) {
-    return;
+  return beyond;
+}
+
+/** The names of `beyond` that denote one entity, each with it. */
+export function unambiguous(
+  beyond: ReadonlyMap<string, readonly Entity[]>,
+): ReadonlyMap<string, Entity> {
+  return new Map(
+    [...beyond].flatMap(([text, [only, ...rest]]) =>
+      only === undefined || rest.length > 0 ? [] : [[text, only] as const],
+    ),
+  );
+}
+
+/**
+ * Reports, and refuses, each use in `links`'s module of a name its own top level declares or
+ * imports that a `*` import gives something else too.
+ */
+export function refuseAmbiguousUses(links: ModuleLinks): void {
+  for (const use of links.local.topLevelUses) {
+    const own = resolvedImport(links, links.local.entities.get(use));
+    const starred = links.starred.get(use.text) ?? [];
+    if (own !== undefined && starred.some((entity) => entity !== own)) {
+      links.diagnostics.push(binderDiagnostics.ambiguousName(use.span, use.text));
+      links.refused.add(use);
+    }
   }
-  return own.kind === 'import' || own.kind === 'namespace'
-    ? binderDiagnostics.duplicateImport
-    : binderDiagnostics.importClash;
 }
