@@ -184,7 +184,7 @@ export function isInComment({ tree, offset }: Cursor): boolean {
 }
 
 function isImport(node: SyntaxNode): boolean {
-  return node.kind === 'NamedImport' || node.kind === 'NamespaceImport';
+  return node.kind === 'ImportDeclaration';
 }
 
 /** The placeholder fell inside a template's or a docstring's text, not in code. */

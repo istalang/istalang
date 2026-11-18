@@ -2,7 +2,8 @@
  * Linking: what every module's bindings leave open, resolved across the program (§3.11, §3.13).
  *
  * - An import names an export of the module its path loaded. A private name (`_x`) is reported as
- *   private, anything else missing as not exported.
+ *   private, anything else missing as not exported. `import *` binds every export
+ *   (star-imports.ts), which a free name finds before the prelude's.
  * - Only a test module may import `testing`, or another test module (§10).
  * - The prelude is every module's outer scope. Reusing one of its names at the top level is an
  *   error, except for a function, declared or imported, which joins the prelude's overloads of its
@@ -34,7 +35,7 @@
 import type { Diagnostic } from '../../../foundation/diagnostics/diagnostic.ts';
 import { addToGroup } from '../../../foundation/structures/groups.ts';
 import { memo, SequenceMemo } from '../../../foundation/structures/memo.ts';
-import { isTestModule, type ModuleId, type Program, programModule } from '../../program/program.ts';
+import { type ModuleId, type Program, programModule } from '../../program/program.ts';
 import type {
   EnumDeclaration,
   FunctionDeclaration,
@@ -57,15 +58,17 @@ import type { ModuleBindings } from '../module/bind-module.ts';
 import type { FreeName, QualifiedPath } from '../module/local-binder.ts';
 import { noOwnCall } from '../module/own-calls.ts';
 import type { LocalEntity } from '../module/scope.ts';
-import { undeclaredName } from '../naming.ts';
+import { unresolvedName } from '../naming.ts';
 import {
   declaresAtTopLevel,
   moduleDeclaring,
   moduleOfDeclarationNode,
   moduleOfItemNode,
 } from './declaring.ts';
+import { exportedTo, type LinkedModules } from './exported.ts';
 import { type ModuleLinks, resolvedImport } from './module-links.ts';
 import { type AliasLookup, qualifierOf } from './qualifiers.ts';
+import { linkStarImports } from './star-imports.ts';
 import { checkTestImports, meetPrelude } from './top-level-rules.ts';
 
 /**
@@ -103,6 +106,7 @@ export function link(program: Program, locals: ReadonlyMap<ModuleId, ModuleBindi
 class Linker {
   readonly #program: Program;
   readonly #locals: ReadonlyMap<ModuleId, ModuleBindings>;
+  readonly #modules: LinkedModules;
   readonly #links = new Map<ModuleId, ModuleLinks>();
   /** The empty function sets this program's called names left to argument-dependent lookup. */
   readonly #unseen = new Set<FunctionsEntity>();
@@ -113,6 +117,7 @@ class Linker {
   constructor(program: Program, locals: ReadonlyMap<ModuleId, ModuleBindings>) {
     this.#program = program;
     this.#locals = locals;
+    this.#modules = { program, locals };
     for (const local of this.#locals.values()) {
       this.#indexVariants(local);
     }
@@ -140,13 +145,15 @@ class Linker {
     const links = this.#links.get(module);
     const own = links?.local.topLevel.get(name)?.entity;
     const linked = links === undefined ? undefined : resolvedImport(links, own);
-    return linked ?? this.#preludeFor(module)?.exports.get(name);
+    return linked ?? links?.starred.get(name) ?? this.#preludeFor(module)?.exports.get(name);
   }
 
   topLevelNames(module: ModuleId): readonly string[] {
-    const own = this.#links.get(module)?.local.topLevel.keys() ?? [];
+    const links = this.#links.get(module);
+    const own = links?.local.topLevel.keys() ?? [];
+    const starred = links?.starred.keys() ?? [];
     const prelude = this.#preludeFor(module)?.exports.keys() ?? [];
-    return [...new Set([...own, ...prelude])];
+    return [...new Set([...own, ...starred, ...prelude])];
   }
 
   transientsOf(module: ModuleId): readonly VariableEntity[] {
@@ -196,7 +203,12 @@ class Linker {
       ([name, entity]) => [name, resolvedImport(links, entity)] as const,
     );
     // A later entry hides an earlier one, as a free name resolves; an import that failed hides too.
-    const visible = new Map<string, Entity | undefined>([...variants, ...prelude, ...linked]);
+    const visible = new Map<string, Entity | undefined>([
+      ...variants,
+      ...prelude,
+      ...links.starred,
+      ...linked,
+    ]);
     return new Map(
       [...visible].flatMap(([name, entity]) => (entity === undefined ? [] : [[name, entity]])),
     );
@@ -232,24 +244,34 @@ class Linker {
     if (local === undefined) {
       return;
     }
+    const diagnostics: ModuleLinks['diagnostics'] = [];
+    const prelude = this.#preludeFor(id);
+    const starred = linkStarImports(local, diagnostics, {
+      loadedBy: (declaration) => this.#program.modules.get(id)?.imports.get(declaration),
+      exportsOf: (module) => this.#locals.get(module)?.exports,
+      prelude,
+    });
     const links: ModuleLinks = {
       module: id,
       local,
       resolved: new Map(),
       imports: new Map(),
+      starred,
       refused: new Set(),
-      diagnostics: [],
+      diagnostics,
     };
     this.#links.set(id, links);
     for (const placeholder of local.imports) {
       const module = this.#program.modules.get(id)?.imports.get(placeholder.declaration);
       const entity =
-        module === undefined ? undefined : this.#exported(module, placeholder.imported.name, links);
+        module === undefined
+          ? undefined
+          : exportedTo(this.#modules, links, module, placeholder.imported.name);
       if (entity !== undefined) {
         links.imports.set(placeholder, entity);
       }
     }
-    meetPrelude(links, this.#preludeFor(id));
+    meetPrelude(links, prelude);
     checkTestImports(this.#program, id, links);
   }
 
@@ -279,27 +301,6 @@ class Linker {
     }
   }
 
-  /**
-   * What the module of `links` sees as `name` of `module`, or a diagnostic saying why there is
-   * none: its export, or, for a test module, its private declaration too, so a test can mock what
-   * a module keeps private (§10).
-   */
-  #exported(module: ModuleId, name: Identifier, links: ModuleLinks): Entity | undefined {
-    const target = this.#locals.get(module);
-    const entity =
-      target?.exports.get(name.text) ??
-      (isTestModule(this.#program, links.module) ? target?.privates.get(name.text) : undefined);
-    if (entity === undefined && target !== undefined) {
-      const label = this.#program.modules.get(module)?.tree.source.path ?? module;
-      links.diagnostics.push(
-        target.privates.has(name.text)
-          ? binderDiagnostics.privateExport(name.span, label, name.text)
-          : binderDiagnostics.missingExport(name.span, label, name.text),
-      );
-    }
-    return entity;
-  }
-
   /** The prelude's bindings as module `id` sees them: every module but the prelude itself. */
   #preludeFor(id: ModuleId): ModuleBindings | undefined {
     const { prelude } = this.#program.roles;
@@ -309,6 +310,7 @@ class Linker {
   #resolveFree(id: ModuleId, links: ModuleLinks, { name, role, miss, variants }: FreeName): void {
     const isVariant = variants !== undefined && this.variantsNamed(name.text).length > 0;
     const entity =
+      links.starred.get(name.text) ??
       this.#preludeFor(id)?.exports.get(name.text) ??
       (isVariant ? variants : undefined) ??
       (role === 'callee' && miss === undefined ? this.#unseenFunction(id, name.text) : undefined);
@@ -316,17 +318,7 @@ class Linker {
       links.resolved.set(name, entity);
       return;
     }
-    const explained = {
-      pending: binderDiagnostics.usedBeforeDeclaration,
-      ended: binderDiagnostics.blockEnded,
-      underOr: binderDiagnostics.boundUnderOr,
-      fenced: binderDiagnostics.transientReads,
-    } as const;
-    links.diagnostics.push(
-      miss === undefined
-        ? undeclaredName(name, role === 'assignment')
-        : explained[miss](name.span, name.text),
-    );
+    links.diagnostics.push(unresolvedName(name, role === 'assignment', miss));
   }
 
   /**
@@ -393,7 +385,7 @@ class Linker {
     }
     if (qualifier.kind === 'namespace') {
       const module = this.#importedBy(qualifier);
-      return module === undefined ? undefined : this.#exported(module, part, links);
+      return module === undefined ? undefined : exportedTo(this.#modules, links, module, part);
     }
     const variant = this.#variantsOfEnum.get(qualifier.declaration)?.get(part.text);
     const associated = role === 'type' && declaresAssociated(qualifier.declaration, part);

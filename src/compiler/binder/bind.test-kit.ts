@@ -93,7 +93,7 @@ export function declaringName(entity: Entity | undefined): Identifier | undefine
     case 'self':
       return entity.trait.name;
     case 'namespace':
-      return entity.declaration.alias;
+      return entity.imported.alias;
     default:
       return;
   }

@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-11-11
-last_updated: 2026-11-17
+last_updated: 2026-11-18
 tags: [language, spec]
 ---
 
@@ -206,7 +206,7 @@ Blocks are defined by indentation, as in Python. Comments start with `#` and run
 - **Indentation** uses spaces only: a tab in a line's leading whitespace is a compile error. Any consistent width works.
 - **Line breaks** are `\n`, `\r\n` or a lone `\r`. A byte order mark at the start of a file is ignored.
 - **Continuation.** Inside a bracketed list a line break separates two items, as `,` does, where the item before it could end there and the next line's first token can start an item; anywhere else in brackets it is ignored, so an item spans lines. The lists are the items of `(…)`, `[…]` and `<…>`, an import's parenthesized names among them, a struct literal's and a struct pattern's braces, and the braces that list fields or variants, as in `{ sku: String, qty: Int }`. An import's bare names stay on its line (§3.13). Outside brackets the one expression that continues past a line break is an indented value (below), whose block stands on the lines after its opening. There is no backslash continuation.
-  - **What starts an item:** a name, a literal, a template, `true`, `false` or `none`; an opening bracket; `fn`, `async`, `if`, `struct`, `new`, `not`, `await`, `for`, `...` or `@`; and `-`, `*`, `&`, `..` or `..=` glued to its operand (`-1`, `*x`, `&x`, `..5`) or alone at its line's end (a lone `..`, the range open at both ends), so each line of a broken list reads back as its item.
+  - **What starts an item:** a name, a literal, a template, `true`, `false` or `none`; an opening bracket; `fn`, `async`, `if`, `struct`, `new`, `not`, `await`, `for`, `...` or `@`; and `-`, `*`, `&`, `..` or `..=` glued to its operand (`-1`, `*x`, `&x`, `..5`) or alone at its line's end (a lone `..`, the range open at both ends), so each line of a broken list reads back as its item. In an import's parentheses `*` always starts an item, so `* as m` may head a line (§3.13).
   - **What continues the item:** a binary operator, `not in` among them; `-`, `*`, `&`, `..` or `..=` followed by a space (`- 1`); `.`, `?.`, `->`, `?->`, `!`, `?`; and `else`, `elif`, `in`, `is`, `as`, `by`, `=`, `:`. So does any line ending where the item can't end: after an operator, `.`, `:`, `=`, `->`, an opening bracket or a prefix. An optional part after a complete item, a range's end after `a..` or `& B` after `any A` or a constraint, is read only where the next line starts no item: `a..` over `b` is two items.
   - **A postfix bracket stands on its operand's line:** a call's `(`, an index's `[`, a struct literal's `{` and type arguments' `<`, as a tagged template's tag does. On the next line each starts an item, or for `<`, continues as the operator.
   - `,` and line breaks mix: a `,` ending or starting a line separates once, and items sharing a line still need `,`. Blank lines and comments between two items change nothing.
@@ -1202,7 +1202,12 @@ fn _normalize(id: String) -> String:     # private to this module
 ```
 
 - **Exports.** Every top-level declaration is exported, except names starting with `_`, which only a test module (§10) may also name, from the modules it imports. There are no default exports, and imported names are not re-exported.
-- **Imports.** `import a, b from 'path'` brings named exports into scope, its names on the import's line. In parentheses, `import (a, b) from 'path'`, they are a list (§2), which may span lines, one name per line with no `,`. In either form `name as alias` binds the export `name` as `alias`, and only the alias is in scope, so one export may be bound under several names. `import * as m from 'path'` binds them under a namespace, used as `m.name`. A name bound twice, or clashing with a local declaration, is a compile error.
+- **Imports.** `import a, b from 'path'` brings named exports into scope, its items on the import's line. In parentheses, `import (a, b) from 'path'`, they are a list (§2), which may span lines, with no `,` at a line's end. In either form an item is one of:
+  - `name`, or `name as alias`, which binds the export `name` as `alias`; only the alias is in scope, so one export may be bound under several names;
+  - `* as m`, which binds the module as a namespace, used as `m.name`;
+  - `*`, which binds every export under its own name, as if the import listed each. The names starting with `_` aren't exports, so it binds none of them, even in a test module.
+
+  So `import (* as json, encode, decode) from 'json'` binds `json`, `encode` and `decode`. A name bound twice, by any two imports, `*` included, or clashing with a local declaration, is a compile error: nothing shadows implicitly.
 - **Paths.** Each path must name exactly one module: a path that names none, or several, is a compile error. Which module a path names is decided by the module loaders of whatever runs the compiler, much as a bundler resolves imports, so a host may use its own paths and its own module store.
 - **The toolchain's paths.** The `ista` toolchain resolves a path as names separated by `/`, with the `.ista` extension implied. A path starting with `./` or `../` is relative to the importing file. Any other path names a standard-library module, or a module under the project root: the directory holding `ista.json` (§11), or the directory the toolchain runs in when there is none. A path that matches both a standard-library module and a project file is therefore an error.
 - **Project sources.** Without explicit files, `ista check` checks every `.ista` file under the project root, skipping the project's `vendor/` folder (§11), every `node_modules/` folder and hidden directories.

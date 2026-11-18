@@ -330,38 +330,41 @@ export interface TypeAliasDeclaration extends NodeOf<'TypeAliasDeclaration'>, An
 export type AliasBody = TypeNode | TypeMatch;
 
 /**
- * `import a, b as c from 'path'`, or the same names in parentheses, a list that may span lines
- * (§3.13, §2), which the formatter keeps.
+ * `import a, * as m, b as c from 'path'`, or the same items in parentheses, a list that may span
+ * lines (§3.13, §2). `import * as m from 'path'` is one with a single item.
  */
-export interface NamedImport extends NodeOf<'NamedImport'>, Annotatable {
-  readonly names: readonly (ImportedName | Invalid)[];
+export interface ImportDeclaration extends NodeOf<'ImportDeclaration'>, Annotatable {
+  readonly items: readonly (ImportItem | Invalid)[];
   readonly isParenthesized: boolean;
   readonly path: StringLiteral | Missing;
 }
 
-/** `a` or `a as b` in a named import: the export `name` names, bound as `alias` where renamed. */
+/** What one item of an import binds: an export, the module as a namespace, or every export. */
+export type ImportItem = ImportedName | ImportedNamespace | ImportedAll;
+
+/** `a` or `a as b` in an import: the export `name` names, bound as `alias` where renamed. */
 export interface ImportedName extends NodeOf<'ImportedName'> {
   readonly name: Identifier;
   readonly alias: Identifier | undefined;
 }
+
+/** `* as m` in an import: the module bound under a namespace, used as `m.name`. */
+export interface ImportedNamespace extends NodeOf<'ImportedNamespace'> {
+  readonly alias: Identifier;
+}
+
+/** `*` in an import: every export of the module bound under its own name. */
+export type ImportedAll = NodeOf<'ImportedAll'>;
 
 /** The name an imported name binds in its module: its alias, or the export's own. */
 export function boundName({ name, alias }: ImportedName): Identifier {
   return alias ?? name;
 }
 
-/** The names a named import lists, those recovery skipped aside. */
-export function importedNames(declaration: NamedImport): readonly ImportedName[] {
-  return declaration.names.filter((name) => name.kind === 'ImportedName');
+/** The names an import lists, its namespaces, `*` and what recovery skipped aside. */
+export function importedNames(declaration: ImportDeclaration): readonly ImportedName[] {
+  return declaration.items.filter((item) => item.kind === 'ImportedName');
 }
-
-/** `import * as m from 'path'`. */
-export interface NamespaceImport extends NodeOf<'NamespaceImport'>, Annotatable {
-  readonly alias: Identifier;
-  readonly path: StringLiteral | Missing;
-}
-
-export type ImportDeclaration = NamedImport | NamespaceImport;
 
 /** A top-level `const`: the one kind of variable a module may declare (§3). */
 export type ConstantDeclaration = VariableDeclaration & {
@@ -395,7 +398,7 @@ export function declaredFunctions(module: Pick<Module, 'items'>): readonly Funct
 
 /** Nodes that occur only as parts of a declaration. */
 export type DeclarationPart =
-  | ImportedName
+  | ImportItem
   | TypeParameter
   | Variant
   | DeclaredField

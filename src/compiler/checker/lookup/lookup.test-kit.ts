@@ -58,8 +58,7 @@ const typeKinds = new Set([
 ]);
 
 const declarationKinds = new Set([
-  'NamedImport',
-  'NamespaceImport',
+  'ImportDeclaration',
   'StructDeclaration',
   'SharedStructDeclaration',
   'ExternStructDeclaration',

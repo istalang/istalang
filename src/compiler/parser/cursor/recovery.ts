@@ -114,8 +114,11 @@ export function parseDelimited<Item>(
   parser: Parser,
   opener: Opener,
   parseItem: () => Item,
+  itemOpeners?: ReadonlySet<CursorKind>,
 ): DelimitedList<Item> {
-  const { value, span } = parseList(parser, opener, () => parseCommaSeparated(parser, parseItem));
+  const { value, span } = parseList(parser, opener, () =>
+    parseCommaSeparated(parser, parseItem, itemOpeners),
+  );
   return { ...value, span };
 }
 
@@ -143,11 +146,13 @@ export function parseGroup<Item, Node>(
 
 /**
  * `item, item, …` up to the current region's closer, inside `parseList`: a `,`, or a line break
- * that separates two items (layout/item-breaks.ts), stands between two.
+ * that separates two items (layout/item-breaks.ts), stands between two. `itemOpeners` are the
+ * tokens only this list's items start with, which start one on a new line whatever follows them.
  */
 export function parseCommaSeparated<Item>(
   parser: Parser,
   parseItem: () => Item,
+  itemOpeners: ReadonlySet<CursorKind> = noItemOpeners,
 ): CommaSeparated<Item> {
   const { cursor } = parser;
   const items: (Item | Invalid)[] = [];
@@ -156,11 +161,13 @@ export function parseCommaSeparated<Item>(
     const before = cursor.index;
     const reported = parser.diagnostics.length;
     items.push(parseItem());
-    if (!(atListSeparator(parser) || atRegionEnd(parser))) {
+    if (!(atListSeparator(parser, itemOpeners) || atRegionEnd(parser))) {
       const expected = `',', a line break or ${describeCloser(cursor.closer)}`;
-      items.push(...skipUnexpected(parser, reported, expected, () => atListSeparator(parser)));
+      items.push(
+        ...skipUnexpected(parser, reported, expected, () => atListSeparator(parser, itemOpeners)),
+      );
     }
-    const separator = takeListSeparator(parser);
+    const separator = takeListSeparator(parser, itemOpeners);
     if (separator === undefined || cursor.index === before) {
       break;
     }
@@ -173,16 +180,21 @@ export function parseCommaSeparated<Item>(
  * Whether a list's separator comes next: a `,`, a `;` read as one, or a line break separating two
  * items.
  */
-function atListSeparator(parser: Parser): boolean {
+function atListSeparator(parser: Parser, itemOpeners: ReadonlySet<CursorKind>): boolean {
   const { cursor } = parser;
-  return cursor.at(',') || cursor.at(';') || breakSeparatesItems(parser);
+  return cursor.at(',') || cursor.at(';') || breakSeparatesItems(parser, 0, itemOpeners);
 }
+
+const noItemOpeners: ReadonlySet<CursorKind> = new Set();
 
 /**
  * Takes the separator next, if any: a `,`, a `;` in its place, reported once (`;` separates only
  * statements, §2), or a line break separating two items, which leaves nothing to consume.
  */
-function takeListSeparator(parser: Parser): ',' | 'lineBreak' | undefined {
+function takeListSeparator(
+  parser: Parser,
+  itemOpeners: ReadonlySet<CursorKind>,
+): ',' | 'lineBreak' | undefined {
   const { cursor } = parser;
   const semicolon = cursor.eat(';');
   if (semicolon !== undefined) {
@@ -192,7 +204,7 @@ function takeListSeparator(parser: Parser): ',' | 'lineBreak' | undefined {
   if (cursor.eat(',') !== undefined) {
     return ',';
   }
-  return breakSeparatesItems(parser) ? 'lineBreak' : undefined;
+  return breakSeparatesItems(parser, 0, itemOpeners) ? 'lineBreak' : undefined;
 }
 
 /**

@@ -1,8 +1,9 @@
 /**
  * The naming rules (foundation/language/naming.ts) as the binder reports them: a declared name
- * breaking its convention, or taking a built-in type's name; and a name declared nowhere, which,
- * spelled as a primitive was before type names were all PascalCase (`int`), is told the one it
- * became.
+ * breaking its convention, or taking a built-in type's name; and a name that resolves to nothing:
+ * with the reason its scopes noted for missing it (module/scope.ts `Miss`), or as declared
+ * nowhere, which, spelled as a primitive was before type names were all PascalCase (`int`), is
+ * told the one it became.
  */
 
 import type { Diagnostic } from '../../foundation/diagnostics/diagnostic.ts';
@@ -15,6 +16,7 @@ import { primitiveOnceSpelled } from '../../foundation/language/primitives.ts';
 import { type Identifier, isMissingName } from '../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../syntax/tree/positions.ts';
 import { binderDiagnostics } from './diagnostics.ts';
+import type { Miss } from './module/scope.ts';
 
 /** The diagnostic for a declared name that breaks the naming rules, if it does. */
 export function namingViolation(
@@ -32,8 +34,22 @@ export function namingViolation(
     : binderDiagnostics.valueNameConvention(name.span, name.text);
 }
 
-/** The diagnostic for `name`, which resolves to nothing with nothing else to explain it. */
-export function undeclaredName(name: Identifier, isAssigned: boolean): Diagnostic<AnchoredSpan> {
+const missDiagnostics = {
+  pending: binderDiagnostics.usedBeforeDeclaration,
+  ended: binderDiagnostics.blockEnded,
+  underOr: binderDiagnostics.boundUnderOr,
+  fenced: binderDiagnostics.transientReads,
+} as const satisfies Record<Miss, unknown>;
+
+/** The diagnostic for `name`, which resolves to nothing, its scopes having missed it as `miss`. */
+export function unresolvedName(
+  name: Identifier,
+  isAssigned: boolean,
+  miss: Miss | undefined,
+): Diagnostic<AnchoredSpan> {
+  if (miss !== undefined) {
+    return missDiagnostics[miss](name.span, name.text);
+  }
   if (isAssigned) {
     return binderDiagnostics.assignmentToUndeclared(name.span, name.text);
   }

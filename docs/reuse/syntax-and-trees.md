@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-11-13
-last_updated: 2026-11-17
+last_updated: 2026-11-18
 tags: [reuse, syntax, ast, scanner, parser, operators]
 ---
 
@@ -15,7 +15,7 @@ tags: [reuse, syntax, ast, scanner, parser, operators]
 - scan a `SourceText` into tokens, comments and diagnostics → `scan` (`src/compiler/scanner/scan.ts`)
 - parse a `SourceText` and `ScanResult` into a `SyntaxTree`, keeping a previous tree's nodes for every segment an edit left alike → `parse` (`src/compiler/parser/parse.ts`)
 - print a `SyntaxTree`, a `SourceText` or a text in the canonical format, refusing one with syntax errors → `formatTree`, `formatSource`, `formatText` (`src/formatter/format.ts`)
-- print a list in brackets, on one line or one item per line with no `,` → `bracketed` (`src/formatter/layout/lists.ts`); a list whose brackets only its broken form needs, as a bare import's names → `bracketedWhenBroken`; which children stand in brackets → `standingIn` (`src/formatter/layout/brackets.ts`)
+- print a list in brackets, on one line or one item per line with no `,` → `bracketed` (`src/formatter/layout/lists.ts`); a module's imports, merged by path, sorted and filling lines → `importBlock` (`src/formatter/imports.ts`); which children stand in brackets → `standingIn` (`src/formatter/layout/brackets.ts`)
 - read a tree's tokens again, all of them or only its code's, or the bracket closing each opening one → `allTokensOf`, `codeTokensOf`, `closingBracketsOf` (`src/editor/language-service/reading/tokens.ts`)
 - pair a token list's brackets as the parser does, and find where each one left open ends → `pairBrackets` (`src/compiler/parser/cursor/brackets.ts`)
 - check whether a word is a reserved or contextual keyword → `isKeyword`, `isContextualWord`, `keywords`, `punctuators` (`src/compiler/syntax/tokens/index.ts`)

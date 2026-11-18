@@ -9,6 +9,8 @@
  * - A named import is a placeholder until the program is linked; a namespace import is already
  *   its entity, since the program records which module its path loaded. A renamed import binds
  *   its alias alone; the export's own name in it denotes the export too, so tools reach it there.
+ * - `import *` defines nothing here: which names it binds is known only once the program is
+ *   linked (../link/star-imports.ts), so it is kept for linking.
  * - A module's exports are its own declarations whose names don't start with `_`; imported names
  *   are never re-exported.
  * - Each enum's variants get their entities here, so a qualified variant (`Decision.Expired`) and
@@ -23,7 +25,7 @@ import {
   declaredFunctions,
   type EnumDeclaration,
   type FunctionDeclaration,
-  importedNames,
+  type ImportDeclaration,
   type Module,
 } from '../../syntax/declarations/index.ts';
 import { targetNames } from '../../syntax/patterns.ts';
@@ -40,7 +42,13 @@ import {
   variantEntity,
 } from '../entities.ts';
 import type { LocalBinder } from './local-binder.ts';
-import { type ImportPlaceholder, importPlaceholder, type LocalEntity, Scope } from './scope.ts';
+import {
+  type ImportPlaceholder,
+  importPlaceholder,
+  type LocalEntity,
+  Scope,
+  type StarImport,
+} from './scope.ts';
 
 /** A top-level name and the identifier that first declared it. */
 interface TopLevelName {
@@ -52,6 +60,7 @@ export interface ModuleScope {
   readonly scope: Scope;
   readonly topLevel: ReadonlyMap<string, TopLevelName>;
   readonly imports: readonly ImportPlaceholder[];
+  readonly starImports: readonly StarImport[];
   /** Each enum's variants by name. */
   readonly variants: ReadonlyMap<EnumDeclaration, ReadonlyMap<string, VariantEntity>>;
   readonly exports: ReadonlyMap<string, Entity>;
@@ -79,6 +88,7 @@ export function defineModuleScope(binder: LocalBinder, module: Module, parent: S
     scope: definer.scope,
     topLevel: definer.topLevel,
     imports: definer.imports,
+    starImports: definer.starImports,
     variants: variantsOf(binder, module),
     ...ownNames(definer.topLevel),
   };
@@ -88,6 +98,7 @@ class TopLevelDefiner {
   readonly scope: Scope;
   readonly topLevel = new Map<string, TopLevelName & { readonly origin: Origin }>();
   readonly imports: ImportPlaceholder[] = [];
+  readonly starImports: StarImport[] = [];
   readonly #binder: LocalBinder;
   readonly #functionSets: ReadonlyMap<string, FunctionsEntity>;
 
@@ -99,20 +110,8 @@ class TopLevelDefiner {
 
   defineItem(item: Declaration): void {
     switch (item.kind) {
-      case 'NamedImport':
-        for (const imported of importedNames(item)) {
-          const placeholder = importPlaceholder(imported, item);
-          // A renamed export's own name binds nothing, but denotes the export as the alias does.
-          if (imported.alias !== undefined && !isMissingName(imported.name)) {
-            this.#binder.record(imported.name, placeholder);
-          }
-          if (this.#define(boundName(imported), placeholder, 'import', undefined)) {
-            this.imports.push(placeholder);
-          }
-        }
-        return;
-      case 'NamespaceImport':
-        this.#define(item.alias, namespaceEntity(this.#binder.module, item), 'import', 'value');
+      case 'ImportDeclaration':
+        this.#defineImport(item);
         return;
       case 'FunctionDeclaration':
         this.#defineFunction(item);
@@ -135,6 +134,34 @@ class TopLevelDefiner {
         return;
       default:
         this.#define(item.name, typeEntity(this.#binder.module, item), 'declaration', 'type');
+    }
+  }
+
+  #defineImport(declaration: ImportDeclaration): void {
+    for (const imported of declaration.items) {
+      switch (imported.kind) {
+        case 'ImportedName': {
+          const placeholder = importPlaceholder(imported, declaration);
+          // A renamed export's own name binds nothing, but denotes the export as the alias does.
+          if (imported.alias !== undefined && !isMissingName(imported.name)) {
+            this.#binder.record(imported.name, placeholder);
+          }
+          if (this.#define(boundName(imported), placeholder, 'import', undefined)) {
+            this.imports.push(placeholder);
+          }
+          break;
+        }
+        case 'ImportedNamespace': {
+          const entity = namespaceEntity(this.#binder.module, imported, declaration);
+          this.#define(imported.alias, entity, 'import', 'value');
+          break;
+        }
+        case 'ImportedAll':
+          this.starImports.push({ imported, declaration });
+          break;
+        default:
+        // What recovery skipped binds nothing.
+      }
     }
   }
 

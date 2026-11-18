@@ -5,51 +5,25 @@
 # a group's read field by field, so every read is tracked. forms/ does the rest.
 # Expressions are pasted from the schema verbatim.
 
-import Graph from './computed'
+import * as approvals from './approvals'
+import * as contactCard from './catalog/contact-card@^1'
+import * as crm from './crm'
+import * as formsCatalog from './forms-catalog'
 import * as checks from './forms/checks'
+import * as geo from './geo'
+import * as logic from './supplier'
+import Graph from './computed'
+import Form, Problems, User from './forms/form'
 import (
-  Field
-  Group
-  List
-  Variant
-  Hidden
-  Local
-  Dynamic
-  Date
-  DateTime
-  FileId
+  Date, DateTime, Dynamic, Field, FileId, Group, Hidden, List, Local, Variant
 ) from './forms/model'
 import (
-  Place
-  View
-  Options
-  Item
-  Choice
-  Recompute
-  FieldView
-  RepeatView
-  VariantView
-  CaseView
-  LayoutView
-  DynamicView
-) from './forms/views'
-import (
-  FieldWidget
-  RepeatWidget
-  VariantWidget
-  LayoutWidget
-  ParentUi
-  LabelStyle
-  Orientation
-  Gap
+  FieldWidget, Gap, LabelStyle, LayoutWidget, Orientation, ParentUi, RepeatWidget, VariantWidget
 ) from './forms/tree'
-import Form, User, Problems from './forms/form'
-import * as geo from './geo'
-import * as crm from './crm'
-import * as approvals from './approvals'
-import * as formsCatalog from './forms-catalog'
-import * as logic from './supplier'
-import * as contactCard from './catalog/contact-card@^1'
+import (
+  CaseView, Choice, DynamicView, FieldView, Item, LayoutView, Options, Place, Recompute, RepeatView
+  VariantView, View
+) from './forms/views'
 
 const translations: Map<String, Map<String, String>> = [
   "Company": ["de": "Unternehmen", "fr": "Entreprise"]

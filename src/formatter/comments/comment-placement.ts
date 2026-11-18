@@ -15,6 +15,8 @@
  *   which prints it inside;
  * - otherwise leads the innermost construct around it that a line may start before: in
  *   `[await\n # c\n f()]`, the `await`.
+ * An own-line comment heading the module, before its first item, leads the module itself, so it
+ * stays at the top whichever item the formatter prints first (imports.ts).
  * An end-of-line comment prints at the end of its line, wherever its node stands, so it trails the
  * preceding child, or leads the following one, or after an opening bracket is left to its owner. A
  * comment right after a header's `:`, before the body or docstring opening on the next line, is
@@ -146,6 +148,9 @@ function ownLinePlace(context: Source, around: Surroundings, comment: PlacedComm
   const { tree } = context;
   const { source } = tree;
   const { path, enclosing, preceding, following } = around;
+  if (headsModule(tree, around)) {
+    return [tree.root, 'leading'];
+  }
   const column = columnOf(source, comment.span.start);
   const leads =
     following !== undefined &&
@@ -164,6 +169,12 @@ function ownLinePlace(context: Source, around: Surroundings, comment: PlacedComm
     return [following, 'leading'];
   }
   return leadingConstruct(context, path);
+}
+
+/** Whether `comment` stands in the module's header: before its first item. */
+function headsModule(tree: SyntaxTree, around: Surroundings): boolean {
+  const { enclosing, preceding, following } = around;
+  return enclosing === tree.root && preceding === undefined && following !== undefined;
 }
 
 /** The innermost construct of `path` that a line may start before, which the comment then leads. */

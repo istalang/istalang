@@ -33,8 +33,9 @@ import { primitiveNames } from '../../../foundation/language/primitives.ts';
 import { memo } from '../../../foundation/structures/memo.ts';
 import type {
   FunctionDeclaration,
+  ImportDeclaration,
+  ImportedAll,
   ImportedName,
-  NamedImport,
 } from '../../syntax/declarations/index.ts';
 import type { Lambda } from '../../syntax/expressions/index.ts';
 import type { Entity, PrimitiveEntity } from '../entities.ts';
@@ -43,7 +44,7 @@ import type { Entity, PrimitiveEntity } from '../entities.ts';
 export interface ImportPlaceholder {
   readonly kind: 'import';
   readonly imported: ImportedName;
-  readonly declaration: NamedImport;
+  readonly declaration: ImportDeclaration;
 }
 
 const placeholders = new WeakMap<ImportedName, ImportPlaceholder>();
@@ -53,9 +54,15 @@ const placeholders = new WeakMap<ImportedName, ImportPlaceholder>();
  */
 export function importPlaceholder(
   imported: ImportedName,
-  declaration: NamedImport,
+  declaration: ImportDeclaration,
 ): ImportPlaceholder {
   return memo(placeholders, imported, () => ({ kind: 'import', imported, declaration }));
+}
+
+/** `*` in `import * from 'path'`, whose names linking binds (../link/star-imports.ts). */
+export interface StarImport {
+  readonly imported: ImportedAll;
+  readonly declaration: ImportDeclaration;
 }
 
 export type LocalEntity = Entity | ImportPlaceholder;

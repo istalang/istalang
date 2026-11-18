@@ -5,25 +5,17 @@
 # a group's read field by field, so every read is tracked. forms/ does the rest.
 # Expressions are pasted from the schema verbatim.
 
-import Graph from './computed'
-import * as checks from './forms/checks'
-import Field, Group, List, Variant, Hidden from './forms/model'
-import (
-  Place
-  View
-  Options
-  Choice
-  FieldView
-  RepeatView
-  VariantView
-  CaseView
-  LayoutView
-) from './forms/views'
-import FieldWidget, RepeatWidget, VariantWidget, LayoutWidget, ParentUi from './forms/tree'
-import Form, User, Problems from './forms/form'
-import * as geo from './geo'
 import * as approvals from './approvals'
+import * as checks from './forms/checks'
+import * as geo from './geo'
 import * as logic from './order'
+import Graph from './computed'
+import Form, Problems, User from './forms/form'
+import Field, Group, Hidden, List, Variant from './forms/model'
+import FieldWidget, LayoutWidget, ParentUi, RepeatWidget, VariantWidget from './forms/tree'
+import (
+  CaseView, Choice, FieldView, LayoutView, Options, Place, RepeatView, VariantView, View
+) from './forms/views'
 
 const translations: Map<String, Map<String, String>> = [
   "We don't ship to ${data.country}": ["de": "Wir liefern nicht nach $0"]

@@ -283,17 +283,14 @@ describe('proposal 5 behaviour table: row by row', () => {
     expect(await mainGives('Int', 'Span{value: 12}.value', decls)).toBe(12);
   });
 
-  it('row 30: "ista fmt" on a bare import too long for its line formats it parenthesized, one name per line', () => {
+  it('row 30: "ista fmt" on a bare import too long for its line formats it parenthesized, its names filling lines', () => {
     const longBare =
       "import approvePurchaseRequest, rejectPurchaseRequest, cancelPurchaseRequest, notifyPurchaseReviewers, ChargeVerdict from 'purchase/approval/workflow'\n";
     expect(formatText(longBare)).toBe(
       lines(
         'import (',
-        '  approvePurchaseRequest',
+        '  approvePurchaseRequest, cancelPurchaseRequest, ChargeVerdict, notifyPurchaseReviewers',
         '  rejectPurchaseRequest',
-        '  cancelPurchaseRequest',
-        '  notifyPurchaseReviewers',
-        '  ChargeVerdict',
         ") from 'purchase/approval/workflow'",
         '',
       ),

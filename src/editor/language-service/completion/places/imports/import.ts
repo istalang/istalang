@@ -1,6 +1,6 @@
 /**
- * An import's place (§3.13): `import names from 'path'`, the names in parentheses, or
- * `import * as alias from 'path'`.
+ * An import's place (§3.13): `import items from 'path'`, the items in parentheses, an item a
+ * name, `* as alias` or `*`.
  *
  * - A name to import offers what the module the import's path names exports, less what the file
  *   already imports from it by name, whatever alias it is bound as. Until the path is written the
@@ -21,7 +21,6 @@ import { programModule } from '../../../../../compiler/program/program.ts';
 import {
   type ImportDeclaration,
   importedNames,
-  type NamedImport,
 } from '../../../../../compiler/syntax/declarations/index.ts';
 import type { Token } from '../../../../../compiler/syntax/tokens/index.ts';
 import type { SyntaxNode } from '../../../../../compiler/syntax/tree/index.ts';
@@ -43,9 +42,8 @@ export function offerImport(cursor: Cursor, { parsed }: ImportPlace): readonly C
     return modulePathsAt(cursor, cursor.tree.source.text.slice(opening + 1, cursor.offset));
   }
   const { before } = cursor;
-  const listed = statement?.kind === 'NamedImport' ? statement : undefined;
-  if (listed !== undefined && startsName(cursor, listed, before)) {
-    return importable(cursor, spanIn(parsed.tree, listed.span).start);
+  if (statement !== undefined && startsName(cursor, statement, before)) {
+    return importable(cursor, spanIn(parsed.tree, statement.span).start);
   }
   switch (before?.kind) {
     case '*':
@@ -62,7 +60,11 @@ export function offerImport(cursor: Cursor, { parsed }: ImportPlace): readonly C
  * Whether a name to import starts at the cursor: after `import` or a `,`, or, in parentheses,
  * after the `(` or on a line below the name before it.
  */
-function startsName(cursor: Cursor, statement: NamedImport, before: Token | undefined): boolean {
+function startsName(
+  cursor: Cursor,
+  statement: ImportDeclaration,
+  before: Token | undefined,
+): boolean {
   switch (before?.kind) {
     case 'import':
     case ',':
@@ -77,7 +79,7 @@ function startsName(cursor: Cursor, statement: NamedImport, before: Token | unde
 }
 
 function isImportDeclaration(node: SyntaxNode): node is ImportDeclaration {
-  return node.kind === 'NamedImport' || node.kind === 'NamespaceImport';
+  return node.kind === 'ImportDeclaration';
 }
 
 /** Whether `token` stands on the cursor's line. */
@@ -139,7 +141,7 @@ function importable({ checker, module, tree, name }: Cursor, start: number): rea
     spanIn(tree, identifier.span).start === name?.span.start;
   const taken = new Set(
     [...imports].flatMap(([node, from]) =>
-      from === imported && node.kind === 'NamedImport'
+      from === imported
         ? importedNames(node)
             .map((each) => each.name)
             .filter((each) => !isWritten(each))

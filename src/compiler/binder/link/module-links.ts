@@ -1,6 +1,6 @@
 /**
  * What linking found for one module (index.ts): its free names and the later parts of its qualified
- * names resolved, its imports' targets, the names it refused, and what it reported. The linker's
+ * names resolved, its imports' targets and what its `*` imports bind, the names it refused, and what it reported. The linker's
  * parts share it, so none keeps a second record of what a name of a module denotes.
  */
 
@@ -19,6 +19,8 @@ export interface ModuleLinks {
   /** Free names and the later parts of qualified names. */
   readonly resolved: Map<Identifier, Entity>;
   readonly imports: Map<ImportPlaceholder, Entity>;
+  /** The names its `*` imports bind (star-imports.ts). */
+  readonly starred: ReadonlyMap<string, Entity>;
   /** Names that linking found denote nothing, though their tree resolved them or left them free. */
   readonly refused: Set<Identifier>;
   readonly diagnostics: Diagnostic<AnchoredSpan>[];

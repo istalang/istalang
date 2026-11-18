@@ -150,8 +150,7 @@ const declaringNames: Handlers<Checker, Declared, [], NamePlace | undefined> = {
   function: (checker, { declaration }) => named(checker.moduleOf(declaration), declaration.name),
   type: ({ bindings }, { entity }) =>
     entity.kind === 'type' ? named(bindings.moduleOf(entity), entity.declaration.name) : undefined,
-  namespace: ({ bindings }, { entity }) =>
-    named(bindings.moduleOf(entity), entity.declaration.alias),
+  namespace: ({ bindings }, { entity }) => named(bindings.moduleOf(entity), entity.imported.alias),
 };
 
 function named(module: ModuleId | undefined, name: Identifier): NamePlace | undefined {

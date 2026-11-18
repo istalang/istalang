@@ -12,7 +12,6 @@ import {
   boundName,
   type Declaration,
   type DeclaredField,
-  importedNames,
   type Variant,
 } from '../../../compiler/syntax/declarations/index.ts';
 import { isMethod } from '../../../compiler/syntax/declarations/methods.ts';
@@ -102,16 +101,22 @@ const struct = (
 
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
 const symbolsOfDeclaration: SymbolsOf = {
-  NamedImport: (declaration) => {
+  ImportDeclaration: (declaration) => {
     const { path } = declaration;
-    const names = importedNames(declaration).flatMap((imported) =>
-      symbol(boundName(imported), 'imported', imported),
-    );
+    const names = declaration.items.flatMap((imported) => {
+      switch (imported.kind) {
+        case 'ImportedName':
+          return symbol(boundName(imported), 'imported', imported);
+        case 'ImportedNamespace':
+          return symbol(imported.alias, 'namespace', imported);
+        default:
+          return [];
+      }
+    });
     return path.kind === 'StringLiteral' && path.value !== ''
       ? [{ name: path.value, kind: 'module', node: declaration, nameNode: path, children: names }]
       : names;
   },
-  NamespaceImport: (declaration) => symbol(declaration.alias, 'namespace', declaration),
   StructDeclaration: struct,
   SharedStructDeclaration: struct,
   ExternStructDeclaration: struct,

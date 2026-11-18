@@ -46,6 +46,7 @@ import { branchPrinters } from './expressions/branches.ts';
 import { indentedValuePrinters } from './expressions/indented-values.ts';
 import { expressionPrinters } from './expressions/index.ts';
 import { isMultiLine, literalPrinters } from './expressions/literals.ts';
+import { importPrinters } from './imports.ts';
 import { nodesInBrackets } from './layout/brackets.ts';
 import { patternPrinters } from './patterns.ts';
 import type { Printer, Printers } from './printer.ts';
@@ -60,6 +61,7 @@ const errorNode = (): never =>
 
 const printers: Printers<SyntaxNode> = {
   ...declarationPrinters,
+  ...importPrinters,
   ...statementPrinters,
   ...branchPrinters,
   ...expressionPrinters,
@@ -110,6 +112,10 @@ class TreePrinter implements Printer {
     const { dangling } = this.#commentsOf(node);
     this.#mark(dangling);
     return danglingDocs(dangling);
+  }
+
+  hasDangling(node: SyntaxNode): boolean {
+    return this.#commentsOf(node).dangling.length > 0;
   }
 
   extentOf(node: SyntaxNode): Span {

@@ -22,7 +22,7 @@ describe('the outline', () => {
     expect(make && textOf(tree.source, make.nameSpan)).toBe('make');
   });
 
-  it('shows each name a destructuring constant binds, and what a named import brings in', () => {
+  it('shows each name a destructuring constant binds, and what an import brings in under its module', () => {
     const tree = treeOf(
       "import a, b from 'lib'",
       'import * as m from "lib"',
@@ -37,7 +37,7 @@ describe('the outline', () => {
           ['b', 'imported'],
         ],
       ],
-      ['m', 'namespace'],
+      ['lib', 'module', [['m', 'namespace']]],
       ['x', 'constant'],
       ['y', 'constant'],
     ]);

@@ -15,6 +15,8 @@ import {
   type Documented,
   type FunctionDeclaration,
   functionWords,
+  type ImportDeclaration,
+  type ImportItem,
   type Module,
   membersAsWritten,
   type TypeParameters,
@@ -25,15 +27,19 @@ import { bodyOf, type SyntaxNode } from '../compiler/syntax/tree/index.ts';
 import type { Identifier } from '../compiler/syntax/tree/node.ts';
 import { namedTypeText } from '../compiler/syntax/types/index.ts';
 import { opened } from './expressions/indented-values.ts';
+import { importBlock } from './imports.ts';
 import { annotated, docBelow, functionBody, indentedBody } from './layout/bodies.ts';
-import { angled, bracketed, bracketedWhenBroken, itemLines } from './layout/lists.ts';
+import { angled, bracketed, itemLines } from './layout/lists.ts';
 import type { Printer, Printers } from './printer.ts';
 import { constraintsAfterIs } from './types.ts';
 
-const { group, hardline } = builders;
+const { group, hardline, join } = builders;
 
 type DeclarationKind =
-  | Exclude<Declaration | DeclarationPart, { kind: 'VariableDeclaration' | 'Docstring' }>
+  | Exclude<
+      Declaration | DeclarationPart,
+      { kind: 'VariableDeclaration' | 'Docstring' | ImportDeclaration['kind'] | ImportItem['kind'] }
+    >
   | Module
   | Annotation;
 
@@ -80,10 +86,16 @@ function members(
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
 export const declarationPrinters: Printers<DeclarationKind> = {
   Module: (printer, node) => {
-    const items = node.doc === undefined ? node.items : [node.doc, ...node.items];
+    const imports = node.items.filter((item) => item.kind === 'ImportDeclaration');
+    const others = node.items.filter((item) => item.kind !== 'ImportDeclaration');
+    const sections = [
+      node.doc === undefined ? [] : [printer.print(node.doc)],
+      imports.length === 0 ? [] : [importBlock(printer, imports)],
+      others.length === 0 ? [] : [itemLines(printer, others)],
+    ].flat();
     // A module without items prints nothing of its own: its comments lead it
     // (comments/comments.ts).
-    return items.length === 0 ? '' : [itemLines(printer, items), hardline];
+    return sections.length === 0 ? '' : [join([hardline, hardline], sections), hardline];
   },
   Annotation: (printer, node) => ['@', printer.print(node.value)],
   FunctionDeclaration: (printer, node) => annotated(printer, node, functionDoc(printer, node)),
@@ -152,30 +164,6 @@ export const declarationPrinters: Printers<DeclarationKind> = {
       named(printer, node.name, node.typeParameters),
       ' = ',
       printer.print(node.type),
-    ]),
-  // Bare names have no broken form, a line break ending them, so a long import breaks in `()`.
-  NamedImport: (printer, node) =>
-    annotated(printer, node, [
-      'import ',
-      (node.isParenthesized ? bracketed : bracketedWhenBroken)(
-        printer,
-        node,
-        ['(', ')'],
-        node.names,
-      ),
-      ' from ',
-      printer.print(node.path),
-    ]),
-  ImportedName: (printer, node) =>
-    node.alias === undefined
-      ? printer.print(node.name)
-      : [printer.print(node.name), ' as ', printer.print(node.alias)],
-  NamespaceImport: (printer, node) =>
-    annotated(printer, node, [
-      'import * as ',
-      printer.print(node.alias),
-      ' from ',
-      printer.print(node.path),
     ]),
   TypeParameter: (printer, node) => [
     node.variance === undefined ? '' : [node.variance, ' '],

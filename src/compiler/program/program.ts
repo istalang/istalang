@@ -180,8 +180,7 @@ function resolveImports(
   const diagnostics: Diagnostic[] = [];
   const found: LocatedModule[] = [];
   for (const item of tree.root.items) {
-    const isImport = item.kind === 'NamedImport' || item.kind === 'NamespaceImport';
-    if (isImport && item.path.kind === 'StringLiteral') {
+    if (item.kind === 'ImportDeclaration' && item.path.kind === 'StringLiteral') {
       const located = locateImport(item.path, importer, loaders);
       if ('code' in located) {
         diagnostics.push(diagnosticIn(tree, located));

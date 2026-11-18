@@ -71,8 +71,7 @@ export function allowedInBlock(item: Item): item is Statement {
 
 function placeOf(item: Item): Place {
   switch (item.kind) {
-    case 'NamedImport':
-    case 'NamespaceImport':
+    case 'ImportDeclaration':
     case 'StructDeclaration':
     case 'SharedStructDeclaration':
     case 'ExternStructDeclaration':

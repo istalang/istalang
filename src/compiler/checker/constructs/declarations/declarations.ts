@@ -214,8 +214,7 @@ function checkAlias(checker: CheckerContext, alias: AliasDeclaration): void {
 
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
 const declarationHandlers: Handlers<CheckerContext, Declaration, [ModuleId], void> = {
-  NamedImport: annotatedNowhere('an import'),
-  NamespaceImport: annotatedNowhere('an import'),
+  ImportDeclaration: annotatedNowhere('an import'),
   ExternStructDeclaration: (checker, node, module) => {
     checker.annotations.of(module, node, { kind: 'struct', isExtern: true });
     checkTypeParameters(checker, node);

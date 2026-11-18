@@ -90,7 +90,7 @@ const rolesOf: RolesOf = {
   Parameter: (node) => (node.name === undefined ? [] : [[node.name, 'parameter']]),
   NamedArgument: named('parameter'),
   FieldInitializer: named('property'),
-  NamespaceImport: (node) => [[node.alias, 'namespace']],
+  ImportedNamespace: (node) => [[node.alias, 'namespace']],
   NamedType: (node) => qualified(node.path, 'type'),
   NamePattern: (node) => {
     // Type arguments follow only a type's name (§3.11).

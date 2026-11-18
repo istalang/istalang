@@ -30,7 +30,8 @@ import type {
   ExternConstantDeclaration,
   ExternStructDeclaration,
   FunctionDeclaration,
-  NamespaceImport,
+  ImportDeclaration,
+  ImportedNamespace,
   RequiredAssociatedType,
   SharedStructDeclaration,
   StructDeclaration,
@@ -165,7 +166,8 @@ export interface NamespaceEntity {
   readonly kind: 'namespace';
   /** The module whose bindings made it (module/bind-module.ts). */
   readonly module: ModuleId;
-  readonly declaration: NamespaceImport;
+  readonly imported: ImportedNamespace;
+  readonly declaration: ImportDeclaration;
 }
 
 export type Entity =
@@ -208,7 +210,7 @@ const ownCalls = new WeakMap<FunctionDeclaration | Lambda, VariableEntity>();
 const types = new WeakMap<TypeDeclaration, TypeEntity>();
 const selves = new WeakMap<TraitDeclaration, SelfEntity>();
 const variants = new WeakMap<Variant, VariantEntity>();
-const namespaces = new WeakMap<NamespaceImport, NamespaceEntity>();
+const namespaces = new WeakMap<ImportedNamespace, NamespaceEntity>();
 const functionSets = new SequenceMemo<FunctionDeclaration, FunctionsEntity>();
 
 /** The variable `name` declares in `module`, `owner` declaring it. */
@@ -286,8 +288,13 @@ export function boundVariantEntity(variant: Variant): VariantEntity {
   return variants.get(variant) ?? unreachable(`No bindings declared ${variant.name.text}.`);
 }
 
-export function namespaceEntity(module: ModuleId, declaration: NamespaceImport): NamespaceEntity {
-  return memo(namespaces, declaration, () => ({ kind: 'namespace', module, declaration }));
+/** The namespace `imported`, an item of `declaration`, binds in `module`. */
+export function namespaceEntity(
+  module: ModuleId,
+  imported: ImportedNamespace,
+  declaration: ImportDeclaration,
+): NamespaceEntity {
+  return memo(namespaces, imported, () => ({ kind: 'namespace', module, imported, declaration }));
 }
 
 /** The top-level functions `overloads` of `module`, all named `name`, as one set. */

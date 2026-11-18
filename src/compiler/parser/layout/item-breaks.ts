@@ -9,7 +9,7 @@
  *   `.`, a `:` or an opening bracket nothing asks, so the break is read past;
  * - the next line's first token can start an item. That is derived from the expression grammar's
  *   tables (grammar/expressions/expression.ts, `startsItemOnNewLine`) and the item parsers' openers
- *   (a spread's, a struct comprehension's, an annotated entry's), never listed here. A token both
+ *   (a spread's, a struct comprehension's, an annotated entry's, an import's `*`), never listed here. A token both
  *   starting and continuing an operand starts an item when it would apply to the operand only on
  *   the operand's line (a postfix bracket), when it is a word not spelling an operator with the
  *   token after it (`not`, against `not in`), or when it is a symbol no space parts from the rest
@@ -37,9 +37,14 @@ import { annotationOpener } from './annotations.ts';
 
 /**
  * Whether the line break before the token `ahead` positions on separates two items of the
- * enclosing list, where an item could end: the token starts a line and can start an item.
+ * enclosing list, where an item could end: the token starts a line and can start an item, by the
+ * grammar's tables or as one of `itemOpeners`, the tokens only this list's items start with.
  */
-export function breakSeparatesItems(parser: Parser, ahead = 0): boolean {
+export function breakSeparatesItems(
+  parser: Parser,
+  ahead = 0,
+  itemOpeners: ReadonlySet<CursorKind> = new Set(),
+): boolean {
   const { cursor } = parser;
   if (!cursor.startsLineInList(ahead)) {
     return false;
@@ -48,7 +53,9 @@ export function breakSeparatesItems(parser: Parser, ahead = 0): boolean {
   const next = cursor.peek(ahead + 1);
   const spaced = next.kind !== 'lineBreak' && !next.firstOnLine && next.span.start > token.span.end;
   return (
-    token.kind === annotationOpener || parser.startsItemOnNewLine(token.kind, next.kind, spaced)
+    token.kind === annotationOpener ||
+    itemOpeners.has(token.kind) ||
+    parser.startsItemOnNewLine(token.kind, next.kind, spaced)
   );
 }
 

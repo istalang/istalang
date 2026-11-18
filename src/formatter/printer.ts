@@ -21,6 +21,8 @@ export interface Printer {
   readonly withComments: (node: SyntaxNode, doc: builders.Doc) => builders.Doc;
   /** The comments left to `node`'s own printer, printed where it puts them; '' for none. */
   readonly dangling: (node: SyntaxNode) => builders.Doc;
+  /** Whether `node` has comments left to its own printer, asked without printing them. */
+  readonly hasDangling: (node: SyntaxNode) => boolean;
   /** `node`'s span widened to the comments printed before and after it. */
   readonly extentOf: (node: SyntaxNode) => Span;
   /**

@@ -63,8 +63,8 @@ export function standingIn(parent: SyntaxNode, child: SyntaxNode): Standing {
       return child === parent.key ? 'brackets' : 'outside';
     case 'MappedField':
       return child === parent.parameter ? 'brackets' : 'outside';
-    case 'NamedImport':
-      return listedIn(parent.isParenthesized ? parent.names : [], child);
+    case 'ImportDeclaration':
+      return listedIn(parent.isParenthesized ? parent.items : [], child);
     case 'Lambda':
     case 'FunctionDeclaration':
     case 'FunctionType':

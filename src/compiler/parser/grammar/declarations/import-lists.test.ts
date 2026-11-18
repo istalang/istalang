@@ -2,8 +2,7 @@
  * Parenthesized import lists and import renames (proposal 5 §7, note 11): 'import (a, b, c as see)
  * from "./lib"' as a bracketed list following §6's line-break rule, bare 'import a, b from "x"'
  * staying on one line, 'name as alias' binding rules and clash checks, and formatter round-trips
- * (keeping one-line bare or parenthesized as written, and breaking long bare imports into
- * parentheses).
+ * (bare on one line while the names fit, else in parentheses filling lines).
  */
 
 import fc from 'fast-check';
@@ -100,12 +99,10 @@ describe('parenthesized import lists (§3.13, §6, §7)', () => {
 });
 
 describe('formatting parenthesized and bare imports (§7)', () => {
-  it('keeps short bare and short parenthesized imports as written on one line, and breaks a long bare import into parentheses', () => {
+  it('prints short imports bare on one line, and breaks a long one into parentheses filling lines', () => {
     const shortBare = "import approve, Verdict from 'purchase/approve'\n";
     expect(formatText(shortBare)).toBe(shortBare);
-
-    const shortParens = "import (approve, Verdict) from 'purchase/approve'\n";
-    expect(formatText(shortParens)).toBe(shortParens);
+    expect(formatText("import (approve, Verdict) from 'purchase/approve'\n")).toBe(shortBare);
 
     const longBare =
       "import approvePurchaseRequest, rejectPurchaseRequest, cancelPurchaseRequest, notifyPurchaseReviewers, ChargeVerdict from 'purchase/approval/workflow'\n";
@@ -113,11 +110,8 @@ describe('formatting parenthesized and bare imports (§7)', () => {
     expect(formatted).toBe(
       lines(
         'import (',
-        '  approvePurchaseRequest',
+        '  approvePurchaseRequest, cancelPurchaseRequest, ChargeVerdict, notifyPurchaseReviewers',
         '  rejectPurchaseRequest',
-        '  cancelPurchaseRequest',
-        '  notifyPurchaseReviewers',
-        '  ChargeVerdict',
         ") from 'purchase/approval/workflow'",
         '',
       ),
@@ -136,14 +130,11 @@ describe('import renames ("c as see") in bare and parenthesized imports (§7)', 
     ],
     [
       'parenthesized multi-line import where "as see" continues the item across a line break (§6)',
-      lines('import (', '  a', '  c', '    as see', ") from './lib'"),
+      lines('import (', '  a', '  b', '  c', '    as see', ") from './lib'"),
     ],
-  ])('parses %s without diagnostics and preserves its tree across formatting', (_name, text) => {
-    const tree = dumpClean('module', text);
-    expect(tree.startsWith('NOT CLEAN:')).toBe(false);
-    const formatted = formatText(text) ?? '';
-    expect(dumpClean('module', formatted)).toBe(tree);
-    expect(formatText(formatted)).toBe(formatted);
+  ])('parses %s without diagnostics and formats it bare on one line', (_name, text) => {
+    expect(dumpClean('module', text).startsWith('NOT CLEAN:')).toBe(false);
+    expect(formatText(text)).toBe("import a, b, c as see from './lib'\n");
   });
 
   it('binds only the alias in scope, allows importing one export under two names, and checks clashes on bound names', async () => {

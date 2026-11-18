@@ -1,10 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { type DocumentSymbol, DocumentSymbolRequest } from 'vscode-languageserver/node';
-import {
-  boundName,
-  type Declaration,
-  importedNames,
-} from '../../../../compiler/syntax/declarations/index.ts';
+import { boundName, type Declaration } from '../../../../compiler/syntax/declarations/index.ts';
 import { targetNames } from '../../../../compiler/syntax/patterns.ts';
 import { type Identifier, isMissingName } from '../../../../compiler/syntax/tree/node.ts';
 import { type AnchoredSpan, spanIn } from '../../../../compiler/syntax/tree/positions.ts';
@@ -26,11 +22,17 @@ function declaredBy(declaration: Declaration): readonly Declared[] {
   if (declaration.kind === 'VariableDeclaration') {
     return declaration.targets.flatMap(targetNames).map(leaf);
   }
-  if (declaration.kind === 'NamedImport') {
-    return importedNames(declaration).map(boundName).map(leaf);
-  }
-  if (declaration.kind === 'NamespaceImport') {
-    return [leaf(declaration.alias)];
+  if (declaration.kind === 'ImportDeclaration') {
+    return declaration.items.flatMap((imported) => {
+      switch (imported.kind) {
+        case 'ImportedName':
+          return [leaf(boundName(imported))];
+        case 'ImportedNamespace':
+          return [leaf(imported.alias)];
+        default:
+          return [];
+      }
+    });
   }
   const parts = [
     ...('fields' in declaration ? declaration.fields : []),

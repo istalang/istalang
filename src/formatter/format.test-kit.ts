@@ -36,7 +36,9 @@ export const formattableInputs: readonly { readonly name: string; readonly text:
 
 /**
  * Acceptance 1–3 for `text` (formatter.md): what its format re-parses to (diagnostics, tree,
- * comments) and formats to again, beside what each must be.
+ * comments) and formats to again, beside what each must be. The formatter merges and sorts the
+ * imports (imports.ts), so trees compare with imports as `importsAsSet` reads them, and comments,
+ * which move with imports, compare as a sorted list.
  */
 export function roundTripOf(text: string) {
   const tree = parseText(text);
@@ -47,17 +49,32 @@ export function roundTripOf(text: string) {
     reparsed,
     actual: {
       diagnostics: reparsed.diagnostics,
-      tree: dump(reparsed, reparsed.root),
-      comments: commentTexts(reparsed),
+      tree: dumpWithImportsAsSet(reparsed),
+      comments: commentTexts(reparsed).toSorted(),
       formattedAgain: formatTree(reparsed),
     },
     expected: {
       diagnostics: [],
-      tree: dump(tree, tree.root),
-      comments: commentTexts(tree),
+      tree: dumpWithImportsAsSet(tree),
+      comments: commentTexts(tree).toSorted(),
       formattedAgain: formatted,
     },
   };
+}
+
+/**
+ * `tree` dumped as its items other than imports, in order, and what its imports bind, one entry
+ * per item and path, sorted: what formatting keeps of a module, whose imports it merges and sorts.
+ */
+function dumpWithImportsAsSet(tree: SyntaxTree): string {
+  const { items } = tree.root;
+  const imported = items.flatMap((item) =>
+    item.kind === 'ImportDeclaration'
+      ? item.items.map((each) => `${dump(tree, item.path)} ${dump(tree, each)}`)
+      : [],
+  );
+  const others = items.filter((item) => item.kind !== 'ImportDeclaration');
+  return [...imported.toSorted(), ...others.map((item) => dump(tree, item))].join('\n');
 }
 
 /** The text of each comment of `tree`, in order. */
@@ -84,8 +101,7 @@ export function unexplainedLongLines(tree: SyntaxTree): readonly string[] {
     nodesUnder(tree, tree.root)
       .filter(
         (node) =>
-          node.kind === 'NamedImport' ||
-          node.kind === 'NamespaceImport' ||
+          node.kind === 'ImportDeclaration' ||
           ((node.kind === 'Binary' || node.kind === 'ChainedComparison') && !inBrackets.has(node)),
       )
       .flatMap((node) => {

@@ -221,8 +221,7 @@ const declarationHandlers: Handlers<LocalBinder, Declaration, [Scope], void> = {
     bindAliasBody(binder, node.type, typeParameterScope(binder, node, scope)),
   EnumDeclaration: bindEnum,
   TraitDeclaration: bindTrait,
-  NamedImport: holdsNoNames,
-  NamespaceImport: holdsNoNames,
+  ImportDeclaration: holdsNoNames,
 };
 // biome-ignore-end lint/style/useNamingConvention: the keys are the tree's node kinds.
 

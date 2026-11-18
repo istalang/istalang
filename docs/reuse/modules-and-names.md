@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-11-13
-last_updated: 2026-11-17
+last_updated: 2026-11-18
 tags: [reuse, language, modules, program, binder, names]
 ---
 
@@ -65,7 +65,8 @@ tags: [reuse, language, modules, program, binder, names]
 - bind a `Program`'s names (memoized per `Program` and per `SyntaxTree`) → `bindProgram` (`src/compiler/binder/bind.ts`)
 - walk a list's items in the binder (a module's items, a block's statements, fields, variants, cases, entries), each item's annotations bound there but a generic declaration's, and every item but an Invalid one going to its handler → `LocalBinder.eachItem`; the handler of an Invalid standing where one node goes, which binds the annotations the parser rejected there → `bindRejected` (`src/compiler/binder/module/local-binder.ts`)
 - make an entity, once per node it stands for, so it outlives edits elsewhere → `variableEntity`, `ownCallEntity`, `typeEntity`, `selfEntity`, `variantEntity`, `namespaceEntity`, `functionsEntity` (`src/compiler/binder/entities.ts`); an import's placeholder, one per imported name → `importPlaceholder` (`src/compiler/binder/module/scope.ts`)
-- read a named import's names: the name each binds, its alias or the export's, and the names recovery left whole → `boundName`, `importedNames` (`src/compiler/syntax/declarations/index.ts`); never read `NamedImport.names` as identifiers
+- read an import's names: the name each binds, its alias or the export's, and the names recovery left whole, its `* as m` and `*` items aside → `boundName`, `importedNames` (`src/compiler/syntax/declarations/index.ts`); never read `ImportDeclaration.items` as names
+- what a module's `import *` binds, and the clash rules it keeps → `linkStarImports` (`src/compiler/binder/link/star-imports.ts`), read through `Bindings.topLevelNamed`, `Bindings.topLevelNames`, `Bindings.visibleAt`; what an importer sees of a module by name → `exportedTo` (`src/compiler/binder/link/exported.ts`)
 - tell whether a name reaches its entity through a renaming import (`import a as b`), and by which alias → `Bindings.aliasOf` (`src/compiler/binder/entities.ts`)
 - resolve what an `Identifier` denotes or list a module's exports → `Bindings.entityOf`, `Bindings.exportsOf` (`src/compiler/binder/entities.ts`)
 - resolve a name a body uses where it is written, noting closure captures → `BodyContext.useEntity`; only ask → `BodyContext.entityOf` (`src/compiler/checker/contexts/body-context.ts`)
