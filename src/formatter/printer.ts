@@ -16,6 +16,8 @@ import type { PlacedComment } from './comments/comments.ts';
 export interface Printer {
   /** The tree printed, which holds its text and its functions' bodies. */
   readonly tree: SyntaxTree;
+  /** The width the lines printed keep within (layout/widths.ts). */
+  readonly width: number;
   /** `node` printed by its kind's printer, with the comments placed before and after it. */
   readonly print: (node: SyntaxNode) => builders.Doc;
   /** `doc`, printed in place of `node`'s own printer, with `node`'s comments around it. */

@@ -3,7 +3,8 @@
  * `istalang/formatter` over text.
  *
  * The style has no options (2-space indent, width 100, and 66 for a line holding a compressed
- * form, layout/compact.ts). A tree with syntax diagnostics is refused:
+ * form, layout/compact.ts); only code shown for reading, as a hover's, is printed narrower
+ * (`formatTextWithin`). A tree with syntax diagnostics is refused:
  * the parser recovered from the errors by guesses, and printing a guess would rewrite the user's
  * code into something they didn't write.
  *
@@ -55,7 +56,7 @@ import { isMultiLine, literalPrinters } from './expressions/literals.ts';
 import { importPrinters } from './imports.ts';
 import { nodesInBrackets } from './layout/brackets.ts';
 import { placeholderFor, withCompactWidths, withoutPlaceholders } from './layout/compact.ts';
-import { compactWidth, printWidth, tabWidth } from './layout/widths.ts';
+import { compactWidthOf, printWidth, tabWidth } from './layout/widths.ts';
 import { patternPrinters } from './patterns.ts';
 import type { Printer, Printers } from './printer.ts';
 import { statementPrinters } from './statements.ts';
@@ -86,6 +87,7 @@ const noComments: CommentsOf = { leading: [], trailing: [], dangling: [] };
 
 class TreePrinter implements Printer {
   readonly tree: SyntaxTree;
+  readonly width: number;
   readonly #placement: ReadonlyMap<SyntaxNode, CommentsOf>;
   /** Every placed comment in text order, which `commentsIn` bisects: comments never overlap. */
   readonly #ordered: readonly PlacedComment[];
@@ -93,8 +95,9 @@ class TreePrinter implements Printer {
   readonly #printed = new Set<PlacedComment>();
   readonly #docs = new Map<SyntaxNode, builders.Doc>();
 
-  constructor(tree: SyntaxTree, placement: ReadonlyMap<SyntaxNode, CommentsOf>) {
+  constructor(tree: SyntaxTree, placement: ReadonlyMap<SyntaxNode, CommentsOf>, width: number) {
     this.tree = tree;
+    this.width = width;
     this.#placement = placement;
     this.#ordered = [...placement.values()]
       .flatMap(({ leading, trailing, dangling }) => [...leading, ...trailing, ...dangling])
@@ -197,6 +200,11 @@ function isFormattingDisabled(tree: SyntaxTree): boolean {
 
 /** `tree`'s canonical text; undefined when it has syntax diagnostics, which are the reason. */
 export function formatTree(tree: SyntaxTree): string | undefined {
+  return formattedWithin(tree, printWidth);
+}
+
+/** `tree` formatted with its lines kept within `width`; undefined with syntax diagnostics. */
+function formattedWithin(tree: SyntaxTree, width: number): string | undefined {
   if (tree.diagnostics.length > 0) {
     return undefined;
   }
@@ -204,16 +212,16 @@ export function formatTree(tree: SyntaxTree): string | undefined {
   const placement = placeComments(tree, (comment) =>
     copied.some((span) => encloses(span, comment.span)),
   );
-  const printer = new TreePrinter(tree, placement);
+  const printer = new TreePrinter(tree, placement, width);
   const doc = printer.print(tree.root);
   const [missed] = printer.unprinted();
   if (missed !== undefined) {
     unreachable(`No printer printed the comment at ${missed.span.start}: ${missed.text}`);
   }
   const placeholder = placeholderFor(tree.source.text);
-  const reserve = placeholder.repeat(printWidth - compactWidth);
+  const reserve = placeholder.repeat(width - compactWidthOf(width));
   const printed = docPrinter.printDocToString(withCompactWidths(doc, reserve), {
-    printWidth,
+    printWidth: width,
     tabWidth,
   });
   return withoutPlaceholders(printed.formatted, placeholder);
@@ -242,4 +250,13 @@ export function formatSource(source: SourceText): FormattedSource {
 /** `text` formatted as a module (`formatModule`); undefined when it has syntax errors. */
 export function formatText(text: string): string | undefined {
   return formatSource(createSourceText('formatted.ista', text)).text;
+}
+
+/**
+ * `text` formatted with its lines kept within `width`, for code shown to be read, as a hover's,
+ * where a pane narrower than an editor shows it; undefined when it has syntax errors.
+ */
+export function formatTextWithin(text: string, width: number): string | undefined {
+  const source = createSourceText('shown.ista', text);
+  return formattedWithin(parse(source, scan(source)), width);
 }

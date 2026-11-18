@@ -46,7 +46,7 @@ const { group, hardline, hardlineWithoutBreakParent, ifBreak, indent, join, line
 export function importBlock(printer: Printer, imports: readonly ImportDeclaration[]): builders.Doc {
   const statements = mergedByPath(imports).map((merged): Statement => {
     const doc = merged.length === 1 ? printer.print(merged[0]) : mergedStatement(printer, merged);
-    return { merged, doc, isOneLine: printsOnOneLine(doc) };
+    return { merged, doc, isOneLine: printsOnOneLine(doc, printer.width) };
   });
   return statements
     .toSorted(compareStatements)

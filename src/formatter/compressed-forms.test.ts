@@ -2,13 +2,14 @@
  * Compressed forms (layout/compact.ts): what may stand on one line, through braces or a body on
  * its header's line, does so only when the whole line keeps within 66 columns; a struct value
  * switches between braces and its indented form by the same width (expressions/struct-values.ts);
- * and a lambda's one bare parameter goes without parentheses.
+ * and a lambda's one bare parameter goes without parentheses. Code formatted narrower, as a
+ * hover's, keeps its compressed forms within two thirds of its own width.
  */
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { lines, roundTripOf } from './format.test-kit.ts';
-import { formatText } from './format.ts';
+import { formatText, formatTextWithin } from './format.ts';
 
 /** A name `length` characters long, to push a line past a width. */
 const named = (length: number): string => 'n'.repeat(length);
@@ -173,5 +174,20 @@ describe('a lambda', () => {
     );
     const kept = lines('const h = fn(x: Int): x', 'const k = fn(x, y): x', 'const m = fn(): 1');
     expect(formatText(kept)).toBe(kept);
+  });
+});
+
+describe('code formatted narrower', () => {
+  it('keeps its lines within its width, and a compressed form within two thirds of it', () => {
+    const fits = `fn f(): ${named(45)}`;
+    const over = `fn f(): ${named(46)}`;
+    expect(fits).toHaveLength(53);
+    expect(formatTextWithin(lines(fits), 80)).toBe(lines(fits));
+    expect(formatTextWithin(lines(over), 80)).toBe(lines('fn f():', `  ${named(46)}`));
+    const parameters = Array.from({ length: 6 }, (_, index) => `p${index}: ${named(8)}`);
+    const header = `fn g(${parameters.join(', ')}) -> Int`;
+    expect(formatTextWithin(lines(`${header}: 1`), 80)).toBe(
+      lines('fn g(', ...parameters.map((each) => `  ${each}`), ') -> Int:', '  1'),
+    );
   });
 });
