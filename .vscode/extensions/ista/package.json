@@ -7,6 +7,10 @@
   "engines": {
     "vscode": "^1.91.0"
   },
+  "categories": [
+    "Programming Languages",
+    "Formatters"
+  ],
   "main": "./dist/extension.cjs",
   "capabilities": {
     "untrustedWorkspaces": {
@@ -37,6 +41,7 @@
     ],
     "configurationDefaults": {
       "[ista]": {
+        "editor.defaultFormatter": "local.ista",
         "editor.insertSpaces": true,
         "editor.tabSize": 2,
         "editor.detectIndentation": false,
