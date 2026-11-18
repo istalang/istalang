@@ -25,4 +25,4 @@ ista async fn _main() -> (Int, Int, Bool):
   const read = Flags{1}
   const write = Flags{2}
   const both = either(read, write)
-  (both.bits, (both & ~read).bits, both ^ write == read)
+  (both.bits, (both & ~read).bits, (both ^ write) == read)

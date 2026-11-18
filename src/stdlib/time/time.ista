@@ -53,8 +53,8 @@ fn toString(self: Time) -> String:
   const ofDay = self.value % _millisecondsPerDay
   const date = _yearText(year) + "-" + _padded(month, 2) + "-" + _padded(day, 2)
   const hour = _padded(ofDay // _millisecondsPerHour, 2)
-  const minute = _padded(ofDay // _millisecondsPerMinute % 60, 2)
-  const second = _padded(ofDay // _millisecondsPerSecond % 60, 2)
+  const minute = _padded((ofDay // _millisecondsPerMinute) % 60, 2)
+  const second = _padded((ofDay // _millisecondsPerSecond) % 60, 2)
   date + "T" + hour + ":" + minute + ":" + second + "." + _padded(ofDay % 1000, 3) + "Z"
 
 fn toString(self: Duration) -> String:
