@@ -7,6 +7,7 @@ import { corpusFiles } from '../../test/corpus/programs.ts';
 import { specExamples } from '../../test/corpus/spec-examples.ts';
 import { parse } from '../compiler/parser/parse.ts';
 import { scan } from '../compiler/scanner/scan.ts';
+import { type ImportDeclaration, isBoundByAll } from '../compiler/syntax/declarations/index.ts';
 import {
   extentIn,
   nodesUnder,
@@ -69,16 +70,26 @@ export function roundTripOf(text: string) {
 
 /**
  * `tree` dumped as formatting keeps it: its items other than imports, in order, then what its
- * imports bind, one entry per item and path, sorted, since the formatter merges and sorts them
- * (imports.ts); and a struct value in braces or indented alike, whose form its width picks
- * (expressions/struct-values.ts).
+ * imports bind, one entry per item and path, sorted, since the formatter merges and sorts them and
+ * drops a name a `*` of its path binds too (imports.ts); and a struct value in braces or indented
+ * alike, whose form its width picks (expressions/struct-values.ts).
  */
 function dumpAsFormatted(tree: SyntaxTree): string {
   const { items } = tree.root;
-  const imported = items.flatMap((item) =>
-    item.kind === 'ImportDeclaration'
-      ? item.items.map((each) => `${dump(tree, item.path)} ${dump(tree, each)}`)
-      : [],
+  const imports = items.filter((item) => item.kind === 'ImportDeclaration');
+  const allPaths = new Set(
+    imports.flatMap((each) =>
+      each.items.some((item) => item.kind === 'ImportedAll') ? [dump(tree, each.path)] : [],
+    ),
+  );
+  const binds = (declaration: ImportDeclaration) => (item: ImportDeclaration['items'][number]) =>
+    !(
+      item.kind === 'ImportedName' &&
+      isBoundByAll(item) &&
+      allPaths.has(dump(tree, declaration.path))
+    );
+  const imported = imports.flatMap((item) =>
+    item.items.filter(binds(item)).map((each) => `${dump(tree, item.path)} ${dump(tree, each)}`),
   );
   const others = items.filter((item) => item.kind !== 'ImportDeclaration');
   return [...imported.toSorted(), ...others.map((item) => dumpViewed(tree, item, asBraced))].join(

@@ -41,15 +41,28 @@ describe('the import block', () => {
       "import * from 'json'",
       "import * as a from 'json'",
     );
-    expect(formatText(text)).toBe(
-      lines("import *, * as a, * as j, Decoder as D, encode from 'json'"),
+    expect(formatText(text)).toBe(lines("import *, * as a, * as j, Decoder as D from 'json'"));
+  });
+
+  it('drops a name a * of its path binds too, keeping renamed, private and commented ones', () => {
+    const merged = lines("import (*, a, b as c, _d, a as a) from 'lib'", "import e from 'lib'");
+    expect(formatText(merged)).toBe(lines("import *, _d, b as c from 'lib'"));
+    const commented = lines('import (', '  *', '  a # about a', '  b', ") from 'lib'");
+    expect(formatText(commented)).toBe(commented.replace('  b\n', ''));
+    // A statement's comment may be about its names, unless it holds the `*` too.
+    const statementComments = lines(
+      "import e from 'lib' # about e",
+      "import (*, f) from 'lib' # about the star",
+    );
+    expect(formatText(statementComments)).toBe(
+      lines('import (', '  * # about the star', '  e # about e', ") from 'lib'"),
     );
   });
 
   it('puts each star on a line of its own once the import breaks, the names filling the lines after', () => {
     const [first, second] = ['firstNamespaceAlias', 'secondNamespaceAlias'];
     const text = lines(
-      `import (*, * as ${second}, * as ${first}, decodeAll, encodeAll) from 'module/path'`,
+      `import (*, * as ${second}, * as ${first}, decodeAll as d, encodeAll as e) from 'module/path'`,
     );
     expect(formatText(text)).toBe(
       lines(
@@ -57,7 +70,7 @@ describe('the import block', () => {
         '  *',
         `  * as ${first}`,
         `  * as ${second}`,
-        '  decodeAll, encodeAll',
+        '  decodeAll as d, encodeAll as e',
         ") from 'module/path'",
       ),
     );
@@ -100,13 +113,13 @@ describe('the import block', () => {
       "import * from './z'",
       "import b from 'b'",
       "import * as c from 'c'",
-      "import (*, d) from 'd'",
+      "import (*, d as dee) from 'd'",
       "import e from '../e'",
       "import * as f from '../f'",
     );
     expect(formatText(text)).toBe(
       lines(
-        "import *, d from 'd'",
+        "import *, d as dee from 'd'",
         "import * as c from 'c'",
         "import b from 'b'",
         "import * as f from '../f'",
@@ -181,7 +194,7 @@ describe('the import block', () => {
   });
 
   const paths = ['lib', 'a/b', '../up', '../../far', './near', './Near'];
-  const items = ['*', '* as ns', '* as other', 'one', 'two as deux', 'Three', 'four'];
+  const items = ['*', '* as ns', '* as other', 'one', 'two as deux', 'Three', 'four', '_five'];
   const comment = (text: string) => fc.constantFrom('', text);
   const statement = fc
     .record({

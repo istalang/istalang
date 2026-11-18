@@ -20,6 +20,7 @@
  * as an Invalid node, so a tree never holds a top-level statement.
  */
 
+import { isPrivate } from '../../../foundation/language/naming.ts';
 import type { Expression, Parameter } from '../expressions/index.ts';
 import type { StringLiteral } from '../expressions/literals/literals.ts';
 import type { Annotatable } from '../items.ts';
@@ -359,6 +360,14 @@ export type ImportedAll = NodeOf<'ImportedAll'>;
 /** The name an imported name binds in its module: its alias, or the export's own. */
 export function boundName({ name, alias }: ImportedName): Identifier {
   return alias ?? name;
+}
+
+/**
+ * Whether a bare `*` from `name`'s path binds it too, so listing it beside one adds nothing: a
+ * public export under its own name (§3.13).
+ */
+export function isBoundByAll(name: ImportedName): boolean {
+  return boundName(name).text === name.name.text && !isPrivate(name.name.text);
 }
 
 /** The names an import lists, its namespaces, `*` and what recovery skipped aside. */

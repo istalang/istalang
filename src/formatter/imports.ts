@@ -6,6 +6,11 @@
  *   comments, which no single statement holds any more, stand above its first item and after its
  *   last, so every comment stays beside the items it was written by. An annotated import, which
  *   only an erroneous program holds (§3.16), stands alone.
+ * - A statement holding a bare `*` drops the names the `*` binds too (`isBoundByAll`): `a` of
+ *   `import (*, a) from 'lib'` adds nothing. A renamed or private name stays, and so does one a
+ *   comment stands by, which may be about it. A statement's own comments, which stand by its
+ *   first and last items once merged, keep its first item when the `*` binds all the others: what
+ *   they stand by, printed, is the item's own, so formatting again keeps it.
  * - Statements sort by path: paths from the project root or the std first, then `../` ones, the
  *   farthest first, then `./` ones. Among paths of one kind, those printed on one line come
  *   before those taking several, a comment above one among its lines; then a statement with `*`,
@@ -21,7 +26,11 @@
  */
 
 import { builders } from 'prettier/doc';
-import type { ImportDeclaration, ImportItem } from '../compiler/syntax/declarations/index.ts';
+import {
+  type ImportDeclaration,
+  type ImportItem,
+  isBoundByAll,
+} from '../compiler/syntax/declarations/index.ts';
 import { compareOrdered } from '../foundation/language/order.ts';
 import { unreachable } from '../foundation/structures/unreachable.ts';
 import { annotated } from './layout/bodies.ts';
@@ -104,9 +113,9 @@ function mergedStatement(printer: Printer, merged: Merged): builders.Doc {
   if (!merged.some((declaration) => hasOwnComments(printer, declaration))) {
     return statement(printer, merged);
   }
-  const owned = merged
-    .flatMap((owner) => itemsOf(owner).map((item) => ({ item, owner })))
-    .toSorted((one, other) => compareItems(one.item, other.item));
+  const owned = printedItems(printer, merged).toSorted((one, other) =>
+    compareItems(one.item, other.item),
+  );
   const placed = owned.map(({ item, owner }, index): Placed => {
     const doc = printer.print(item);
     const opens = owned.findIndex((each) => each.owner === owner) === index;
@@ -134,7 +143,9 @@ function hasOwnComments(printer: Printer, declaration: ImportDeclaration): boole
 /** `import items from 'path'`: the items of every statement in `merged`, which share the path. */
 function statement(printer: Printer, merged: Merged): builders.Doc {
   const [first] = merged;
-  const items = merged.flatMap(itemsOf).toSorted(compareItems);
+  const items = printedItems(printer, merged)
+    .map(({ item }) => item)
+    .toSorted(compareItems);
   const placed = items.map((item): Placed => ({ item, doc: printer.print(item) }));
   const commented =
     merged.some((each) => printer.hasDangling(each)) ||
@@ -153,6 +164,37 @@ function itemsOf(declaration: ImportDeclaration): readonly ImportItem[] {
   return declaration.items.map((item) =>
     item.kind === 'Invalid' ? unreachable('A tree the formatter prints holds no Invalid.') : item,
   );
+}
+
+/** An item and the statement it was written in. */
+interface Owned {
+  readonly item: ImportItem;
+  readonly owner: ImportDeclaration;
+}
+
+/**
+ * The items `merged` prints: all but the names its `*` binds too with no comment by them, a
+ * statement holding comments keeping its first item (banner).
+ */
+function printedItems(printer: Printer, merged: Merged): readonly Owned[] {
+  const owned = merged.flatMap((owner) => itemsOf(owner).map((item) => ({ item, owner })));
+  if (!owned.some(({ item }) => item.kind === 'ImportedAll')) {
+    return owned;
+  }
+  const kept = owned.filter(
+    ({ item }) =>
+      !(
+        item.kind === 'ImportedName' &&
+        isBoundByAll(item) &&
+        printer.commentsIn(printer.extentOf(item)).length === 0
+      ),
+  );
+  const stranded = merged.flatMap((owner) =>
+    hasOwnComments(printer, owner) && !kept.some((each) => each.owner === owner)
+      ? [itemsOf(owner).toSorted(compareItems)[0]]
+      : [],
+  );
+  return owned.filter((each) => kept.includes(each) || stranded.includes(each.item));
 }
 
 /** An item as a statement prints it, with the comments it stands by. */
