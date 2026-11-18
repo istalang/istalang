@@ -1,4 +1,5 @@
 # outcome: "7|none|big 12|small|3"
+# disable-ista-formatter
 # `x is Pattern` is a boolean whose bindings exist where the match is known to have succeeded:
 # the body of an `if` or `while`, and the right side of an `and` (§3.11).
 

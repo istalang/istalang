@@ -1,15 +1,18 @@
 # outcome: [3,"b"]
 # A field a trait requires is read through an `any` value from the value's own type (§3.10).
 
-trait Sized:
-  size: Int
+import * as runtime from 'runtime'
+
+trait Sized { size: Int }
 
 struct Box { size: Int, label: String }
 struct Pair { first: String, size: Int }
 
-import * as runtime from 'runtime'
 live async fn main(): await runtime.run(runtime.id()) _main()
 ista async fn _main():
-  const items: Array<any Sized> = [Box{size: 1, label: "a"}, Pair{first: "b", size: 2}]
+  const items: Array<any Sized> = [
+    Box{size: 1, label: "a"}
+    Pair{first: "b", size: 2}
+  ]
   const pair = Pair{first: "b", size: 2}
   (items[0].size + items[1].size, pair.first)

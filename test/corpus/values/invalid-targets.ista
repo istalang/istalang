@@ -7,8 +7,8 @@
 # error: 5217 at 28:6
 # error: 5217 at 30:6
 # error: 5217 at 31:37
-# error: 5217 at 33:9
-# error: 5217 at 35:7
+# error: 5217 at 36:9
+# error: 5217 at 38:7
 # A declaration's targets are irrefutable (§3.15): no literal, comparison or variant; a struct
 # target names a struct of the value's own type, and fields it has. An assignment writes each
 # place once: not twice, nor whole and in part, through a handle as on a variable (§3.18).
@@ -28,7 +28,10 @@ fn subject(n: Int, o: Int?):
   u, u = (1, 2)
   let w = Pair{first: 1, second: 2}
   w, w.first = (Pair{first: 3, second: 4}, 5)
-  (w.first, w.second), Pair{second: w.first} = ((1, 2), Pair{first: 3, second: 4})
+  (w.first, w.second), Pair{second: w.first} = (
+    (1, 2)
+    Pair{first: 3, second: 4}
+  )
   const c = new Cell{a: 0, b: 0}
   c->a, c->a = (1, 2)
   const v = *c

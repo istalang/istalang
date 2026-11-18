@@ -4,18 +4,18 @@
 # position and value of the first to resolve; of several already resolved, the lowest position.
 
 import * as futures from 'futures'
-import * as time from 'time'
 import * as runtime from 'runtime'
+import * as time from 'time'
 
-struct Pending:
-  label: String
-  done: Future<Int, "ista">
+struct Pending { label: String, done: Future<Int, "ista"> }
 
 ista async fn after(wait: time.Duration, value: Int) -> Int:
   await time.delay(wait)
   value
 
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> String:
   const slow = after(6ms, 1)
   const fast = after(2ms, 2)

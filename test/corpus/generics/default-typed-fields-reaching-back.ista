@@ -3,18 +3,16 @@
 # again with its parameter whole, beside fields of its own typed by defaults, generic or not:
 # instantiation ends (§3.5), and no default depends on itself (§3.1).
 
-struct Phantom<T>:
-  k: Int
-
-struct Back<U>:
-  n = 1
-  p = Phantom<U>{k: 1}
-  a: Ahead<U>?
-
-struct Ahead<T>:
-  b = Back<T>{a: none}
-
 import * as runtime from 'runtime'
-live async fn main() -> Int: await runtime.run(runtime.id()) _main()
+
+struct Phantom<T> { k: Int }
+
+struct Back<U> { n = 1, p = Phantom<U>{k: 1}, a: Ahead<U>? }
+
+struct Ahead<T> { b = Back<T>{a: none} }
+
+live async fn main() -> Int:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> Int:
   Ahead<String>{}.b.n + Back<Int>{a: none}.n

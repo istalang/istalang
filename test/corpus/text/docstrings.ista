@@ -1,4 +1,5 @@
 # outcome: "documented"
+# disable-ista-formatter
 # Comments may stand before a module's docstring.
 """
 Docstrings document a module, and its functions, structs, enums and traits, from the first line

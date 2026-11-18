@@ -4,18 +4,18 @@
 # with == and != when either side fits the other's type, and parsing a < 1 > (b) and a < A | B > (b)
 # as generic calls while (a < 1) > b is a comparison.
 
-import toUpperCase from 'strings'
 import * as runtime from 'runtime'
+import toUpperCase from 'strings'
 
 type Status = "draft" | "sent" | "failed"
 
-fn pick<T in 1 | 2>(x: T) -> Int:
-  x
+fn pick<T in 1 | 2>(x: T) -> Int: x
 
-fn either<T>(x: T) -> String:
-  "called"
+fn either<T>(x: T) -> String: "called"
 
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> String:
   const s: Status = "draft"
   const n: -1 | 42 = -1

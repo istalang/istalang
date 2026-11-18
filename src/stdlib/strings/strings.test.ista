@@ -1,9 +1,8 @@
 # The strings module (spec §3.8). Positions and lengths count code points, so every group checks
 # a string holding one beyond UTF-16's first plane ("😀" is one code point and two UTF-16 units).
 
-import Suite, Test, test, group, assert, assertEq, expectPanic from 'testing'
-import * as strings from 'strings'
-import trim, padStart from 'strings'
+import * as strings, padStart, trim from 'strings'
+import assert, assertEq, expectPanic, group, Suite, Test, test from 'testing'
 
 @Suite{"strings"}
 fn suite() -> Array<Test>: [

@@ -6,8 +6,8 @@
 # `Shared` holding the only handle to `none` releases it, as §7 stops a subscription. A `hold _`
 # holding lasts until its function returns, across its awaits, and is disposed newest first then.
 
-import * as time from 'time'
 import * as runtime from 'runtime'
+import * as time from 'time'
 
 fn note(log: Shared<Array<String>>, text: String):
   log->value = [...log->value, text]
@@ -35,18 +35,20 @@ ista async fn released(log: Shared<Array<String>>):
   drop held
 
 ista async fn shared(log: Shared<Array<String>>):
-  const sub = new Shared<Future<Unit, "ista">?>{value: sleeper(60, log)}
+  const sub = new Shared<Future<Unit, "ista">?>:
+    value: sleeper(60, log)
   note(log, "subscribed")
   sub->value = none
   note(log, "unsubscribed")
 
 ista async fn kept(log: Shared<Array<String>>):
-  for i in 0..2:
-    hold _ = sleeper(40 + i, log)
+  for i in 0..2: hold _ = sleeper(40 + i, log)
   await time.delay(1ms)
   note(log, "kept until return")
 
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> String:
   const empty: Array<String> = []
   const log = new Shared{value: empty}

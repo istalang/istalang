@@ -4,9 +4,9 @@
 # workers through weak references, each worker given the registry, which holds only a `WeakRef`
 # to its future; and a recursive fan-out whose calls hold their children's futures.
 
-import Inbox from 'inbox'
-import * as time from 'time'
 import * as runtime from 'runtime'
+import * as time from 'time'
+import Inbox from 'inbox'
 
 struct Ask { n: Int, reply: Inbox<Int> }
 
@@ -45,7 +45,8 @@ ista async fn leaves(depth: Int) -> Int:
   const right = leaves(depth - 1)
   (await left) + (await right)
 
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
 
 ista async fn _main() -> String:
   const replied = await asked(21)

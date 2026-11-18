@@ -4,8 +4,8 @@
 # temporaries, such as the subject a call made, end before the body, so once a binding ends,
 # nothing holds what it held, and it is disposed there.
 
-import * as time from 'time'
 import * as runtime from 'runtime'
+import * as time from 'time'
 
 fn note(log: Shared<Array<String>>, text: String):
   log->value = [...log->value, text]
@@ -19,13 +19,10 @@ ista fn maybe(id: Int, log: Shared<Array<String>>) -> Future<Unit, "ista">?:
 
 ista async fn bindings(log: Shared<Array<String>>):
   match maybe(1, log):
-    case Future as value:
-      note(log, "in case")
-    case None:
-      note(log, "none")
+    case Future as value: note(log, "in case")
+    case None: note(log, "none")
   note(log, "after match")
-  if maybe(2, log) is Future as value:
-    note(log, "in if")
+  if maybe(2, log) is Future as value: note(log, "in if")
   note(log, "after if")
   let id = 3
   while id < 5 and maybe(id, log) is Future as value:
@@ -33,7 +30,9 @@ ista async fn bindings(log: Shared<Array<String>>):
     id += 1
   note(log, "after while")
 
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> String:
   const empty: Array<String> = []
   const log = new Shared{value: empty}

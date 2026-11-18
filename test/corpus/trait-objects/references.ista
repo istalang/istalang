@@ -1,6 +1,8 @@
 # outcome: [[2,11],1]
 # A method taking `&self`, called through an `any` value, changes the value inside it (§3.7, §3.10).
 
+import * as runtime from 'runtime'
+
 trait Counter:
   fn bump(self: &Self)
   fn count(self: Self) -> Int
@@ -8,27 +10,23 @@ trait Counter:
 struct Ones { n: Int }
 struct Tens { n: Int }
 
-fn bump(self: &Ones):
-  self.n += 1
+fn bump(self: &Ones): self.n += 1
 
-fn bump(self: &Tens):
-  self.n += 10
+fn bump(self: &Tens): self.n += 10
 
-fn count(self: Ones) -> Int:
-  self.n
+fn count(self: Ones) -> Int: self.n
 
-fn count(self: Tens) -> Int:
-  self.n
+fn count(self: Tens) -> Int: self.n
 
-fn bumped(counter: &any Counter):
-  counter.bump()
+fn bumped(counter: &any Counter): counter.bump()
 
-import * as runtime from 'runtime'
 live async fn main(): await runtime.run(runtime.id()) _main()
 ista async fn _main():
-  let counters: Array<any Counter> = [Ones{n: 1}, Tens{n: 1}]
-  for i in 0..2:
-    bumped(&counters[i])
+  let counters: Array<any Counter> = [
+    Ones{n: 1}
+    Tens{n: 1}
+  ]
+  for i in 0..2: bumped(&counters[i])
   let one: any Counter = Ones{n: 0}
   one.bump()
   ([for counter in counters: counter.count()], one.count())

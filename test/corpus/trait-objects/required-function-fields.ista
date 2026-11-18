@@ -2,15 +2,14 @@
 # A field of a function type a trait requires is called as `x.f(…)` through a type parameter or an
 # `any` value, as a struct's own is (§3.10, §3.14).
 
-trait Runs:
-  run: fn(Int) -> Int
+import * as runtime from 'runtime'
+
+trait Runs { run: fn(Int) -> Int }
 
 struct Adder { run: fn(Int) -> Int }
 
-fn apply<T is Runs>(value: T, n: Int) -> Int:
-  value.run(n)
+fn apply<T is Runs>(value: T, n: Int) -> Int: value.run(n)
 
-import * as runtime from 'runtime'
 live async fn main(): await runtime.run(runtime.id()) _main()
 ista async fn _main():
   const one = Adder{run: fn(n: Int): n + 1}

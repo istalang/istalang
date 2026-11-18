@@ -1,8 +1,10 @@
-# error: 5101 at 9:24
-# error: 5101 at 10:23
-# error: 5101 at 11:16
+# error: 5101 at 11:24
+# error: 5101 at 12:23
+# error: 5101 at 13:16
 # A shared struct (§3.18) has an identity of its own, which stays in its instance: it has no JSON
 # form, so no extern a host implements takes or gives one, a `Shared` or a module's own alike (§3.6).
+
+import * as runtime from 'runtime'
 
 shared struct Counter { count: Int }
 
@@ -10,6 +12,5 @@ extern fn counter() -> Counter
 extern fn shared() -> Shared<Int>
 extern fn bump(c: Counter)
 
-import * as runtime from 'runtime'
 live async fn main(): await runtime.run(runtime.id()) _main()
 ista async fn _main(): 0

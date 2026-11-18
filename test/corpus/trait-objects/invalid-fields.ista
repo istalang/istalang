@@ -2,12 +2,12 @@
 # error: 5152 at 15:8
 # A field read through an `any` value can't change: only the value's own type has it (§3.10).
 
-trait Sized:
-  size: Int
+import * as runtime from 'runtime'
+
+trait Sized { size: Int }
 
 struct Box { size: Int }
 
-import * as runtime from 'runtime'
 live async fn main(): await runtime.run(runtime.id()) _main()
 ista async fn _main():
   let item: any Sized = Box{size: 1}

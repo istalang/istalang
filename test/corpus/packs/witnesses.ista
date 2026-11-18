@@ -4,31 +4,28 @@
 # a required rest parameter as the one array it collects, empty or not.
 
 trait Formatter:
-    fn fmt(self: Self, first: String, second: String) -> (String, String)
+  fn fmt(self: Self, first: String, second: String) -> (String, String)
 
 trait Logger:
-    fn log(self: Self, level: Int, ...items: Array<String>) -> (Int, Array<String>)
+  fn log(self: Self, level: Int, ...items: Array<String>) -> (Int, Array<String>)
 
 struct Generic
 
-fn fmt<...P>(self: Generic, ...args: P) -> P:
-    args
+fn fmt<...P>(self: Generic, ...args: P) -> P: args
 
-fn log<...P>(self: Generic, ...args: P) -> P:
-    args
+fn log<...P>(self: Generic, ...args: P) -> P: args
 
 fn named<F is Formatter>(f: F) -> (String, String):
-    f.fmt(second: "B", first: "A")
+  f.fmt(second: "B", first: "A")
 
-fn empty<L is Logger>(l: L) -> (Int, Array<String>):
-    l.log(2)
+fn empty<L is Logger>(l: L) -> (Int, Array<String>): l.log(2)
 
 fn collected<L is Logger>(l: L) -> (Int, Array<String>):
-    const more = ["d"]
-    l.log(1, "c", ...more)
+  const more = ["d"]
+  l.log(1, "c", ...more)
 
 live async fn main() -> (String, String, Int, Array<String>, Int, Array<String>):
-    const (first, second) = named(Generic)
-    const (two, nothing) = empty(Generic)
-    const (one, items) = collected(Generic)
-    (first, second, two, nothing, one, items)
+  const (first, second) = named(Generic)
+  const (two, nothing) = empty(Generic)
+  const (one, items) = collected(Generic)
+  (first, second, two, nothing, one, items)

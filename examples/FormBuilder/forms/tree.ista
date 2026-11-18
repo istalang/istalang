@@ -7,19 +7,11 @@
 
 import FormSnapshot from './model'
 
-enum LabelStyle:
-  Top
-  Start
-  Hidden
+enum LabelStyle { Top, Start, Hidden }
 
-enum Orientation:
-  Horizontal
-  Vertical
+enum Orientation { Horizontal, Vertical }
 
-enum Gap:
-  Sm
-  Md
-  Lg
+enum Gap { Sm, Md, Lg }
 
 enum FieldWidget:
   Input(placeholder: String?)
@@ -107,17 +99,9 @@ enum Node:
     body: Node?
     errors: Array<String>
   )
-  Mount(
-    key: String
-    parent: ParentUi?
-    label: String?
-    form: FormSnapshot
-    errors: Array<String>
-  ) # a dynamic ref: the host runs the form it names, and sends its data back as a Set
+  Mount(key: String, parent: ParentUi?, label: String?, form: FormSnapshot, errors: Array<String>) # a dynamic ref: the host runs the form it names, and sends its data back as a Set
 
-struct Row:
-  key: String
-  node: Node
+struct Row { key: String, node: Node }
 
 # The key of the node.
 fn key(self: Node) -> String:
@@ -141,8 +125,8 @@ fn errors(self: Node) -> Array<String>:
 # variant's active case.
 fn shown(self: Node) -> Array<Node>:
   match self:
-    case Layout(children: children, ...): [self, ...children.flatMap(fn(child): child.shown())]
-    case Repeat(rows: rows, ...): [self, ...rows.flatMap(fn(row): row.node.shown())]
+    case Layout(children: children, ...): [self, ...children.flatMap(fn child: child.shown())]
+    case Repeat(rows: rows, ...): [self, ...rows.flatMap(fn row: row.node.shown())]
     case Variant(body: body, ...): [self, ...(body?.shown() ?? [])]
     case _: [self]
 

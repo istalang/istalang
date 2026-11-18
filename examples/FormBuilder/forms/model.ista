@@ -13,9 +13,8 @@
 # - Every node is made from its type (`make`), holding the data it is made from, if any: a group
 #   makes its fields by their types (proposal 17), so no form declares how its model is made.
 
-import Graph, Source, Computed from '../computed'
-import Decodable from 'json'
-import * as json from 'json'
+import * as json, Decodable from 'json'
+import Computed, Graph, Source from '../computed'
 
 type Date = String # ISO date
 type DateTime = String # RFC 3339
@@ -56,8 +55,11 @@ struct Field<T is Inert>:
 # A field holding `data`, as a row made from data does: given, as a loaded value is, so a default
 # doesn't replace it; a computed value reading the field itself starts from it.
 fn Field.make<T is Inert>(graph: Graph, data: T?) -> Field<T>:
-  const entry = graph.source(Entry<T>{value: data, edited: data != none})
-  const derivation = new Shared<Derivation<T>>{value: Derivation.Entered}
+  const entry = graph.source(
+    Entry<T>{value: data, edited: data != none}
+  )
+  const derivation = new Shared<Derivation<T>>:
+    value: Derivation.Entered
   Field{
     entry
     derivation
@@ -67,8 +69,7 @@ fn Field.make<T is Inert>(graph: Graph, data: T?) -> Field<T>:
           case Entered: entry.read().value
           case Derivation.Default(eval): {
             const now = entry.read()
-            if now.edited: now.value
-            else: eval()
+            if now.edited: now.value else: eval()
           }
           case Always(eval): eval()
       }
@@ -80,8 +81,10 @@ fn seen<T is Inert>(self: Field<T>) -> T?: self.value.read()
 fn scope<T is Inert>(self: Field<T>) -> T?: self.seen()
 fn read<T is Inert>(self: Field<T>) -> Result<T>:
   match self.value.read():
-    case None: Err(Error{message: "unanswered", code: "unanswered"})
+    case None:
+      Err(Error{message: "unanswered", code: "unanswered"})
     case v: Ok(v)
+
 fn load<T is Inert>(self: Field<T>, v: T?) -> Unit:
   self.entry.set(Entry{value: v, edited: v != none})
 
@@ -93,10 +96,16 @@ fn derive<T is Inert>(self: Field<T>, derivation: Derivation<T>):
 fn setJson<T is Inert & Decodable>(self: Field<T>, value: String):
   const before = self.entry.read()
   match json.parse<T>(value):
-    case Ok(v): self.entry.set(Entry{value: v, edited: true, touched: true})
+    case Ok(v):
+      self.entry.set(Entry{value: v, edited: true, touched: true})
     case Err(error):
       self.entry.set(
-        Entry{value: before.value, edited: true, touched: true, parseError: error.message}
+        Entry{
+          value: before.value
+          edited: true
+          touched: true
+          parseError: error.message
+        }
       )
 
 # Fields by name: an object in the data.
@@ -109,24 +118,28 @@ struct Group<S is struct { [_] is FormNode }>:
   type Scope = GroupScope<S>
 
 fn Group.make<S is struct { [_] is FormNode }>(graph: Graph, data: Group<S>.Seen?) -> Group<S>:
-  Group{fields: struct{for K in keyof S: [K]: S[K].make(graph, data?.[K])}}
+  Group{
+    fields: struct{
+      for K in keyof S: [K]: S[K].make(graph, data?.[K])
+    }
+  }
 
-fn seen<S is struct { [_] is FormNode }>(self: Group<S>) -> Group<S>.Seen: struct{
-  for f, node in ...self.fields: [f]: node.seen()
-}
-fn scope<S is struct { [_] is FormNode }>(self: Group<S>) -> GroupScope<S>: GroupScope{
-  _m: self.fields
-}
+fn seen<S is struct { [_] is FormNode }>(self: Group<S>) -> Group<S>.Seen:
+  struct{for f, node in ...self.fields: [f]: node.seen()}
+
+fn scope<S is struct { [_] is FormNode }>(self: Group<S>) -> GroupScope<S>:
+  GroupScope{_m: self.fields}
+
 fn read<S is struct { [_] is FormNode }>(self: Group<S>) -> Result<Group<S>.Data>:
   Ok(struct{for f, node in ...self.fields: [f]: node.read()?})
+
 fn load<S is struct { [_] is FormNode }>(self: Group<S>, v: Group<S>.Seen) -> Unit:
   for f, node in ...self.fields: node.load(v[f])
 
 # What an expression reads of a group: each node by its name, `data.company.size`, read through
 # the keyed `index` (§3.9), so each read is tracked alone. A scope is no value: nothing compares,
 # passes or encodes one, and no whole-value read is given until an expression needs one.
-struct GroupScope<S is struct { [_] is FormNode }>:
-  _m: S
+struct GroupScope<S is struct { [_] is FormNode }> { _m: S }
 
 fn index<S is struct { [_] is FormNode }, K in keyof S>(self: GroupScope<S>, key: K) -> S[K].Scope:
   self._m[key].scope()
@@ -163,9 +176,7 @@ enum RowsFrom<S>:
   Always(eval: inert fn() -> Array<S>, key: (inert fn(S) -> String?)?) # read-only
 
 # A row made from data, with the data, so a row is made again only when what it stands for changed.
-struct _Made<R, S>:
-  data: S
-  row: ListRow<R>
+struct _Made<R, S> { data: S, row: ListRow<R> }
 
 # A row's key: its rowKey's, else `prefix` and its place.
 fn _rowKey<S>(key: (inert fn(S) -> String?)?, x: S, prefix: String, i: Int) -> String:
@@ -194,10 +205,10 @@ fn _row<R is FormNode & Inert>(
 
 fn List.make<R is FormNode & Inert>(graph: Graph, data: Array<R.Seen>?) -> List<R>:
   const entered = graph.source(Rows<R>{})
-  const derivation = new Shared<RowsFrom<R.Seen>>{
+  const derivation = new Shared<RowsFrom<R.Seen>>:
     value: RowsFrom.Default(fn(): data ?? [], none, follow: false)
-  }
-  const binding = new Shared<(inert fn(ListRow<R>) -> Unit)?>{value: none}
+  const binding = new Shared<(inert fn(ListRow<R>) -> Unit)?>:
+    value: none
   # The rows made from data: a memo the rows' evaluation fills, read by nothing else. A row is kept
   # while its key and data stay, and with a rowKey, while its key does, values and all.
   const made = new Shared<Array<_Made<R, R.Seen>>?>{value: none}
@@ -212,13 +223,15 @@ fn List.make<R is FormNode & Inert>(graph: Graph, data: Array<R.Seen>?) -> List<
       for i in 0..values.length(): {
         const x = values[i]
         const k = _rowKey(key, x, prefix, i)
-        match before.filter(fn(m): m.row.key == k and (byKey or m.data == x)).at(0):
-          case None: _Made{data: x, row: _row(graph, binding, k, x)}
+        match before.filter(fn m: m.row.key == k and (byKey or m.data == x)).at(0):
+          case None:
+            _Made{data: x, row: _row(graph, binding, k, x)}
           case kept: kept
       }
     ]
     made->value = rows
     [for m in rows: m.row]
+
   List{
     graph
     entered
@@ -241,11 +254,15 @@ fn List.make<R is FormNode & Inert>(graph: Graph, data: Array<R.Seen>?) -> List<
 fn seen<R is FormNode & Inert>(self: List<R>) -> Array<R.Seen>: [
   for row in self.rows.read(): row.node.seen()
 ]
-fn scope<R is FormNode & Inert>(self: List<R>) -> Array<R.Seen>: self.seen()
+
+fn scope<R is FormNode & Inert>(self: List<R>) -> Array<R.Seen>:
+  self.seen()
+
 fn read<R is FormNode & Inert>(self: List<R>) -> Result<Array<R.Data>>:
   let out: Array<R.Data> = []
   for row in self.rows.read(): out.push(row.node.read()?)
   Ok(out)
+
 # Rows made from the value, as rows from data are, keyed alike, then loaded: a loaded value is the
 # user's, so a list in a row holds its part of it as entered rows, not as rows from data.
 fn load<R is FormNode & Inert>(self: List<R>, v: Array<R.Seen>) -> Unit:
@@ -270,11 +287,14 @@ fn bind<R is FormNode & Inert>(self: List<R>, each: inert fn(ListRow<R>) -> Unit
 fn add<R is FormNode & Inert>(self: List<R>):
   const count = self.entered.read().count + 1
   const row = _row(self.graph, self.binding, `r${count}`, none)
-  self.entered.set(Rows{rows: [...self.rows.read(), row], count, edited: true})
+  self.entered.set(
+    Rows{rows: [...self.rows.read(), row], count, edited: true}
+  )
+
 fn remove<R is FormNode & Inert>(self: List<R>, key: String):
   self.entered.set(
     Rows{
-      rows: self.rows.read().filter(fn(r): r.key != key)
+      rows: self.rows.read().filter(fn r: r.key != key)
       count: self.entered.read().count
       edited: true
     }
@@ -292,25 +312,42 @@ struct Variant<C is struct { [_] is FormNode }>:
 fn Variant.make<C is struct { [_] is FormNode }>(
   graph: Graph
   data: Variant<C>.Seen?
-) -> Variant<C>: Variant{
-  tag: Field.make(graph, data?.tag)
-  cases: struct{for K in keyof C: [K]: C[K].make(graph, data?.value[K])}
-}
+) -> Variant<C>:
+  Variant{
+    tag: Field.make(graph, data?.tag)
+    cases: struct{
+      for K in keyof C: [K]: C[K].make(graph, data?.value[K])
+    }
+  }
 
 fn seen<C is struct { [_] is FormNode }>(self: Variant<C>) -> Variant<C>.Seen:
   const tag = self.tag.seen()
   const active: String? = tag
-  struct{tag, value: struct{for k, g in ...self.cases: [k]: if active == k: g.seen() else: none}}
-fn scope<C is struct { [_] is FormNode }>(self: Variant<C>) -> Variant<C>.Seen: self.seen()
+  struct{
+    tag
+    value: struct{
+      for k, g in ...self.cases: [k]: if active == k: g.seen()
+      else: none
+    }
+  }
+
+fn scope<C is struct { [_] is FormNode }>(self: Variant<C>) -> Variant<C>.Seen:
+  self.seen()
+
 fn read<C is struct { [_] is FormNode }>(self: Variant<C>) -> Result<Variant<C>.Data>:
   const active = self.tag.read()?
   const activeStr: String = active
   Ok(
     struct{
       tag: active
-      value: struct{for k, g in ...self.cases: [k]: if activeStr == k: g.read()? else: none}
+      value: struct{
+        for k, g in ...self.cases: [k]: if activeStr == k:
+          g.read()?
+        else: none
+      }
     }
   )
+
 fn load<C is struct { [_] is FormNode }>(self: Variant<C>, v: Variant<C>.Seen) -> Unit:
   self.tag.load(v.tag)
   for k, g in ...self.cases:
@@ -325,10 +362,14 @@ struct Shown:
 
 fn Shown.make(graph: Graph) -> Shown:
   const writers = new Shared<Array<Computed<Bool>>>{value: []}
-  Shown{writers, any: graph.computed(fn(): writers->value.some(fn(w): w.read()))}
+  Shown{
+    writers
+    any: graph.computed(fn(): writers->value.some(fn w: w.read()))
+  }
 
 # A view writing the node, by its visibility; each does, once, when built.
-fn add(self: Shown, visible: Computed<Bool>): self.writers->value.push(visible)
+fn add(self: Shown, visible: Computed<Bool>):
+  self.writers->value.push(visible)
 
 # A node `when` can hide: absent from Seen and Data while no view writing it is visible.
 struct Hidden<N is FormNode>:
@@ -338,20 +379,18 @@ struct Hidden<N is FormNode>:
   type Seen = N.Seen?
   type Scope = N.Scope?
 
-fn Hidden.make<N is FormNode>(graph: Graph, data: N.Seen?) -> Hidden<N>: Hidden{
-  node: N.make(graph, data)
-  shown: Shown.make(graph)
-}
+fn Hidden.make<N is FormNode>(graph: Graph, data: N.Seen?) -> Hidden<N>:
+  Hidden{node: N.make(graph, data), shown: Shown.make(graph)}
 
 fn seen<N is FormNode>(self: Hidden<N>) -> N.Seen?:
-  if self.shown.any.read(): self.node.seen()
-  else: none
+  if self.shown.any.read(): self.node.seen() else: none
+
 fn scope<N is FormNode>(self: Hidden<N>) -> N.Scope?:
-  if self.shown.any.read(): self.node.scope()
-  else: none
+  if self.shown.any.read(): self.node.scope() else: none
+
 fn read<N is FormNode>(self: Hidden<N>) -> Result<N.Data?>:
-  if self.shown.any.read(): Ok(self.node.read()?)
-  else: Ok(none)
+  if self.shown.any.read(): Ok(self.node.read()?) else: Ok(none)
+
 fn load<N is FormNode>(self: Hidden<N>, v: N.Seen?) -> Unit:
   match v:
     case None: ()
@@ -364,16 +403,19 @@ struct Local<N is FormNode>:
   type Seen = N.Seen
   type Scope = N.Scope
 
-fn Local.make<N is FormNode>(graph: Graph, data: N.Seen?) -> Local<N>: Local{
-  node: N.make(graph, data)
-}
+fn Local.make<N is FormNode>(graph: Graph, data: N.Seen?) -> Local<N>:
+  Local{node: N.make(graph, data)}
 
 fn seen<N is FormNode>(self: Local<N>) -> N.Seen: self.node.seen()
-fn scope<N is FormNode>(self: Local<N>) -> N.Scope: self.node.scope()
+fn scope<N is FormNode>(self: Local<N>) -> N.Scope:
+  self.node.scope()
+
 fn read<N is FormNode>(self: Local<N>) -> Result<None>:
   self.node.read()?
   Ok(none)
-fn load<N is FormNode>(self: Local<N>, v: N.Seen) -> Unit: self.node.load(v)
+
+fn load<N is FormNode>(self: Local<N>, v: N.Seen) -> Unit:
+  self.node.load(v)
 
 # A mounted dynamic form: its data, JSON its own runtime validates, opaque to this form. Seen holds
 # it too, so a whole value received by the backend carries it and decodes.
@@ -383,14 +425,17 @@ struct Dynamic:
   type Seen = String?
   type Scope = Dynamic.Seen
 
-fn Dynamic.make(graph: Graph, data: String?) -> Dynamic: Dynamic{value: graph.source(data)}
+fn Dynamic.make(graph: Graph, data: String?) -> Dynamic:
+  Dynamic{value: graph.source(data)}
 
 fn seen(self: Dynamic) -> String?: self.value.read()
 fn scope(self: Dynamic) -> String?: self.seen()
 fn read(self: Dynamic) -> Result<String>:
   match self.value.read():
-    case None: Err(Error{message: "unanswered", code: "unanswered"})
+    case None:
+      Err(Error{message: "unanswered", code: "unanswered"})
     case v: Ok(v)
+
 fn load(self: Dynamic, v: String?) -> Unit: self.value.set(v)
 
 struct FormSnapshot:

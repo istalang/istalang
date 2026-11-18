@@ -7,14 +7,11 @@
 
 import * as runtime from 'runtime'
 
-shared struct Lease:
-  n: Int
+shared struct Lease { n: Int }
 
 fn dispose(self: Lease): ()
 
-shared struct Node:
-  lease: Lease
-  next: Node? = none
+shared struct Node { lease: Lease, next: Node? = none }
 
 fn length(node: Node?) -> Int:
   match node:
@@ -51,7 +48,8 @@ fn countedDown() -> Int:
   f = fn(): if left == 0: 0 else: { left -= 1; 1 + f() }
   f()
 
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
 
 ista async fn _main() -> String:
   String(built()) + " built, " + String(appended()) + " appended, " + String(linked()) + " linked, " + String(countedDown()) + " counted down"

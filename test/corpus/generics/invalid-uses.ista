@@ -1,24 +1,21 @@
-# error: 5001 at 24:35
-# error: 5016 at 25:17
-# error: 5001 at 26:22
-# error: 5109 at 27:24
-# error: 5118 at 28:32
+# error: 5001 at 21:35
+# error: 5016 at 22:17
+# error: 5001 at 23:22
+# error: 5109 at 24:24
+# error: 5118 at 25:32
 # A generic struct's arguments come from its fields, which must then fit the expected type
 # (§3.5); an operator needs a function for its operands (§3.9); a conversion needs a `from`
 # taking its argument (§3.10), so `Int` explains that it takes a float; a variant with fields is
 # called with exactly its own fields (§3.11).
 
-struct Pair<A, B>:
-  first: A
-  second: B
+import * as runtime from 'runtime'
+
+struct Pair<A, B> { first: A, second: B }
 
 struct Money { cents: Int }
 
-enum Shape:
-  Circle(radius: Int)
-  Square(side: Int)
+enum Shape { Circle(radius: Int), Square(side: Int) }
 
-import * as runtime from 'runtime'
 live async fn main(): await runtime.run(runtime.id()) _main()
 ista async fn _main():
   const pair: Pair<Int, String> = Pair{first: 1, second: 2}

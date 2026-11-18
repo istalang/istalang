@@ -1,9 +1,8 @@
-# error: 5025 at 9:3
+# error: 5025 at 8:3
 # `defer` gives a disposable (§7), which must be kept: a bare `defer f(x)` would call `f` as soon as
 # it is made.
 
-fn note(text: String):
-  _ = text
+fn note(text: String): _ = text
 
 ista fn bare():
   defer note("now")

@@ -16,13 +16,11 @@ enum Rounding:
   HalfAwayFromZero
 
 fn abs(self: Int) -> Int:
-  if self < 0: -self
-  else: self
+  if self < 0: -self else: self
 
 # Adding zero turns a `-0.0` into `0.0` and leaves every other float, NaN included, as it is.
 fn abs(self: Float) -> Float:
-  if self < 0.0: -self
-  else: self + 0.0
+  if self < 0.0: -self else: self + 0.0
 
 # A float rounds in its own binary value, and keeps the sign of a zero it rounds to, as IEEE 754's
 # roundToIntegral does (`round(-0.4)` is `-0.0`). A float's fraction, `x - floor(x)`, is exact, so a
@@ -34,41 +32,38 @@ fn round(self: Float, mode: Rounding = Rounding.HalfEven) -> Float:
   match mode:
     case Rounding.Floor: self.floor()
     case Rounding.Ceiling: self.ceil()
-    case Rounding.TowardZero: _bySize(self, fn(size): size.floor())
-    case Rounding.AwayFromZero: _bySize(self, fn(size): size.ceil())
+    case Rounding.TowardZero: _bySize(self, fn size: size.floor())
+    case Rounding.AwayFromZero:
+      _bySize(self, fn size: size.ceil())
     case Rounding.HalfEven: _bySize(self, _halfEven)
     case Rounding.HalfAwayFromZero: _bySize(self, _halfUp)
 
 # `round` of `self`'s magnitude, given `self`'s sign back; a `-0.0` is its own magnitude, so it stays.
 fn _bySize(self: Float, round: fn(Float) -> Float) -> Float:
-  if self < 0.0: -round(-self)
-  else: round(self)
+  if self < 0.0: -round(-self) else: round(self)
 
 # The whole number nearest `size`, at least zero, a tie going to the even one, or up.
 fn _halfEven(size: Float) -> Float:
   const below = size.floor()
   const fraction = size - below
-  if fraction < 0.5 or (fraction == 0.5 and (below / 2.0).floor() * 2.0 == below): below
+  if fraction < 0.5 or (fraction == 0.5 and (below / 2.0).floor() * 2.0 == below):
+    below
   else: below + 1.0
 
 fn _halfUp(size: Float) -> Float:
   const below = size.floor()
-  if size - below < 0.5: below
-  else: below + 1.0
+  if size - below < 0.5: below else: below + 1.0
 
 fn sqrt(self: Int) -> Float: Float(self).sqrt()
 extern fn sqrt(self: Float) -> Float
 
 fn min<T is Comparable>(self: T, other: T) -> T:
-  if other < self: other
-  else: self
+  if other < self: other else: self
 
 fn max<T is Comparable>(self: T, other: T) -> T:
-  if other > self: other
-  else: self
+  if other > self: other else: self
 
 fn clamp<T is Comparable>(self: T, low: T, high: T) -> T:
-  if low > high: panic("clamp's low bound is above its high bound.")
-  if self < low: low
-  elif self > high: high
-  else: self
+  if low > high:
+    panic("clamp's low bound is above its high bound.")
+  if self < low: low elif self > high: high else: self

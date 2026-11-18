@@ -5,27 +5,20 @@
 # declaring its own toJson as what that gives, and a Json value as itself. The @JsonSkip field is
 # left out, and every object's keys are sorted as strings, a struct's fields and a map's keys alike.
 
-import * as time from 'time'
-import JsonName, JsonSkip, JsonBigInt, Json, encodeText from 'json'
 import * as runtime from 'runtime'
+import * as time from 'time'
+import encodeText, Json, JsonBigInt, JsonName, JsonSkip from 'json'
 
-struct Item:
-  sku: String
-  qty: Int
+struct Item { sku: String, qty: Int }
 
-enum Shape:
-  Circle(radius: Float)
-  Dot
+enum Shape { Circle(radius: Float), Dot }
 
-struct Money:
-  cents: Int
-  currency: String
+struct Money { cents: Int, currency: String }
 
 fn toString(self: Money) -> String:
   String(self.cents // 100) + "." + String(self.cents % 100) + " " + self.currency
 
-fn toJson(self: Money) -> Json:
-  encodeText(self)
+fn toJson(self: Money) -> Json: encodeText(self)
 
 struct Order:
   id: String @JsonName{"order_id"}
@@ -42,20 +35,22 @@ struct Order:
   raw: Json
   cache: Map<String, Int> @JsonSkip
 
-live async fn main() -> Order: await runtime.run(runtime.id()) _main()
+live async fn main() -> Order:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> Order:
   Order{
-    id: "o1",
-    items: [Item{sku: "a", qty: 2}],
-    note: none,
-    tags: [9: 2, 10: 1],
-    shape: Circle(1.5),
-    pair: (3, true),
-    due: 90m,
-    at: time.Time{value: 1792929600000},
-    big: 123456789012345678901234567890,
-    ratio: 0.0 / 0.0,
-    price: Money{cents: 1250, currency: "EUR"},
-    raw: ["keep": [1, "two", none]],
-    cache: ["unused": 1],
+    id: "o1"
+    items: [Item{sku: "a", qty: 2}]
+    note: none
+    tags: [9: 2, 10: 1]
+    shape: Circle(1.5)
+    pair: (3, true)
+    due: 90m
+    at: time.Time{value: 1792929600000}
+    big: 123456789012345678901234567890
+    ratio: 0.0 / 0.0
+    price: Money{cents: 1250, currency: "EUR"}
+    raw: ["keep": [1, "two", none]]
+    cache: ["unused": 1]
   }

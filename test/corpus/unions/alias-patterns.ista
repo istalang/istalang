@@ -2,6 +2,8 @@
 # A pattern naming a union through its alias (§3.11) selects the alias's members: against a wider
 # union holding them all, and against the alias's own union once earlier cases narrowed it.
 
+import * as runtime from 'runtime'
+
 type Status = "draft" | "sent"
 
 fn wide(x: Status | Int) -> String:
@@ -19,7 +21,8 @@ fn named(x: Status | Int) -> String:
     case Status: "status"
     case _: "other"
 
-import * as runtime from 'runtime'
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> String:
   `${wide("sent")}|${wide(3)}|${rest("draft")}|${rest("sent")}|${named(4)}`

@@ -4,6 +4,8 @@
 # included; kept by `hold _`, when its function ends. Several released together run in reverse,
 # last first, and what the function returns is computed before they run.
 
+import * as runtime from 'runtime'
+
 fn note(log: Shared<Array<String>>, text: String):
   log->value = [...log->value, text]
 
@@ -16,16 +18,16 @@ ista fn blocks(log: Shared<Array<String>>) -> Int:
     note(log, "body")
   for i in 0..3:
     _ = defer note(log, "iteration " + String(i))
-    if i == 1:
-      continue
+    if i == 1: continue
     note(log, "ran " + String(i))
   count = 5
   _ = defer note(log, "last " + String(count))
   note(log, "returning")
   7
 
-import * as runtime from 'runtime'
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> String:
   const empty: Array<String> = []
   const log = new Shared{value: empty}

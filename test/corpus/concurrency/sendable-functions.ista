@@ -4,11 +4,11 @@
 # may follow, the type is widened to the plain function type: a `let` without a written type, and
 # producers of one value that disagree, such as the items of an array literal or an if's branches.
 
-fn applied(f: fn(Int) -> Int, n: Int) -> Int:
-  f(n)
+import * as runtime from 'runtime'
 
-fn sent(f: sendable fn(Int) -> Int, n: Int) -> Int:
-  f(n)
+fn applied(f: fn(Int) -> Int, n: Int) -> Int: f(n)
+
+fn sent(f: sendable fn(Int) -> Int, n: Int) -> Int: f(n)
 
 fn reassigned() -> Int:
   let counter = 0
@@ -17,8 +17,9 @@ fn reassigned() -> Int:
   counter = 1
   current(2)
 
-import * as runtime from 'runtime'
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> String:
   const base = 10
   const add = fn(n: Int): n + base
@@ -26,9 +27,11 @@ ista async fn _main() -> String:
   const mixed = [fn(n: Int): n + 1, fn(n: Int): n + seen]
   const nested = [[fn(n: Int): n + 1], [fn(n: Int): n + seen]]
   const pairs = [(1, fn(n: Int): n + 1), (2, fn(n: Int): n + seen)]
-  const branchedPair = if base > 5: (1, fn(n: Int): n * 0) else: (2, fn(n: Int): n + seen)
+  const branchedPair = if base > 5: (1, fn(n: Int): n * 0)
+  else: (2, fn(n: Int): n + seen)
   const panicking: fn(Int) -> Int = fn(n: Int): panic(String(n))
-  const picked = if base > 5: fn(n: Int): n * 0 else: fn(n: Int): n + seen
+  const picked = if base > 5: fn(n: Int): n * 0
+  else: fn(n: Int): n + seen
   seen += 1
   const items = String(mixed[0](1)) + " " + String(mixed[1](1))
   const nestedItems = String(nested[0][0](1)) + " " + String(nested[1][0](1))

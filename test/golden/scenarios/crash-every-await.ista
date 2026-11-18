@@ -1,8 +1,8 @@
 # A run whose every segment runs twice, the first run discarded, commits and shows what a normal
 # run does (§10): its outcome, and each log record once.
 import * as log from 'log'
-import * as time from 'time'
 import * as runtime from 'runtime'
+import * as time from 'time'
 
 ista async fn _main() -> Int:
   let total = 0
@@ -12,4 +12,5 @@ ista async fn _main() -> Int:
     total += step
   total
 
-live async fn main() -> Int: await runtime.run(runtime.id()) _main()
+live async fn main() -> Int:
+  await runtime.run(runtime.id()) _main()

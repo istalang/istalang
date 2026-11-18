@@ -1,19 +1,12 @@
 # The random module (spec §3.8): draws within their bounds, UUIDs in their layout, values a mock
 # fixes, and the draws a segment makes again when it runs again (§5).
 
-import (
-  Suite
-  Test
-  test
-  assert
-  assertEq
-  expectPanic
-  mock
-  calls
-  spawnCrashingEveryAwait
-) from 'testing'
 import * as random from 'random'
 import * as runtime from 'runtime'
+import (
+  assert, assertEq, calls, expectPanic, mock
+  spawnCrashingEveryAwait, Suite, Test, test
+) from 'testing'
 
 # 2^64: a draw from a range this wide needs more than one draw's worth of a 64-bit source.
 const twoTo64 = 18_446_744_073_709_551_616
@@ -56,12 +49,14 @@ fn openRange() -> Int: random.integer(3..)
 fn suite() -> Array<Test>: [
   test("integer draws every value of its range, and only those", fn(): {
     const draws = [for _ in 0..200: random.integer(1..=6)]
-    for value in 1..=6: assert(draws.includes(value), "never drew " + value)
+    for value in 1..=6:
+      assert(draws.includes(value), "never drew " + value)
     assertEq([for each in draws if each < 1 or each > 6: each], [])
   })
   test("integer draws only the values a stepped range reaches, either way", fn(): {
     const draws = [for _ in 0..100: random.integer(0..20 by 5)]
-    for value in 0..20 by 5: assert(value in draws, "never drew " + value)
+    for value in 0..20 by 5:
+      assert(value in draws, "never drew " + value)
     assertEq([for each in draws if each not in 0..20 by 5: each], [])
     assertEq([for _ in 0..20: random.integer(10..0 by -10)], [for _ in 0..20: 10])
   })

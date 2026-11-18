@@ -2,10 +2,7 @@
 
 import FormSnapshot from './forms/model'
 
-struct Entry:
-  id: String
-  title: String
-  schema: FormSnapshot
+struct Entry { id: String, title: String, schema: FormSnapshot }
 
 extern fn list(region: String) -> Array<Entry>
 extern fn get(id: String) -> Entry?

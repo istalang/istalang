@@ -22,16 +22,13 @@
 # isn't one: `mock(time.now, clock.now)`. A field default sees the fields before it, so each fake
 # is built as a literal, and its state is a shared struct its copies share.
 
-import * as json from 'json'
-import Encodable from 'json'
+import * as json, Encodable from 'json'
+import * as time, Duration, Time from 'time'
 import Inbox, Revertible from 'inbox'
-import * as time from 'time'
-import Time, Duration from 'time'
 import Keeps from 'lifetimes'
 
 # Marks a function returning a suite's tests: `@Suite{"purchase approval"}`.
-struct Suite:
-  title: String
+struct Suite { title: String }
 
 # A test, or a group of tests, as the library builds them (§10), marked by `skip` and `only`,
 # which a group's marks reach every test of.
@@ -40,15 +37,10 @@ enum Test:
   Group(title: String, tests: Array<Test>, skipped: Bool = false, only: Bool = false)
 
 # A test as the runner lists it: its full title, and whether the run skips or focuses it.
-struct Listed:
-  title: String
-  skipped: Bool
-  only: Bool
+struct Listed { title: String, skipped: Bool, only: Bool }
 
 # A listed test with its body.
-struct _Entry:
-  listed: Listed
-  body: ista async fn() -> Unit
+struct _Entry { listed: Listed, body: ista async fn() -> Unit }
 
 # Every test of `suite`, depth first, titled under `title`, the suite's. The listing runs in an
 # instance, so a suite may be ista code: one building tests over ista setups instantiates them.
@@ -59,7 +51,8 @@ ista fn _list(suite: ista fn() -> Array<Test>, title: String) -> Array<Listed>: 
 # Runs test `position` of `suite`, once sure its listing still puts `expected` there (§10).
 ista async fn _run(suite: ista fn() -> Array<Test>, title: String, position: Int, expected: String):
   const entry = _entries(title, suite(), false, false).at(position)
-  if entry is _Entry as found and found.listed.title == expected: await found.body()
+  if entry is _Entry as found and found.listed.title == expected:
+    await found.body()
   else:
     panic(
       "The suite listed other tests when it was called again, so test '" +
@@ -74,11 +67,10 @@ fn _entries(title: String, tests: Array<Test>, skipping: Bool, focusing: Bool) -
   for each in tests:
     match each:
       case Case(own, body, skipped, focused):
-        const listed = Listed{
+        const listed = Listed:
           title: title + " › " + own
           skipped: skipped or skipping
           only: focused or focusing
-        }
         entries.push(_Entry{listed, body})
       case Group(own, inner, skipped, focused):
         entries = [
@@ -89,9 +81,7 @@ fn _entries(title: String, tests: Array<Test>, skipping: Bool, focusing: Bool) -
 
 # A mock's handle (§10): while it is held, calls to its target run its replacement, and the
 # arguments of each are recorded.
-shared struct Mock<F>:
-  _binding: Int
-  _offer: fn() -> Unit
+shared struct Mock<F> { _binding: Int, _offer: fn() -> Unit }
 
 # Unbinds the mock's replacement: its target's calls reach the binding before it, or the target.
 fn dispose<F>(self: Mock<F>): _unbind(self->_binding)
@@ -106,15 +96,21 @@ extern fn _unbind(binding: Int)
 # the replacement records are kept apart from both, so they hold what they recorded with no cycle
 # through them, which the analysis of lifetimes can't tell from its body (§7).
 @Keeps{[:]}
-fn mock<...A, R, M in Mark = "simple">(target: Fn<A, R, M>, replacement: Fn<A, R, M>) -> Mock<Fn<A, R, M>>:
+fn mock<...A, R, M in Mark = "simple">(
+  target: Fn<A, R, M>
+  replacement: Fn<A, R, M>
+) -> Mock<Fn<A, R, M>>:
   const recorded = new Shared<Array<A>>{value: []}
   M fn answer(...arguments: A) -> R:
     recorded->value.push(arguments)
     replacement(...arguments)
-  fn fill(met: Shared<Array<A>?>):
-    met->value = recorded->value
+
+  fn fill(met: Shared<Array<A>?>): met->value = recorded->value
   fn offer(): _metCalls<A, R, M>(fill)
-  new Mock<Fn<A, R, M>>{_binding: _bind(target, answer), _offer: offer}
+  new Mock<Fn<A, R, M>>{
+    _binding: _bind(target, answer)
+    _offer: offer
+  }
 
 # The arguments of every call so far, oldest first, a tuple per call: `(x,)` for a function of one
 # parameter, and `()`, the unit, for one of none.
@@ -123,6 +119,7 @@ fn calls<...A, R, M in Mark = "simple">(self: Mock<Fn<A, R, M>>) -> Array<A>:
   fn met(cell: Shared<Array<A>?>):
     (self->_offer)()
     found = cell->value ?? []
+
   _metCalls<A, R, M>(met)
   found
 
@@ -166,13 +163,15 @@ extern fn _stateName<R>(self: Instance<R>) -> String
 extern fn handle<T>() -> T
 
 # A test of `body`, run in an instance of its own (§10).
-fn test(title: String, body: ista async fn() -> Unit) -> Test: Case(title: title, body: body)
+fn test(title: String, body: ista async fn() -> Unit) -> Test:
+  Case(title: title, body: body)
 
 # A test of `body`, run inside the environment `setup` prepares (§10).
 fn test<E>(title: String, setup: Setup<E>, body: ista async fn(E) -> Unit) -> Test:
   test(title, async fn(): await setup(body))
 
-fn group(title: String, tests: Array<Test>) -> Test: Group(title: title, tests: tests)
+fn group(title: String, tests: Array<Test>) -> Test:
+  Group(title: title, tests: tests)
 
 # `entry`, reported but not run, even if `only` marks it too (§10).
 fn skip(entry: Test) -> Test: _marked(entry, true, false)
@@ -183,28 +182,24 @@ fn only(entry: Test) -> Test: _marked(entry, false, true)
 # `entry` with its own marks, and `skipping` and `focusing` added.
 fn _marked(entry: Test, skipping: Bool, focusing: Bool) -> Test:
   match entry:
-    case Case(title, body, skipped, focused): Case(
-      title: title
-      body: body
-      skipped: skipped or skipping
-      only: focused or focusing
-    )
-    case Group(title, tests, skipped, focused): Group(
-      title: title
-      tests: tests
-      skipped: skipped or skipping
-      only: focused or focusing
-    )
+    case Case(title, body, skipped, focused):
+      Case(title: title, body: body, skipped: skipped or skipping, only: focused or focusing)
+    case Group(title, tests, skipped, focused):
+      Group(title: title, tests: tests, skipped: skipped or skipping, only: focused or focusing)
 
 # An environment for tests (§10): prepares it, runs the test inside it, and tears it down after.
 type Setup<E> = ista async fn(ista async fn(E) -> Unit) -> Unit
 
 # Several environments as one (§10): the first outermost, the test receiving them as a tuple.
-fn setups<A, B>(a: Setup<A>, b: Setup<B>) -> Setup<(A, B)>: _joined(a, b, fn(x: A, y: B): (x, y))
+fn setups<A, B>(a: Setup<A>, b: Setup<B>) -> Setup<(A, B)>:
+  _joined(a, b, fn(x: A, y: B): (x, y))
+
 fn setups<A, B, C>(a: Setup<A>, b: Setup<B>, c: Setup<C>) -> Setup<(A, B, C)>:
   _joined(setups(a, b), c, fn(p: (A, B), z: C): (p.0, p.1, z))
+
 fn setups<A, B, C, D>(a: Setup<A>, b: Setup<B>, c: Setup<C>, d: Setup<D>) -> Setup<(A, B, C, D)>:
   _joined(setups(a, b, c), d, fn(p: (A, B, C), z: D): (p.0, p.1, p.2, z))
+
 fn setups<A, B, C, D, E>(a: Setup<A>, b: Setup<B>, c: Setup<C>, d: Setup<D>, e: Setup<E>) -> Setup<(
   A
   B
@@ -213,6 +208,7 @@ fn setups<A, B, C, D, E>(a: Setup<A>, b: Setup<B>, c: Setup<C>, d: Setup<D>, e: 
   E
 )>:
   _joined(setups(a, b, c, d), e, fn(p: (A, B, C, D), z: E): (p.0, p.1, p.2, p.3, z))
+
 fn setups<A, B, C, D, E, G>(
   a: Setup<A>
   b: Setup<B>
@@ -231,7 +227,9 @@ fn _joined<O, I, J>(outer: Setup<O>, inner: Setup<I>, join: ista fn(O, I) -> J) 
   )
 
 # Panics unless `condition` holds (§10).
-fn assert(condition: Bool): assert(condition, "The assertion failed.")
+fn assert(condition: Bool):
+  assert(condition, "The assertion failed.")
+
 fn assert(condition: Bool, message: String):
   if not condition: panic(message)
 
@@ -248,7 +246,8 @@ ista async fn expectPanic<R is Sendable>(f: sendable ista async fn() -> R) -> St
 ista async fn _panicOf<R is Sendable>(instance: Instance<R>) -> String:
   match await instance.result():
     case Err(error): error.message
-    case _: panic("expectPanic expected a panic, but the function returned.")
+    case _:
+      panic("expectPanic expected a panic, but the function returned.")
 
 # A clock standing still at `start` until `advance` moves it (§10): `now` and `at` replace
 # `time.now` and `time.at`.
@@ -267,9 +266,7 @@ shared struct _Clock:
   time: Shared<Time>
   deadlines: Array<_Deadline> = []
 
-struct _Deadline:
-  at: Time
-  passed: Slot<Unit>
+struct _Deadline { at: Time, passed: Slot<Unit> }
 
 ista fn _waitUntil(clock: _Clock, deadline: Time) -> Future<Unit, "ista">:
   const read = _deadlineAt(clock, deadline).read()
@@ -282,12 +279,17 @@ ista fn _deadlineAt(clock: _Clock, deadline: Time) -> Slot<Unit>:
     if each.at == deadline: return each.passed
   const passed = Slot.create<Unit>()
   const (due, later) = _splitDue(clock->deadlines, deadline)
-  clock->deadlines = [...due, _Deadline{at: deadline, passed}, ...later]
+  clock->deadlines = [
+    ...due
+    _Deadline{at: deadline, passed}
+    ...later
+  ]
   passed
 
 # Moves the clock forward by `by`, passing every deadline it reaches (§10).
 ista fn advance(self: FakeClock, by: Duration):
-  if by < Duration{value: 0}: panic("A fake clock only moves forward, not by " + by + ".")
+  if by < Duration{value: 0}:
+    panic("A fake clock only moves forward, not by " + by + ".")
   self._time->value = self._time->value + by
   _passDue(self._state)
 
@@ -320,8 +322,14 @@ struct FakeQueue<Q, T, K = String>:
   _opened: _Opened<Q, K> = new _Opened<Q, K>{}
   _inboxes: _Inboxes<Q, T> = new _Inboxes<Q, T>{}
   open: fn(K) -> Q = fn(key: K): _queueOf(_opened, make, key)
-  send: ista fn(Q, T) -> Unit = fn(queue: Q, message: T): _inboxOf(_inboxes, _opened, queue).send(message)
-  receive: ista fn(Q) -> Future<T, "ista"> = fn(queue: Q): _inboxOf(_inboxes, _opened, queue).receive()
+  send: ista fn(Q, T) -> Unit = fn(queue: Q, message: T): _inboxOf(_inboxes, _opened, queue).send(
+    message
+  )
+  receive: ista fn(Q) -> Future<T, "ista"> = fn(queue: Q): _inboxOf(
+    _inboxes
+    _opened
+    queue
+  ).receive()
 
 shared struct _Opened<Q, K>:
   keys: Array<K> = []
@@ -355,8 +363,10 @@ fn _queueOf<Q, K>(opened: _Opened<Q, K>, make: fn() -> Q, key: K) -> Q:
 # The inbox of `queue`, one of those `opened` holds, made the first time.
 ista fn _inboxOf<Q, T, K>(inboxes: _Inboxes<Q, T>, opened: _Opened<Q, K>, queue: Q) -> Inbox<T>:
   for index in 0..inboxes->queues.length():
-    if inboxes->queues[index] == queue: return inboxes->inboxes[index]
-  if not (queue in opened->queues): panic("This FakeQueue didn't open the queue it was given.")
+    if inboxes->queues[index] == queue:
+      return inboxes->inboxes[index]
+  if not (queue in opened->queues):
+    panic("This FakeQueue didn't open the queue it was given.")
   const made = Inbox.create<T>()
   inboxes->queues.push(queue)
   inboxes->inboxes.push(made)
@@ -370,23 +380,25 @@ struct FakeReceipts<R>:
   _entries: _Receipts<R> = new _Receipts<R>{}
   dispose: ista fn(R) -> Unit = fn(receipt: R): _disposeReceipt(_entries, receipt)
 
-shared struct _Receipts<R>:
-  held: Array<_Receipt<R>> = []
+shared struct _Receipts<R> { held: Array<_Receipt<R>> = [] }
 
-struct _Receipt<R>:
-  receipt: R
-  retract: ista fn() -> Unit
+struct _Receipt<R> { receipt: R, retract: ista fn() -> Unit }
 
 # A replacement for a host's revertible send into `queues`, returning a receipt `self.make` builds.
 # Retracting a message writes its queue's inbox, so the replacement and the receipt's `dispose` are
 # ista code.
-ista fn revertibleSender<R, Q, T, K>(self: FakeReceipts<R>, queues: FakeQueue<Q, T, K>) -> ista fn(Q, T) -> R:
+ista fn revertibleSender<R, Q, T, K>(self: FakeReceipts<R>, queues: FakeQueue<Q, T, K>) -> ista fn(
+  Q
+  T
+) -> R:
   ista fn sendInto(queue: Q, message: T) -> R:
     const receipt = (self.make)()
-    const held = new Shared<Revertible<T>?>{value: queues.sendRevertible(queue, message)}
+    const held = new Shared<Revertible<T>?>:
+      value: queues.sendRevertible(queue, message)
     ista fn retract(): held->value = none
     self._entries->held.push(_Receipt{receipt, retract})
     receipt
+
   sendInto
 
 # Retracts once the receipt's entries are let go of, so a retraction never sees them.

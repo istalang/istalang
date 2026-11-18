@@ -1,21 +1,20 @@
-# error: 5403 at 15:6
-# error: 5404 at 18:3
-# error: 5405 at 21:17
-# error: 5404 at 29:17
-# error: 5025 at 35:3
+# error: 5403 at 15:45
+# error: 5404 at 17:24
+# error: 5405 at 20:17
+# error: 5404 at 28:17
+# error: 5025 at 33:3
 # `?` takes a Result apart (§3.12): never an optional, and only inside a function whose own Result
 # holds the same error type, declared or inferred. A Result must be used.
 
+import * as runtime from 'runtime'
+
 struct Failure { reason: String }
 
-fn parse(text: String) -> Result<Int>:
-  Ok(1)
+fn parse(text: String) -> Result<Int>: Ok(1)
 
-fn fromOptional(n: Int?) -> Result<Int>:
-  Ok(n?)
+fn fromOptional(n: Int?) -> Result<Int>: Ok(n?)
 
-fn notResult() -> Int:
-  parse("a")?
+fn notResult() -> Int: parse("a")?
 
 fn otherError() -> Result<Int, Failure>:
   const value = parse("a")?
@@ -29,7 +28,6 @@ fn inferredNotResult(text: String):
   const value = parse(text)?
   value
 
-import * as runtime from 'runtime'
 live async fn main(): await runtime.run(runtime.id()) _main()
 ista async fn _main():
   parse("ignored")

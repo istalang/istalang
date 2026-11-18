@@ -1,4 +1,5 @@
 # outcome: "Ares K a@x | 12 | true false | 3"
+# disable-ista-formatter
 # A Shared value is a shared struct (§3.8, §3.18): every copy reads and writes one value through
 # `->`. Writing a part, `u->value.name = v`, reads the value, changes it, and writes it back
 # (§3.9); a compound assignment does the same. Handles compare by identity. A closure's captured

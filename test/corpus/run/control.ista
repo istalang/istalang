@@ -1,4 +1,5 @@
 # outcome: "odd sum 64, medium, short-circuit ok"
+# disable-ista-formatter
 # `if`/`elif`/`else` as expressions, `while` with `break` and `continue`, and `and`/`or` that skip
 # their right side (§4, §3.9): the division by zero on a skipped side never runs.
 

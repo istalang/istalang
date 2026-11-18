@@ -30,8 +30,7 @@ type Persistence = "live" | "ista"
 # disposed first. It holds its value and what waits on it, as a callback's chain is held from its
 # futures up (spec §7); a call's future also holds its call, which belongs to the language.
 @Holds<(T, _Waiters<T, K>, Fn<(T,), Unit, K>, Fn<(), Unit, K>)>
-extern shared struct Future<T, K in Persistence>:
-  type Mode = K
+extern shared struct Future<T, K in Persistence> { type Mode = K }
 
 # What `await x` and a `select`'s case wait on (proposal 8, Rule 5): the waiting code makes `done`,
 # a resolver for that one wait, and calls `x.onAwait(done)`, which can't itself wait; the waiting
@@ -49,16 +48,19 @@ K fn onAwait<T, K in Persistence>(self: Future<T, K>, done: Resolver<T, K>):
   const resolution = done->resolution
   # Never called: what holds it holds the future.
   K fn holding(): _ = self
-  if _registered(_decidedBy(resolution)) is _Call as waiting: _awaiting(waiting, holding)
+  if _registered(_decidedBy(resolution)) is _Call as waiting:
+    _awaiting(waiting, holding)
   if _settled(self): drop _decides(done, _valueOf(self))
-  else:
-    _awaitedBy(_registeredOn(self, done))
+  else: _awaitedBy(_registeredOn(self, done))
 
 # Registers `done` on `future`, dropping those registered before it that can't decide any more;
 # what waits on `future`. `done` itself is never dropped as it comes: a case on its call's
 # `disposing()` may win though another case decided its wait first (§7, `_overrides`).
 @Keeps{["future": ["done"]]}
-K fn _registeredOn<T, K in Persistence>(future: Future<T, K>, done: Resolver<T, K>) -> _Waiters<T, K>:
+K fn _registeredOn<T, K in Persistence>(
+  future: Future<T, K>
+  done: Resolver<T, K>
+) -> _Waiters<T, K>:
   const waiters = _waitersMade(future)
   # Pushed before pruning: what pruning reads back through weak references, the analysis of
   # lifetimes takes to reach anything of its type, `done` among them (§7).
@@ -87,10 +89,12 @@ K fn _waitersMade<T, K in Persistence>(future: Future<T, K>) -> _Waiters<T, K>:
     const resolvers = waiters->resolvers
     _emptied(waiters)
     for resolver in resolvers: drop _decides(resolver, value)
+
   K fn disposed():
     const resolvers = waiters->resolvers
     _emptied(waiters)
     for resolver in resolvers: _cancel(resolver->resolution)
+
   _wait(future, waiters, arrived, disposed)
   waiters
 
@@ -156,17 +160,22 @@ K fn _converted<T, U, K in Persistence>(future: Future<T, K>, convert: fn(T) -> 
     return follower
   const following = WeakRef(follower)
   K fn arrived(value: T) -> Bool:
-    if following.deref() is Future<U, K> as settling: _settle(settling, convert(value))
+    if following.deref() is Future<U, K> as settling:
+      _settle(settling, convert(value))
     true
+
   K fn standing() -> _Standing:
     if following.deref() is Future<U, K> as waited:
-      if _givenUp(waited): Idle
-      else: MayDecide
+      if _givenUp(waited): Idle else: MayDecide
     else: Withdrawn
-  drop _registeredOn(future, new Resolver<T, K>{
-    decide: arrived
-    resolution: new _Resolution<K>{decides: Follows(standing)}
-  })
+
+  drop _registeredOn(
+    future
+    new Resolver<T, K>{
+      decide: arrived
+      resolution: new _Resolution<K>{decides: Follows(standing)}
+    }
+  )
   K fn awaited(): _awaitedNow(future)
   _whenAwaited(follower, awaited)
   follower
@@ -212,10 +221,12 @@ enum _ResolverState:
   Unheeded
 
 # Whether a resolver in `state` was resolved, to effect or not.
-fn _wasResolved(state: _ResolverState) -> Bool: state is Resolved or state is Unheeded
+fn _wasResolved(state: _ResolverState) -> Bool:
+  state is Resolved or state is Unheeded
 
 # Whether a resolver in `state` may still be cancelled: pending, or resolved to no effect.
-fn _cancellable(state: _ResolverState) -> Bool: state is Pending or state is Unheeded
+fn _cancellable(state: _ResolverState) -> Bool:
+  state is Pending or state is Unheeded
 
 # What a resolver comes down to deciding (§7): a wait's case, the wait reached weakly, since its call
 # holds what its cases' chains are registered on, and that call's handle; the resolver a
@@ -230,11 +241,7 @@ enum _Decides<K in Persistence>:
 # What a resolver stands for to a future it is registered on: it may still decide; it lost, decided
 # otherwise or let go of; it was withdrawn by a `select` that didn't wait, which gives up on nothing
 # (§8); or it is idle, a follower given up on that may be awaited again (`_converted`).
-enum _Standing:
-  MayDecide
-  Lost
-  Withdrawn
-  Idle
+enum _Standing { MayDecide, Lost, Withdrawn, Idle }
 
 # Where `resolution` stands (`_Standing`). An at-resolver stands for what the resolver it decides
 # does while pending.
@@ -273,18 +280,21 @@ K fn _decidedBy<K in Persistence>(resolution: _Resolution<K>) -> _Resolution<K>:
 
 @Keeps{[:]}
 K fn resolve<T, K in Persistence>(self: Resolver<T, K>, value: T):
-  if _wasResolved(self->resolution->state): panic("A resolver was resolved twice.")
+  if _wasResolved(self->resolution->state):
+    panic("A resolver was resolved twice.")
   drop _decides(self, value)
 
 @Keeps{[:]}
-K fn tryResolve<T, K in Persistence>(self: Resolver<T, K>, value: T) -> Bool: _decides(self, value)
+K fn tryResolve<T, K in Persistence>(self: Resolver<T, K>, value: T) -> Bool:
+  _decides(self, value)
 
 # Resolves `resolver`, if pending, with `value`; whether that decided what it decides. A case's
 # resolved as its call is disposed decides even cancelled, while the call hasn't gone on: the case on
 # its own `disposing()` wins (§7).
 K fn _decides<T, K in Persistence>(resolver: Resolver<T, K>, value: T) -> Bool:
   const resolution = resolver->resolution
-  if not (resolution->state is Pending) and not _overrides(resolution): return false
+  if not (resolution->state is Pending) and not _overrides(resolution):
+    return false
   resolution->state = Resolved
   const decide = resolver->decide
   if decide(value): return true
@@ -293,7 +303,8 @@ K fn _decides<T, K in Persistence>(resolver: Resolver<T, K>, value: T) -> Bool:
 
 # Whether `resolution` is a case's whose wait was decided while its call is being disposed.
 K fn _overrides<K in Persistence>(resolution: _Resolution<K>) -> Bool:
-  if _caseWait(resolution) is _Wait as wait: _disposingOverrides(wait)
+  if _caseWait(resolution) is _Wait as wait:
+    _disposingOverrides(wait)
   else: false
 
 # A resolver deciding no wait, calling `callback` with its value instead: code hands one to an
@@ -306,6 +317,7 @@ K fn Resolver.of<T, K in Persistence>(callback: Fn<(T,), Unit, K>) -> Resolver<T
     K fn called(): callback(value)
     _later(called)
     true
+
   new Resolver<T, K>{
     decide: later
     resolution: new _Resolution<K>{decides: Callback}
@@ -315,7 +327,9 @@ K fn Resolver.of<T, K in Persistence>(callback: Fn<(T,), Unit, K>) -> Resolver<T
 # while `done` is, so an awaitable racing several through one each, as `futures.first` does,
 # decides as a `select` case does and takes nothing once `done` is decided.
 K fn Resolver.at<T, K in Persistence>(done: Resolver<(Int, T), K>, position: Int) -> Resolver<T, K>:
-  K fn decided(value: T) -> Bool: done.tryResolve((position, value))
+  K fn decided(value: T) -> Bool:
+    done.tryResolve((position, value))
+
   const deciding = done->resolution
   new Resolver<T, K>{
     decide: decided
@@ -327,10 +341,13 @@ K fn Resolver.at<T, K in Persistence>(done: Resolver<(Int, T), K>, position: Int
 # does, and at once when `self` was cancelled already; never once `self` resolved.
 K fn onCancel<T, K in Persistence>(self: Resolver<T, K>, callback: Fn<(), Unit, K>):
   const resolution = self->resolution
-  if resolution->state is Cancelled or resolution->state is Withdrawn: _later(callback)
-  if _cancellable(resolution->state): resolution->cancels.push(callback)
+  if resolution->state is Cancelled or resolution->state is Withdrawn:
+    _later(callback)
+  if _cancellable(resolution->state):
+    resolution->cancels.push(callback)
 
-K fn dispose<T, K in Persistence>(self: Resolver<T, K>): _released(self->resolution)
+K fn dispose<T, K in Persistence>(self: Resolver<T, K>):
+  _released(self->resolution)
 
 # A resolver's state is disposable only so its wait reaches it weakly (`_caseResolution`): letting
 # go of its resolver did what letting go of it does, as only what holds its resolver holds it.
@@ -348,7 +365,8 @@ K fn _released<K in Persistence>(resolution: _Resolution<K>):
 # Whether `resolution` is a case's whose wait hasn't begun, its cases still being given their
 # resolvers, or still waits.
 K fn _awaited<K in Persistence>(resolution: _Resolution<K>) -> Bool:
-  if _caseWait(resolution) is _Wait as wait: not wait->known or wait->decided is Undecided
+  if _caseWait(resolution) is _Wait as wait:
+    not wait->known or wait->decided is Undecided
   else: false
 
 # Cancels `resolution`, still pending or resolved to no effect, running its `onCancel` callbacks;
@@ -375,12 +393,10 @@ shared struct _Wait<K in Persistence>:
 
 # How a wait was decided: not yet; for the case at `position`; or given up, by a `select` that
 # didn't wait, no case having decided it (§8).
-enum _Decision:
-  Undecided
-  For(position: Int)
-  GivenUp
+enum _Decision { Undecided, For(position: Int), GivenUp }
 
-K fn _wait<K in Persistence>(call: _Call) -> _Wait<K>: new _Wait<K>{call}
+K fn _wait<K in Persistence>(call: _Call) -> _Wait<K>:
+  new _Wait<K>{call}
 
 # A wait let go of, its waiter gone on or disposed, cancels the cases it wasn't decided for, and
 # what it held of what they wait on is let go of.
@@ -389,7 +405,8 @@ K fn dispose<K in Persistence>(self: _Wait<K>):
   _waitEnded(self->call)
 
 # The wait `weak` reaches, while its waiter holds it.
-K fn _waitOf<K in Persistence>(weak: WeakRef<_Wait<K>>) -> _Wait<K>?: weak.deref()
+K fn _waitOf<K in Persistence>(weak: WeakRef<_Wait<K>>) -> _Wait<K>?:
+  weak.deref()
 
 # The resolver of `wait`'s case at `position`: resolved first among its wait's, it puts its value
 # into `into` and readies the waiting call to go on with its position, the other cases cancelled once
@@ -408,11 +425,16 @@ K fn _caseResolver<T, K in Persistence>(
         _decide(waiting, position)
         return true
     false
-  new Resolver<T, K>{decide, resolution: _caseResolution(wait, position)}
+
+  new Resolver<T, K>{
+    decide
+    resolution: _caseResolution(wait, position)
+  }
 
 # Where a case's resolver puts its value (`_caseResolver`), empty until then: an array, never an
 # optional, so a case's code is one instance for every type of value of one representation (§3.5).
-fn _caseInto<T>() -> Shared<Array<T>>: new Shared<Array<T>>{value: []}
+fn _caseInto<T>() -> Shared<Array<T>>:
+  new Shared<Array<T>>{value: []}
 
 # The value a case's resolver put into `into`, taken out: a resolver outliving its wait still
 # reaches `into`, and must not keep the value its waiter moved on with (§7).
@@ -440,10 +462,13 @@ K fn _decide<K in Persistence>(wait: _Wait<K>, position: Int):
 # The state of the resolver of `wait`'s case at `position` (`_caseResolver`), which `wait` cancels
 # through a weak reference once another case decides it.
 K fn _caseResolution<K in Persistence>(wait: _Wait<K>, position: Int) -> _Resolution<K>:
-  const resolution = new _Resolution<K>{decides: Case(WeakRef(wait), wait->call)}
+  const resolution = new _Resolution<K>:
+    decides: Case(WeakRef(wait), wait->call)
   const weak = WeakRef(resolution)
   K fn cancel(withdrawn: Bool):
-    if weak.deref() is _Resolution as pending: _cancel(pending, withdrawn)
+    if weak.deref() is _Resolution as pending:
+      _cancel(pending, withdrawn)
+
   wait->cancels.push(cancel)
   resolution
 
@@ -461,7 +486,8 @@ K fn _losersCancelled<K in Persistence>(wait: _Wait<K>):
 
 # Runs each of a wait's `cancels` but the one of the case it was `decided` for.
 K fn _cancelledBut<K in Persistence>(cancels: Array<Fn<(Bool,), Unit, K>>, decided: _Decision):
-  const kept: Int? = if decided is For(position): position else: none
+  const kept: Int? = if decided is For(position): position
+  else: none
   for index in 0..cancels.length():
     if index != kept:
       const cancel = cancels[index]
@@ -483,11 +509,14 @@ K fn _decided<K in Persistence>(wait: _Wait<K>) -> Int:
 # The run's primitives the futures above stand on (ir-first design, decision 6).
 @_Parametric
 extern K fn _settled<T, K in Persistence>(future: Future<T, K>) -> Bool
+
 @_Parametric
 extern K fn _valueOf<T, K in Persistence>(future: Future<T, K>) -> T
+
 # What waits on `future`, pending, once something came to wait on it (`_wait`): none or one.
 @_Parametric
 extern K fn _waitersOf<T, K in Persistence>(future: Future<T, K>) -> Array<_Waiters<T, K>>
+
 # Has `future` keep `waiters` until it settles, calling `arrived` with its value then, or `disposed`
 # as it is disposed first, as code its disposal runs: what that lets go of is disposed at once (§7).
 @Keeps{["future": ["waiters", "arrived", "disposed"]]}
@@ -498,13 +527,17 @@ extern K fn _wait<T, K in Persistence>(
   arrived: Fn<(T,), Unit, K>
   disposed: Fn<(), Unit, K>
 )
+
 @_Parametric
 extern K fn _pendingFuture<T, K in Persistence>() -> Future<T, K>
+
 @_Parametric
 extern K fn _settle<T, K in Persistence>(future: Future<T, K>, value: T)
+
 # Settles each of `futures` with `value`, as one event.
 @_Parametric
 extern K fn _settleAll<T, K in Persistence>(futures: Array<Future<T, K>>, value: T)
+
 extern K fn _later<K in Persistence>(callback: Fn<(), Unit, K>)
 extern fn _unpark(call: _Call, position: Int)
 # Has `call` hold `holding` until its wait is let go of (`_waitEnded`): a wait holds the futures its
@@ -512,6 +545,7 @@ extern fn _unpark(call: _Call, position: Int)
 # do, so no value could hold it without a cycle the analysis of lifetimes refuses.
 @Keeps{[:]}
 extern K fn _awaiting<K in Persistence>(call: _Call, holding: Fn<(), Unit, K>)
+
 # Lets go of what `call` holds for its wait (`_awaiting`).
 extern fn _waitEnded(call: _Call)
 extern fn _stayRunning(call: _Call)
@@ -584,8 +618,7 @@ ista fn put<T>(self: Slot<T>, value: T) -> Future<Unit, "ista">:
 # The value a waiting put fills its slot with, held by the put's future alone (`_keeping`), so the
 # value is let go of as the put settles or is disposed. Disposable only so its slot's queue reaches
 # it weakly.
-shared struct _Offer<T>:
-  value: T
+shared struct _Offer<T> { value: T }
 
 ista fn dispose<T>(self: _Offer<T>): ()
 
@@ -612,7 +645,8 @@ ista fn take<T>(self: Slot<T>) -> Future<T, "ista">:
 @Keeps{[:]}
 ista fn read<T>(self: Slot<T>) -> Future<T, "ista">:
   const future = _pendingFuture<T, "ista">()
-  if self->contents.length() == 1: _settle(future, self->contents[0])
+  if self->contents.length() == 1:
+    _settle(future, self->contents[0])
   else:
     self->waiting.push(Read(WeakRef(future)))
     _whenAwaited(future, _serving(self))
@@ -644,7 +678,8 @@ ista fn _servedOnce<T>(slot: Slot<T>) -> Bool:
     match operation:
       case Read(weak):
         if _waiting(weak) is Future<T, "ista"> as future:
-          if not full: return _readersServed(slot, readers, [...kept, ...waiting.slice(index)])
+          if not full:
+            return _readersServed(slot, readers, [...kept, ...waiting.slice(index)])
           # Not pushed in place: a future pushed into a local it may reach would make the cycle §7
           # forbids, which the analysis can't rule out.
           readers = [...readers, future]
@@ -661,7 +696,8 @@ ista fn _servedOnce<T>(slot: Slot<T>) -> Bool:
         elif weak._held(): kept.push(operation)
       case Put(weak, offered):
         if _waiting(weak) is Future<Unit, "ista"> as future:
-          if full: return _readersServed(slot, readers, [...kept, ...waiting.slice(index)])
+          if full:
+            return _readersServed(slot, readers, [...kept, ...waiting.slice(index)])
           # A put still waiting keeps its offer.
           slot->contents = [offered._referent()->value]
           slot->waiting = [...kept, ...waiting.slice(index + 1)]
@@ -690,8 +726,8 @@ ista fn _waiting<U>(weak: WeakRef<Future<U, "ista">>) -> Future<U, "ista">?:
 # Weak references (§7): `WeakRef(x)` is the one weak reference to `x`, which holds nothing.
 extern fn WeakRef.from<T is Disposable>(value: T) -> WeakRef<T>
 fn deref<T is Disposable>(self: WeakRef<T>) -> T?:
-  if self._held(): self._referent()
-  else: none
+  if self._held(): self._referent() else: none
+
 # Whether something still holds a weak reference's referent, which `_referent` then gives.
 extern fn _held<T is Disposable>(self: WeakRef<T>) -> Bool
 extern fn _referent<T is Disposable>(self: WeakRef<T>) -> T
@@ -704,8 +740,7 @@ extern K fn disposing<K in Persistence>(self: _Call) -> Future<Unit, K>
 
 # A Shared value (§3.8) is a shared struct of any one value (§3.18): `new Shared{value: v}` makes
 # one, and `x->value` reads and writes it, for every copy.
-shared struct Shared<T>:
-  value: T
+shared struct Shared<T> { value: T }
 
 # The cell a variable lives in when it is passed by `&` or a closure captures it (§3.7, §3.14),
 # which the runtime makes, reads and writes as it does a shared struct's.
@@ -718,16 +753,17 @@ extern shared struct _Cell<T>
 # anything created before them.
 @_Parametric
 extern K fn dispose<T, K in Persistence>(self: Future<T, K>)
+
 ista fn dispose<T>(self: Slot<T>): self->contents = []
 
 # What `defer` gives (§7): a disposable whose release calls `run`, so `_ = defer log(x)` computes
 # `x` now and logs when the block ends, and `hold _ = defer log(x)` when the function does. Its
 # function is of the mark of the code deferring it (§3.3), which its release runs in, so ista code
 # defers an ista call and simple code a simple one.
-shared struct Deferred<M in Mark>:
-  run: Fn<(), Unit, M>
+shared struct Deferred<M in Mark> { run: Fn<(), Unit, M> }
 
-M fn defer<M in Mark>(f: Fn<(), Unit, M>) -> Deferred<M>: new Deferred<M>{run: f}
+M fn defer<M in Mark>(f: Fn<(), Unit, M>) -> Deferred<M>:
+  new Deferred<M>{run: f}
 
 M fn dispose<M in Mark>(self: Deferred<M>): self->run()
 
@@ -737,34 +773,24 @@ type Optional<T> = T?
 # Default, as an Array and a Map are: what a skipped JSON field reads back as (§9).
 fn Optional.default<T>() -> T?: none
 
-enum Result<T, E = Error>:
-  Ok(value: T)
-  Err(error: E)
+enum Result<T, E = Error> { Ok(value: T), Err(error: E) }
 
 # What a cursor gives each time it is called (§3.10): the next item, or that there are no more. An
 # enum of its own, never `T?`, since an item may itself be `none` and `T??` is `T?`, so a stored
 # `none` would read as the end.
-enum Step<T>:
-  Next(value: T)
-  Done
+enum Step<T> { Next(value: T), Done }
 
 struct Error:
   message: String
   code: String
   trace: String = _trace()
 
-struct Range:
-  start: Int?
-  end: Int?
-  step: Int = 1
+struct Range { start: Int?, end: Int?, step: Int = 1 }
 
 # The range `..=` builds: its end stored one past the written one in the step's direction, so
 # every range is half-open (§3.8).
-fn _inclusiveRange(start: Int?, end: Int, step: Int) -> Range: Range{
-  start
-  end: if step < 0: end - 1 else: end + 1
-  step
-}
+fn _inclusiveRange(start: Int?, end: Int, step: Int) -> Range:
+  Range{start, end: if step < 0: end - 1 else: end + 1, step}
 
 extern fn includes(self: Range, value: Int) -> Bool
 
@@ -775,36 +801,47 @@ extern fn panic(message: String) -> Never
 # counts code points. Methods taking a function are code, below, since only code calls one.
 @_Parametric
 extern fn length<T>(self: Array<T>) -> Int
+
 fn at<T>(self: Array<T>, index: Int) -> T?:
   const position = _positionOf(index, self.length())
-  if position == -1: none
-  else: self[position]
+  if position == -1: none else: self[position]
+
 @_Parametric
 extern fn push<T>(self: &Array<T>, item: T)
+
 fn pop<T>(self: &Array<T>) -> T?:
-  if self.length() == 0: none
-  else: self._popLast()
+  if self.length() == 0: none else: self._popLast()
+
 # Removes and gives the last item of an array, which has one.
 @_Parametric
 extern fn _popLast<T>(self: &Array<T>) -> T
+
 @_Parametric
 extern fn slice<T>(self: Array<T>, start: Int = 0, end: Int? = none) -> Array<T>
+
 @_Parametric
 extern fn index<T>(self: Array<T>, key: Int) -> T
+
 @_Parametric
 extern fn index<T>(self: Array<T>, key: Range) -> Array<T>
+
 @_Parametric
 extern fn setIndex<T>(self: &Array<T>, key: Int, value: T)
+
 @_Parametric
 extern fn setIndex<T>(self: &Array<T>, key: Range, value: Array<T>)
+
 @_Parametric
 extern fn Array.default<T>() -> Array<T>
 
-fn indexOf<T>(self: Array<T>, item: T) -> Int: self.findIndex(fn(each): each == item)
+fn indexOf<T>(self: Array<T>, item: T) -> Int:
+  self.findIndex(fn each: each == item)
 
-fn lastIndexOf<T>(self: Array<T>, item: T) -> Int: self.findLastIndex(fn(each): each == item)
+fn lastIndexOf<T>(self: Array<T>, item: T) -> Int:
+  self.findLastIndex(fn each: each == item)
 
-fn includes<T>(self: Array<T>, item: T) -> Bool: self.indexOf(item) >= 0
+fn includes<T>(self: Array<T>, item: T) -> Bool:
+  self.indexOf(item) >= 0
 
 fn reverse<T>(self: &Array<T>):
   const last = self.length() - 1
@@ -827,29 +864,37 @@ fn join(self: Array<String>, separator: String) -> String:
 # or from the end when negative, and the items between the first `before` and the last `after`.
 @_Parametric
 extern fn _patternItem<T>(self: Array<T>, offset: Int) -> T
+
 @_Parametric
 extern fn _patternRest<T>(self: Array<T>, before: Int, after: Int) -> Array<T>
 
 @_Parametric
 extern fn size<K, V>(self: Map<K, V>) -> Int
+
 fn get<K, V>(self: Map<K, V>, key: K) -> V?:
   const position = self._find(key)
-  if position == -1: none
-  else: self._valueAt(position)
+  if position == -1: none else: self._valueAt(position)
+
 # Where `key`'s entry is in a map's own order; -1 where it has none.
 @_Parametric
 extern fn _find<K, V>(self: Map<K, V>, key: K) -> Int
+
 # The value of the entry at `position` in a map's own order.
 @_Parametric
 extern fn _valueAt<K, V>(self: Map<K, V>, position: Int) -> V
+
 @_Parametric
 extern fn has<K, V>(self: Map<K, V>, key: K) -> Bool
+
 @_Parametric
 extern fn delete<K, V>(self: &Map<K, V>, key: K) -> Bool
+
 @_Parametric
 extern fn index<K, V>(self: Map<K, V>, key: K) -> V
+
 @_Parametric
 extern fn setIndex<K, V>(self: &Map<K, V>, key: K, value: V)
+
 @_Parametric
 extern fn Map.default<K, V>() -> Map<K, V>
 
@@ -864,8 +909,7 @@ fn entries<K, V>(self: Map<K, V>) -> Array<(K, V)>: [for entry in self: entry]
 extern fn length(self: String) -> Int
 fn at(self: String, index: Int) -> String?:
   const position = _positionOf(index, self.length())
-  if position == -1: none
-  else: self[position]
+  if position == -1: none else: self[position]
 
 # Where `index` falls in a sequence of `length`, counting from the end when negative; -1 past either
 # end (§3.9).
@@ -903,10 +947,11 @@ M fn findLastIndex<T, M in Mark>(self: Array<T>, test: Fn<(T,), Bool, M>) -> Int
   while position >= 0 and not test(self[position]): position -= 1
   position
 
-M fn some<T, M in Mark>(self: Array<T>, test: Fn<(T,), Bool, M>) -> Bool: self.findIndex(test) >= 0
+M fn some<T, M in Mark>(self: Array<T>, test: Fn<(T,), Bool, M>) -> Bool:
+  self.findIndex(test) >= 0
 
 M fn every<T, M in Mark>(self: Array<T>, test: Fn<(T,), Bool, M>) -> Bool:
-  not self.some(fn(item): not test(item))
+  not self.some(fn item: not test(item))
 
 M fn reduce<T, A, M in Mark>(self: Array<T>, f: Fn<(A, T), A, M>, initial: A) -> A:
   let result = initial
@@ -915,9 +960,11 @@ M fn reduce<T, A, M in Mark>(self: Array<T>, f: Fn<(A, T), A, M>, initial: A) ->
 
 # Sorting is a merge sort, so it is stable: of two items the order puts level, the earlier stays
 # first.
-fn sort<T is Comparable>(self: &Array<T>): self.sort(fn(left, right): compare(left, right))
+fn sort<T is Comparable>(self: &Array<T>):
+  self.sort(fn(left, right): compare(left, right))
 
-M fn sort<T, M in Mark>(self: &Array<T>, order: Fn<(T, T), Int, M>): self = _sorted(self, order)
+M fn sort<T, M in Mark>(self: &Array<T>, order: Fn<(T, T), Int, M>):
+  self = _sorted(self, order)
 
 M fn Map.groupBy<K, T, M in Mark>(items: Array<T>, key: Fn<(T,), K, M>) -> Map<K, Array<T>>:
   let groups: Map<K, Array<T>> = [:]
@@ -934,8 +981,7 @@ M fn _mapValues<K, V, W, M in Mark>(self: Map<K, V>, f: Fn<(V,), W, M>) -> Map<K
 
 # The item at `position`, which a search found, or none for the -1 of a search that found none.
 fn _itemAt<T>(self: Array<T>, position: Int) -> T?:
-  if position < 0: none
-  else: self[position]
+  if position < 0: none else: self[position]
 
 M fn _sorted<T, M in Mark>(items: Array<T>, order: Fn<(T, T), Int, M>) -> Array<T>:
   if items.length() <= 1: return items
@@ -961,14 +1007,14 @@ M fn _merged<T, M in Mark>(left: Array<T>, right: Array<T>, order: Fn<(T, T), In
 # changing the original meanwhile changes nothing, and it persists as any closure does: a range's
 # holds two ints, never its items.
 fn iterate<T>(self: Array<T>) -> fn() -> Step<T>:
-  _cursor(self.length(), fn(position): self[position])
+  _cursor(self.length(), fn position: self[position])
 
 fn iterate<K, V>(self: Map<K, V>) -> fn() -> Step<(K, V)>:
-  _cursor(self.size(), fn(position): self._entryAt(position))
+  _cursor(self.size(), fn position: self._entryAt(position))
 
 fn iterate(self: Range) -> fn() -> Step<Int>:
   const start, step, count = self._steps()
-  _cursor(count, fn(position): start + position * step)
+  _cursor(count, fn position: start + position * step)
 
 # A range's start, its step and how many ints it reaches; one without both ends panics.
 extern fn _steps(self: Range) -> (Int, Int, Int)
@@ -982,6 +1028,7 @@ fn iterate(self: String) -> fn() -> Step<String>:
     if character == "": return Done
     offset = after
     Next(character)
+
   next
 
 # The cursor of `count` items, the item at each position read by `item`.
@@ -991,6 +1038,7 @@ fn _cursor<T>(count: Int, item: fn(Int) -> T) -> fn() -> Step<T>:
     if position == count: return Done
     position += 1
     Next(item(position - 1))
+
   next
 
 # The entry at `position` in a map's own order.
@@ -1021,7 +1069,9 @@ extern fn multiply(left: Int, right: Int) -> Int
 extern fn multiply(left: Float, right: Float) -> Float
 fn multiply(left: Int, right: Float) -> Float: Float(left) * right
 fn multiply(left: Float, right: Int) -> Float: left * Float(right)
-fn divide(left: Int, right: Int) -> Float: Float(left) / Float(right)
+fn divide(left: Int, right: Int) -> Float:
+  Float(left) / Float(right)
+
 extern fn divide(left: Float, right: Float) -> Float
 fn divide(left: Int, right: Float) -> Float: Float(left) / right
 fn divide(left: Float, right: Int) -> Float: left / Float(right)
@@ -1031,8 +1081,12 @@ extern fn remainder(left: Int, right: Int) -> Int
 # result a float.
 extern fn power(base: Int, exponent: Int) -> Int
 extern fn power(base: Float, exponent: Float) -> Float
-fn power(base: Int, exponent: Float) -> Float: Float(base) ** exponent
-fn power(base: Float, exponent: Int) -> Float: base ** Float(exponent)
+fn power(base: Int, exponent: Float) -> Float:
+  Float(base) ** exponent
+
+fn power(base: Float, exponent: Int) -> Float:
+  base ** Float(exponent)
+
 # The bitwise operators work on an int's two's complement of unbounded width, as Python's do, so
 # `~x` is `-x - 1` and `>>` rounds toward negative infinity; a negative shift count panics.
 extern fn bitAnd(left: Int, right: Int) -> Int
@@ -1045,8 +1099,12 @@ extern fn negate(value: Int) -> Int
 extern fn negate(value: Float) -> Float
 extern fn compare(left: Int, right: Int) -> Int
 extern fn compare(left: Float, right: Float) -> Int
-fn compare(left: Int, right: Float) -> Int: compare(Float(left), right)
-fn compare(left: Float, right: Int) -> Int: compare(left, Float(right))
+fn compare(left: Int, right: Float) -> Int:
+  compare(Float(left), right)
+
+fn compare(left: Float, right: Int) -> Int:
+  compare(left, Float(right))
+
 extern fn compare(left: String, right: String) -> Int
 
 # Conversions (§3.10): only the ones that can't fail are written T(x). `Int(x)` truncates toward
@@ -1057,24 +1115,29 @@ extern fn compare(left: String, right: String) -> Int
 extern fn Float.from(value: Int) -> Float
 extern fn Int.from(value: Float) -> Int
 
-fn String.from<T is Stringable>(value: T) -> String: value.toString()
+fn String.from<T is Stringable>(value: T) -> String:
+  value.toString()
 
 # Adding any Stringable value to a string, on either side, appends the text its `toString` writes.
-fn add<T is Stringable>(left: String, right: T) -> String: left + right.toString()
+fn add<T is Stringable>(left: String, right: T) -> String:
+  left + right.toString()
 
-fn add<T is Stringable>(left: T, right: String) -> String: left.toString() + right
+fn add<T is Stringable>(left: T, right: String) -> String:
+  left.toString() + right
 
 extern fn toString(self: Int) -> String
 extern fn toString(self: Float) -> String
 
 fn toString(self: Bool) -> String:
-  if self: "true"
-  else: "false"
+  if self: "true" else: "false"
 
 fn toString(self: String) -> String: self
 
-fn Int.parse(text: String) -> Result<Int>: _parsed(Int._read(text), text, "an Int")
-fn Float.parse(text: String) -> Result<Float>: _parsed(Float._read(text), text, "a Float")
+fn Int.parse(text: String) -> Result<Int>:
+  _parsed(Int._read(text), text, "an Int")
+
+fn Float.parse(text: String) -> Result<Float>:
+  _parsed(Float._read(text), text, "a Float")
 
 # What `text` reads as, as `toString` writes it: one value, or none.
 extern fn Int._read(text: String) -> Array<Int>
@@ -1086,10 +1149,11 @@ fn Bool.parse(text: String) -> Result<Bool>:
   else: Err(Error.unparsed(text, "a Bool"))
 
 # The error a `parse` gives (§3.10) for `text` that doesn't read as `what`, as `an Int`.
-fn Error.unparsed(text: String, what: String) -> Error: Error{
-  message: "'" + text + "' is not " + what + "."
-  code: "parse"
-}
+fn Error.unparsed(text: String, what: String) -> Error:
+  Error{
+    message: "'" + text + "' is not " + what + "."
+    code: "parse"
+  }
 
 # The one value `read` holds, else the error of `text` not reading as `what`.
 fn _parsed<T>(read: Array<T>, text: String, what: String) -> Result<T>:
@@ -1104,8 +1168,7 @@ trait Inert
 
 trait DataKind<K in Mark>
 
-trait Disposable:
-  fn dispose(self: Self)
+trait Disposable { fn dispose(self: Self) }
 
 trait Iterable<T, C = Self>:
   fn iterate(self: C) -> fn() -> Step<T>
@@ -1114,8 +1177,7 @@ trait Iterable<T, C = Self>:
 trait Container<T, C = Self>:
   fn includes(self: C, item: T) -> Bool
 
-trait Indexable<K, V, C = Self>:
-  fn index(self: C, key: K) -> V
+trait Indexable<K, V, C = Self> { fn index(self: C, key: K) -> V }
 
 trait IndexAssignable<K, V, C = Self>:
   fn setIndex(self: &C, key: K, value: V)
@@ -1123,11 +1185,9 @@ trait IndexAssignable<K, V, C = Self>:
 trait Convertible<From, T = Self>:
   fn Self.from(value: From) -> Self
 
-trait Default:
-  fn Self.default() -> Self
+trait Default { fn Self.default() -> Self }
 
-trait Addable<T = Self>:
-  fn add(left: T, right: T) -> T
+trait Addable<T = Self> { fn add(left: T, right: T) -> T }
 
 trait Subtractable<T = Self>:
   fn subtract(left: T, right: T) -> T
@@ -1135,15 +1195,13 @@ trait Subtractable<T = Self>:
 trait Multipliable<T = Self>:
   fn multiply(left: T, right: T) -> T
 
-trait Divisible<T = Self>:
-  fn divide(left: T, right: T) -> T
+trait Divisible<T = Self> { fn divide(left: T, right: T) -> T }
 
 trait FloorDivisible<T = Self>:
   fn floorDivide(left: T, right: T) -> T
   fn remainder(left: T, right: T) -> T
 
-trait Negatable<T = Self>:
-  fn negate(value: T) -> T
+trait Negatable<T = Self> { fn negate(value: T) -> T }
 
 # The exponent may have a type of its own: a Decimal is `Powerable<Int>`.
 trait Powerable<E = Self, T = Self>:
@@ -1163,26 +1221,21 @@ trait Shiftable<T = Self>:
 trait Comparable<T = Self>:
   fn compare(left: T, right: T) -> Int
 
-trait Stringable:
-  fn toString(self: Self) -> String
+trait Stringable { fn toString(self: Self) -> String }
 
-trait Parsable:
-  fn Self.parse(text: String) -> Result<Self>
+trait Parsable { fn Self.parse(text: String) -> Result<Self> }
 
 # Names the suspension point of the statement it annotates, for tests and operators (§10).
-struct Waypoint:
-  label: String
+struct Waypoint { label: String }
 
 # Shared instances (§3.5): an instance is compiled once for every type of one representation at a
 # type parameter its code uses only opaquely (lowering/tables/stencils.ts), taking a primitive for its
 # own, else one of these stand-ins: a pointer its backend never counts, an enum's bare tag, a heap
 # value, a value that may reach a disposable. No value is of them.
 extern struct _Handle
-enum _Tag:
-  Tag
+enum _Tag { Tag }
 struct _Heap
-struct _Counted:
-  reaches: fn()
+struct _Counted { reaches: fn() }
 
 # On a std extern function: its native reads none of its type arguments, so one entry serves every
 # type of one representation at each (`_Handle`).

@@ -1,15 +1,13 @@
-# error: 5101 at 12:3
-# error: 5101 at 15:3
+# error: 5101 at 11:47
+# error: 5101 at 13:37
 # A generic function a trait requires is called with type arguments that meet its own
 # constraints, whether through a type parameter or an `any` value (§3.5, §3.10).
 
 trait Shower:
   fn show<U is Stringable>(self: Self, u: U) -> String
 
-struct Plain {}
+struct Plain
 
-fn viaParameter<T is Shower>(x: T) -> String:
-  x.show(Plain)
+fn viaParameter<T is Shower>(x: T) -> String: x.show(Plain)
 
-fn viaAny(x: any Shower) -> String:
-  x.show(Plain)
+fn viaAny(x: any Shower) -> String: x.show(Plain)

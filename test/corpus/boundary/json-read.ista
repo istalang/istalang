@@ -5,18 +5,13 @@
 # (§3.1); text that isn't JSON is an Err with code json. A @JsonBigInt field reads the string of digits it was written as, and a @JsonSkip field
 # reads back as its type's default().
 
-import * as json from 'json'
-import * as time from 'time'
-import JsonBigInt, JsonSkip from 'json'
+import * as json, JsonBigInt, JsonSkip from 'json'
 import * as runtime from 'runtime'
+import * as time from 'time'
 
-struct Item:
-  sku: String
-  qty: Int
+struct Item { sku: String, qty: Int }
 
-enum Shape:
-  Circle(radius: Float)
-  Dot
+enum Shape { Circle(radius: Float), Dot }
 
 struct Order:
   id: String
@@ -27,18 +22,13 @@ struct Order:
   pair: (Int, Bool)
   due: time.Duration
 
-struct Big:
-  value: Int @JsonBigInt
+struct Big { value: Int @JsonBigInt }
 
-struct Counter:
-  count: Int
+struct Counter { count: Int }
 
-fn Counter.default() -> Counter:
-  Counter{count: 7}
+fn Counter.default() -> Counter: Counter{count: 7}
 
-struct Tally:
-  name: String
-  counter: Counter @JsonSkip
+struct Tally { name: String, counter: Counter @JsonSkip }
 
 fn failure(text: String) -> String:
   match json.parse<Order>(text):
@@ -48,14 +38,28 @@ fn failure(text: String) -> String:
 fn order(tags: String, shape: String, pair: String, due: String, extra: String) -> String:
   "{\"id\":\"o1\",\"items\":[],\"tags\":" + tags + ",\"shape\":{\"_type\":\"" + shape + "\"},\"pair\":" + pair + ",\"due\":\"" + due + "\"" + extra + "}"
 
-live async fn main() -> Array<String>: await runtime.run(runtime.id()) _main()
+live async fn main() -> Array<String>:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> Array<String>:
-  const original = Order{id: "o1", items: [Item{sku: "a", qty: 2}], note: "n", tags: [10: 1], shape: Circle(1.5), pair: (3, true), due: 90m}
+  const original = Order:
+    id: "o1"
+    items: [Item{sku: "a", qty: 2}]
+    note: "n"
+    tags: [10: 1]
+    shape: Circle(1.5)
+    pair: (3, true)
+    due: 90m
   const roundTrip = match json.parse<Order>(json.stringify(original)):
-    case Ok(value): if value == original: "round trip" else: "changed"
+    case Ok(value):
+      if value == original: "round trip" else: "changed"
     case Err(error): error.message
-  const lenient = match json.parse<Order>(order("{}", "Dot", "[1,true]", "PT1S", ",\"extra\":[1,2]")):
-    case Ok(value): if value.note == none: "none, unknown fields ignored" else: "a note"
+  const lenient = match json.parse<Order>(
+    order("{}", "Dot", "[1,true]", "PT1S", ",\"extra\":[1,2]")
+  ):
+    case Ok(value):
+      if value.note == none: "none, unknown fields ignored"
+      else: "a note"
     case Err(error): error.message
   const notJson = match json.parse<Order>("{\"id\":"):
     case Ok(value): value.id
@@ -67,16 +71,16 @@ ista async fn _main() -> Array<String>:
     case Ok(value): "skipped " + value.counter.count
     case Err(error): error.message
   [
-    roundTrip,
-    lenient,
-    failure("{\"due\":\"PT1S\",\"id\":\"o1\",\"items\":[{\"sku\":\"a\",\"qty\":\"2\"}]}"),
-    failure("{\"due\":\"PT1S\",\"items\":[]}"),
-    failure(order("{}", "Square", "[1,true]", "PT1S", "")),
-    failure(order("{}", "Dot", "[1]", "PT1S", "")),
-    failure(order("{}", "Dot", "[1,true]", "P1Y", "")),
-    failure(order("{\"x\":1}", "Dot", "[1,true]", "PT1S", "")),
-    failure("{\"due\":\"PT1S\",\"id\":\"o1\",\"items\":[{\"sku\":\"a\",\"qty\":1.5}]}"),
-    notJson,
-    big,
-    skipped,
+    roundTrip
+    lenient
+    failure("{\"due\":\"PT1S\",\"id\":\"o1\",\"items\":[{\"sku\":\"a\",\"qty\":\"2\"}]}")
+    failure("{\"due\":\"PT1S\",\"items\":[]}")
+    failure(order("{}", "Square", "[1,true]", "PT1S", ""))
+    failure(order("{}", "Dot", "[1]", "PT1S", ""))
+    failure(order("{}", "Dot", "[1,true]", "P1Y", ""))
+    failure(order("{\"x\":1}", "Dot", "[1,true]", "PT1S", ""))
+    failure("{\"due\":\"PT1S\",\"id\":\"o1\",\"items\":[{\"sku\":\"a\",\"qty\":1.5}]}")
+    notJson
+    big
+    skipped
   ]

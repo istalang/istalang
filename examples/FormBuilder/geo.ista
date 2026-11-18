@@ -1,16 +1,10 @@
 # geo.ista — external geography source for the order and supplier forms.
 
-struct Country:
-  id: String
-  name: String
+struct Country { id: String, name: String }
 
-struct City:
-  id: String
-  name: String
+struct City { id: String, name: String }
 
-struct Region:
-  code: String
-  name: String
+struct Region { code: String, name: String }
 
 extern fn countries(region: String) -> Array<Country>
 extern fn cities(country: String) -> Array<City>

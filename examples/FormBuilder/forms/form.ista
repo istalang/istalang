@@ -13,8 +13,8 @@
 
 import Graph, Source from '../computed'
 import FormNode, Group from './model'
+import FormEvent, Node from './tree'
 import Place, View from './views'
-import Node, FormEvent from './tree'
 
 # A form, built: its model, its view, and whether it was submitted.
 struct Form<M is struct { [_] is FormNode }>:
@@ -31,7 +31,10 @@ fn Form.open<M is struct { [_] is FormNode }>(
   view: fn(Place) -> View
 ) -> Form<M>:
   const submitted = graph.source(false)
-  const at = Place{graph, submitted, visible: graph.computed(fn(): true)}
+  const at = Place:
+    graph
+    submitted
+    visible: graph.computed(fn(): true)
   Form{model, view: view(at), submitted}
 
 # Applies a frontend's event, between views. An event to a key not shown changes nothing.
@@ -53,7 +56,8 @@ fn problems(nodes: Array<Node>) -> Problems:
   let found: Problems = [:]
   for node in nodes:
     for each in node.shown():
-      if each.errors().length() > 0: found[each.key()] = each.errors()
+      if each.errors().length() > 0:
+        found[each.key()] = each.errors()
   found
 
 # The host's seam for a form served in the browser: the frontend's next event, and the tree to draw.

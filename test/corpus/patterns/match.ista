@@ -1,4 +1,5 @@
 # outcome: "approved by legal|legal rejected: no contract|expired|cfo|small|large|zero|(origin)|(on axis 3)|(1, 2)|yes|no|first|shipped|other"
+# disable-ista-formatter
 # `match` is an expression over every pattern form (§3.11, §4): variants bare and with fields,
 # renamed and compared fields, nested patterns, literals, tuples, `as`, guards, and `case _`. Its
 # cases agree on its type, and the first case that matches decides.

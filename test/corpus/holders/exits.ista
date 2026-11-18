@@ -4,8 +4,8 @@
 # its block is released there, before the caller sees the result. A select's loser is disposed
 # before the winner's body runs.
 
-import * as time from 'time'
 import * as runtime from 'runtime'
+import * as time from 'time'
 
 fn note(log: Shared<Array<String>>, text: String):
   log->value = [...log->value, text]
@@ -18,29 +18,26 @@ ista fn early(log: Shared<Array<String>>, n: Int) -> Int:
   _ = defer(fn(): note(log, "d-early"))
   for i in 0..5:
     _ = defer(fn(): note(log, "iter " + String(i)))
-    if i == n:
-      break
+    if i == n: break
   while true:
     _ = defer(fn(): note(log, "while"))
-    if n > 0:
-      return 5
+    if n > 0: return 5
   0
 
 ista async fn viaReturn(log: Shared<Array<String>>) -> Int:
   const s = sleeper(1, log)
-  if true:
-    return 3
+  if true: return 3
   4
 
 ista async fn selecting(log: Shared<Array<String>>):
   await select:
-    case time.delay(1ms):
-      note(log, "timer")
-    case sleeper(7, log):
-      note(log, "never")
+    case time.delay(1ms): note(log, "timer")
+    case sleeper(7, log): note(log, "never")
   note(log, "after select")
 
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> String:
   const empty: Array<String> = []
   const log = new Shared{value: empty}

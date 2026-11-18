@@ -2,13 +2,12 @@
 # A spread's items take part in choosing the overload an array literal is passed to, as its
 # elements do (§3.5): `Int` items with `none` fit only `Array<Int?>`.
 
-fn take(ys: Array<Int?>) -> Int:
-  ys.length()
-
-fn take(ys: Array<String?>) -> Int:
-  0 - ys.length()
-
 import * as runtime from 'runtime'
+
+fn take(ys: Array<Int?>) -> Int: ys.length()
+
+fn take(ys: Array<String?>) -> Int: 0 - ys.length()
+
 live async fn main(): await runtime.run(runtime.id()) _main()
 ista async fn _main():
   const xs = [1, 2]

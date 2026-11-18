@@ -2,12 +2,11 @@
 # Calls nest as deep as the implementation allows, at least 1,000 calls (§5), so this recursion
 # runs everywhere.
 
+import * as runtime from 'runtime'
+
 fn sum(n: Int) -> Int:
-  if n == 0:
-    return 0
+  if n == 0: return 0
   n + sum(n - 1)
 
-import * as runtime from 'runtime'
 live async fn main(): await runtime.run(runtime.id()) _main()
-ista async fn _main():
-  sum(1_000)
+ista async fn _main(): sum(1_000)

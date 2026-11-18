@@ -4,13 +4,14 @@
 # loses its last holder only once that disposal is done, so a lease is disposed after the lease
 # holding it, however old it is.
 
+import * as runtime from 'runtime'
+
 shared struct Lease:
   name: String
   log: Shared<Array<String>>
   partner: Lease? = none
 
-fn dispose(self: Lease):
-  note(self->log, "disposed " + self->name)
+fn dispose(self: Lease): note(self->log, "disposed " + self->name)
 
 fn note(log: Shared<Array<String>>, text: String):
   log->value.push(text)
@@ -27,8 +28,9 @@ fn nesting(log: Shared<Array<String>>):
   drop outer
   note(log, "after nesting")
 
-import * as runtime from 'runtime'
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> String:
   const empty: Array<String> = []
   const log = new Shared{value: empty}

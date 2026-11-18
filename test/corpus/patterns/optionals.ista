@@ -1,4 +1,5 @@
 # outcome: "legal|none|5|-|42|7|9|none|0|bo|-|8|0|10|y|-|2|0"
+# disable-ista-formatter
 # The operators on optionals (§4): `?.` reads a field or calls a method on the value inside, later
 # links such as `[i]` work on that value too, and the chain short-circuits to `none`; a value
 # already optional isn't wrapped again. `f?.(x)` calls an optional function, `xs?.[i]` indexes

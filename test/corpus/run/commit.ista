@@ -3,8 +3,7 @@
 import * as runtime from 'runtime'
 import * as time from 'time'
 
-ista fn soon() -> Future<Unit, "ista">:
-  time.delay(1ms)
+ista fn soon() -> Future<Unit, "ista">: time.delay(1ms)
 
 live async fn main(): await runtime.run(runtime.id()) _main()
 ista async fn _main():

@@ -4,25 +4,23 @@
 # — gives what takes it the type that result reduces to, so a generic call it is passed to infers
 # from it: `text(scopeOf(…))` gives `T` a `String`.
 
-trait Node:
-  type Scope
-  fn scope(self: Self) -> Self.Scope
+import * as runtime from 'runtime'
 
-struct Field<T>:
-  value: T?
-  type Scope = T?
+trait Node { type Scope, fn scope(self: Self) -> Self.Scope }
+
+struct Field<T> { value: T?, type Scope = T? }
 
 fn scope<T>(self: Field<T>) -> T?: self.value
 
-struct Reads<S is struct { [_] is Node }>:
-  m: S
+struct Reads<S is struct { [_] is Node }> { m: S }
 
 fn index<S is struct { [_] is Node }, K in keyof S>(self: Reads<S>, key: K) -> S[K].Scope:
   self.m[key].scope()
 
 fn scopeOf<N is Node>(node: N) -> N.Scope: node.scope()
 
-fn fieldOf<S is struct { [_] is Stringable }, K in keyof S>(record: S, key: K) -> S[K]: record[key]
+fn fieldOf<S is struct { [_] is Stringable }, K in keyof S>(record: S, key: K) -> S[K]:
+  record[key]
 
 fn text<T is Stringable>(value: T?) -> String:
   match value:
@@ -33,9 +31,7 @@ trait Wrapper:
   type Inner is Node
   fn inner(self: Self) -> Self.Inner
 
-struct Wrap:
-  field: Field<String>
-  type Inner = Field<String>
+struct Wrap { field: Field<String>, type Inner = Field<String> }
 
 fn inner(self: Wrap) -> Field<String>: self.field
 
@@ -46,15 +42,28 @@ struct Place { city: String, zip: Int }
 struct Wrapped { a: Wrap }
 struct Person { name: Field<String>, company: Field<String> }
 
-import * as runtime from 'runtime'
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> String:
   const place = Place{city: "Berlin", zip: 5}
-  const d = Reads{m: Person{name: Field{value: "Ada"}, company: Field{value: "ACME"}}}
+  const d = Reads:
+    m: Person:
+      name: Field{value: "Ada"}
+      company: Field{value: "ACME"}
   const some: Reads<Person>? = d
   const maybe: Reads<Person>? = none
-  const parts = [text(scopeOf(Field{value: "x"})), text(fieldOf(place, "city")),
-    text(fieldOf(place, "zip")), text(index(d, "name")), text(d["name"]), text(d.name),
-    text(some?.company), text(maybe?.name),
-    text(Wrapped{a: Wrap{field: Field{value: "in"}}}.innerScope("a"))]
+  const parts = [
+    text(scopeOf(Field{value: "x"}))
+    text(fieldOf(place, "city"))
+    text(fieldOf(place, "zip"))
+    text(index(d, "name"))
+    text(d["name"])
+    text(d.name)
+    text(some?.company)
+    text(maybe?.name)
+    text(
+      Wrapped{a: Wrap{field: Field{value: "in"}}}.innerScope("a")
+    )
+  ]
   parts.join("|")

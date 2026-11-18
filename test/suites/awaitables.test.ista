@@ -2,19 +2,15 @@
 # decides, a decided wait's other resolvers, `tryResolve`, `Resolver.at` positions and `onCancel`.
 # Each rule is its own function, and its test asserts what the old runtime's unit test did.
 
-import Suite, Test, test, assertEq, expectPanic from 'testing'
-import * as runtime from 'runtime'
 import * as futures from 'futures'
+import * as runtime from 'runtime'
 import * as time from 'time'
 import Inbox from 'inbox'
+import assertEq, expectPanic, Suite, Test, test from 'testing'
 
-shared struct Starts:
-  count: Int
+shared struct Starts { count: Int }
 
-struct Cold:
-  starts: Starts
-  value: Int
-  type Mode = "ista"
+struct Cold { starts: Starts, value: Int, type Mode = "ista" }
 
 ista fn onAwait(self: Cold, done: Resolver<Int, "ista">):
   self.starts->count = self.starts->count + 1
@@ -31,23 +27,24 @@ struct Delegated:
   inner: Future<Int, "ista">
   type Mode = "ista"
 
-ista fn onAwait(self: Delegated, done: Resolver<Int, "ista">): self.inner.onAwait(done)
+ista fn onAwait(self: Delegated, done: Resolver<Int, "ista">):
+  self.inner.onAwait(done)
 
 ista async fn later(value: Int) -> Int:
   await runtime.commit()
   value
 
-ista async fn futureOnAwait() -> Int: await Delegated{inner: later(42)}
+ista async fn futureOnAwait() -> Int:
+  await Delegated{inner: later(42)}
 
 ista async fn selectOnAwait() -> Int:
   const starts = new Starts{count: 0}
   await select:
     case Delegated{inner: later(1)} as slow: slow
-    case Cold{starts: starts, value: 2} as fast: fast * 10 + starts->count
+    case Cold{starts: starts, value: 2} as fast:
+      fast * 10 + starts->count
 
-struct Peek:
-  inner: Future<Int, "ista">
-  type Mode = "ista"
+struct Peek { inner: Future<Int, "ista">, type Mode = "ista" }
 
 ista fn onAwait(self: Peek, done: Resolver<Int, "ista">):
   select:
@@ -60,11 +57,9 @@ ista async fn nestedSelect() -> Int:
   const first = await Peek{inner: now(1)}
   first * 10 + await Peek{inner: later(2)}
 
-struct Left:
-  x: Int
+struct Left { x: Int }
 
-struct Right:
-  y: Int
+struct Right { y: Int }
 
 ista fn onAwait(self: Left | Right, done: Resolver<Int, "ista">):
   match self:
@@ -76,8 +71,7 @@ ista async fn convertedOperand() -> Int:
   const b = await (later(22),)
   a + b
 
-shared struct Log:
-  text: String
+shared struct Log { text: String }
 
 ista async fn worker(starts: Starts, log: Log):
   await select:
@@ -92,14 +86,12 @@ ista async fn cleanupCaseWins() -> String:
   }
   log->text
 
-shared struct KeptDone:
-  done: Resolver<Int, "ista">?
+shared struct KeptDone { done: Resolver<Int, "ista">? }
 
-struct Keep:
-  kept: KeptDone
-  type Mode = "ista"
+struct Keep { kept: KeptDone, type Mode = "ista" }
 
-ista fn onAwait(self: Keep, done: Resolver<Int, "ista">): self.kept->done = done
+ista fn onAwait(self: Keep, done: Resolver<Int, "ista">):
+  self.kept->done = done
 
 ista async fn decidedResolver() -> Int:
   const kept = new KeptDone{done: none}
@@ -113,8 +105,7 @@ ista async fn decidedResolver() -> Int:
       done.resolve(9)
       got * 10 + (if done.tryResolve(9): 1 else: 0)
 
-shared struct Kept:
-  done: Resolver<Int, "ista">?
+shared struct Kept { done: Resolver<Int, "ista">? }
 
 struct KeepLosingResolverCancelled:
   kept: Kept
@@ -127,16 +118,17 @@ ista async fn losingResolverCancelled() -> Int:
   const starts = new Starts{count: 0}
   await select:
     case Cold{starts: starts, value: 3} as value: value
-    case KeepLosingResolverCancelled{kept: new Kept{done: none}} as never: never
+    case KeepLosingResolverCancelled{
+      kept: new Kept{done: none}
+    } as never:
+      never
 
-shared struct TookOnce:
-  took: Bool
+shared struct TookOnce { took: Bool }
 
-struct TryAfter:
-  took: TookOnce
-  type Mode = "ista"
+struct TryAfter { took: TookOnce, type Mode = "ista" }
 
-ista fn onAwait(self: TryAfter, done: Resolver<Int, "ista">): self.took->took = done.tryResolve(99)
+ista fn onAwait(self: TryAfter, done: Resolver<Int, "ista">):
+  self.took->took = done.tryResolve(99)
 
 ista async fn tryResolveDecided() -> Int:
   const starts = new Starts{count: 0}
@@ -146,13 +138,9 @@ ista async fn tryResolveDecided() -> Int:
     case TryAfter{took: took} as never: never
   got * 10 + (if took->took: 1 else: 0)
 
-shared struct Took:
-  first: Bool
-  second: Bool
+shared struct Took { first: Bool, second: Bool }
 
-struct Twice:
-  took: Took
-  type Mode = "ista"
+struct Twice { took: Took, type Mode = "ista" }
 
 ista fn onAwait(self: Twice, done: Resolver<Int, "ista">):
   self.took->first = done.tryResolve(4)
@@ -161,14 +149,13 @@ ista fn onAwait(self: Twice, done: Resolver<Int, "ista">):
 ista async fn tryResolveTook() -> Int:
   const took = new Took{first: false, second: false}
   const got = await Twice{took: took}
-  got * 100 + (if took->first: 10 else: 0) + (if took->second: 1 else: 0)
+  got * 100 + (if took->first: 10 else: 0) + (
+    if took->second: 1 else: 0
+  )
 
-shared struct HeldWeak:
-  weak: WeakRef<Resolver<Int, "ista">>?
+shared struct HeldWeak { weak: WeakRef<Resolver<Int, "ista">>? }
 
-struct WatchResolver:
-  held: HeldWeak
-  type Mode = "ista"
+struct WatchResolver { held: HeldWeak, type Mode = "ista" }
 
 ista fn onAwait(self: WatchResolver, done: Resolver<Int, "ista">):
   self.held->weak = WeakRef(done)
@@ -181,11 +168,9 @@ ista async fn weakResolver() -> Int:
   match held->weak:
     case None: -1
     case weak:
-      if weak.deref() == none: v
-      else: 0
+      if weak.deref() == none: v else: 0
 
-shared struct TookPositionAfterDecision:
-  took: Bool
+shared struct TookPositionAfterDecision { took: Bool }
 
 struct Late:
   took: TookPositionAfterDecision
@@ -200,21 +185,15 @@ ista async fn positionAfterDecision() -> Int:
   const (position, value) = await Late{took}
   position * 10 + value + (if took->took: 100 else: 0)
 
-shared struct SeenAt:
-  cancelled: Int
-  took: Bool
+shared struct SeenAt { cancelled: Int, took: Bool }
 
-struct ResolveAt:
-  seen: SeenAt
-  type Mode = "ista"
+struct ResolveAt { seen: SeenAt, type Mode = "ista" }
 
 ista fn onAwait(self: ResolveAt, done: Resolver<(Int, Int), "ista">):
   done.onCancel(fn(): { self.seen->cancelled += 1; () })
   Resolver.at(done, 0).resolve(9)
 
-struct TryAt:
-  seen: SeenAt
-  type Mode = "ista"
+struct TryAt { seen: SeenAt, type Mode = "ista" }
 
 ista fn onAwait(self: TryAt, done: Resolver<(Int, Int), "ista">):
   done.onCancel(fn(): { self.seen->cancelled += 10; () })
@@ -243,10 +222,10 @@ ista async fn disposedAfterDecision() -> String:
     box.send(1)
   await log.receive()
 
-shared struct Seen:
-  value: Int
+shared struct Seen { value: Int }
 
-K fn see<K in Persistence>(seen: Seen, value: Int): seen->value = value
+K fn see<K in Persistence>(seen: Seen, value: Int):
+  seen->value = value
 
 shared struct KeptOnCancelLoser:
   resolver: Resolver<Int, "ista">? = none
@@ -265,7 +244,8 @@ ista fn onAwait(self: Watched, done: Resolver<Int, "ista">):
 ista async fn onCancelLoser() -> Int:
   const seen = new Seen{value: 0}
   const got = await select:
-    case Watched{seen, kept: new KeptOnCancelLoser{}} as slow: slow
+    case Watched{seen, kept: new KeptOnCancelLoser{}} as slow:
+      slow
     case runtime.commit(): 5
   await runtime.commit()
   got * 10 + seen->value
@@ -295,18 +275,16 @@ ista async fn onCancelAlready() -> Int:
   await runtime.commit()
   seen->value
 
-struct ResolvedTwice:
-  type Mode = "ista"
+struct ResolvedTwice { type Mode = "ista" }
 
 ista fn onAwait(self: ResolvedTwice, done: Resolver<Int, "ista">):
   done.resolve(1)
   done.resolve(2)
 
-struct LetGo:
-  took: Took
-  type Mode = "ista"
+struct LetGo { took: Took, type Mode = "ista" }
 
-ista fn onAwait(self: LetGo, done: Resolver<Int, "ista">): _ = self.took
+ista fn onAwait(self: LetGo, done: Resolver<Int, "ista">):
+  _ = self.took
 
 const droppedResolver = "A resolver was let go of unresolved, so the wait it was to decide never can. An awaitable keeps the work it starts alive by registering its resolver, or a Resolver.at of it, on that work; to map a value, await it in an async fn."
 
@@ -358,7 +336,11 @@ fn suite() -> Array<Test>: [
   test(
     "a wait's resolver let go of unresolved, never registered, panics"
     async fn(): assertEq(
-      await expectPanic(async fn(): await LetGo{took: new Took{first: false, second: false}})
+      await expectPanic(
+        async fn(): await LetGo{
+          took: new Took{first: false, second: false}
+        }
+      )
       droppedResolver
     )
   )

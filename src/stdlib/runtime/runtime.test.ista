@@ -1,8 +1,8 @@
 # The runtime module's `id`, `version` and `isolate` (spec §3.8, §9); `commit` is the corpus's.
 # `isolate`'s failing case is a panic it gives back as an `Err`.
 
-import Suite, Test, test, assert, assertEq from 'testing'
 import * as runtime from 'runtime'
+import assert, assertEq, Suite, Test, test from 'testing'
 
 fn ownId() -> String: runtime.id()
 

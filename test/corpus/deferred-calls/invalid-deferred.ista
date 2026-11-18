@@ -1,44 +1,36 @@
-# error: 5643 at 46:12
-# error: 5643 at 47:7
-# error: 5644 at 49:17
-# error: 5641 at 50:7
-# error: 5120 at 51:7
-# error: 5640 at 52:12
-# error: 5642 at 54:9
+# error: 5643 at 38:12
+# error: 5643 at 39:7
+# error: 5644 at 41:17
+# error: 5641 at 42:7
+# error: 5120 at 43:7
+# error: 5640 at 44:12
+# error: 5642 at 46:9
 # A deferred call (§3.14) computes what its call passes now and captures it, so no reference can be
 # passed by `&` or as a `&self` receiver; a sendable function taken needs each captured value
 # sendable. Its taker must take a function of nothing, the first one left unfilled, its other
 # parameters given as for any call; what follows it must be a call. A taker that is a value and no
 # function is an item before a likely missing comma.
 
-struct Counter:
-  n: Int
-
-fn bump(self: &Counter):
-  self.n += 1
-
-fn grow(n: &Int):
-  n += 1
-
-fn size(self: Counter) -> Int:
-  self.n
-
-fn run(f: fn() -> Unit):
-  f()
-
-fn send(f: sendable fn() -> Int) -> Int:
-  f()
-
-fn read(log: Shared<String>) -> Int:
-  log->value.length()
-
-fn twice(n: Int) -> Int:
-  n * 2
-
-fn pair(f: fn() -> Int, g: fn() -> Int) -> Int:
-  f() + g()
-
 import * as runtime from 'runtime'
+
+struct Counter { n: Int }
+
+fn bump(self: &Counter): self.n += 1
+
+fn grow(n: &Int): n += 1
+
+fn size(self: Counter) -> Int: self.n
+
+fn run(f: fn() -> Unit): f()
+
+fn send(f: sendable fn() -> Int) -> Int: f()
+
+fn read(log: Shared<String>) -> Int: log->value.length()
+
+fn twice(n: Int) -> Int: n * 2
+
+fn pair(f: fn() -> Int, g: fn() -> Int) -> Int: f() + g()
+
 live async fn main(): await runtime.run(runtime.id()) _main()
 ista async fn _main():
   let counter = Counter{n: 0}

@@ -2,24 +2,20 @@
 # instances' arguments and the JSON written of a value never see a later change to another holder.
 # Each rule is its own function, and its test asserts what the old runtime's unit test did.
 
-import Suite, Test, test, assertEq, mock from 'testing'
-import * as json from 'json'
-import Json from 'json'
+import * as json, Json from 'json'
 import * as runtime from 'runtime'
+import * as time, Time from 'time'
 import Inbox from 'inbox'
-import * as time from 'time'
-import Time from 'time'
+import assertEq, mock, Suite, Test, test from 'testing'
 
-struct Inner:
-  items: Array<Int>
-  tags: Map<String, Int>
+struct Inner { items: Array<Int>, tags: Map<String, Int> }
 
-struct Outer:
-  left: Inner
-  right: Inner
+struct Outer { left: Inner, right: Inner }
 
 ista async fn jsonBetweenWrites() -> String:
-  let o = Outer{left: Inner{items: [1], tags: ["a": 1]}, right: Inner{items: [], tags: [:]}}
+  let o = Outer:
+    left: Inner{items: [1], tags: ["a": 1]}
+    right: Inner{items: [], tags: [:]}
   const first = json.stringify(o)
   o.left.items.push(2)
   const second = json.stringify(o)
@@ -73,21 +69,20 @@ ista async fn spawnCopies() -> Array<Int>:
 ista async fn blockValueAfterDefer() -> Array<Int>:
   let xs = [10, 20]
   xs.push(30)
-  const before = { _ = defer(fn(): { xs.push(999); xs[0] = 888 }); xs }
+  const before = {
+    _ = defer(fn(): { xs.push(999); xs[0] = 888 })
+    xs
+  }
   [...before, ...xs]
 
-shared struct Res:
-  id: Int
-  log: Shared<Array<String>>
+shared struct Res { id: Int, log: Shared<Array<String>> }
 
-fn dispose(self: Res): self->log->value.push("disposed " + self->id)
+fn dispose(self: Res):
+  self->log->value.push("disposed " + self->id)
 
-struct Box:
-  res: Res
+struct Box { res: Res }
 
-struct Pair:
-  a: Int
-  b: Int
+struct Pair { a: Int, b: Int }
 
 fn readId(r: Res, x: Int) -> Int:
   r->log->value.push("read " + r->id)
@@ -116,6 +111,7 @@ fn readBehindBeforeItsDisposal() -> Array<String>:
   fn replace() -> Int:
     h->value = new Res{id: 2, log}
     10
+
   const got = readId(h->value, replace())
   log->value.push("got " + got)
   log->value
@@ -125,6 +121,7 @@ fn capturedReadBeforeItsWrite() -> (Int, Int):
   fn bump() -> Int:
     n = 2
     n
+
   (n, bump())
 
 fn transientRead(depth: Int) -> (Array<Int>, Int):
@@ -138,21 +135,32 @@ fn handleOf(h: Shared<Array<Int>>) -> Shared<Array<Int>>: h
 
 fn readBehindComputedHandles() -> (Array<Int>, Array<Int>, Int):
   const boxes = [new Shared<Array<Int>>{value: [1]}]
-  (boxes[0]->value, handleOf(boxes[0])->value, { boxes[0]->value.push(99); 0 })
+  (
+    boxes[0]->value
+    handleOf(boxes[0])->value
+    { boxes[0]->value.push(99); 0 }
+  )
 
 fn untupledReads() -> (Array<String>, (Int, Int)):
   const log = new Shared<Array<String>>{value: []}
   let single: (Res,) = (new Res{id: 1, log},)
-  const got = readId(single, { single = (new Res{id: 2, log},); 10 })
+  const got = readId(
+    single
+    { single = (new Res{id: 2, log},); 10 }
+  )
   log->value.push("got " + got)
   let pair: (Pair,) = (Pair{a: 1, b: 2},)
   (log->value, takePair(pair, { pair.0.a = 99; 10 }))
 
 fn tailPartsOutliveTheirTemporaries(first: Bool) -> Array<String>:
   const log = new Shared<Array<String>>{value: []}
-  const fromIf = if first: Box{res: new Res{id: 1, log}}.res else: new Res{id: 0, log}
+  const fromIf = if first: Box{res: new Res{id: 1, log}}.res
+  else: new Res{id: 0, log}
   log->value.push("if gave " + fromIf->id)
-  const fromBlock = { const unused = 0; Box{res: new Res{id: 2, log}}.res }
+  const fromBlock = {
+    const unused = 0
+    Box{res: new Res{id: 2, log}}.res
+  }
   log->value.push("block gave " + fromBlock->id)
   const fromMatch = match first:
     case true: Box{res: new Res{id: 3, log}}.res
@@ -160,14 +168,18 @@ fn tailPartsOutliveTheirTemporaries(first: Bool) -> Array<String>:
   log->value.push("match gave " + fromMatch->id)
   log->value
 
-fn someBox(id: Int, log: Shared<Array<String>>) -> Box?: Box{res: new Res{id, log}}
+fn someBox(id: Int, log: Shared<Array<String>>) -> Box?:
+  Box{res: new Res{id, log}}
 
 fn mergedReads(pick: Bool) -> Array<String>:
   const log = new Shared<Array<String>>{value: []}
   const b1 = Box{res: new Res{id: 1, log}}
-  const fromIf = if pick: (if not pick: b1 else: Box{res: new Res{id: 2, log}}).res else: b1.res
+  const fromIf = if pick:
+    (if not pick: b1 else: Box{res: new Res{id: 2, log}}).res
+  else: b1.res
   log->value.push("if gave " + fromIf->id)
-  const fromNullish = if pick: (someBox(3, log) ?? b1).res else: b1.res
+  const fromNullish = if pick: (someBox(3, log) ?? b1).res
+  else: b1.res
   log->value.push("?? gave " + fromNullish->id)
   let b2 = Box{res: new Res{id: 4, log}}
   const got = readId(

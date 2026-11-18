@@ -1,8 +1,8 @@
 # error: 5700 at 18:4
-# error: 5701 at 21:15
-# error: 5702 at 25:16
-# error: 5702 at 27:23
-# error: 5703 at 29:4
+# error: 5701 at 20:15
+# error: 5702 at 23:16
+# error: 5702 at 25:23
+# error: 5703 at 27:4
 # Only a value with an identity of its own can be disposable (§7): a shared struct (§3.18), or an
 # extern type a host provides, never a plain struct, whose copies have none. A `dispose` is plain
 # code that takes its value and returns unit, it is found beside the type it disposes, and its
@@ -15,16 +15,13 @@ shared struct Lease { name: String }
 
 shared struct Holder { lease: Lease }
 
-fn dispose(self: Plain):
-  ()
+fn dispose(self: Plain): ()
 
-ista async fn dispose(self: Holder):
-  ()
+ista async fn dispose(self: Holder): ()
 
 fn dispose(self: Lease):
   const copy = self
   const name = self->name
   const later = fn(): self->name
 
-fn dispose(self: Shared<Lease>):
-  ()
+fn dispose(self: Shared<Lease>): ()

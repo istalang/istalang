@@ -21,9 +21,7 @@
 # a slot's queue drops (§7), in the slot by taking it out. Once received, a message is no longer
 # anywhere, so retracting it changes nothing.
 
-struct Queued:
-  number: Int
-  put: Future<Unit, "ista">
+struct Queued { number: Int, put: Future<Unit, "ista"> }
 
 shared struct Inbox<T>:
   slot: Slot<T>
@@ -34,8 +32,7 @@ shared struct Inbox<T>:
 
 # A revertible message's holder: disposing it calls `retract`, which the queue that made it
 # supplies, so every queue, the host's included (§3.6), hands out this one type.
-shared struct Revertible<T>:
-  retract: ista fn() -> Unit
+shared struct Revertible<T> { retract: ista fn() -> Unit }
 
 # A holder whose retraction lets go of `resource`, which disposes it: how a queue the host provides
 # hands out a revertible send, a disposable host type its host retracts (§3.6). It makes a
@@ -45,9 +42,11 @@ ista fn Revertible.holding<T, R is Disposable>(resource: R) -> Revertible<T>:
   fn retract(): held->value = none
   new Revertible<T>{retract}
 
-ista fn Inbox.create<T>() -> Inbox<T>: new Inbox<T>{slot: Slot.create<T>()}
+ista fn Inbox.create<T>() -> Inbox<T>:
+  new Inbox<T>{slot: Slot.create<T>()}
 
-ista fn send<T>(self: Inbox<T>, message: T): drop _queue(self, message)
+ista fn send<T>(self: Inbox<T>, message: T):
+  drop _queue(self, message)
 
 # The holder retracts the message when its last holder lets go of it, unless it was received. It
 # reaches the inbox weakly, so holding it keeps no inbox alive.
@@ -56,7 +55,8 @@ ista fn sendRevertible<T>(self: Inbox<T>, message: T) -> Revertible<T>:
   const inbox = WeakRef(self)
   new Revertible<T>{retract: fn(): _retract(inbox, number)}
 
-ista fn receive<T>(self: Inbox<T>) -> Future<T, "ista">: self->slot.take()
+ista fn receive<T>(self: Inbox<T>) -> Future<T, "ista">:
+  self->slot.take()
 
 # The messages waiting, oldest first, without receiving them: taken out of the slot one after
 # another, as their puts move them in, and queued again in that order.
@@ -96,9 +96,12 @@ ista fn _queue<T>(self: Inbox<T>, message: T) -> Int:
 # full, still holds it.
 ista fn _forgetReceived<T>(self: Inbox<T>):
   let served = 0
-  while served < self->queued.length() and _settles(self->queued[served].put): served += 1
+  while served < self->queued.length() and _settles(self->queued[served].put):
+    served += 1
   const inSlot = served > 0 and _settles(self->slot.read())
-  self->queued = self->queued[(if inSlot: served - 1 else: served)..]
+  self->queued = self->queued[
+    (if inSlot: served - 1 else: served)..
+  ]
 
 # Removes message `number` from the inbox, if the inbox is still there and the message unread.
 ista fn _retract<T>(inbox: WeakRef<Inbox<T>>, number: Int):

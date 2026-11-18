@@ -7,11 +7,12 @@
 # literals holding the others is kept as written, and a `none` alone still takes its type from
 # where it goes.
 
+import * as runtime from 'runtime'
+
 type Status = "draft" | "sent"
 
 fn found(miss: Bool):
-  if miss:
-    return none
+  if miss: return none
   7
 
 fn same<T>(x: T) -> T: x
@@ -20,8 +21,9 @@ fn sent(yes: Bool, s: Status) -> Status:
   const d: "draft" = "draft"
   if yes: s else: d
 
-import * as runtime from 'runtime'
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> String:
   const yes = true
   const x = if yes: 2 else: none
@@ -34,10 +36,8 @@ ista async fn _main() -> String:
   const b: "b" = "b"
   const pairs = [none, (a, 1), (b, 2)]
   const pick = fn(miss: Bool, first: Bool): {
-    if miss:
-      return none
-    if first:
-      return (a, 1)
+    if miss: return none
+    if first: return (a, 1)
     (b, 2)
   }
   const nones: Array<Int?> = same([none])

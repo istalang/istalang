@@ -16,12 +16,11 @@ ista async fn background(onDispose: ista fn() -> Unit):
 ista async fn childWithBackground() -> Array<Int>:
   let xs = [10, 20]
   xs.push(30)
-  hold _ = background(ista fn(): {
-    xs.push(999)
-    xs[0] = 888
-  })
+  hold _ = background(ista fn(): { xs.push(999); xs[0] = 888 })
   xs
 
-live async fn main() -> Array<Int>: await runtime.run(runtime.id()) _main()
+live async fn main() -> Array<Int>:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> Array<Int>:
   unwrap(await (spawn(childWithBackground)).result())

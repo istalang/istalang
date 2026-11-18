@@ -5,29 +5,26 @@
 # returns is never disposed: a watch on it, even taken by a closure that outlives the call, never
 # resolves.
 
-import * as time from 'time'
 import * as runtime from 'runtime'
+import * as time from 'time'
 
 ista fn resolved(signal: Future<Unit, "ista">) -> Bool:
   select:
-    case signal:
-      true
-    else:
-      false
+    case signal: true
+    else: false
 
 ista async fn worker(n: Int) -> Int:
-  ista fn watch() -> Future<Unit, "ista">:
-    worker.disposing()
+  ista fn watch() -> Future<Unit, "ista">: worker.disposing()
   await select:
-    case watch():
-      0
-    case time.delay(1ms):
-      n + 1
+    case watch(): 0
+    case time.delay(1ms): n + 1
 
 ista async fn watcher() -> ista fn() -> Future<Unit, "ista">:
   fn() -> Future<Unit, "ista">: watcher.disposing()
 
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> String:
   const slot = Slot.create<Int>()
   const other = Slot.create<Int>()

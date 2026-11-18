@@ -2,6 +2,8 @@
 # `panic` stops the instance at once (§3.12): it has type `Never`, so it fits where any value is
 # expected, such as a `match` case or the right side of `??`.
 
+import * as runtime from 'runtime'
+
 enum Verdict { Approved, Rejected }
 
 fn decided(id: String, verdict: Verdict?) -> String:
@@ -10,7 +12,7 @@ fn decided(id: String, verdict: Verdict?) -> String:
     case Rejected: "rejected"
     case None: panic("no verdict for " + id)
 
-import * as runtime from 'runtime'
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
-ista async fn _main() -> String:
-  decided("p-1", none)
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
+
+ista async fn _main() -> String: decided("p-1", none)

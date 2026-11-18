@@ -6,6 +6,8 @@
 # patterns nest, select a union's member, its enum's type arguments telling apart its instances,
 # bind the enum with `as`, cover their variants for exhaustiveness and stand in `is`.
 
+import * as runtime from 'runtime'
+
 enum Verdict:
   Approved
   Rejected(by: String, reason = "no reason given")
@@ -29,19 +31,23 @@ fn titleOf(n: Node) -> String:
 
 fn kids(n: Node) -> String:
   match n:
-    case Group(_, _, first, ...others): `${titleOf(first)} +${others.length()}`
+    case Group(_, _, first, ...others):
+      `${titleOf(first)} +${others.length()}`
     case Group(t, ...all): `${t} ${all.length()}`
     case _: "-"
 
 fn named(n: Node) -> String:
   match n:
-    case Group(open: true, children: [_, second, ..._], ...): `2 ${titleOf(second)}`
-    case Group(title, children: rest): `${title}: ${rest.length()}`
+    case Group(open: true, children: [_, second, ..._], ...):
+      `2 ${titleOf(second)}`
+    case Group(title, children: rest):
+      `${title}: ${rest.length()}`
     case _: "-"
 
 fn total(r: Result<Node>) -> Int:
   match r:
-    case Ok(Group(_, _, Text("x"), ...rest)) | Ok(Group(_, _, _, _, ...rest)): rest.length()
+    case Ok(Group(_, _, Text("x"), ...rest)) | Ok(Group(_, _, _, _, ...rest)):
+      rest.length()
     case Ok(_): 1
     case Err(_): 0
 
@@ -54,16 +60,15 @@ fn shown(x: Result<String> | Int) -> String:
 fn covered(verdict: Verdict) -> String:
   match verdict:
     case Approved: "a"
-    case Rejected(by, ...) as whole: if whole == Rejected(by): "s" else: "r"
+    case Rejected(by, ...) as whole:
+      if whole == Rejected(by): "s" else: "r"
 
 fn started(n: Node) -> String:
   match n:
     case Group("t", true, Text("a"), ...): "starts with a"
     case _: "-"
 
-enum Opt<T>:
-  Some(value: T)
-  Nothing
+enum Opt<T> { Some(value: T), Nothing }
 
 fn picked(u: Opt<Int> | Opt<String>) -> Int:
   match u:
@@ -71,37 +76,39 @@ fn picked(u: Opt<Int> | Opt<String>) -> Int:
     case Opt.Some<String>(value): value.length()
     case _: 0
 
-enum Pair:
-  Both(first: Int, second: Int)
+enum Pair { Both(first: Int, second: Int) }
 
 fn swapped(p: Pair) -> String:
   match p:
     case Both(a, b): `${b} ${a}`
 
-import * as runtime from 'runtime'
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> String:
   const g = Node.Group("t", true, Node.Text("a"), Node.Empty, Node.Text("b"))
   const flat = Node.Group(title: "t", children: [Node.Text("x"), Node.Empty, Node.Empty])
   const word: Opt<Int> | Opt<String> = Opt.Some<String>("abc")
   const number: Opt<Int> | Opt<String> = Opt.Some<Int>(4)
   [
-    describe(Approved),
-    describe(Rejected("legal")),
-    describe(Rejected("ops", "late")),
-    titleOf(Text("x")),
-    titleOf(g),
-    kids(g),
-    kids(Node.Group("u")),
-    named(g),
-    named(flat),
-    String(total(Ok(flat))),
-    shown(Err(Error{message: "oops", code: "E"})),
-    covered(Rejected("legal")),
-    if Verdict.Rejected("x") is Rejected(_, reason: "no reason given"): "1" else: "0",
-    if g is Group(open: true, ...): "yes" else: "no",
-    if flat is Group(_, true, ...): "yes" else: "no",
-    swapped(Both(2, 1)),
-    started(g),
-    String(picked(word) + picked(number)),
+    describe(Approved)
+    describe(Rejected("legal"))
+    describe(Rejected("ops", "late"))
+    titleOf(Text("x"))
+    titleOf(g)
+    kids(g)
+    kids(Node.Group("u"))
+    named(g)
+    named(flat)
+    String(total(Ok(flat)))
+    shown(Err(Error{message: "oops", code: "E"}))
+    covered(Rejected("legal"))
+    if Verdict.Rejected("x") is Rejected(_, reason: "no reason given"):
+      "1"
+    else: "0"
+    if g is Group(open: true, ...): "yes" else: "no"
+    if flat is Group(_, true, ...): "yes" else: "no"
+    swapped(Both(2, 1))
+    started(g)
+    String(picked(word) + picked(number))
   ].join("|")

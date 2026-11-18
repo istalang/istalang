@@ -2,17 +2,20 @@
 # A field a type parameter's trait requires is read from whatever each instantiation gives it,
 # a struct's at its own position or an `any` value's through its value's own type (§3.5, §3.10).
 
-trait Sized:
-  size: Int
+import * as runtime from 'runtime'
+
+trait Sized { size: Int }
 
 struct Box { label: String, size: Int }
 struct Pair { size: Int, first: String }
 
-fn sizeOf<T is Sized>(value: T) -> Int:
-  value.size
+fn sizeOf<T is Sized>(value: T) -> Int: value.size
 
-import * as runtime from 'runtime'
 live async fn main(): await runtime.run(runtime.id()) _main()
 ista async fn _main():
   const sized: any Sized = Pair{size: 2, first: "b"}
-  (sizeOf(Box{label: "a", size: 1}), sizeOf(sized), sizeOf(Pair{size: 5, first: "c"}))
+  (
+    sizeOf(Box{label: "a", size: 1})
+    sizeOf(sized)
+    sizeOf(Pair{size: 5, first: "c"})
+  )

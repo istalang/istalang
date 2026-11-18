@@ -2,10 +2,13 @@
 # `none` fits only an optional parameter (§3.11), so it picks `g(Int?)` over `g(String)`; and a
 # `T` fits a `T?` (§3.5), so `g(1)` still reaches the optional one.
 
+import * as runtime from 'runtime'
+
 fn g(x: Int?) -> Int: 1
 fn g(x: String) -> Int: 2
 
-import * as runtime from 'runtime'
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> String:
   String(g(none)) + " " + String(g("a")) + " " + String(g(1))

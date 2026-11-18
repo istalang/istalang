@@ -1,11 +1,11 @@
-# error: 5704 at 22:8
-# error: 5704 at 28:22
-# error: 5704 at 35:10
-# error: 5705 at 39:26
-# error: 5705 at 42:8
-# error: 5705 at 45:8
-# error: 5025 at 48:3
-# error: 5001 at 49:19
+# error: 5704 at 21:8
+# error: 5704 at 26:22
+# error: 5704 at 32:23
+# error: 5705 at 36:26
+# error: 5705 at 38:35
+# error: 5705 at 40:16
+# error: 5025 at 43:3
+# error: 5001 at 44:19
 # `drop x` releases `x`, which no path may use afterwards (§7), unless a `let` is assigned again
 # first: in a later statement, after a branch that dropped it, or in a loop's next pass. Only what
 # the function holds itself can be dropped: not a capture, a reference parameter or a top-level
@@ -13,8 +13,7 @@
 
 const limit = 3
 
-fn size(text: String) -> Int:
-  text.length()
+fn size(text: String) -> Int: text.length()
 
 fn later() -> Int:
   const text = "a"
@@ -23,26 +22,22 @@ fn later() -> Int:
 
 fn branch(flag: Bool) -> Int:
   let text = "a"
-  if flag:
-    drop text
+  if flag: drop text
   const first = size(text)
   text = "b"
   first + size(text)
 
 fn loop():
   const text = "a"
-  for _ in 0..2:
-    drop text
+  for _ in 0..2: drop text
 
 fn captured():
   const text = "a"
   const f = fn(): { drop text; () }
 
-fn reference(text: &String):
-  drop text
+fn reference(text: &String): drop text
 
-fn top():
-  drop limit
+fn top(): drop limit
 
 ista fn unused():
   Slot.create<Int>()

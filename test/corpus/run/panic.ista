@@ -1,10 +1,9 @@
 # panic: Division by zero.
 # A bug panics the instance (§3.12); the trace names where each frame stood.
 
-fn ratio(a: Int, b: Int) -> Int:
-  a // b
-
 import * as runtime from 'runtime'
+
+fn ratio(a: Int, b: Int) -> Int: a // b
+
 live async fn main(): await runtime.run(runtime.id()) _main()
-ista async fn _main():
-  ratio(1, 0)
+ista async fn _main(): ratio(1, 0)

@@ -10,7 +10,7 @@
     ]
   },
   "dropped-after-decision.ista": {
-    "frame": "at dropped-after-decision._main (dropped-after-decision.ista:24:5)"
+    "frame": "at dropped-after-decision._main (dropped-after-decision.ista:22:5)"
   },
   "field-loop-cells.ista": {
     "logs": ["info visit a {}", "info visit b {}", "info disposed 7 {}", "info after walk {}"]

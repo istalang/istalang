@@ -1,5 +1,5 @@
-# error: 5026 at 22:17
-# error: 5026 at 23:16
+# error: 5026 at 24:17
+# error: 5026 at 25:16
 # error: 5218 at 31:16
 # error: 5219 at 32:21
 # error: 5644 at 33:14
@@ -13,6 +13,8 @@
 # `?->` reads through an optional shared struct only, and a value read through it is a copy, so a
 # method taking `&self` isn't called through it (§4).
 
+import * as runtime from 'runtime'
+
 struct Tally { count: Int }
 
 shared struct Counter { count: Int }
@@ -22,10 +24,8 @@ struct Holder { counter: Counter = new Counter{count: 0} }
 const counter = new Counter{count: 1}
 const holder = Holder{}
 
-fn keep(counter: Counter):
-  ()
+fn keep(counter: Counter): ()
 
-import * as runtime from 'runtime'
 live async fn main(): await runtime.run(runtime.id()) _main()
 ista async fn _main():
   const bare = Counter{count: 1}

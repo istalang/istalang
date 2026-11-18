@@ -4,19 +4,19 @@
 
 import * as runtime from 'runtime'
 
-shared struct Starts:
-  count: Int
+shared struct Starts { count: Int }
 ista async fn work(starts: Starts, value: Int) -> Int:
   starts->count = starts->count + 1
   await runtime.commit()
   value
-struct ColdWork:
-  starts: Starts
-  value: Int
-  type Mode = "ista"
+
+struct ColdWork { starts: Starts, value: Int, type Mode = "ista" }
 ista fn onAwait(self: ColdWork, done: Resolver<Int, "ista">):
   work(self.starts, self.value).onAwait(done)
-live async fn main() -> Int: await runtime.run(runtime.id()) _main()
+
+live async fn main() -> Int:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> Int:
   const starts = new Starts{count: 0}
   const job = ColdWork{starts: starts, value: 7}

@@ -1,10 +1,10 @@
-# error: 5914 at 22:11
-# error: 5914 at 25:17
-# error: 5914 at 28:1
-# error: 5914 at 32:1
-# error: 5101 at 41:2
-# error: 5750 at 45:1
-# error: 5751 at 48:1
+# error: 5914 at 20:46
+# error: 5914 at 22:29
+# error: 5914 at 24:1
+# error: 5914 at 27:1
+# error: 5101 at 34:2
+# error: 5750 at 37:1
+# error: 5751 at 40:1
 # Every instance's entry carries the annotations of a field and of a function, their values
 # computed once for the declaration (§3.16), so they name none of its type parameters, written or
 # reached through another; a struct declaration's annotations, which no instance carries, may, held
@@ -17,30 +17,22 @@ struct Tag<T>
 struct CheckedTag<T is Encodable>
 
 @Tag<T>
-struct Box<T>:
-  size: Int @Tag<Int>
-  item: T @Tag<T>
+struct Box<T> { size: Int @Tag<Int>, item: T @Tag<T> }
 
-enum Opt<U>:
-  Some(value: U @Tag<Array<U>>)
-  Empty
+enum Opt<U> { Some(value: U @Tag<Array<U>>), Empty }
 
 @Tag<(U, Int)>
-fn helper<U>(u: U) -> Int:
-  1
+fn helper<U>(u: U) -> Int: 1
 
 @Tag<Box<U>>
 @Tag<Int>
-fn pair<U>(u: U) -> Int:
-  2
+fn pair<U>(u: U) -> Int: 2
 
 @Tag<Int>
-fn plain<U>(u: U) -> Int:
-  3
+fn plain<U>(u: U) -> Int: 3
 
 @CheckedTag<T>
-struct Unchecked<T>:
-  item: T
+struct Unchecked<T> { item: T }
 
 @Holds<()>
 extern struct HostHandle<T>

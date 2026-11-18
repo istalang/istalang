@@ -4,41 +4,37 @@
 # any member absorbed into it, nominal and shape kept apart, T? as T | None, T?? as T?, and collapse
 # after generic substitution.
 
+import * as runtime from 'runtime'
+
 type Point = { x: Int, y: Int }
 struct Pixel { x: Int, y: Int }
 struct Chain { value: Int, rest: Chain | Int }
 
-fn asIntOrString(x: String | Int | Never | Int) -> Int | String:
-  x
+fn asIntOrString(x: String | Int | Never | Int) -> Int | String: x
 
-fn asString(x: "draft" | "sent" | String) -> String:
-  x
+fn asString(x: "draft" | "sent" | String) -> String: x
 
-fn asInt(x: 42 | -1 | 0 | Int) -> Int:
-  x
+fn asInt(x: 42 | -1 | 0 | Int) -> Int: x
 
-fn asBool(x: true | false) -> Bool:
-  x
+fn asBool(x: true | false) -> Bool: x
 
 fn asAnyStringable(x: Int | "a" | any Stringable) -> any Stringable:
   x
 
-fn collapseGeneric<T>(x: T | Int) -> T | Int:
-  x
+fn collapseGeneric<T>(x: T | Int) -> T | Int: x
 
-fn collapseOpt<T>(x: T?) -> T?:
-  x
+fn collapseOpt<T>(x: T?) -> T?: x
 
-fn doubleOpt(x: Int??) -> Int?:
-  x
+fn doubleOpt(x: Int??) -> Int?: x
 
 fn chainSum(c: Chain) -> Int:
   match c.rest:
     case Chain as next: c.value + next.value
     case Int as tail: c.value + tail
 
-import * as runtime from 'runtime'
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> String:
   const u1 = asIntOrString(42)
   const u2 = asString("hi")

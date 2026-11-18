@@ -3,21 +3,23 @@
 
 import * as runtime from 'runtime'
 
-shared struct Count:
-  value: Int
+shared struct Count { value: Int }
 ista const made = new Count{value: 0}
 ista const count = _counted()
 ista fn _counted() -> Count:
   made->value = made->value + 1
   new Count{value: 0}
+
 ista fn bump() -> Int:
   count->value = count->value + 10
   count->value
+
 live async fn main() -> (Int, Int, Int):
   const first = await runtime.run("a") _twice()
   const again = await runtime.run("a") bump()
   const other = await runtime.run("b") bump()
   (first, again, other)
+
 ista async fn _twice() -> Int:
   _ = bump()
   await runtime.commit()

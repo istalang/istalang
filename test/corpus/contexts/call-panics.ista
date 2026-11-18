@@ -5,16 +5,15 @@
 import * as runtime from 'runtime'
 import * as time from 'time'
 
-struct Order:
-  id: String
-  amount: Int
+struct Order { id: String, amount: Int }
 
 ista async fn purchase(order: Order) -> Int:
   await time.delay(1s)
   await runtime.commit()
   order.amount * 2
 
-ista async fn refund(order: Order) -> Int: panic("no refunds for " + order.id)
+ista async fn refund(order: Order) -> Int:
+  panic("no refunds for " + order.id)
 
 live async fn main() -> Int:
   const rt = await runtime.Runtime.open(runtime.hostStore())

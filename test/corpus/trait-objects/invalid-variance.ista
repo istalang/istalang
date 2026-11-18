@@ -1,25 +1,22 @@
-# error: 5001 at 30:54
-# error: 5001 at 31:63
-# error: 5001 at 32:54
-# error: 5370 at 33:32
-# error: 5101 at 34:47
+# error: 5001 at 27:54
+# error: 5001 at 29:3
+# error: 5001 at 31:54
+# error: 5370 at 32:32
+# error: 5101 at 33:47
 # A trait's variance lets an `any` type stand for another only one way (§3.10): a trait taking what
 # its argument names for a narrower one, giving it for a wider one, and one doing both for none. A
 # value meeting two instantiations that fit, neither closer, goes into neither. A type meets a trait
 # with its own functions, never through one taking a wider type (§3.10's coherence).
 
-trait Source<T>:
-  fn next(self: Self) -> T
+trait Source<T> { fn next(self: Self) -> T }
 
-trait Sink<T>:
-  fn put(self: Self, x: T) -> Int
+trait Sink<T> { fn put(self: Self, x: T) -> Int }
 
 trait Cell<T>:
   fn get(self: Self) -> T
   fn set(self: Self, x: T) -> Int
 
-trait Shown:
-  fn shown(self: Self) -> String
+trait Shown { fn shown(self: Self) -> String }
 
 struct Either { k: Int }
 
@@ -28,7 +25,9 @@ fn put(self: Either, x: Int | String) -> Int: 2
 fn shown(self: Array<Int?>) -> String: "array"
 
 fn widenSink(sink: any Sink<Int>) -> any Sink<Int?>: sink
-fn narrowSource(source: any Source<Int?>) -> any Source<Int>: source
+fn narrowSource(source: any Source<Int?>) -> any Source<Int>:
+  source
+
 fn widenCell(cell: any Cell<Int>) -> any Cell<Int?>: cell
 fn closest() -> any Sink<Int>: Either{k: 0}
 fn throughWider(xs: Array<Int>) -> any Shown: xs

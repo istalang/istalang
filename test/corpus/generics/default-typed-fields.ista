@@ -3,18 +3,15 @@
 # whose fields name the first again with its parameter whole: instantiation ends (§3.5), and the
 # default depends on nothing of its own (§3.1).
 
-enum Opt<T>:
-  Some(value: T)
-  Empty
-
-struct A<T>:
-  b = B<T>{x: 1, a: Opt.Empty}
-
-struct B<U>:
-  x: Int
-  a: Opt<A<U>>
-
 import * as runtime from 'runtime'
-live async fn main() -> Int: await runtime.run(runtime.id()) _main()
-ista async fn _main() -> Int:
-  A<String>{}.b.x
+
+enum Opt<T> { Some(value: T), Empty }
+
+struct A<T> { b = B<T>{x: 1, a: Opt.Empty} }
+
+struct B<U> { x: Int, a: Opt<A<U>> }
+
+live async fn main() -> Int:
+  await runtime.run(runtime.id()) _main()
+
+ista async fn _main() -> Int: A<String>{}.b.x

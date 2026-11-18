@@ -12,7 +12,9 @@ fn read(text: String) -> String:
     case Ok(value): `${value}`
     case Err(error): error.message
 
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> String:
   const written: Array<Mixed> = ["a", 1, true]
   `${json.stringify(written)}|${read("1")}|${read("\"a\"")}|${read("true")}|${read("2")}`

@@ -1,10 +1,12 @@
 # outcome: 1000
 # An operator on a type finds its function in the module declaring the type, though nothing
 # imports it by name (§3.13): `+` on a Time and a Duration finds `time`'s `add`.
-import * as time from 'time'
 import * as runtime from 'runtime'
+import * as time from 'time'
 
-live async fn main() -> Int: await runtime.run(runtime.id()) _main()
+live async fn main() -> Int:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> Int:
   const start = time.now()
   (start + 1s).value - start.value

@@ -4,7 +4,10 @@
 # set, and `==` that ignores that order.
 
 import * as runtime from 'runtime'
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> String:
   let m = ["a": 1, "b": 2]
   const size = m.size()
@@ -14,25 +17,24 @@ ista async fn _main() -> String:
   const seven: Int? = more.get("d")
   const removed = m.delete("d")
   let text = ""
-  for key, value in m:
-    text = text + key + "=" + value + ";"
+  for key, value in m: text = text + key + "=" + value + ";"
   let empty: Map<String, Int> = [:]
   empty["x"] = 1
   const pairs = [("b", 2), ("a", 1)]
   const parts = [
-    String(size),
-    String(more["d"]),
-    String(m.has("a")),
-    String(removed),
-    String(m.size()),
-    m.keys().join(","),
-    [for v in m.values(): String(v)].join(","),
-    text,
-    String(seven == 7),
-    String(empty.size() + 1),
-    String(["a": 1, "b": 2] == ["b": 2, "a": 1]),
-    String([...pairs, "z": 0].size()),
-    String(["a": 1] == ["a": 2]),
-    String(m.get("z") == none),
+    String(size)
+    String(more["d"])
+    String(m.has("a"))
+    String(removed)
+    String(m.size())
+    m.keys().join(",")
+    [for v in m.values(): String(v)].join(",")
+    text
+    String(seven == 7)
+    String(empty.size() + 1)
+    String(["a": 1, "b": 2] == ["b": 2, "a": 1])
+    String([...pairs, "z": 0].size())
+    String(["a": 1] == ["a": 2])
+    String(m.get("z") == none)
   ]
   parts.join(" ")

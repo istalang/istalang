@@ -4,16 +4,17 @@
 
 import * as runtime from 'runtime'
 
-shared struct Count:
-  value: Int
+shared struct Count { value: Int }
 ista const made = new Count{value: 0}
 ista const count = _counted()
 ista fn _counted() -> Count:
   made->value = made->value + 1
   new Count{value: 0}
+
 ista fn bump() -> Int:
   count->value = count->value + 10
   count->value
+
 ista const looped: Int = looped + 1
 live async fn main() -> Int: await runtime.run("a") _read()
 ista fn _read() -> Int: looped

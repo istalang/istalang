@@ -2,17 +2,18 @@
 # A `T` is wrapped into `T?` wherever an optional is expected (§2, §3.11): in a declaration, an
 # argument, a branch, a comparison and a return.
 
+import * as runtime from 'runtime'
+
 fn find(flag: Bool) -> Int?:
   if flag: 1 else: none
 
-fn orZero(value: Int?) -> Bool:
-  value == none
+fn orZero(value: Int?) -> Bool: value == none
 
-fn nested() -> Int??:
-  5
+fn nested() -> Int??: 5
 
-import * as runtime from 'runtime'
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> String:
   const maybe: Int? = 5
   String(maybe == 5) + " " + String(find(true) == 1) + " " + String(orZero(3)) + " " + String(orZero(none)) + " " + String(nested() == 5)

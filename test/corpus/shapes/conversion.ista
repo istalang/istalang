@@ -4,6 +4,8 @@
 # compile time alike. Taking an argument as it is beats converting it (§3.7), and inference sees
 # the struct's fields where a shape is expected (§3.5). The wrap into `T?` follows the conversion.
 
+import * as runtime from 'runtime'
+
 type Point = { x: Int, y: Int }
 
 struct Pixel { y: Int, x: Int }
@@ -12,28 +14,20 @@ struct Boxed<T> { value: T }
 
 const corner: Point = Pixel{y: 1, x: 2}
 
-fn norm(p: Point) -> Int:
-  p.x * p.x + p.y * p.y
+fn norm(p: Point) -> Int: p.x * p.x + p.y * p.y
 
-fn sum(p: { y: Int, x: Int }) -> Int:
-  p.x + p.y
+fn sum(p: { y: Int, x: Int }) -> Int: p.x + p.y
 
-fn pick(p: Pixel) -> String:
-  "first"
+fn pick(p: Pixel) -> String: "first"
 
-fn pick(p: Point) -> String:
-  "second"
+fn pick(p: Point) -> String: "second"
 
-fn twice<T>(p: { x: T, y: T }) -> (T, T):
-  (p.x, p.y)
+fn twice<T>(p: { x: T, y: T }) -> (T, T): (p.x, p.y)
 
-fn unwrap(b: { value: Int }) -> Int:
-  b.value
+fn unwrap(b: { value: Int }) -> Int: b.value
 
-fn maybe(p: Point?) -> Int:
-  p?.x ?? 0
+fn maybe(p: Point?) -> Int: p?.x ?? 0
 
-import * as runtime from 'runtime'
 live async fn main(): await runtime.run(runtime.id()) _main()
 ista async fn _main():
   const pixel = Pixel{x: 3, y: 4}

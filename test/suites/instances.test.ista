@@ -2,9 +2,9 @@
 # what an instance's root ends with, and a wait on an end that already happened. Each rule is its
 # own function, and its test asserts what the old runtime's unit test did.
 
-import Suite, Test, test, assertEq from 'testing'
-import * as time from 'time'
 import * as runtime from 'runtime'
+import * as time from 'time'
+import assertEq, Suite, Test, test from 'testing'
 
 ista async fn child(n: Int) -> Int:
   await time.delay(10ms)

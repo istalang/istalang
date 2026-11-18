@@ -14,5 +14,7 @@ fn catalogValue(
   total
 
 fn score(employees: Int, certifications: Int) -> Int:
-  const base = if employees < 10: 60 elif employees < 250: 40 else: 20
+  const base = if employees < 10: 60
+  elif employees < 250: 40
+  else: 20
   base - certifications * 10

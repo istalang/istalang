@@ -2,6 +2,8 @@
 # Struct literals in every form (§3.1): named, shorthand, positional, a spread update, struct{…}
 # taking the expected type or making a type of its own, and a struct without fields written bare.
 
+import * as runtime from 'runtime'
+
 struct Point { x: Int, y: Int }
 
 struct UserId { value: String }
@@ -10,17 +12,12 @@ struct Marker
 
 struct Response:
   id: String
-  data:
-    value: Int
-    result: String
+  data: { value: Int, result: String }
 
-fn pointText(p: Point) -> String:
-  "" + p.x + " " + p.y
+fn pointText(p: Point) -> String: "" + p.x + " " + p.y
 
-fn markerText(m: Marker) -> String:
-  "marked"
+fn markerText(m: Marker) -> String: "marked"
 
-import * as runtime from 'runtime'
 live async fn main(): await runtime.run(runtime.id()) _main()
 ista async fn _main():
   const x = 3
@@ -30,7 +27,10 @@ ista async fn _main():
   const id = "u-2"
   const first = UserId{"u-1"}
   const second = UserId{(id)}
-  const pair = if x > 1: struct{a: 1, b: 9} else: struct{a: 2, b: 8}
+  const pair = if x > 1: struct{a: 1, b: 9}
+  else: struct{a: 2, b: 8}
   const typed: Point = struct{x: 10, y: 20}
-  const response = Response{id: "r", data: struct{value: 2, result: "fine"}}
+  const response = Response:
+    id: "r"
+    data: struct{value: 2, result: "fine"}
   pointText(p) + " | " + pointText(moved) + " | " + first.value + " " + second.value + " | " + pair.a + " " + pair.b + " | " + pointText(typed) + " | " + response.data.value + " " + response.data.result + " | " + markerText(Marker)

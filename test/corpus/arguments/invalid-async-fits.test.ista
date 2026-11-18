@@ -24,7 +24,7 @@ ista fn main():
   const twice: ista async fn() -> Future<Int, "ista"> = later
   const xs: Array<(ista async fn() -> Int) | String> = [later]
   const ys: Array<(ista async fn() -> Future<Int, "ista">) | String> = xs
-  const disagreeing: ista async fn(Int) -> Int = fn(x): {
+  const disagreeing: ista async fn(Int) -> Int = fn x: {
     if x > 0: return "wrong"
     1
   }

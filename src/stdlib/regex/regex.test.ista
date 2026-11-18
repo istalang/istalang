@@ -1,11 +1,10 @@
 # The regex module (spec §3.8). Positions count code points, so the groups that give one check a
 # string holding a code point beyond UTF-16's first plane ("😀" is one code point, two UTF-16 units).
 
-import Suite, Test, test, group, assert, assertEq, expectPanic from 'testing'
-import Regex, Match from 'regex'
-import * as regex from 'regex'
 import * as json from 'json'
+import * as regex, Match, Regex from 'regex'
 import repeat from 'strings'
+import assert, assertEq, expectPanic, group, Suite, Test, test from 'testing'
 
 # Whether `pattern` parses: its Err's message, or "ok".
 fn parsed(pattern: String) -> String:
@@ -13,7 +12,8 @@ fn parsed(pattern: String) -> String:
     case Ok(...): "ok"
     case Err(error): error.message
 
-fn date() -> Regex: Regex{"(?P<year>\\d{4})-(?P<month>\\d{2})(-(?P<day>\\d{2}))?"}
+fn date() -> Regex:
+  Regex{"(?P<year>\\d{4})-(?P<month>\\d{2})(-(?P<day>\\d{2}))?"}
 
 @Suite{"regex"}
 fn suite() -> Array<Test>: [
@@ -94,13 +94,21 @@ fn suite() -> Array<Test>: [
       assertEq(Regex{"x"}.replaceAll("foo", "0"), "foo")
     })
     test("a replacement expands groups as JavaScript's does", fn(): {
-      assertEq(Regex{"(\\w)(\\w)"}.replaceAll("ab cd", "$2$1"), "ba dc")
+      assertEq(
+        Regex{"(\\w)(\\w)"}.replaceAll("ab cd", "$2$1")
+        "ba dc"
+      )
       assertEq(date().replace("on 2026-10", "$<month>/$<year>"), "on 10/2026")
       assertEq(Regex{"b"}.replace("abc", "[$&]"), "a[b]c")
       assertEq(Regex{"b"}.replace("abc", "$$"), "a$c")
     })
     test("split cuts around each match, keeping empty pieces", fn(): {
-      assertEq(Regex{",\\s*"}.split("a, b,c,"), ["a", "b", "c", ""])
+      assertEq(Regex{",\\s*"}.split("a, b,c,"), [
+        "a"
+        "b"
+        "c"
+        ""
+      ])
       assertEq(Regex{","}.split(",a,,b"), ["", "a", "", "b"])
       assertEq(Regex{"x"}.split("abc"), ["abc"])
     })

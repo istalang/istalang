@@ -4,9 +4,7 @@
 
 import * as runtime from 'runtime'
 
-shared struct Lease:
-  name: String
-  log: Shared<Array<String>>
+shared struct Lease { name: String, log: Shared<Array<String>> }
 
 fn dispose(self: Lease):
   self->log->value.push("disposed " + self->name)
@@ -23,12 +21,14 @@ fn dispose(self: Outer) -> Unit:
   _ = taken
   log->value.push("outer body")
 
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
 
 ista async fn _main() -> String:
   const log = new Shared<Array<String>>{value: []}
   if true:
-    const box = new Shared<Lease?>{value: new Lease{name: "local", log}}
+    const box = new Shared<Lease?>:
+      value: new Lease{name: "local", log}
     const outer = new Outer{log, box}
     const child = new Lease{name: "child", log}
     outer->child = child

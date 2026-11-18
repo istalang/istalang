@@ -2,9 +2,11 @@
 # A step of 0 would reach its start forever, a bug in the program (§3.8).
 
 import * as runtime from 'runtime'
-live async fn main() -> Int: await runtime.run(runtime.id()) _main()
+
+live async fn main() -> Int:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> Int:
   let total = 0
-  for i in 0..5 by 0:
-    total += i
+  for i in 0..5 by 0: total += i
   total

@@ -1,15 +1,14 @@
 # outcome: {"each":"6.63","total":"19.9"}
 # A Decimal crosses to the host as the JSON string of its text (§9), here in a struct outcome.
 
-import Decimal from 'decimal'
-import * as decimal from 'decimal'
+import * as decimal, Decimal from 'decimal'
 import * as runtime from 'runtime'
 
-struct Split:
-  total: Decimal
-  each: Decimal
+struct Split { total: Decimal, each: Decimal }
 
-live async fn main() -> Split: await runtime.run(runtime.id()) _main()
+live async fn main() -> Split:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> Split:
   const total = Decimal(1990) / 100
   Split{total, each: decimal.divide(total, 3, 2)}

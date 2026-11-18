@@ -1,11 +1,13 @@
-# error: 5308 at 29:17
-# error: 5308 at 30:23
-# error: 5308 at 31:18
-# error: 5308 at 32:23
+# error: 5308 at 28:17
+# error: 5308 at 29:23
+# error: 5308 at 30:18
+# error: 5308 at 31:23
 # An element passed by `&` is a copy for its call (§3.7), so no call may take two places of one
 # variable by `&` when either reaches through an element: two elements, two parts of one element,
 # a container and its element, or an element and its own container as `&self`. Places of different
 # variables, and one variable twice without elements, are fine.
+
+import * as runtime from 'runtime'
 
 struct Point { x: Int, y: Int }
 
@@ -14,13 +16,10 @@ fn swap(first: &Int, second: &Int):
   first = second
   second = kept
 
-fn keep(points: &Array<Point>, x: &Int):
-  x = points.length()
+fn keep(points: &Array<Point>, x: &Int): x = points.length()
 
-fn copyFrom(self: &Point, other: &Int):
-  self.x = other
+fn copyFrom(self: &Point, other: &Int): self.x = other
 
-import * as runtime from 'runtime'
 live async fn main(): await runtime.run(runtime.id()) _main()
 ista async fn _main():
   let xs = [1, 2]

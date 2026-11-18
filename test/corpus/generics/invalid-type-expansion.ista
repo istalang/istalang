@@ -1,16 +1,18 @@
-# error: 5125 at 18:3
-# error: 5125 at 23:19
-# error: 5125 at 28:3
-# error: 5125 at 31:3
+# error: 5125 at 20:3
+# error: 5125 at 25:19
+# error: 5125 at 28:18
+# error: 5125 at 30:25
+# error: 5125 at 61:3
 # error: 5125 at 62:3
 # error: 5125 at 63:3
 # error: 5125 at 64:3
 # error: 5125 at 65:3
-# error: 5125 at 66:3
 # A generic type is compiled per instantiation, so one that refers to itself, directly or through
 # others, with a type argument built from its own would need endlessly many of them (§3.5): it is
 # reported at the field that grows the argument. A field that passes its parameter on whole, or
 # reaches the type again only through other parameters, ends.
+
+import * as runtime from 'runtime'
 
 struct Wrapped<T>:
   value: T
@@ -22,13 +24,10 @@ enum Chain<T>:
   Link(head: T, tail: Chain<T>)
   Deeper(head: T, tail: Chain<Array<T>>)
 
-struct Ping<T>:
-  pong: Pong<T>?
-struct Pong<T>:
-  ping: Ping<Array<T>>?
+struct Ping<T> { pong: Pong<T>? }
+struct Pong<T> { ping: Ping<Array<T>>? }
 
-shared struct Cell<T>:
-  inner: Cell<(T, T)>?
+shared struct Cell<T> { inner: Cell<(T, T)>? }
 
 struct Tree<T>:
   value: T
@@ -38,14 +37,14 @@ struct Tree<T>:
 fn made() -> Wrapped<Int>:
   Wrapped<Int>{value: 1, next: none, grows: none}
 
-fn bare() -> Chain<Int>:
-  Deeper(head: 1, tail: End)
+fn bare() -> Chain<Int>: Deeper(head: 1, tail: End)
 
 fn qualified() -> Chain<Int>:
   Chain.Deeper(head: 1, tail: Chain.End)
 
-import * as runtime from 'runtime'
-live async fn main() -> Int: await runtime.run(runtime.id()) _main()
+live async fn main() -> Int:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> Int:
   made()
   Tree<Int>{value: 1, children: [], pairs: []}.value
@@ -66,4 +65,10 @@ struct Endless<T>:
   nested: fn(Endless<(T,)>) -> Int
 
 fn endless() -> Endless<Int>:
-  Endless<Int>{items: [], entries: [:], marker: Marker, named: scaled, nested: fn(x): 0}
+  Endless<Int>{
+    items: []
+    entries: [:]
+    marker: Marker
+    named: scaled
+    nested: fn x: 0
+  }

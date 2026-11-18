@@ -31,10 +31,9 @@
 #   once it reaches `delegate`, as its job server (`_jobServer`), so one that never does lowers
 #   none of it.
 
+import * as json, Decodable, Encodable, Json from 'json'
 import resultOfEnding from 'endings'
 import Inbox from 'inbox'
-import Decodable, Encodable, Json from 'json'
-import * as json from 'json'
 
 # The instance's name: a context's key, or what its parent's spawn made it; a live run's, as its
 # host started it (§9).
@@ -48,7 +47,8 @@ extern ista fn commit() -> Future<Unit, "ista">
 # Runs `f` as an instance of its own and waits for its end (§9): `f`'s result, or its panic as an
 # `Err`. The panic also terminates that instance at once, disposing what it holds, so no operator
 # has to.
-ista fn isolate<T is Sendable>(f: sendable ista async fn() -> T) -> Future<Result<T>, "ista">: _isolated(f).result()
+ista fn isolate<T is Sendable>(f: sendable ista async fn() -> T) -> Future<Result<T>, "ista">:
+  _isolated(f).result()
 
 # Spawns `f` as an instance a panic terminates at once.
 extern ista fn _isolated<T>(f: sendable ista async fn() -> T) -> Instance<T>
@@ -68,12 +68,15 @@ shared struct Runtime:
 live async fn Runtime.open(store: Store) -> Runtime:
   const host = await _Runtime.open(store)
   const servers = _jobServer()
-  new Runtime{_host: host, _serving: if servers.length() == 1: servers[0](host) else: none}
+  new Runtime{
+    _host: host
+    _serving: if servers.length() == 1: servers[0](host)
+    else: none
+  }
 
 # Stops serving jobs first, so the loop never calls into a runtime that has stopped; the host's
 # runtime, released next, stops the rest.
-live fn dispose(self: Runtime):
-  self->_serving = none
+live fn dispose(self: Runtime): self->_serving = none
 
 # The runtime itself, which the host holds: disposing it stops the work in its store.
 extern live struct _Runtime
@@ -95,13 +98,19 @@ struct Call<R>:
   result: Future<Result<R>, "live">
   type Mode = "live"
 
-live fn onAwait<R>(self: Call<R>, done: Resolver<Result<R>, "live">): self.result.onAwait(done)
+live fn onAwait<R>(self: Call<R>, done: Resolver<Result<R>, "live">):
+  self.result.onAwait(done)
 
 # Runs `f` in the context named `key`, made if new (§9). Every call starts a new invocation, which
 # releasing the `Call` doesn't cancel, and what crosses into the context and back is sendable. A
 # key holds no `/`, which only spawned instances' names do, so no key names one of them.
-live fn call<R is Sendable>(self: Runtime, key: String, f: sendable ista async fn() -> R) -> Call<R>:
-  if "/" in key: panic("A context's key '" + key + "' holds a '/', which only spawned instances' names do (§9).")
+live fn call<R is Sendable>(
+  self: Runtime
+  key: String
+  f: sendable ista async fn() -> R
+) -> Call<R>:
+  if "/" in key:
+    panic("A context's key '" + key + "' holds a '/', which only spawned instances' names do (§9).")
   Call<R>{result: _call(self->_host, key, f)}
 
 live async fn _call<R is Sendable>(
@@ -147,9 +156,13 @@ extern fn _raise(error: Error) -> Never
 
 # Runs `job` as live code after the commit (§5), and again under the same key until its result
 # commits; a segment discarded runs it never, nor does one letting go of its future (§7).
-ista fn delegate<R is Encodable & Decodable>(job: sendable live async fn() -> R) -> Future<R, "ista">:
+ista fn delegate<R is Encodable & Decodable>(
+  job: sendable live async fn() -> R
+) -> Future<R, "ista">:
   const jobs = _jobs
-  const queued = _Job{number: jobs->count, run: live async fn() -> Json: json.encode(await job())}
+  const queued = _Job:
+    number: jobs->count
+    run: live async fn() -> Json: json.encode(await job())
   const result = Slot.create<Json>()
   jobs->unanswered[queued.number] = result
   jobs->count += 1
@@ -167,15 +180,11 @@ ista async fn _decoded<R is Decodable>(number: Int, result: Slot<Json>) -> R:
     case Ok(value): value
     case Err(error): _raise(error)
 
-struct _Job:
-  number: Int
-  run: sendable live async fn() -> Json
+struct _Job { number: Int, run: sendable live async fn() -> Json }
 
 # What the loop serving an instance's jobs does next: run a job, or let go of one it runs, which
 # cancels it unless it has ended.
-enum _Work:
-  Run(job: _Job)
-  Release(number: Int)
+enum _Work { Run(job: _Job), Release(number: Int) }
 
 shared struct _Jobs:
   queue: Inbox<_Work> = Inbox.create<_Work>()
@@ -197,8 +206,7 @@ ista fn _takeOver() -> Int:
   drop jobs->takenOver.put(())
   jobs->takenOver = Slot.create<Unit>()
   jobs->server += 1
-  for job in jobs->taken.values():
-    jobs->queue.send(Run(job))
+  for job in jobs->taken.values(): jobs->queue.send(Run(job))
   jobs->taken = [:]
   jobs->server
 
@@ -218,8 +226,7 @@ ista async fn _nextWork(server: Int) -> _Work?:
         if jobs->unanswered.has(job.number):
           jobs->taken[job.number] = job
           return work
-      else:
-        return work
+      else: return work
   none
 
 # Ends job `number`, answered or withdrawn: it leaves the unanswered, and the loop that took it is
@@ -227,8 +234,7 @@ ista async fn _nextWork(server: Int) -> _Work?:
 ista fn _release(number: Int):
   const jobs = _jobs
   drop jobs->unanswered.delete(number)
-  if jobs->taken.delete(number):
-    jobs->queue.send(Release(number))
+  if jobs->taken.delete(number): jobs->queue.send(Release(number))
 
 # Answers job `number` with `result`, unless it was answered or withdrawn already.
 ista fn _reply(number: Int, result: Json):
@@ -253,8 +259,7 @@ live async fn _serveInstance(host: _Runtime, key: String):
       match work:
         case Run(job):
           running[job.number] = _runJob(host, key, job)
-        case Release(number):
-          drop running.delete(number)
+        case Release(number): drop running.delete(number)
 
 # Runs `job` and replies with its result, which has its loop let go of it.
 live async fn _runJob(host: _Runtime, key: String, job: _Job):

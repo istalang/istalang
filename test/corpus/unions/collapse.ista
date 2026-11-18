@@ -3,6 +3,8 @@
 # a member that is the one type left takes every value, a literal merged into its base compares,
 # and a union collapsing partly keeps the members left apart.
 
+import * as runtime from 'runtime'
+
 struct Box<V> { value: V }
 
 fn collapsed<T>(x: T | Int) -> String:
@@ -31,8 +33,9 @@ fn partly<T>(x: T | Int | String) -> String:
     case Int | String as v: `both:${v}`
     case _: "other"
 
-import * as runtime from 'runtime'
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> String:
   const p1 = `${collapsed<Int>(7)}|${boxed<Int>(Box{value: 7})}`
   const p2 = `${collapsed<String>("a")}|${boxed<String>(Box{value: "s"})}`

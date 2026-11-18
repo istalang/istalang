@@ -5,18 +5,17 @@
 
 import * as runtime from 'runtime'
 
-struct Node:
-  items: Array<Node>
-  tag: Int
+struct Node { items: Array<Node>, tag: Int }
 
-struct Holder:
-  a: Node
+struct Holder { a: Node }
 
 fn selfPush(items: &Array<Node>, a: &Node):
   items.push(a)
   a.tag = 99
 
-live async fn main() -> Array<Int>: await runtime.run(runtime.id()) _main()
+live async fn main() -> Array<Int>:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> Array<Int>:
   let xs = [10, 20, 30]
   xs.push(40)

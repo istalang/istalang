@@ -1,24 +1,21 @@
 # outcome: ["email a","none",true,"x/x"]
 # `any T?` is `(any T)?`, and the traits of an `any` type are a set whose order doesn't matter (§3.10).
 
-trait Named:
-  fn name(self: Self) -> String
+import * as runtime from 'runtime'
 
-trait Tagged:
-  fn tag(self: Self) -> String
+trait Named { fn name(self: Self) -> String }
+
+trait Tagged { fn tag(self: Self) -> String }
 
 struct Email { to: String }
 
 fn name(self: Email) -> String: "email " + self.to
 fn tag(self: Email) -> String: "x"
 
-fn first(x: any Named?) -> String:
-  x?.name() ?? "none"
+fn first(x: any Named?) -> String: x?.name() ?? "none"
 
-fn flip(x: any Tagged & Named) -> any Named & Tagged:
-  x
+fn flip(x: any Tagged & Named) -> any Named & Tagged: x
 
-import * as runtime from 'runtime'
 live async fn main(): await runtime.run(runtime.id()) _main()
 ista async fn _main():
   const some: any Named? = Email{to: "a"}

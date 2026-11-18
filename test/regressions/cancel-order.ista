@@ -5,10 +5,10 @@
 
 import * as time from 'time'
 
-struct Cold:
-  value: Int
+struct Cold { value: Int }
 
-live fn onAwait(self: Cold, done: Resolver<Int, "live">): done.resolve(self.value)
+live fn onAwait(self: Cold, done: Resolver<Int, "live">):
+  done.resolve(self.value)
 
 struct Keep:
   events: Shared<Array<String>>
@@ -37,8 +37,10 @@ live async fn resolving(
 
 live async fn main() -> String:
   const events: Shared<Array<String>> = new Shared{value: []}
-  const gate: Shared<Array<Resolver<Int, "live">>> = new Shared{value: []}
-  const kept: Shared<Array<Resolver<Int, "live">>> = new Shared{value: []}
+  const gate: Shared<Array<Resolver<Int, "live">>> = new Shared:
+    value: []
+  const kept: Shared<Array<Resolver<Int, "live">>> = new Shared:
+    value: []
   _ = waiting(events, gate)
   _ = resolving(gate, kept)
   const cold = Cold{value: 4}

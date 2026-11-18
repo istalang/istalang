@@ -1,15 +1,12 @@
 # The decimal module (spec §3.8), as tables of cases: canonical text, exact arithmetic, rounding
 # to places in every mode, the division operators, powers, and the traits a Decimal meets.
 
-import Suite, Test, test, group, assert, assertEq, expectPanic from 'testing'
+import * as decimal, Decimal from 'decimal'
 import * as json from 'json'
-import * as math from 'math'
-import Rounding from 'math'
-import Decimal from 'decimal'
-import * as decimal from 'decimal'
+import * as math, Rounding from 'math'
+import assert, assertEq, expectPanic, group, Suite, Test, test from 'testing'
 
-struct Invoice:
-  total: Decimal
+struct Invoice { total: Decimal }
 
 # The number `text` writes; a test's own text is always one.
 fn d(text: String) -> Decimal:
@@ -191,7 +188,8 @@ fn suite() -> Array<Test>: [
   ])
   group("rounding", [
     test("round goes to places in every mode", fn(): {
-      for mode, expected in roundings(): assertEq(rounded(mode), expected)
+      for mode, expected in roundings():
+        assertEq(rounded(mode), expected)
     })
     test("round goes to a whole number, half to even, when given nothing", fn(): {
       assertEq([String(d("2.5").round()), String(d("3.5").round()), String(d("-2.5").round())], [
@@ -278,7 +276,10 @@ fn suite() -> Array<Test>: [
       assertEq(textOf(parsed<Decimal>("2.50")), "2.5")
     })
     test("crosses as JSON as its text", fn(): {
-      assertEq(json.stringify(Invoice{total: d("19.90")}), "{\"total\":\"19.9\"}")
+      assertEq(
+        json.stringify(Invoice{total: d("19.90")})
+        "{\"total\":\"19.9\"}"
+      )
       match json.parse<Invoice>("{\"total\":\"0.10\"}"):
         case Ok(value): assert(value.total == d("0.1"))
         case Err(error): panic(error.message)

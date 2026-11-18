@@ -3,36 +3,26 @@
 # `only` would skip every other test of the run, the whole standard library's, so the focus the
 # constructors give is read from the tests they build; the runner's own tests run focused tests.
 
-import (
-  Suite
-  Test
-  test
-  group
-  skip
-  only
-  Setup
-  setups
-  assert
-  assertEq
-  expectPanic
-) from 'testing'
-import FakeClock, FakeQueue, FakeReceipts, withClock, mock, handle, idle, state from 'testing'
-import * as testing from 'testing'
+import * as json, Decodable, Encodable from 'json'
 import * as runtime from 'runtime'
-import * as time from 'time'
-import Time, Duration from 'time'
-import Encodable, Decodable from 'json'
-import * as json from 'json'
+import * as time, Duration, Time from 'time'
+import (
+  * as testing
+  assert, assertEq, expectPanic, FakeClock, FakeQueue
+  FakeReceipts, group, handle, idle, mock, only, Setup, setups
+  skip, state, Suite, Test, test, withClock
+) from 'testing'
 
 extern sendable struct Queue<T is Sendable>
 extern shared struct Sent
 extern fn send<T is Encodable>(self: Queue<T>, msg: T)
 # The program's own ista read of a queue, which a test mocks; the host's is live (§10).
-ista async fn receive<T is Sendable>(self: Queue<T>) -> T: panic("reached the host")
+ista async fn receive<T is Sendable>(self: Queue<T>) -> T:
+  panic("reached the host")
+
 extern fn queueOf(name: String) -> Queue<Int>
 
-shared struct Log:
-  lines: Array<String> = []
+shared struct Log { lines: Array<String> = [] }
 
 # A setup handing `value` to its test, logging around it in `log`.
 fn logged(log: Log, value: Int) -> Setup<Int>:
@@ -42,16 +32,21 @@ fn logged(log: Log, value: Int) -> Setup<Int>:
     log->lines.push("tear down " + value)
   }
 
-ista async fn withFortyOne(body: ista async fn(Int) -> Unit): await body(41)
+ista async fn withFortyOne(body: ista async fn(Int) -> Unit):
+  await body(41)
 
 # The title and marks of `entry`, as the runner reads them.
 fn described(entry: Test) -> String:
   match entry:
-    case Case(title, _, skipped, only): marked(title, skipped, only)
-    case Group(title, _, skipped, only): marked(title, skipped, only)
+    case Case(title, _, skipped, only):
+      marked(title, skipped, only)
+    case Group(title, _, skipped, only):
+      marked(title, skipped, only)
 
 fn marked(title: String, skipped: Bool, only: Bool) -> String:
-  title + (if skipped: " skipped" else: "") + (if only: " only" else: "")
+  title + (if skipped: " skipped" else: "") + (
+    if only: " only" else: ""
+  )
 
 ista async fn panicsLater() -> Unit:
   await time.delay(Duration{value: 0})
@@ -65,7 +60,10 @@ ista async fn waitsThenRecords(name: String, deadline: Int):
 
 # Which of two deadlines its select took: the case written first wins when both pass together.
 ista async fn racesDeadlines(first: Int, second: Int) -> String:
-  const (atFirst, atSecond) = (time.at(Time{value: first}), time.at(Time{value: second}))
+  const (atFirst, atSecond) = (
+    time.at(Time{value: first})
+    time.at(Time{value: second})
+  )
   await select:
     case atSecond: "second"
     case atFirst: "first"
@@ -87,9 +85,12 @@ ista async fn relays(name: String) -> Int:
 @Suite{"testing › tests"}
 fn tests() -> Array<Test>: [
   test("run a plain body", fn(): assert(true))
-  test("run an async body", async fn(): await time.delay(Duration{value: 0}))
-  test("hand a setup's environment to a plain body", withFortyOne, fn(n): assertEq(n, 41))
-  test("hand a setup's environment to an async body", withFortyOne, async fn(n): assertEq(n, 41))
+  test(
+    "run an async body"
+    async fn(): await time.delay(Duration{value: 0})
+  )
+  test("hand a setup's environment to a plain body", withFortyOne, fn n: assertEq(n, 41))
+  test("hand a setup's environment to an async body", withFortyOne, async fn n: assertEq(n, 41))
   test("are marked by skip and only, as are groups, each mark kept", fn(): {
     const plain = test("t", fn(): ())
     assertEq(described(plain), "t")
@@ -148,13 +149,18 @@ fn assertions() -> Array<Test>: [
 ]
 
 fn pair() -> Int: 0
-fn many(a: Int, b: Int, c: Int, d: Int, e: Int, f: Int, g: Int, h: String) -> String: h
+fn many(a: Int, b: Int, c: Int, d: Int, e: Int, f: Int, g: Int, h: String) -> String:
+  h
+
 ista async fn later(a: Int) -> Int: a
-fn scaled(n: Int, by: Int = 10, offset: Int = n) -> Int: n * by + offset
+fn scaled(n: Int, by: Int = 10, offset: Int = n) -> Int:
+  n * by + offset
+
 ista async fn scaledLater(n: Int, by: Int = 10) -> Int: n * by
-struct Cents:
-  value: Int
-fn toJson(self: Cents, scale: Int = 2) -> json.Json: json.encodeText(String(self.value * scale))
+struct Cents { value: Int }
+fn toJson(self: Cents, scale: Int = 2) -> json.Json:
+  json.encodeText(String(self.value * scale))
+
 fn cents() -> Cents: Cents{value: 5}
 
 @Suite{"testing › mock"}
@@ -198,7 +204,10 @@ fn mocks() -> Array<Test>: [
     "fills the defaults of the encoder the runtime calls for an instance's outcome"
     async fn(): {
       const m = mock(toJson, fn(self: Cents, scale: Int) -> json.Json: json.encodeText("mocked"))
-      assertEq(await (spawn cents()).result(), Ok(Cents{value: 5}))
+      assertEq(
+        await (spawn cents()).result()
+        Ok(Cents{value: 5})
+      )
       assertEq(m.calls(), [(Cents{value: 5}, 2)])
     }
   )
@@ -225,17 +234,19 @@ ista fn clocks() -> Array<Test>: [
     hold _ = mock(replacement: clock.now, target: time.now)
     assertEq(time.now(), Time{value: 5})
   })
-  test("fills a deadline once advanced to it, in an instance the test started", withClock, async fn(
-    clock
-  ): {
-    const started = spawn waitsAday()
-    await started.idle()
-    clock.advance(Duration{value: 86_399_999})
-    await started.idle()
-    assert(started.state() is Waiting)
-    clock.advance(Duration{value: 1})
-    assertEq(await started.result(), Ok(86_400_000))
-  })
+  test(
+    "fills a deadline once advanced to it, in an instance the test started"
+    withClock
+    async fn clock: {
+      const started = spawn waitsAday()
+      await started.idle()
+      clock.advance(Duration{value: 86_399_999})
+      await started.idle()
+      assert(started.state() is Waiting)
+      clock.advance(Duration{value: 1})
+      assertEq(await started.result(), Ok(86_400_000))
+    }
+  )
   test("fills deadlines earliest first, ties in the order they were set", async fn(): {
     const clock = FakeClock{start: Time{value: 0}}
     hold _ = mock(time.at, clock.at)
@@ -254,12 +265,16 @@ ista fn clocks() -> Array<Test>: [
     ])
     assertEq(records.calls(), [("first",), ("second",), ("late",)])
   })
-  test("passes the deadlines due at one instant together, in the order they were set", withClock, async fn(clock): {
-    const racing = racesDeadlines(1, 1)
-    await runtime.commit()
-    clock.advance(Duration{value: 1})
-    assertEq(await racing, "first")
-  })
+  test(
+    "passes the deadlines due at one instant together, in the order they were set"
+    withClock
+    async fn clock: {
+      const racing = racesDeadlines(1, 1)
+      await runtime.commit()
+      clock.advance(Duration{value: 1})
+      assertEq(await racing, "first")
+    }
+  )
   test("resolves a deadline already reached at once", async fn(): {
     const clock = FakeClock{start: Time{value: 5}}
     hold _ = mock(time.at, clock.at)
@@ -268,9 +283,16 @@ ista fn clocks() -> Array<Test>: [
   })
   test("panics when advanced by a negative duration", async fn(): {
     const message = await expectPanic(
-      fn(): FakeClock{start: Time{value: 0}}.advance(Duration{value: -1})
+      fn(): FakeClock{start: Time{value: 0}}.advance(
+        Duration{value: -1}
+      )
     )
-    assertEq(message, "A fake clock only moves forward, not by " + Duration{value: -1} + ".")
+    assertEq(
+      message
+      "A fake clock only moves forward, not by " +
+        Duration{value: -1} +
+        "."
+    )
   })
 ]
 

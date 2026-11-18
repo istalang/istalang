@@ -1,14 +1,15 @@
 # Inspecting an instance shows how it stands and where each execution waits (§9): a parent waiting
 # on its 1ms delay, and a child spawned but not yet run, ready and waiting nowhere. Each child runs
 # on its own snapshot, named after its parent, to its own outcome.
-import * as time from 'time'
 import * as runtime from 'runtime'
+import * as time from 'time'
 
 ista async fn child(n: Int) -> Int:
   await time.delay(10ms)
   n * 2
 
-live async fn main() -> Int: await runtime.run(runtime.id()) _main()
+live async fn main() -> Int:
+  await runtime.run(runtime.id()) _main()
 
 ista async fn _main() -> Int:
   spawn child(1)

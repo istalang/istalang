@@ -4,28 +4,22 @@
 # variant's fields have defaults too, a generic struct's default meets the constraints its literal
 # meets, and a constant computes a default that compile time can.
 
+import * as runtime from 'runtime'
+
 struct Retry:
   times: Int = 3
   backoff = times * 2
   limit: Int = backoff + times
 
-struct Box<T is Default>:
-  items: T = T.default()
-  size: Int
+struct Box<T is Default> { items: T = T.default(), size: Int }
 
-enum Shape:
-  Circle(r: Float = 1.5)
-  Square(side: Int)
+enum Shape { Circle(r: Float = 1.5), Square(side: Int) }
 
-struct Limits:
-  low: Int = 1
-  high: Int = 10
+struct Limits { low: Int = 1, high: Int = 10 }
 
 const wide = Limits{high: 100}
 
-struct Holder<T>:
-  items: Array<T> = []
-  label: String = "held"
+struct Holder<T> { items: Array<T> = [], label: String = "held" }
 
 const holder = Holder<Int>{}
 
@@ -34,8 +28,9 @@ fn radius(shape: Shape) -> Float:
     case Circle(r): r
     case Square(side): Float(side) / 2.0
 
-import * as runtime from 'runtime'
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> String:
   const plain = Retry{}
   const spread = Retry{...plain, times: 10}

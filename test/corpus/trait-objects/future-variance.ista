@@ -2,21 +2,25 @@
 # A trait whose function gives a future varies in what the future gives, whether the function is
 # async or a plain one giving a future, one type (§3.5, §3.14): a call through the `any` type
 # a wider argument stands for awaits the future and converts its value.
+import * as runtime from 'runtime'
+
 trait Started<T>:
   ista fn started(self: Self) -> Future<T, "ista">
 
-trait Later<T>:
-  ista async fn later(self: Self) -> T
+trait Later<T> { ista async fn later(self: Self) -> T }
 
 struct Counter { n: Int }
 
 ista async fn bumped(n: Int) -> Int: n + 1
 
-ista fn started(self: Counter) -> Future<Int, "ista">: bumped(self.n)
+ista fn started(self: Counter) -> Future<Int, "ista">:
+  bumped(self.n)
+
 ista async fn later(self: Counter) -> Int: self.n + 3
 
-import * as runtime from 'runtime'
-live async fn main() -> Array<Int?>: await runtime.run(runtime.id()) _main()
+live async fn main() -> Array<Int?>:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> Array<Int?>:
   const counter: any Started<Int?> = Counter{n: 1}
   const later: any Later<Int?> = Counter{n: 1}

@@ -7,8 +7,7 @@
 
 import * as json from 'json'
 
-struct Regex:
-  pattern: String
+struct Regex { pattern: String }
 
 # One match: the text matched, where it starts, and what each capture group took. Group `n` is
 # `captures[n - 1]`, none when it took no part; `named` holds the named groups that took part.
@@ -21,7 +20,8 @@ struct Match:
 fn Regex.parse(text: String) -> Result<Regex>:
   const problem = Regex._problem(text)
   if problem == "": Ok(Regex{pattern: text})
-  else: Err(Error.unparsed(text, "a regular expression (" + problem + ")"))
+  else:
+    Err(Error.unparsed(text, "a regular expression (" + problem + ")"))
 
 # What is wrong with `text` as a pattern; `""` for a valid one.
 extern fn Regex._problem(text: String) -> String
@@ -30,7 +30,8 @@ fn toString(self: Regex) -> String: self.pattern
 
 fn toJson(self: Regex) -> json.Json: json.encodeText(self)
 
-fn Regex.fromJson(value: json.Json, path: String) -> Result<Regex>: json.decodeText(value, path)
+fn Regex.fromJson(value: json.Json, path: String) -> Result<Regex>:
+  json.decodeText(value, path)
 
 # Whether the regex matches anywhere in `s`.
 extern fn test(self: Regex, s: String) -> Bool
@@ -50,10 +51,13 @@ struct _Found:
 
 fn _match(found: _Found) -> Match:
   Match{
-    text: found.text,
-    index: found.index,
-    captures: [for each in found.captures: if each.length() == 1: each[0] else: none],
-    named: found.named,
+    text: found.text
+    index: found.index
+    captures: [
+      for each in found.captures: if each.length() == 1: each[0]
+      else: none
+    ]
+    named: found.named
   }
 
 # The first `count` matches in `s`, in the order they occur; every one for a negative `count`.

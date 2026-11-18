@@ -1,9 +1,8 @@
 # The crypto module (spec §3.8), against published test vectors: FIPS 180's for SHA, RFC 4231's
 # and RFC 2202's for HMAC, and RFC 4648's for the encodings.
 
-import Suite, Test, test, group, assert, assertEq from 'testing'
-import * as crypto from 'crypto'
-import Hash, Encoding from 'crypto'
+import * as crypto, Encoding, Hash from 'crypto'
+import assert, assertEq, group, Suite, Test, test from 'testing'
 
 const jefe = "Jefe"
 const jefeData = "what do ya want for nothing?"

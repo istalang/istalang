@@ -23,7 +23,8 @@ struct _Link<M>:
 
 ista fn create<M>() -> Bus<M>: new Bus<M>{}
 
-ista fn send<M>(self: Bus<M>, message: M): drop _publish(self, message)
+ista fn send<M>(self: Bus<M>, message: M):
+  drop _publish(self, message)
 
 # Sends `message`, retracted from every subscriber that hasn't read it when the holder is released.
 ista fn sendRevertible<M>(self: Bus<M>, message: M) -> Revertible<M>:

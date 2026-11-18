@@ -1,32 +1,27 @@
-# error: 5640 at 34:9
-# error: 5643 at 36:14
-# error: 5644 at 38:9
-# error: 5644 at 39:18
-# error: 5644 at 40:13
+# error: 5640 at 29:9
+# error: 5643 at 31:14
+# error: 5644 at 33:9
+# error: 5644 at 34:18
+# error: 5644 at 35:13
 # spawn (§9) takes a sendable function giving the new instance's outcome, which a deferred call
 # gives it (§3.14): `spawn` of no call gives nothing to run. What the call computes now is copied
 # into the new instance, so it can't pass a reference, nor capture anything unsendable, a value of a
 # plain function type or a receiver included. An extern and a function a constraint requires are
 # called in the new instance as anywhere.
 
-import Inbox from 'inbox'
-import * as time from 'time'
 import * as runtime from 'runtime'
+import * as time from 'time'
+import Inbox from 'inbox'
 
-struct Job:
-  box: Inbox<Int>
+struct Job { box: Inbox<Int> }
 
-struct Id:
-  value: Int
+struct Id { value: Int }
 
-fn bump(n: &Int):
-  n += 1
+fn bump(n: &Int): n += 1
 
-ista fn run(self: Job) -> Int:
-  1
+ista fn run(self: Job) -> Int: 1
 
-fn show(self: Id) -> Int:
-  self.value
+fn show(self: Id) -> Int: self.value
 
 live async fn main(): await runtime.run(runtime.id()) _main()
 ista async fn _main():
@@ -39,8 +34,6 @@ ista async fn _main():
   spawn takesBox(Inbox.create<Int>())
   _ = spawn Job{box: Inbox.create<Int>()}.run()
 
-ista fn doubled<T is Addable & Sendable>(x: T):
-  spawn add(x, x)
+ista fn doubled<T is Addable & Sendable>(x: T): spawn add(x, x)
 
-ista fn takesBox(box: Inbox<Int>):
-  _ = box
+ista fn takesBox(box: Inbox<Int>): _ = box

@@ -33,7 +33,8 @@ extern fn encode(text: String, encoding: Encoding) -> String
 # aren't UTF-8.
 fn decode(text: String, encoding: Encoding) -> Result<String>:
   const decoded, problem = _decoded(text, encoding)
-  if problem == "": Ok(decoded) else: Err(Error{message: problem, code: "decode"})
+  if problem == "": Ok(decoded)
+  else: Err(Error{message: problem, code: "decode"})
 
 # The text `text` decodes to, and what is wrong with it, `""` where nothing is.
 extern fn _decoded(text: String, encoding: Encoding) -> (String, String)

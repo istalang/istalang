@@ -1,16 +1,14 @@
-# error: 5008 at 16:3
+# error: 5008 at 14:3
+# error: 5207 at 15:3
+# error: 5207 at 16:9
 # error: 5207 at 17:3
-# error: 5207 at 18:9
-# error: 5207 at 19:3
 # A by-value parameter is immutable, as if declared `const` (§3.3): it is never reassigned,
 # changed in part, passed by `&`, or the receiver of a method taking `&self`. A reference
 # parameter changes the caller's place, wholly or in part.
 
 struct Point { x: Int, y: Int }
-fn grow(self: &Point, by: Int):
-  self.x += by
-fn bump(n: &Int):
-  n += 1
+fn grow(self: &Point, by: Int): self.x += by
+fn bump(n: &Int): n += 1
 
 fn subject(n: Int, p: Point, q: &Point):
   n = 1

@@ -2,6 +2,8 @@
 # Type match (§3.17): a repeated infer, a constrained infer, a struct case binding an infer from a
 # field, a literal matching its base type, union distribution, and a tuple subject matched whole.
 
+import * as runtime from 'runtime'
+
 struct Box<T> { value: T }
 struct Pair<A, B> { first: A, second: B }
 
@@ -17,15 +19,14 @@ type WholeTuple<D> = match (D,):
   case _: "other"
 
 type Unwrapped<T> = match T:
-  case Box<infer V>:
-    V
+  case Box<infer V>: V
   case _: T
 
-fn unwrap<T>(box: Box<T>) -> Unwrapped<Box<T>>:
-  box.value
+fn unwrap<T>(box: Box<T>) -> Unwrapped<Box<T>>: box.value
 
-import * as runtime from 'runtime'
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> String:
   const d1: Describe<Pair<Int, Int>> = 10
   const d2: Describe<Box<Int> | { tag: String, extra: Bool }> = "str"

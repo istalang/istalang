@@ -5,13 +5,18 @@
 #   ista run --host order-demo.host.mjs order-demo.ista
 
 import * as json from 'json'
-import Group from './forms/model'
 import User from './forms/form'
-import OrderModel, OrderParams, orderForm, validateOrder from './order.gen'
+import Group from './forms/model'
+import orderForm, OrderModel, OrderParams, validateOrder from './order.gen'
 
 live async fn main() -> String:
   const params = OrderParams{region: "eu"}
-  const user = User{id: "u1", name: "Ann", lang: "en", role: "buyer", today: "2026-11-15"}
+  const user = User:
+    id: "u1"
+    name: "Ann"
+    lang: "en"
+    role: "buyer"
+    today: "2026-11-15"
   const served = await orderForm(params, user)
   json.stringify([
     validated(params, user, json.stringify(served))
@@ -30,5 +35,6 @@ live async fn main() -> String:
 # What the backend gives for `value`, received as JSON.
 live fn validated(params: OrderParams, user: User, value: String) -> String:
   match json.parse<Group<OrderModel>.Seen>(value):
-    case Ok(received): json.stringify(validateOrder(params, user, received))
+    case Ok(received):
+      json.stringify(validateOrder(params, user, received))
     case Err(error): error.message

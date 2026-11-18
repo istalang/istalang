@@ -3,15 +3,17 @@
 # variant does: a fieldless generic struct named bare, its default type arguments filled when
 # nothing is expected, and a generic struct literal whose items alone couldn't give its type.
 
+import * as runtime from 'runtime'
+
 struct Tag<T = Int>
 
 struct Bag<T> { items: Array<T> }
 
-fn kind(t: Tag<Int>) -> String:
-  "Int"
+fn kind(t: Tag<Int>) -> String: "Int"
 
-import * as runtime from 'runtime'
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> String:
   const expected: Tag<Int>? = Tag
   const defaulted = Tag

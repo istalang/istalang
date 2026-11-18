@@ -1,8 +1,8 @@
-# error: 5300 at 21:17
 # error: 5300 at 22:17
-# error: 5301 at 23:21
-# error: 5301 at 24:25
-# error: 5302 at 26:12
+# error: 5300 at 23:17
+# error: 5301 at 24:21
+# error: 5301 at 25:25
+# error: 5302 at 27:12
 # error: 5303 at 29:3
 # error: 5304 at 30:24
 # error: 5305 at 31:30
@@ -13,9 +13,10 @@
 # constant (§3.4), a map literal of a type with no `default()` (§2), a map spread of non-pairs, and
 # indexing with a key no `index` takes (§3.9).
 
+import * as runtime from 'runtime'
+
 struct Point { x: Int }
 
-import * as runtime from 'runtime'
 live async fn main(): await runtime.run(runtime.id()) _main()
 ista async fn _main():
   const empty = []
@@ -23,8 +24,7 @@ ista async fn _main():
   const mixed = [1, "a"]
   const keys = ["a": 1, 2: 1]
   let total = 0
-  for x in 5:
-    total += x
+  for x in 5: total += x
   let s = "abc"
   s[0] = "x"
   const point: Point = ["x": 1]

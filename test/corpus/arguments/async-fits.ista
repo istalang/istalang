@@ -2,18 +2,27 @@
 # A plain function fits where an async one of its parameters and result is expected, made async
 # where it is passed or assigned: calling it gives a future already resolved (§3.14). A named
 # function, a lambda, one the call decides, and one wrapped into an optional all fit.
+import * as runtime from 'runtime'
+
 fn double(x: Int) -> Int: x * 2
 
 ista async fn twice(f: ista async fn(Int) -> Int, x: Int) -> Int:
   await f(await f(x))
 
-ista async fn generic<T>(f: ista async fn() -> T) -> T:
-  await f()
+ista async fn generic<T>(f: ista async fn() -> T) -> T: await f()
 
-import * as runtime from 'runtime'
-live async fn main() -> Array<Int>: await runtime.run(runtime.id()) _main()
+live async fn main() -> Array<Int>:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> Array<Int>:
   const plain = fn(x: Int) -> Int: x + 1
   const g: ista async fn(Int) -> Int = double
   const h: (ista async fn(Int) -> Int)? = plain
-  [await twice(double, 3), await twice(plain, 3), await twice(fn x: x * 10, 1), await g(5), await generic(fn(): 7), await (h ?? g)(1)]
+  [
+    await twice(double, 3)
+    await twice(plain, 3)
+    await twice(fn x: x * 10, 1)
+    await g(5)
+    await generic(fn(): 7)
+    await (h ?? g)(1)
+  ]

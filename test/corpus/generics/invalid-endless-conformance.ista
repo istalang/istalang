@@ -1,18 +1,15 @@
-# error: 5114 at 18:16
+# error: 5114 at 15:37
 # A witness can need the constraint it meets again (§3.10): the generic `show` meets Show for any
 # type that already meets Show, so whether Badge meets it is never decided, and is reported as a
 # search without end rather than as a function Badge lacks.
 
-trait Show:
-  fn show(value: Self) -> String
-
-struct Badge:
-  label: String
-
-fn show<T is Show>(value: T) -> String:
-  "?"
-
 import * as runtime from 'runtime'
+
+trait Show { fn show(value: Self) -> String }
+
+struct Badge { label: String }
+
+fn show<T is Show>(value: T) -> String: "?"
+
 live async fn main(): await runtime.run(runtime.id()) _main()
-ista async fn _main():
-  const text = show(Badge{label: "a"})
+ista async fn _main(): const text = show(Badge{label: "a"})

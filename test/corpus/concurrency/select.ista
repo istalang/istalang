@@ -4,8 +4,8 @@
 # races again on every pass of a loop, and a case body may leave its function. The case bodies
 # agree on one type, which an expected type decides.
 
-import * as time from 'time'
 import * as runtime from 'runtime'
+import * as time from 'time'
 
 ista async fn priority() -> String:
   const a = Slot.create<Int>()
@@ -13,42 +13,34 @@ ista async fn priority() -> String:
   await a.put(1)
   await b.put(2)
   await select:
-    case b.read() as fromB:
-      "b" + String(fromB)
-    case a.read() as fromA:
-      "a" + String(fromA)
+    case b.read() as fromB: "b" + String(fromB)
+    case a.read() as fromA: "a" + String(fromA)
 
 ista fn tryTake(s: Slot<Int>) -> String:
   select:
-    case s.read() as value:
-      String(value)
-    else:
-      "none"
+    case s.read() as value: String(value)
+    else: "none"
 
 ista async fn passesBefore(deadline: Future<Unit, "ista">, stop: Slot<Unit>) -> Int:
   let passes = 0
   while true:
     const done = await select:
-      case deadline:
-        true
-      case time.delay(1ms):
-        false
-    if done:
-      break
+      case deadline: true
+      case time.delay(1ms): false
+    if done: break
     passes += 1
-    if passes == 3:
-      await stop.put(())
+    if passes == 3: await stop.put(())
   passes
 
 ista async fn leaving(s: Slot<String>) -> String:
   const got: String? = await select:
-    case s.take() as message:
-      message
-    case time.delay(1ms):
-      return "late"
+    case s.take() as message: message
+    case time.delay(1ms): return "late"
   got ?? "none"
 
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> String:
   const ready = Slot.create<Int>()
   const empty = Slot.create<Int>()
@@ -58,8 +50,6 @@ ista async fn _main() -> String:
   const passes = await passesBefore(stop.read(), stop)
   const late = await leaving(Slot.create<String>())
   const nothing: Int? = select:
-    case empty.read() as value:
-      value
-    else:
-      none
-  await priority() + " | " + quick +  " | passes " + String(passes) + " | " + late + " | " + String(nothing ?? 0)
+    case empty.read() as value: value
+    else: none
+  await priority() + " | " + quick + " | passes " + String(passes) + " | " + late + " | " + String(nothing ?? 0)

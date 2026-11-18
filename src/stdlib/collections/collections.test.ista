@@ -1,9 +1,9 @@
 # The collections module's WeakMap (spec §3.8, §7).
 
-import Suite, Test, test, assert, assertEq, spawnCrashingEveryAwait from 'testing'
+import * as runtime from 'runtime'
 import WeakMap from 'collections'
 import Inbox from 'inbox'
-import * as runtime from 'runtime'
+import assert, assertEq, spawnCrashingEveryAwait, Suite, Test, test from 'testing'
 
 type Boxes = WeakMap<Inbox<Int>, Inbox<Int>>
 
@@ -22,7 +22,8 @@ ista fn entryOf(map: Boxes, holder: Shared<Inbox<Int>?>) -> Watched:
 
 ista async fn evictedAcrossSnapshots() -> String:
   const map: Boxes = WeakMap.create()
-  const holder = new Shared<Inbox<Int>?>{value: Inbox.create<Int>()}
+  const holder = new Shared<Inbox<Int>?>:
+    value: Inbox.create<Int>()
   const watched = entryOf(map, holder)
   await runtime.commit()
   assert(watched.value.deref() is Inbox)
@@ -59,21 +60,24 @@ fn weakMap() -> Array<Test>: [
   })
   test("keeps an entry while its key lives", async fn(): {
     const map: Boxes = WeakMap.create()
-    const holder = new Shared<Inbox<Int>?>{value: Inbox.create<Int>()}
+    const holder = new Shared<Inbox<Int>?>:
+      value: Inbox.create<Int>()
     const watched = entryOf(map, holder)
     await runtime.commit()
     assert(watched.value.deref() is Inbox)
   })
   test("holds no key", fn(): {
     const map: Boxes = WeakMap.create()
-    const holder = new Shared<Inbox<Int>?>{value: Inbox.create<Int>()}
+    const holder = new Shared<Inbox<Int>?>:
+      value: Inbox.create<Int>()
     const watched = entryOf(map, holder)
     holder->value = none
     assert(watched.key.deref() is None)
   })
   test("lets go of an entry and its value once its key is disposed", async fn(): {
     const map: Boxes = WeakMap.create()
-    const holder = new Shared<Inbox<Int>?>{value: Inbox.create<Int>()}
+    const holder = new Shared<Inbox<Int>?>:
+      value: Inbox.create<Int>()
     const watched = entryOf(map, holder)
     holder->value = none
     await watched.value.disposed()
@@ -81,7 +85,8 @@ fn weakMap() -> Array<Test>: [
   })
   test("deleting an entry lets go of its value", async fn(): {
     const map: Boxes = WeakMap.create()
-    const holder = new Shared<Inbox<Int>?>{value: Inbox.create<Int>()}
+    const holder = new Shared<Inbox<Int>?>:
+      value: Inbox.create<Int>()
     const watched = entryOf(map, holder)
     if holder->value is Inbox as key: assert(map.delete(key))
     await watched.value.disposed()

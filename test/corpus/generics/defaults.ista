@@ -1,15 +1,16 @@
 # outcome: "13 15 retry 3 1000 retry 5 1000 retry 5 2000"
 # Default parameters are overloads that fill what a call leaves out (§3.3); a default may use the
 # parameters before it, and a parameter with a default may take its type from it.
-import Duration from 'time'
 import * as runtime from 'runtime'
+import Duration from 'time'
 
-fn window(start: Int, end: Int = start + 10) -> Int:
-  end
+fn window(start: Int, end: Int = start + 10) -> Int: end
 
 fn retry(times = 3, backoff: Duration = 1s) -> String:
   "retry " + times + " " + backoff.value
 
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> String:
   String(window(3)) + " " + String(window(5, 15)) + " " + retry() + " " + retry(5) + " " + retry(5, 2s)

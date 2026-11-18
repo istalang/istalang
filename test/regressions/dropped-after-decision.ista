@@ -4,19 +4,17 @@
 
 import * as runtime from 'runtime'
 
-shared struct Starts:
-  count: Int
-struct Cold:
-  starts: Starts
-  value: Int
-  type Mode = "ista"
+shared struct Starts { count: Int }
+struct Cold { starts: Starts, value: Int, type Mode = "ista" }
 ista fn onAwait(self: Cold, done: Resolver<Int, "ista">):
   self.starts->count = self.starts->count + 1
   done.resolve(self.value)
-struct Dropped:
-  type Mode = "ista"
+
+struct Dropped { type Mode = "ista" }
 ista fn onAwait(self: Dropped, done: Resolver<Int, "ista">): ()
-live async fn main() -> Int: await runtime.run(runtime.id()) _main()
+live async fn main() -> Int:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> Int:
   const starts = new Starts{count: 0}
   await select:

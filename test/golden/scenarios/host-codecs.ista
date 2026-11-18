@@ -1,22 +1,19 @@
 # A value crosses to its host through the codecs its type declares, both ways (§9): the one
 # declared beside the type, not one the calling module declares for it, also through a generic
 # extern; and a disposable host type keeps its host's JSON, inside an array and an optional too.
-import Json from 'json'
-import Point from './codec-shapes'
-import * as queue from './codec-queue'
 import * as runtime from 'runtime'
+import Json from 'json'
+import * as queue from './codec-queue'
+import Point from './codec-shapes'
 
-struct Name:
-  text: String
+struct Name { text: String }
 
-fn toJson(self: Name) -> Json:
-  self.text
+fn toJson(self: Name) -> Json: self.text
 
 fn Name.fromJson(json: Json, path: String) -> Result<Name>:
   Ok(Name{text: String.fromJson(json, path)?})
 
-fn toJson(self: Point) -> Json:
-  "not this one"
+fn toJson(self: Point) -> Json: "not this one"
 
 extern fn greet(name: Name) -> Name
 
@@ -30,10 +27,10 @@ extern fn describeAll(leases: Array<Lease>, found: Lease?) -> String
 
 extern fn release(lease: Lease)
 
-fn dispose(self: Lease):
-  release(self)
+fn dispose(self: Lease): release(self)
 
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
 
 ista async fn _main() -> String:
   queue.send(Point{x: 1})

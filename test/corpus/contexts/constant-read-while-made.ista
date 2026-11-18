@@ -1,4 +1,5 @@
 # panic: The context constant 'contexts/constant-read-while-made.sneaky' is read while it is being made.
+# disable-ista-formatter
 # A context constant read while it is being made panics (§3.4): its initializer reading it once,
 # through a flag it clears, doesn't make it twice.
 

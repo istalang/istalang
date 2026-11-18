@@ -6,24 +6,21 @@
 # does (§4). A spread of a value behind one decides a generic shared struct's type arguments, as a
 # struct's own spread does.
 
-shared struct Counter:
-  count: Int
-  label: String = "counted"
+import * as runtime from 'runtime'
 
-shared struct Node:
-  value: Int
-  next: Node? = none
+shared struct Counter { count: Int, label: String = "counted" }
+
+shared struct Node { value: Int, next: Node? = none }
 
 struct Spot { node: Node }
 
-shared struct Box<T>:
-  value: T
+shared struct Box<T> { value: T }
 
-fn bump(self: Counter):
-  self->count = self->count + 1
+fn bump(self: Counter): self->count = self->count + 1
 
-import * as runtime from 'runtime'
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> String:
   const a = new Counter{count: 1}
   const b = a
@@ -32,13 +29,13 @@ ista async fn _main() -> String:
   const other = new Counter{...*a}
   *other = struct{...*other, count: 8}
   [
-    String(a->count),
-    String(a == b),
-    String(a == other),
-    String(other->count),
-    b->label,
-    nodes(),
-    boxes(),
+    String(a->count)
+    String(a == b)
+    String(a == other)
+    String(other->count)
+    b->label
+    nodes()
+    boxes()
   ].join(" ")
 
 fn nodes() -> String:

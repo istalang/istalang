@@ -4,7 +4,8 @@
 
 shared struct Lease { step: Shared<Int>, disposedAt: Shared<Int> }
 
-fn dispose(self: Lease): self->disposedAt->value = self->step->value
+fn dispose(self: Lease):
+  self->disposedAt->value = self->step->value
 
 fn clear(target: &Lease?, step: Shared<Int>):
   target = none

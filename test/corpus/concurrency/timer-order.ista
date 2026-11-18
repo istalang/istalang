@@ -25,4 +25,5 @@ live async fn selected() -> Bool:
     case later: false
     case time.at(start + 1ms): true
 
-live async fn main() -> String: await raced() + " | " + String(await selected())
+live async fn main() -> String:
+  await raced() + " | " + String(await selected())

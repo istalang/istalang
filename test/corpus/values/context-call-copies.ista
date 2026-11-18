@@ -11,8 +11,7 @@ fn unwrap(r: Result<Array<Int>>) -> Array<Int>:
     case Ok(xs): xs
     case Err(_): []
 
-ista async fn echo(xs: Array<Int>) -> Array<Int>:
-  xs
+ista async fn echo(xs: Array<Int>) -> Array<Int>: xs
 
 ista fn readState() -> Array<Int>:
   state->value.push(30)
@@ -22,11 +21,9 @@ ista fn mutateState():
   state->value.push(400)
   state->value[0] = 999
 
-ista fn saveState(xs: Array<Int>):
-  state->value = xs
+ista fn saveState(xs: Array<Int>): state->value = xs
 
-ista fn currentState() -> Array<Int>:
-  state->value
+ista fn currentState() -> Array<Int>: state->value
 
 live async fn main() -> Array<Int>:
   const rt = await runtime.Runtime.open(runtime.hostStore())

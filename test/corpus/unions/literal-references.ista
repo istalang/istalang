@@ -2,14 +2,15 @@
 # Through `&` a place has its type exactly (§3.7), so a literal member meets a trait taking `&Self`
 # only with a function declared on the literal itself, which gets a place holding its one value.
 
-trait Clearable { fn clear(self: &Self) }
-fn clear(self: &"draft"):
-  self = "draft"
-fn clear(self: &Int):
-  self = 0
-
 import * as runtime from 'runtime'
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+
+trait Clearable { fn clear(self: &Self) }
+fn clear(self: &"draft"): self = "draft"
+fn clear(self: &Int): self = 0
+
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> String:
   let x: "draft" | Int = "draft"
   x.clear()

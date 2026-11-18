@@ -3,9 +3,9 @@
 # and in commit order: sends within one segment keep their program order, and a segment that
 # commits first is received first. `send` never waits.
 
-import Inbox from 'inbox'
-import * as time from 'time'
 import * as runtime from 'runtime'
+import * as time from 'time'
+import Inbox from 'inbox'
 
 ista async fn worker(name: String, jobs: Inbox<Int>, results: Inbox<String>):
   const job = await jobs.receive()
@@ -21,7 +21,9 @@ ista async fn collect(box: Inbox<String>, count: Int) -> String:
     received.push(await box.receive())
   received.join(" ")
 
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> String:
   const jobs = Inbox.create<Int>()
   const results = Inbox.create<String>()

@@ -2,6 +2,8 @@
 # A range pattern matches an int between its bounds, either open: `..` leaves its end out, `..=`
 # takes it in; it acts as a guard, so the match still ends with `case _` (§3.11).
 
+import * as runtime from 'runtime'
+
 fn grade(score: Int) -> String:
   match score:
     case ..0: "negative"
@@ -10,7 +12,8 @@ fn grade(score: Int) -> String:
     case 90..: "great"
     case _: "unreachable"
 
-import * as runtime from 'runtime'
-live async fn main() -> (String, String, String, String, String): await runtime.run(runtime.id()) _main()
+live async fn main() -> (String, String, String, String, String):
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> (String, String, String, String, String):
   (grade(-3), grade(59), grade(60), grade(89), grade(90))

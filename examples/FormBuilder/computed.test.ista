@@ -1,7 +1,7 @@
 # The computed module (docs/work/done/computed/design.md; plan C1's criteria).
 
-import Suite, Test, test, assertEq, expectPanic from 'testing'
-import Graph, Computed from './computed'
+import assertEq, expectPanic, Suite, Test, test from 'testing'
+import Computed, Graph from './computed'
 
 @Suite{"computed"}
 fn computedSuite() -> Array<Test>: [
@@ -98,7 +98,9 @@ fn deepDiamonds():
 fn givesNone():
   const graph = new Graph{}
   const base = graph.source(0)
-  const positive = graph.computed(fn(): if base.read() > 0: base.read() else: none)
+  const positive = graph.computed(
+    fn(): if base.read() > 0: base.read() else: none
+  )
   assertEq(positive.read(), none)
   base.set(5)
   assertEq(positive.read(), 5)
@@ -111,7 +113,9 @@ fn flippedCondition():
   const value = graph.source(1)
   const runs = new Shared<Int>{value: 0}
   const expensive = counted(graph, runs, fn(): value.read() * 10)
-  const field = graph.computed(fn(): if shown.read(): expensive.read() else: 0)
+  const field = graph.computed(
+    fn(): if shown.read(): expensive.read() else: 0
+  )
   assertEq(field.read(), 10)
   shown.set(false)
   value.set(2)
@@ -128,8 +132,7 @@ fn readsItself():
   let sum: Computed<Int>? = none
   const running = counted(graph, runs, fn(): {
     const now = base.read()
-    if now > 1: (sum ?? panic("unset")).read() + now
-    else: now
+    if now > 1: (sum ?? panic("unset")).read() + now else: now
   })
   sum = running
   assertEq(running.read(), 1)
@@ -145,7 +148,10 @@ fn readsThroughAnother():
   const base = graph.source(1)
   let first: Computed<Int>? = none
   const tens = graph.computed(fn(): (first ?? panic("unset")).read() * 10)
-  const sum = graph.computed(fn(): if base.read() > 1: tens.read() + base.read() else: base.read())
+  const sum = graph.computed(
+    fn(): if base.read() > 1: tens.read() + base.read()
+    else: base.read()
+  )
   first = sum
   assertEq(sum.read(), 1)
   assertEq(tens.read(), 10)
@@ -172,7 +178,10 @@ fn readsItsInitial():
   const graph = new Graph{}
   const base = graph.source(1)
   let me: Computed<Int>? = none
-  const count = graph.computed(fn(): { _ = base.read(); (me ?? panic("unset")).read() + 1 }, 10)
+  const count = graph.computed(
+    fn(): { _ = base.read(); (me ?? panic("unset")).read() + 1 }
+    10
+  )
   me = count
   assertEq(count.read(), 11)
   base.set(2)

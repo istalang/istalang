@@ -10,8 +10,7 @@
 # `ceil` and `round`, which `math` has for floats.
 
 import * as json from 'json'
-import * as math from 'math'
-import Rounding from 'math'
+import * as math, Rounding from 'math'
 import indexOf, padStart, repeat, slice from 'strings'
 
 extern struct Decimal
@@ -33,8 +32,7 @@ fn Decimal.from(value: Int) -> Decimal: _decimal(value, 0)
 fn Int.from(value: Decimal) -> Int:
   const units, scale = value._parts()
   const divisor = 10 ** scale
-  if units < 0: -((-units) // divisor)
-  else: units // divisor
+  if units < 0: -((-units) // divisor) else: units // divisor
 
 # The nearest float, which reading its text gives.
 fn Float.from(value: Decimal) -> Float:
@@ -50,7 +48,12 @@ fn toString(self: Decimal) -> String:
 
 fn Decimal.parse(text: String) -> Result<Decimal>:
   if not _isDecimalText(text):
-    return Err(Error{message: "'" + text + "' is not a decimal number.", code: "parse"})
+    return Err(
+      Error{
+        message: "'" + text + "' is not a decimal number."
+        code: "parse"
+      }
+    )
   const point = text.indexOf(".")
   if point < 0: return Ok(_decimal(_int(text), 0))
   const fraction = text.slice(point + 1)
@@ -65,30 +68,40 @@ fn toFixed(self: Decimal, places: Int, mode: Rounding = Rounding.HalfEven) -> St
   else: text + "0".repeat(places - scale)
 
 fn toJson(self: Decimal) -> json.Json: json.encodeText(self)
-fn Decimal.fromJson(value: json.Json, path: String) -> Result<Decimal>: json.decodeText(value, path)
+fn Decimal.fromJson(value: json.Json, path: String) -> Result<Decimal>:
+  json.decodeText(value, path)
 
 # `+`, `-` and `*` are exact.
 fn add(left: Decimal, right: Decimal) -> Decimal:
   const (leftUnits, rightUnits), scale = _aligned(left, right)
   _of(leftUnits + rightUnits, scale)
 
-fn add(left: Decimal, right: Int) -> Decimal: left + Decimal(right)
-fn add(left: Int, right: Decimal) -> Decimal: Decimal(left) + right
+fn add(left: Decimal, right: Int) -> Decimal:
+  left + Decimal(right)
+
+fn add(left: Int, right: Decimal) -> Decimal:
+  Decimal(left) + right
 
 fn subtract(left: Decimal, right: Decimal) -> Decimal:
   const (leftUnits, rightUnits), scale = _aligned(left, right)
   _of(leftUnits - rightUnits, scale)
 
-fn subtract(left: Decimal, right: Int) -> Decimal: left - Decimal(right)
-fn subtract(left: Int, right: Decimal) -> Decimal: Decimal(left) - right
+fn subtract(left: Decimal, right: Int) -> Decimal:
+  left - Decimal(right)
+
+fn subtract(left: Int, right: Decimal) -> Decimal:
+  Decimal(left) - right
 
 fn multiply(left: Decimal, right: Decimal) -> Decimal:
   const leftUnits, leftScale = left._parts()
   const rightUnits, rightScale = right._parts()
   _of(leftUnits * rightUnits, leftScale + rightScale)
 
-fn multiply(left: Decimal, right: Int) -> Decimal: left * Decimal(right)
-fn multiply(left: Int, right: Decimal) -> Decimal: Decimal(left) * right
+fn multiply(left: Decimal, right: Int) -> Decimal:
+  left * Decimal(right)
+
+fn multiply(left: Int, right: Decimal) -> Decimal:
+  Decimal(left) * right
 
 fn negate(value: Decimal) -> Decimal:
   const units, scale = value._parts()
@@ -108,8 +121,11 @@ fn divide(left: Decimal, right: Decimal) -> Decimal:
   if whole >= 10 ** _significantDigits: shift -= 1
   _of(_scaledQuotient(dividend, divisor, shift, Rounding.HalfEven), shift)
 
-fn divide(left: Decimal, right: Int) -> Decimal: left / Decimal(right)
-fn divide(left: Int, right: Decimal) -> Decimal: Decimal(left) / right
+fn divide(left: Decimal, right: Int) -> Decimal:
+  left / Decimal(right)
+
+fn divide(left: Int, right: Decimal) -> Decimal:
+  Decimal(left) / right
 
 fn divide(
   left: Decimal
@@ -132,19 +148,30 @@ fn floorDivide(left: Decimal, right: Decimal) -> Decimal:
   const dividend, divisor = _ratio(left, right)
   Decimal(dividend // divisor)
 
-fn floorDivide(left: Decimal, right: Int) -> Decimal: left // Decimal(right)
-fn floorDivide(left: Int, right: Decimal) -> Decimal: Decimal(left) // right
+fn floorDivide(left: Decimal, right: Int) -> Decimal:
+  left // Decimal(right)
 
-fn remainder(left: Decimal, right: Decimal) -> Decimal: left - (left // right) * right
-fn remainder(left: Decimal, right: Int) -> Decimal: left % Decimal(right)
-fn remainder(left: Int, right: Decimal) -> Decimal: Decimal(left) % right
+fn floorDivide(left: Int, right: Decimal) -> Decimal:
+  Decimal(left) // right
+
+fn remainder(left: Decimal, right: Decimal) -> Decimal:
+  left - (left // right) * right
+
+fn remainder(left: Decimal, right: Int) -> Decimal:
+  left % Decimal(right)
+
+fn remainder(left: Int, right: Decimal) -> Decimal:
+  Decimal(left) % right
 
 fn compare(left: Decimal, right: Decimal) -> Int:
   const (leftUnits, rightUnits), _ = _aligned(left, right)
   compare(leftUnits, rightUnits)
 
-fn compare(left: Decimal, right: Int) -> Int: compare(left, Decimal(right))
-fn compare(left: Int, right: Decimal) -> Int: compare(Decimal(left), right)
+fn compare(left: Decimal, right: Int) -> Int:
+  compare(left, Decimal(right))
+
+fn compare(left: Int, right: Decimal) -> Int:
+  compare(Decimal(left), right)
 
 fn abs(self: Decimal) -> Decimal:
   const units, scale = self._parts()
@@ -169,8 +196,7 @@ fn power(base: Decimal, exponent: Int) -> Decimal:
     )
   # A positive power of units ending in no zero ends in none either, so it is already one form.
   const raised = _decimal(units ** math.abs(exponent), places)
-  if exponent < 0: Decimal(1) / raised
-  else: raised
+  if exponent < 0: Decimal(1) / raised else: raised
 
 # The Decimal `units` scaled down by `scale` places makes, `scale` being any int: its one form, with
 # no zeros ending its units after the point. Zeros are taken off a run at a time, the run doubling
@@ -188,8 +214,7 @@ fn _of(units: Int, scale: Int) -> Decimal:
       rest = rest // divisor
       places -= taken
       run *= 2
-    else:
-      run = 1
+    else: run = 1
   _decimal(rest, places)
 
 # Both numbers' units at the larger of their scales, and that scale.
@@ -224,10 +249,16 @@ fn _rounded(dividend: Int, divisor: Int, mode: Rounding) -> Int:
   match mode:
     case Rounding.Floor: below
     case Rounding.Ceiling: above
-    case Rounding.TowardZero: if dividend < 0: above else: below
-    case Rounding.AwayFromZero: if dividend < 0: below else: above
-    case Rounding.HalfEven: if half < 0 or (half == 0 and below % 2 == 0): below else: above
-    case Rounding.HalfAwayFromZero: if half < 0 or (half == 0 and dividend < 0): below else: above
+    case Rounding.TowardZero:
+      if dividend < 0: above else: below
+    case Rounding.AwayFromZero:
+      if dividend < 0: below else: above
+    case Rounding.HalfEven:
+      if half < 0 or (half == 0 and below % 2 == 0): below
+      else: above
+    case Rounding.HalfAwayFromZero:
+      if half < 0 or (half == 0 and dividend < 0): below
+      else: above
 
 # A count of places after the point; a negative one is a bug in the program.
 fn _checkedPlaces(places: Int):
@@ -244,7 +275,8 @@ fn _written(units: Int, scale: Int) -> String:
   sign + padded.slice(0, point) + "." + padded.slice(point)
 
 # How many digits an int's magnitude has.
-fn _digitCount(value: Int) -> Int: String(math.abs(value)).length()
+fn _digitCount(value: Int) -> Int:
+  String(math.abs(value)).length()
 
 # Whether `text` is an optional `-`, digits, then maybe a `.` and digits.
 fn _isDecimalText(text: String) -> Bool:

@@ -2,21 +2,20 @@
 # Type arguments inferred from the arguments, written explicitly, and taken from the type a call
 # is expected to have (§3.5).
 
-struct Pair<A, B>:
-  first: A
-  second: B
+import * as runtime from 'runtime'
+
+struct Pair<A, B> { first: A, second: B }
 
 fn swap<A, B>(pair: Pair<A, B>) -> Pair<B, A>:
   Pair{first: pair.second, second: pair.first}
 
-fn identity<T>(value: T) -> T:
-  value
+fn identity<T>(value: T) -> T: value
 
-fn empty<T>() -> T?:
-  none
+fn empty<T>() -> T?: none
 
-import * as runtime from 'runtime'
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> String:
   const pair = swap(Pair{first: "x", second: 3})
   const explicit = identity<Int>(7)

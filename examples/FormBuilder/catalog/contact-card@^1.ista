@@ -3,23 +3,19 @@
 # mount's place.
 
 import * as checks from '../forms/checks'
-import Field from '../forms/model'
-import Place, View, FieldView, LayoutView from '../forms/views'
-import FieldWidget, LayoutWidget from '../forms/tree'
 import User from '../forms/form'
+import Field from '../forms/model'
+import FieldWidget, LayoutWidget from '../forms/tree'
+import FieldView, LayoutView, Place, View from '../forms/views'
 
-struct Params:
-  name: String
+struct Params { name: String }
 
-struct Ctx:
-  user: User
-  paramsFrom: inert fn() -> Params
+struct Ctx { user: User, paramsFrom: inert fn() -> Params }
 
 # Its params as its mount gives them, read when an expression reads them.
 fn get params(self: Ctx) -> Params: (self.paramsFrom)()
 
-struct Model:
-  phone: Field<String>
+struct Model { phone: Field<String> }
 
 fn view(at: Place, m: Model, ctx: Ctx, k: String) -> View:
   LayoutView{
@@ -31,7 +27,7 @@ fn view(at: Place, m: Model, ctx: Ctx, k: String) -> View:
       labels: none
     )
     children: [
-      fn(at): FieldView{
+      fn at: FieldView{
         key: `${k}/n2`
         field: m.phone
         widget: fn(): FieldWidget.Input(none)

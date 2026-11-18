@@ -1,17 +1,19 @@
-# error: 5111 at 11:8
+# error: 5111 at 12:8
 # A value's type counts towards endless instantiation wherever code holds it (§3.5, §7), though
 # nothing but its declaration writes it: a generic `dispose` declaring a variable of a type that
 # grows its own argument, given `none`, is reported where the value is.
 
-shared struct Lease<T>:
-  v: T
+import * as runtime from 'runtime'
+
+shared struct Lease<T> { v: T }
 
 fn dispose<T>(self: Lease<T>) -> Unit:
   const later: Lease<(T,)>? = none
   drop later
 
-import * as runtime from 'runtime'
-live async fn main() -> Int: await runtime.run(runtime.id()) _main()
+live async fn main() -> Int:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> Int:
   const lease = new Lease<Int>{v: 1}
   1

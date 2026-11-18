@@ -4,6 +4,8 @@
 # the caller's place: a variable, a field of one, or a tuple element. A copy of a top-level
 # constant changes without changing the constant.
 
+import * as runtime from 'runtime'
+
 struct Point { x: Int, y: Int }
 
 struct Box { point: Point, label: String }
@@ -15,23 +17,18 @@ fn movedCopy(p: Point) -> Int:
   own.x = 100
   own.x
 
-fn moveTo(p: &Point, x: Int):
-  p.x = x
+fn moveTo(p: &Point, x: Int): p.x = x
 
-fn bump(n: &Int):
-  n += 1
+fn bump(n: &Int): n += 1
 
 fn bumpTwice(n: &Int):
   bump(&n)
   bump(&n)
 
-fn grow(self: &Point, by: Int):
-  self.x += by
+fn grow(self: &Point, by: Int): self.x += by
 
-fn total(self: Point) -> Int:
-  self.x + self.y
+fn total(self: Point) -> Int: self.x + self.y
 
-import * as runtime from 'runtime'
 live async fn main(): await runtime.run(runtime.id()) _main()
 ista async fn _main():
   const a = Point{x: 1, y: 2}

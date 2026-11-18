@@ -1,7 +1,7 @@
 # error: 5910 at 19:4
-# error: 5911 at 27:15
-# error: 5101 at 35:3
-# error: 5910 at 39:4
+# error: 5911 at 25:15
+# error: 5101 at 33:3
+# error: 5910 at 37:4
 # A host type a `dispose` makes disposable has values with an identity of their own (§3.6, §7):
 # an `extern shared struct` or `extern ephemeral struct`, never a value or `sendable`, neither
 # Encodable nor Decodable, which imply Sendable, and held by no extern constant, which every read
@@ -16,11 +16,9 @@ extern shared struct Lease
 
 extern fn release(lease: Lease)
 
-fn dispose(self: Ticket):
-  ()
+fn dispose(self: Ticket): ()
 
-fn dispose(self: Lease):
-  release(self)
+fn dispose(self: Lease): release(self)
 
 extern fn open() -> Lease
 
@@ -36,5 +34,4 @@ ista async fn _main():
 
 extern struct Receipt
 
-fn dispose(self: Receipt):
-  ()
+fn dispose(self: Receipt): ()

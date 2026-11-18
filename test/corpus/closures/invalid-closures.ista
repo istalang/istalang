@@ -3,16 +3,16 @@
 # error: 5500 at 38:11
 # error: 5501 at 39:22
 # error: 5007 at 41:15
-# error: 5502 at 42:23
-# error: 5017 at 45:17
-# error: 5022 at 46:7
-# error: 5503 at 47:18
-# error: 5504 at 48:20
-# error: 5505 at 49:19
-# error: 5506 at 50:17
-# error: 5004 at 51:17
-# error: 5001 at 52:26
-# error: 5502 at 61:35
+# error: 5502 at 43:23
+# error: 5017 at 46:17
+# error: 5022 at 47:7
+# error: 5503 at 49:18
+# error: 5504 at 50:20
+# error: 5505 at 51:19
+# error: 5506 at 52:17
+# error: 5004 at 53:17
+# error: 5001 at 54:26
+# error: 5502 at 62:54
 # error: 5001 at 69:5
 # A lambda or local function is one value (§3.14): no default values, rest parameters or type
 # parameters. A parameter's type must be written or come from the expected function type; a
@@ -36,14 +36,16 @@ ista async fn subject(r: &Int, op: Op, n: Int):
   const d = fn(x: Int = 1): x
   fn g<T>(x: T) -> T: x
   fn h(...xs: Int): 0
-  const untyped = fn(x): x
+  const untyped = fn x: x
   fn again(k: Int):
     if k > 0: again(k - 1)
+
   const reads = fn(): r + 1
   while n > 0:
     const leave = fn(): {
       if n > 1: break
-      await later(n) }
+      await later(n)
+    }
   const chosen = pick
   const method = n.double
   const both = op.run(1)
@@ -57,11 +59,9 @@ fn bumped(f: fn(&Int) -> Int) -> Int:
   let n = 1
   f(&n)
 
-fn inferred() -> Int:
-  bumped(fn(x): { const g = fn(): x; g() })
+fn inferred() -> Int: bumped(fn x: { const g = fn(): x; g() })
 
-fn clear(r: &Int?):
-  r = none
+fn clear(r: &Int?): r = none
 
 fn throughValue() -> Int:
   let x = 1

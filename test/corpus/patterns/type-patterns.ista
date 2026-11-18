@@ -4,11 +4,11 @@
 # value of that very type, every value, as `_` does, so it covers the type alone. An alias names
 # what it stands for in braces too, and an `any` type's own alias matches every value of it.
 
-import toUpperCase from 'strings'
 import * as runtime from 'runtime'
+import toUpperCase from 'strings'
 
 struct Email { to: String }
-struct Marker {}
+struct Marker
 
 fn toString(self: Email) -> String: "mail to " + self.to
 fn toString(self: Marker) -> String: "marker"
@@ -53,6 +53,22 @@ fn text(x: Text) -> String:
   match x:
     case Text as t: "any " + String(t)
 
-live async fn main() -> Array<String>: await runtime.run(runtime.id()) _main()
-ista async fn _main() -> Array<String>:
-  [describe(3), describe(Email{to: "a"}), describe(2.5), describe(true), shout("hi"), shout(4), whole(7), cents(5), cents("x"), cents(Marker), mailInside(Email{to: "b"}), mail(Email{to: "c"}), mailTarget(Email{to: "d"}), text(6)]
+live async fn main() -> Array<String>:
+  await runtime.run(runtime.id()) _main()
+
+ista async fn _main() -> Array<String>: [
+  describe(3)
+  describe(Email{to: "a"})
+  describe(2.5)
+  describe(true)
+  shout("hi")
+  shout(4)
+  whole(7)
+  cents(5)
+  cents("x")
+  cents(Marker)
+  mailInside(Email{to: "b"})
+  mail(Email{to: "c"})
+  mailTarget(Email{to: "d"})
+  text(6)
+]

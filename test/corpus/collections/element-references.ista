@@ -4,6 +4,8 @@
 # call reach the container only at its end, so a closure sharing the container still sees the old
 # element then. A shared struct's value and its elements are copied in the same way (§3.9).
 
+import * as runtime from 'runtime'
+
 fn swap(first: &Int, second: &Int):
   const kept = first
   first = second
@@ -20,8 +22,9 @@ fn setThenPeek(value: &Int, peek: fn() -> Int) -> Int:
 fn show(xs: Array<Int>) -> String:
   "[" + [for x in xs: String(x)].join(", ") + "]"
 
-import * as runtime from 'runtime'
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> String:
   let xs = [1, 2]
   let ys = [3]
@@ -37,11 +40,11 @@ ista async fn _main() -> String:
   bumpTwice(&grid[0][1])
   grid[0][1] += 7
   const parts = [
-    show(xs),
-    String(counts["a"]),
-    String(seen),
-    String(m["a"]),
-    show(shared->value),
-    "[" + [for row in grid: show(row)].join(", ") + "]",
+    show(xs)
+    String(counts["a"])
+    String(seen)
+    String(m["a"])
+    show(shared->value)
+    "[" + [for row in grid: show(row)].join(", ") + "]"
   ]
   parts.join(" ")

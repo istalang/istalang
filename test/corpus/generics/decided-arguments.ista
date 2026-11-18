@@ -6,17 +6,19 @@
 # overloads asks what such an argument can take; a generic function's type arguments it leaves
 # open come from the type the call is expected to have, and a conversion's from those written.
 
+import * as runtime from 'runtime'
+
 fn count(xs: Array<Int>) -> Int: xs.length()
 
 fn sum(fs: Array<fn(Int) -> Int>) -> Int:
   let total = 0
-  for f in fs:
-    total = total + f(1)
+  for f in fs: total = total + f(1)
   total
 
 fn applied(pair: (Int, fn(Int) -> Int)) -> Int: pair.1(pair.0)
 
-fn present(pair: (Int?, Int?)) -> Int: (pair.0 ?? 0) + (pair.1 ?? 0)
+fn present(pair: (Int?, Int?)) -> Int:
+  (pair.0 ?? 0) + (pair.1 ?? 0)
 
 fn kind(xs: Array<Int>) -> String: "array"
 
@@ -34,15 +36,17 @@ fn applyTuple<T, U>(x: T, pair: (Int, fn(T) -> U)) -> U: pair.1(x)
 
 fn applyFirst<T, U>(x: T, fs: Array<fn(T) -> U>) -> U: fs[0](x)
 
-fn applyOptional<T, U>(x: T, f: (fn(T) -> U)?) -> U?:
-  f?.(x)
+fn applyOptional<T, U>(x: T, f: (fn(T) -> U)?) -> U?: f?.(x)
 
 fn picked(n: Int) -> Int:
-  present(match n:
-    case _: (none, n))
+  present(
+    match n:
+      case _: (none, n)
+  )
 
-import * as runtime from 'runtime'
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> String:
   const flag = true
   const n = 3
@@ -55,24 +59,27 @@ ista async fn _main() -> String:
   (assignedItems, assignedCount) = ([], 1)
   assignedOption, assignedCount = (none, 2)
   const parts = [
-    String(count([])),
-    String(sum([fn(x): x + 1, fn x: x * 2])),
-    String(applied((5, fn(x): x + 1))),
-    String(present((1, none))),
-    String(present(if flag: (none, 2) else: (1, none))),
-    String(picked(n)),
-    String(count({ const unused = n; [] })),
-    String(same([maybe, none]).length()),
-    kind([]),
-    shape([:]),
-    shape((1, none)),
-    String(names->value.length()),
-    String(kept.0),
-    String(samePair<Array<String?>>([], ["a", none]).length()),
-    String(applyTuple(3, (1, fn x: x * 2))),
-    String(applyFirst(3, [fn x: x + 1, fn x: x * 2])),
-    String(applyOptional(3, if flag: fn x: x * 3 else: fn x: x + 1) ?? 0),
-    String(assignedItems.length()),
-    String((assignedOption ?? 0) * assignedCount),
+    String(count([]))
+    String(sum([fn x: x + 1, fn x: x * 2]))
+    String(applied((5, fn x: x + 1)))
+    String(present((1, none)))
+    String(present(if flag: (none, 2) else: (1, none)))
+    String(picked(n))
+    String(count({ const unused = n; [] }))
+    String(same([maybe, none]).length())
+    kind([])
+    shape([:])
+    shape((1, none))
+    String(names->value.length())
+    String(kept.0)
+    String(samePair<Array<String?>>([], ["a", none]).length())
+    String(applyTuple(3, (1, fn x: x * 2)))
+    String(applyFirst(3, [fn x: x + 1, fn x: x * 2]))
+    String(
+      applyOptional(3, if flag: fn x: x * 3 else: fn x: x + 1) ??
+        0
+    )
+    String(assignedItems.length())
+    String((assignedOption ?? 0) * assignedCount)
   ]
   parts.join(" ")

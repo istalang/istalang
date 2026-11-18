@@ -1,9 +1,9 @@
 # outcome: "250 x 3"
 # An alias is the type it names, and may be generic (§3.17).
 
-struct Pair<A, B>:
-  first: A
-  second: B
+import * as runtime from 'runtime'
+
+struct Pair<A, B> { first: A, second: B }
 
 type Cents = Int
 type Labeled<T> = Pair<String, T>
@@ -11,8 +11,9 @@ type Labeled<T> = Pair<String, T>
 fn label<T>(name: String, value: T) -> Labeled<T>:
   Pair{first: name, second: value}
 
-import * as runtime from 'runtime'
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> String:
   const price: Cents = 250
   const tagged = label("x", 3)

@@ -1,48 +1,46 @@
 # outcome: ["end of block","after block","cleared","a gone","w1 none: false"]
 # QA M3 (§6, §7): an inbox held through an array element outlives its block and is disposed only when the array drops it, signalling the `disposed()` watcher then; the block-local watcher and revertible holder die at block end without signalling.
-import Inbox, Revertible from 'inbox'
-import * as time from 'time'
 import * as runtime from 'runtime'
+import * as time from 'time'
+import Inbox, Revertible from 'inbox'
 
-struct Holder:
-    box: Inbox<Int>
-    me: Int
+struct Holder { box: Inbox<Int>, me: Int }
 
 ista async fn watcher(log: Inbox<String>, name: String, w: WeakRef<Inbox<Int>>):
-    await w.disposed()
-    log.send(name + " gone")
+  await w.disposed()
+  log.send(name + " gone")
 
-live async fn main() -> Array<String>: await runtime.run(runtime.id()) _main()
+live async fn main() -> Array<String>:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> Array<String>:
-    const log = Inbox.create<String>()
-    let hs: Array<Holder> = []
-    let w1: WeakRef<Inbox<Int>>? = none
-    let wd: Future<Unit, "ista">? = none
-    if true:
-        const a = Inbox.create<Int>()
-        hs.push(Holder{box: a, me: 1})
-        const wa = WeakRef(a)
-        wd = watcher(log, "a", wa)
-        w1 = wa
-        const b = Inbox.create<Int>()
-        const r1 = b.sendRevertible(5)
-        _ = watcher(log, "b", WeakRef(b))
-        log.send("end of block")
-    await time.delay(5ms)
-    log.send("after block")
-    hs = []
-    log.send("cleared")
-    await time.delay(5ms)
-    const x = w1 == none
-    log.send("w1 none: " + x.toString())
-    let out: Array<String> = []
-    while true:
-        const more: Bool = select:
-            case log.receive() as s:
-                out.push(s)
-                true
-            else:
-                false
-        if not more:
-            break
-    out
+  const log = Inbox.create<String>()
+  let hs: Array<Holder> = []
+  let w1: WeakRef<Inbox<Int>>? = none
+  let wd: Future<Unit, "ista">? = none
+  if true:
+    const a = Inbox.create<Int>()
+    hs.push(Holder{box: a, me: 1})
+    const wa = WeakRef(a)
+    wd = watcher(log, "a", wa)
+    w1 = wa
+    const b = Inbox.create<Int>()
+    const r1 = b.sendRevertible(5)
+    _ = watcher(log, "b", WeakRef(b))
+    log.send("end of block")
+  await time.delay(5ms)
+  log.send("after block")
+  hs = []
+  log.send("cleared")
+  await time.delay(5ms)
+  const x = w1 == none
+  log.send("w1 none: " + x.toString())
+  let out: Array<String> = []
+  while true:
+    const more: Bool = select:
+      case log.receive() as s:
+        out.push(s)
+        true
+      else: false
+    if not more: break
+  out

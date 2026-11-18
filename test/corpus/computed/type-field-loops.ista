@@ -6,21 +6,17 @@
 
 import * as runtime from 'runtime'
 
-trait Node:
-  fn Self.make(seed: Int) -> Self
+trait Node { fn Self.make(seed: Int) -> Self }
 
-struct Leaf:
-  value: Int
+struct Leaf { value: Int }
 
 fn Leaf.make(seed: Int) -> Leaf: Leaf{value: seed}
 
-struct Tag:
-  text: String
+struct Tag { text: String }
 
 fn Tag.make(seed: Int) -> Tag: Tag{text: `tag${seed}`}
 
-struct Group<S is struct { [_] is Node }>:
-  fields: S
+struct Group<S is struct { [_] is Node }> { fields: S }
 
 fn Group.make<S is struct { [_] is Node }>(seed: Int) -> Group<S>:
   Group{fields: struct{for K in keyof S: [K]: S[K].make(seed)}}
@@ -28,7 +24,8 @@ fn Group.make<S is struct { [_] is Node }>(seed: Int) -> Group<S>:
 fn tagged<S is struct { id: Tag, [_] is Node }>(seed: Int) -> S:
   struct{for K in keyof S: [K]: S[K].make(seed)}
 
-fn names<S is struct { [_] is Node }>() -> String: [for K in keyof S: K].join(",")
+fn names<S is struct { [_] is Node }>() -> String:
+  [for K in keyof S: K].join(",")
 
 type Status = "active" | "closed"
 
@@ -38,7 +35,8 @@ struct Company { id: Tag, size: Leaf }
 
 struct Supplier { city: Leaf, company: Group<Company> }
 
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
 
 ista async fn _main() -> String:
   const model: Group<Supplier> = Group.make(7)

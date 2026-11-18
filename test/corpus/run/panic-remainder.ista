@@ -1,10 +1,9 @@
 # panic: Division by zero.
 # `%` by zero is a bug like `//` by zero (§2, §3.12), unlike `/`, which gives an infinity or NaN.
 
-fn rest(a: Int, b: Int) -> Int:
-  a % b
-
 import * as runtime from 'runtime'
+
+fn rest(a: Int, b: Int) -> Int: a % b
+
 live async fn main(): await runtime.run(runtime.id()) _main()
-ista async fn _main():
-  rest(1, 0)
+ista async fn _main(): rest(1, 0)

@@ -2,6 +2,8 @@
 # A function a trait requires may be generic with constraints of its own (§3.10): called through
 # a type parameter or an `any` value, its type arguments meet them where the call is.
 
+import * as runtime from 'runtime'
+
 trait Shower:
   fn show<U is Stringable>(self: Self, u: U) -> String
 
@@ -10,11 +12,13 @@ struct Box { label: String }
 fn show<U is Stringable>(self: Box, u: U) -> String:
   self.label + String(u)
 
-fn viaParameter<T is Shower>(x: T) -> String:
-  x.show(5)
+fn viaParameter<T is Shower>(x: T) -> String: x.show(5)
 
-import * as runtime from 'runtime'
 live async fn main(): await runtime.run(runtime.id()) _main()
 ista async fn _main():
   const shower: any Shower = Box{label: "a"}
-  (viaParameter(Box{label: "p"}), shower.show(true), shower.show("s"))
+  (
+    viaParameter(Box{label: "p"})
+    shower.show(true)
+    shower.show("s")
+  )

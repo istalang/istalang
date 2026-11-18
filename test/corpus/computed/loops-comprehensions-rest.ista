@@ -3,6 +3,8 @@
 # visitation on nominal structs and shapes, ...*shared, evaluation order of named fields before
 # struct comprehension, and ...rest in declaration targets, match cases, and constrained generics.
 
+import * as runtime from 'runtime'
+
 struct Misordered { z: Int, a: Int, m: Int }
 shared struct SharedCounters { b: Int, a: Int }
 
@@ -10,10 +12,12 @@ fn record(log: &Array<String>, step: String, v: Int) -> Int:
   log.push(step)
   v
 
-fn collect<S is struct { title: String, [_]: Int }>(form: S, data: { [F in keyof S]: S[F] }) -> String:
+fn collect<S is struct { title: String, [_]: Int }>(
+  form: S
+  data: { [F in keyof S]: S[F] }
+) -> String:
   let out: Array<String> = []
-  for k, _ in ...form:
-    out.push(`${k}`)
+  for k, _ in ...form: out.push(`${k}`)
   _ = data
   out.join(",")
 
@@ -22,23 +26,28 @@ fn formatRest<S is struct { title: String, [_]: Int }>(s: S) -> String:
   const parts = [for k, v in ...rest: `${k}=${v}`]
   `${title}:${parts.join(",")}`
 
-import * as runtime from 'runtime'
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> String:
   const m = Misordered{z: 3, a: 1, m: 2}
   let visited: Array<String> = []
-  for k, v in ...m:
-    visited.push(`${k}:${v}`)
+  for k, v in ...m: visited.push(`${k}:${v}`)
 
   let orderLog: Array<String> = []
-  const built = struct{
-    z: record(&orderLog, "named-z", 9),
-    a: record(&orderLog, "named-a", 8),
-    for k, v in ...struct{x: 2, b: 1}: [k]: record(&orderLog, `comp-${k}`, v)
-  }
+  const built =
+    z: record(&orderLog, "named-z", 9)
+    a: record(&orderLog, "named-a", 8)
+    for k, v in ...struct{x: 2, b: 1}: [k]: record(
+      &orderLog
+      `comp-${k}`
+      v
+    )
   _ = built
 
-  const restSummary = formatRest(struct{title: "cfg", b: 20, a: 10})
+  const restSummary = formatRest(
+    struct{title: "cfg", b: 20, a: 10}
+  )
   const sc = new SharedCounters{b: 2, a: 1}
   const sharedVals = [for _, v in ...*sc: String(v)]
   const counts = struct{title: "t", z: 1, a: 2}

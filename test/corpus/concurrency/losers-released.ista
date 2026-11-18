@@ -3,24 +3,24 @@
 # that doesn't wait, and at a `disposing()` case resuming as cleanup, a revertible message a losing
 # case sent is already retracted.
 
-import Inbox from 'inbox'
 import * as runtime from 'runtime'
+import Inbox from 'inbox'
 
 ista async fn worker(a: Slot<Int>, log: Inbox<String>):
   await select:
-    case (log.sendRevertible("other"), a.take()).1:
-      ()
+    case (log.sendRevertible("other"), a.take()).1: ()
     case worker.disposing():
       log.send(String(log.pending().length()))
-live async fn main() -> (Int, Array<String>): await runtime.run(runtime.id()) _main()
+
+live async fn main() -> (Int, Array<String>):
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> (Int, Array<String>):
   const a = Slot.create<Int>()
   const log = Inbox.create<String>()
   const nonBlocking = select:
-    case (log.sendRevertible("lost"), a.take()).1:
-      1
-    else:
-      log.pending().length()
+    case (log.sendRevertible("lost"), a.take()).1: 1
+    else: log.pending().length()
   if true:
     const w = worker(a, log)
     await runtime.commit()

@@ -4,6 +4,8 @@
 # made in it (§3.4, §3.14). Leaving the body by `continue` or `break` releases it as its end does.
 # A `for`'s loop variable is fresh on every iteration too, as is a `let` in its body.
 
+import * as runtime from 'runtime'
+
 fn fresh() -> String:
   let first = fn(): 0
   let second = fn(): 0
@@ -36,15 +38,13 @@ fn leaving() -> Int:
     let value = i
     last = fn(): value
     value *= 10
-    if i < 3:
-      continue
+    if i < 3: continue
     break
   last()
 
 fn forEach() -> String:
   let made: Array<fn() -> Int> = []
-  for x in [0, 1, 2]:
-    made.push(fn(): x)
+  for x in [0, 1, 2]: made.push(fn(): x)
   String(made[0]()) + " " + String(made[1]()) + " " + String(made[2]())
 
 fn forBody() -> String:
@@ -57,7 +57,6 @@ fn forBody() -> String:
     total += 1
   String(first()) + " " + String(second())
 
-import * as runtime from 'runtime'
 live async fn main(): await runtime.run(runtime.id()) _main()
 ista async fn _main():
   fresh() + " | " + sharedOutside() + " | " + String(leaving()) + " | " + forEach() + " | " + forBody()

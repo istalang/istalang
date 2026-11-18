@@ -4,27 +4,27 @@
 
 import * as runtime from 'runtime'
 
-shared struct Log:
-  disposed: Int
-shared struct Lease:
-  log: Log
+shared struct Log { disposed: Int }
+shared struct Lease { log: Log }
 ista fn dispose(self: Lease):
   self->log->disposed = self->log->disposed + 1
-trait Marker {}
-shared struct Box:
-  done: Resolver<any Marker, "ista">?
-struct WaitBox:
-  box: Box
-  type Mode = "ista"
+
+trait Marker
+shared struct Box { done: Resolver<any Marker, "ista">? }
+struct WaitBox { box: Box, type Mode = "ista" }
 ista fn onAwait(self: WaitBox, done: Resolver<any Marker, "ista">):
   self.box->done = done
+
 ista async fn giver(box: Box, log: Log):
   await runtime.commit()
   const lease: any Marker = new Lease{log: log}
   match box->done:
     case None: ()
     case done: done.resolve(lease)
-live async fn main() -> Int: await runtime.run(runtime.id()) _main()
+
+live async fn main() -> Int:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> Int:
   const log = new Log{disposed: 0}
   const box = new Box{done: none}

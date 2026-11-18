@@ -6,11 +6,9 @@
 import * as log from 'log'
 import * as time from 'time'
 
-shared struct Lease:
-  name: String
+shared struct Lease { name: String }
 
-fn dispose(self: Lease):
-  log.info("disposed " + self->name)
+fn dispose(self: Lease): log.info("disposed " + self->name)
 
 live async fn sleeper(lease: Lease):
   await time.delay(1h)

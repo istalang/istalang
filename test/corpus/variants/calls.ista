@@ -7,6 +7,8 @@
 # `struct{…}` comprehension takes the field's type: built as it where its fields are known,
 # waiting for it where they aren't or its values need it.
 
+import * as runtime from 'runtime'
+
 enum Verdict:
   Approved
   Rejected(by: String, reason = "no reason given")
@@ -16,9 +18,7 @@ enum Node:
   Group(title: String, open: Bool = false, ...children: Array<Node>)
   Empty
 
-enum Pair<A, B = Int>:
-  Both(first: A, second: B)
-  Neither
+enum Pair<A, B = Int> { Both(first: A, second: B), Neither }
 
 fn describe(verdict: Verdict) -> String:
   match verdict:
@@ -37,8 +37,7 @@ fn sum(pair: Pair<Int>) -> Int:
 
 fn wrapped(value: Int?) -> Result<Int?, String>: Ok(value)
 
-enum Named:
-  Of(self: Int, other: String)
+enum Named { Of(self: Int, other: String) }
 
 struct Bag<S is struct { [_]: Int }>:
   fields: S
@@ -48,10 +47,13 @@ struct Bag<S is struct { [_]: Int }>:
 fn doubled<S is struct { [_]: Int }>(bag: Bag<S>) -> Result<Bag<S>.Doubled>:
   Ok(struct{for f, n in ...bag.fields: [f]: n * 2})
 
-fn tagged<S is struct { [_]: Int }>(
-  bag: Bag<S>,
-) -> Result<{ tag: String, value: Bag<S>.Doubled }>:
-  Ok(struct{tag: "t", value: struct{for f, n in ...bag.fields: [f]: n * 3}})
+fn tagged<S is struct { [_]: Int }>(bag: Bag<S>) -> Result<{ tag: String, value: Bag<S>.Doubled }>:
+  Ok(
+    struct{
+      tag: "t"
+      value: struct{for f, n in ...bag.fields: [f]: n * 3}
+    }
+  )
 
 fn named() -> String:
   match Named.Of(self: 1, other: "a"):
@@ -66,9 +68,7 @@ fn comprehended() -> String:
     case _: ""
   `${two}|${one}`
 
-struct Point:
-  x: Int
-  y: Int
+struct Point { x: Int, y: Int }
 
 type Partial = { x: Int?, y: Int? }
 
@@ -76,12 +76,14 @@ type Tagged = { tag: String?, x: Int, y: Int }
 
 fn kept<T>(t: T) -> T: t
 
-fn asPoint(p: Point) -> Result<Point>: Ok(struct{for k, v in ...p: [k]: v})
+fn asPoint(p: Point) -> Result<Point>:
+  Ok(struct{for k, v in ...p: [k]: v})
 
 fn asPartial(p: Point, keep: Bool) -> Result<Partial>:
   Ok(struct{for k, v in ...p: [k]: if keep: v else: none})
 
-fn asTagged(p: Point) -> Result<Tagged>: Ok(struct{tag: none, for k, v in ...p: [k]: v + 2})
+fn asTagged(p: Point) -> Result<Tagged>:
+  Ok(struct{tag: none, for k, v in ...p: [k]: v + 2})
 
 fn known() -> String:
   const p = Point{x: 1, y: 2}
@@ -89,7 +91,8 @@ fn known() -> String:
     case Ok(value): `${value.x} ${value.y}`
     case _: ""
   const partial = match asPartial(p, false):
-    case Ok(value): if value.x == none: "none" else: "some"
+    case Ok(value):
+      if value.x == none: "none" else: "some"
     case _: ""
   const tagged = match asTagged(p):
     case Ok(value): `${value.x} ${value.y}`
@@ -104,8 +107,9 @@ fn inferred() -> String:
     case (Err(error), Ok(value)): `${error} ${value}`
     case _: ""
 
-import * as runtime from 'runtime'
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> String:
   const pair: Pair<Int> = Both(1, 2)
   const both = match pair:
@@ -113,7 +117,8 @@ ista async fn _main() -> String:
     case Neither: ""
   const group = Node.Group("t", true, Node.Text("a"), Node.Empty, ...[Node.Text("b")])
   const shown = match group:
-    case Node.Group(title, open): `${count(group)} ${title} ${open}`
+    case Node.Group(title, open):
+      `${count(group)} ${title} ${open}`
     case _: ""
   const instance = spawn Pair.Both(3, 4)
   const spawned = match await instance.result():
@@ -123,16 +128,16 @@ ista async fn _main() -> String:
     case Ok(value): value ?? 0
     case _: -1
   [
-    both,
-    describe(Rejected(by: "legal")),
-    describe(Verdict.Rejected("ops", "late")),
-    describe(Approved),
-    shown,
-    String(count(Node.Group(title: "u"))),
-    String(spawned),
-    String(kept),
-    inferred(),
-    named(),
-    comprehended(),
-    known(),
+    both
+    describe(Rejected(by: "legal"))
+    describe(Verdict.Rejected("ops", "late"))
+    describe(Approved)
+    shown
+    String(count(Node.Group(title: "u")))
+    String(spawned)
+    String(kept)
+    inferred()
+    named()
+    comprehended()
+    known()
   ].join("|")

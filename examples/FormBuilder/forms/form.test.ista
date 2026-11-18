@@ -2,23 +2,15 @@
 # values and rows, a node two views write, variant tags, search) behaves as a pull: derived on
 # read, never written while a view is read (docs/work/done/computed/design.md).
 
-import Suite, Test, test, assertEq from 'testing'
+import assertEq, Suite, Test, test from 'testing'
 import Graph from '../computed'
-import Field, Group, List, Variant, Hidden, Local, Dynamic from './model'
-import (
-  Place
-  View
-  Options
-  Choice
-  FieldView
-  RepeatView
-  VariantView
-  CaseView
-  LayoutView
-  Recompute
-) from './views'
-import FieldWidget, RepeatWidget, VariantWidget, LayoutWidget, FormEvent, Node from './tree'
 import Form from './form'
+import Dynamic, Field, Group, Hidden, List, Local, Variant from './model'
+import FieldWidget, FormEvent, LayoutWidget, Node, RepeatWidget, VariantWidget from './tree'
+import (
+  CaseView, Choice, FieldView, LayoutView, Options, Place
+  Recompute, RepeatView, VariantView, View
+) from './views'
 
 @Suite{"forms"}
 fn formsSuite() -> Array<Test>: [
@@ -46,22 +38,28 @@ struct Model:
   rows: List<Row>
   pick: Variant<{ a: Group<{ x: Field<String> }>, b: Group<{ y: Field<String> }> }>
 
-fn model(graph: Graph) -> Model: Group.make<Model>(graph, none).fields
+fn model(graph: Graph) -> Model:
+  Group.make<Model>(graph, none).fields
 
 # A form of `m` showing `children` in one layout.
 fn open(m: Model, graph: Graph, children: Array<inert fn(Place) -> View>) -> Form<Model>:
   Form.open(
     graph
     Group{fields: m}
-    fn(at): LayoutView{key: "n0", widget: fn(): LayoutWidget.Wizard, children}.build(at)
+    fn at: LayoutView{
+      key: "n0"
+      widget: fn(): LayoutWidget.Wizard
+      children
+    }.build(at)
   )
 
-fn input<T is Inert>(key: String, field: Field<T>) -> FieldView<T>: FieldView{
-  key
-  field
-  widget: fn(): FieldWidget.Input(none)
-  label: fn(): key
-}
+fn input<T is Inert>(key: String, field: Field<T>) -> FieldView<T>:
+  FieldView{
+    key
+    field
+    widget: fn(): FieldWidget.Input(none)
+    label: fn(): key
+  }
 
 fn enter(self: Form<Model>, key: String, json: String):
   self.apply(FormEvent.Set(key: key, value: json))
@@ -84,8 +82,8 @@ ista async fn defaultUntilEdited():
   const graph = new Graph{}
   const m = model(graph)
   const form = open(m, graph, [
-    fn(at): input("count", m.count).build(at)
-    fn(at): FieldView{
+    fn at: input("count", m.count).build(at)
+    fn at: FieldView{
       ...input("size", m.size)
       default: fn(): if (m.count.seen() ?? 0) > 9: "L" else: "S"
     }.build(at)
@@ -102,8 +100,11 @@ ista async fn computedValue():
   const graph = new Graph{}
   const m = model(graph)
   const form = open(m, graph, [
-    fn(at): input("count", m.count).build(at)
-    fn(at): FieldView{...input("score", m.score), value: fn(): (m.count.seen() ?? 0) * 2}.build(at)
+    fn at: input("count", m.count).build(at)
+    fn at: FieldView{
+      ...input("score", m.score)
+      value: fn(): (m.count.seen() ?? 0) * 2
+    }.build(at)
   ])
   form.enter("count", "3")
   assertEq(fieldOf(form.shown(), "score"), ("6", [], true))
@@ -114,13 +115,13 @@ ista async fn twoWriters():
   const graph = new Graph{}
   const m = model(graph)
   const form = open(m, graph, [
-    fn(at): input("count", m.count).build(at)
-    fn(at): FieldView{
+    fn at: input("count", m.count).build(at)
+    fn at: FieldView{
       ...input("e1", m.extra.node)
       when: fn(): m.count.seen() == 1
       hide: m.extra.shown
     }.build(at)
-    fn(at): FieldView{
+    fn at: FieldView{
       ...input("e2", m.extra.node)
       when: fn(): m.count.seen() == 2
       hide: m.extra.shown
@@ -139,14 +140,19 @@ ista async fn twoWriters():
 fn rowsOf(m: Model, computed: Bool, qty: inert fn(Row, String) -> FieldView<Int>) -> inert fn(
   Place
 ) -> View:
-  fn(at): RepeatView{
+  fn at: RepeatView{
     key: "rows"
     list: m.rows
     widget: fn(): RepeatWidget.Table(none)
     canAdd: not computed
-    rows: fn(): [for i in 0..(m.count.seen() ?? 0): struct{id: `k${i}`, qty: i}]
+    rows: fn(): [
+      for i in 0..(m.count.seen() ?? 0): struct{
+        id: `k${i}`
+        qty: i
+      }
+    ]
     computedRows: computed
-    rowKey: fn(r): r.id
+    rowKey: fn r: r.id
     recomputeUntil: Recompute.RowsEdited
     item: fn(row, key, at): qty(row, key).build(at)
   }.build(at)
@@ -155,13 +161,14 @@ fn ids(m: Model) -> Array<String?>: [for r in m.rows.seen(): r.id]
 
 fn qtys(m: Model) -> Array<Int?>: [for r in m.rows.seen(): r.qty]
 
-fn plainQty(row: Row, key: String) -> FieldView<Int>: input(`qty@${key}`, row.fields.qty)
+fn plainQty(row: Row, key: String) -> FieldView<Int>:
+  input(`qty@${key}`, row.fields.qty)
 
 ista async fn defaultRows():
   const graph = new Graph{}
   const m = model(graph)
   const form = open(m, graph, [
-    fn(at): input("count", m.count).build(at)
+    fn at: input("count", m.count).build(at)
     rowsOf(m, false, plainQty)
   ])
   form.enter("count", "2")
@@ -177,10 +184,7 @@ ista async fn defaultRows():
 ista async fn computedRows():
   const graph = new Graph{}
   const m = model(graph)
-  const form = open(m, graph, [
-    fn(at): input("count", m.count).build(at)
-    rowsOf(m, true, plainQty)
-  ])
+  const form = open(m, graph, [fn at: input("count", m.count).build(at), rowsOf(m, true, plainQty)])
   form.enter("count", "2")
   assertEq(ids(m), ["k0", "k1"])
   form.apply(FormEvent.AddRow("rows"))
@@ -191,15 +195,21 @@ ista async fn defaultCase():
   const graph = new Graph{}
   const m = model(graph)
   const form = open(m, graph, [
-    fn(at): input("count", m.count).build(at)
-    fn(at): VariantView{
+    fn at: input("count", m.count).build(at)
+    fn at: VariantView{
       key: "pick"
       variant: m.pick
       widget: fn(): VariantWidget.Inline
       default: fn(): if m.count.seen() == 2: "b" else: "a"
       cases: struct{
-        a: CaseView{label: fn(): "A", body: fn(at): input("x", m.pick.cases.a.fields.x).build(at)}
-        b: CaseView{label: fn(): "B", body: fn(at): input("y", m.pick.cases.b.fields.y).build(at)}
+        a: CaseView{
+          label: fn(): "A"
+          body: fn at: input("x", m.pick.cases.a.fields.x).build(at)
+        }
+        b: CaseView{
+          label: fn(): "B"
+          body: fn at: input("y", m.pick.cases.b.fields.y).build(at)
+        }
       }
     }.build(at)
   ])
@@ -216,10 +226,15 @@ ista async fn searchOptions():
   const m = model(graph)
   const names = ["ann", "bob", "anna"]
   const form = open(m, graph, [
-    fn(at): FieldView{
+    fn at: FieldView{
       ...input("size", m.size)
       options: Options.Search(
-        from: fn(text): [for n in names.filter(fn(n): n.includes(text)): Choice{value: n, label: n}]
+        from: fn text: [
+          for n in names.filter(fn n: n.includes(text)): Choice{
+            value: n
+            label: n
+          }
+        ]
         resolve: fn(): true
       )
     }.build(at)
@@ -232,8 +247,15 @@ ista async fn rowsBoundAsMade():
   const graph = new Graph{}
   const m = model(graph)
   const form = open(m, graph, [
-    fn(at): input("count", m.count).build(at)
-    rowsOf(m, false, fn(row, key): FieldView{...plainQty(row, key), value: fn(): 99})
+    fn at: input("count", m.count).build(at)
+    rowsOf(
+      m
+      false
+      fn(row, key): FieldView{
+        ...plainQty(row, key)
+        value: fn(): 99
+      }
+    )
   ])
   form.enter("count", "2")
   assertEq(qtys(m), [99, 99]) # read before any view of the repeat
@@ -242,8 +264,15 @@ ista async fn rowDataOverDefault():
   const graph = new Graph{}
   const m = model(graph)
   const form = open(m, graph, [
-    fn(at): input("count", m.count).build(at)
-    rowsOf(m, false, fn(row, key): FieldView{...plainQty(row, key), default: fn(): 99})
+    fn at: input("count", m.count).build(at)
+    rowsOf(
+      m
+      false
+      fn(row, key): FieldView{
+        ...plainQty(row, key)
+        default: fn(): 99
+      }
+    )
   ])
   form.enter("count", "2")
   assertEq(qtys(m), [0, 1]) # given by the row's data, as a loaded value is
@@ -252,7 +281,7 @@ ista async fn rowReadsItself():
   const graph = new Graph{}
   const m = model(graph)
   const form = open(m, graph, [
-    fn(at): input("count", m.count).build(at)
+    fn at: input("count", m.count).build(at)
     rowsOf(
       m
       true
@@ -270,8 +299,11 @@ ista async fn secondWriter():
   const graph = new Graph{}
   const m = model(graph)
   const form = open(m, graph, [
-    fn(at): FieldView{...input("s1", m.size), default: fn(): "S"}.build(at)
-    fn(at): input("s2", m.size).build(at)
+    fn at: FieldView{
+      ...input("s1", m.size)
+      default: fn(): "S"
+    }.build(at)
+    fn at: input("s2", m.size).build(at)
   ])
   _ = form.shown()
   assertEq(m.size.seen(), "S")

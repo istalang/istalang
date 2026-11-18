@@ -1,19 +1,18 @@
-# error: 5154 at 25:8
-# error: 5155 at 28:8
-# error: 5212 at 31:8
-# error: 5416 at 37:10
-# error: 5154 at 41:8
-# error: 5155 at 46:8
-# error: 4000 at 48:15
-# error: 5155 at 56:8
-# error: 5416 at 62:10
+# error: 5154 at 23:40
+# error: 5155 at 25:38
+# error: 5212 at 27:33
+# error: 5416 at 33:10
+# error: 5154 at 36:51
+# error: 5155 at 40:41
+# error: 4000 at 42:15
+# error: 5155 at 48:39
+# error: 5416 at 54:10
 # A type pattern names a type to test (§3.10, §3.11): never a generic one against an `any` value,
 # which a pattern can't give type arguments. Never, holding no value, and an alias of an `any`
 # type, whose values have their own types, name no type to test; a generic alias stands for no one
 # type; and braces take a struct's fields only. A type the value can't hold is only warned of.
 
-trait Named:
-  fn name(self: Self) -> String
+trait Named { fn name(self: Self) -> String }
 
 struct Email { to: String }
 struct Box<T> { value: T }
@@ -21,14 +20,11 @@ struct Box<T> { value: T }
 fn name(self: Email) -> String: self.to
 fn name<T>(self: Box<T>) -> String: "box"
 
-fn generic(x: any Named) -> Bool:
-  x is Box
+fn generic(x: any Named) -> Bool: x is Box
 
-fn never(x: any Named) -> Bool:
-  x is Never
+fn never(x: any Named) -> Bool: x is Never
 
-fn braces(x: Int) -> Bool:
-  x is Int{}
+fn braces(x: Int) -> Bool: x is Int{}
 
 type List<T> = Array<T>
 
@@ -37,23 +33,19 @@ fn genericAlias(xs: List<Int>) -> Bool:
     case List: true
     case _: false
 
-fn genericAliasInside(x: any Named) -> Bool:
-  x is List
+fn genericAliasInside(x: any Named) -> Bool: x is List
 
 type NamedText = any Named & Stringable
 
-fn anyAlias(x: any Named) -> Bool:
-  x is NamedText
+fn anyAlias(x: any Named) -> Bool: x is NamedText
 
 type Broken = Undeclared
 
-fn broken(n: Int) -> Bool:
-  n is Broken
+fn broken(n: Int) -> Bool: n is Broken
 
 type Bottom = Never
 
-fn bottom(x: any Named) -> Bool:
-  x is Bottom
+fn bottom(x: any Named) -> Bool: x is Bottom
 
 type BoxOf<T> = Box<T>
 

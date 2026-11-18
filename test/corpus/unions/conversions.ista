@@ -4,6 +4,8 @@
 # building literals/lambdas/variants from the one member they fit, ? propagating an error into an
 # error union, and type-parameter inference against a union.
 
+import * as runtime from 'runtime'
+
 type Status = "draft" | "sent" | "failed"
 type Point = { x: Int, y: Int }
 struct Pixel { x: Int, y: Int }
@@ -12,8 +14,7 @@ enum Color { Red, Green }
 struct NotFound { id: String }
 struct Timeout { ms: Int }
 
-fn toString(self: Email) -> String:
-  "mail:" + self.to
+fn toString(self: Email) -> String: "mail:" + self.to
 
 fn which(v: Pixel | Point) -> String:
   match v:
@@ -39,16 +40,16 @@ fn showResult(r: Result<Int, NotFound | Timeout>) -> String:
         case NotFound{id}: "nf:" + id
         case Timeout{ms}: "to:" + String(ms)
 
-fn unwrapOr<T>(x: T?, fallback: T) -> T:
-  x ?? fallback
+fn unwrapOr<T>(x: T?, fallback: T) -> T: x ?? fallback
 
 fn fromUnion<T>(x: T | String) -> T:
   match x:
     case String: panic("unexpected string")
     case v: v
 
-import * as runtime from 'runtime'
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> String:
   const exactVsShape = which(Pixel{x: 3, y: 4}) + ":" + which(struct{x: 1, y: 2})
   const a: (any Stringable) | Bool = Email{to: "cfo"}
@@ -86,7 +87,7 @@ ista async fn _main() -> String:
   const pt: Point | String = struct{x: 3, y: 4}
   const arr: Array<Int>? = []
   const mp: Map<String, Int>? = [:]
-  const fnU: (fn(Int) -> Int) | String = fn(x): x * 3
+  const fnU: (fn(Int) -> Int) | String = fn x: x * 3
   const col: Color | Int = Red
   const lit: "draft" | Int = "draft"
   const pSum = match pt:

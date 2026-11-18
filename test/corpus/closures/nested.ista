@@ -1,4 +1,5 @@
 # outcome: "8 | true false | 5 | 7"
+# disable-ista-formatter
 # A closure inside a closure shares the outermost `let` (§3.14); copies of one closure compare
 # equal and separate closures don't; a later write is seen by the closure, and a captured
 # function-typed `let` is read at call time.

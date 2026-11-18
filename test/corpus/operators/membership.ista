@@ -2,8 +2,9 @@
 # `item in c` calls `includes(c, item)` (§3.9): an array's element, a map's key, a substring, an
 # int a range reaches, and a program's own type through `Container`.
 
-struct Evens:
-  below: Int
+import * as runtime from 'runtime'
+
+struct Evens { below: Int }
 
 fn includes(self: Evens, value: Int) -> Bool:
   value % 2 == 0 and 0 <= value < self.below
@@ -11,9 +12,18 @@ fn includes(self: Evens, value: Int) -> Bool:
 fn holdsOne<C is Container<Int>>(container: C) -> Bool:
   1 in container
 
-import * as runtime from 'runtime'
-live async fn main() -> (Bool, Bool, Bool, Bool, Bool, Bool, Bool, Bool): await runtime.run(runtime.id()) _main()
+live async fn main() -> (Bool, Bool, Bool, Bool, Bool, Bool, Bool, Bool):
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> (Bool, Bool, Bool, Bool, Bool, Bool, Bool, Bool):
   const ages = ["ada": 36]
-  (2 in [1, 2, 3], 4 in [1, 2, 3], "bob" not in ages, "ada" in ages, "bc" in "abc", 3 in 0..3,
-    4 in Evens{10}, holdsOne([1]))
+  (
+    2 in [1, 2, 3]
+    4 in [1, 2, 3]
+    "bob" not in ages
+    "ada" in ages
+    "bc" in "abc"
+    3 in 0..3
+    4 in Evens{10}
+    holdsOne([1])
+  )

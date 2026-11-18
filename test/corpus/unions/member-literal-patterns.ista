@@ -2,24 +2,25 @@
 # A literal pattern and `==` on a member parameter (§3.5, §3.11) compare it as the one member of its
 # union each instantiation makes it: two literals of one base, with nothing converted.
 
+import * as runtime from 'runtime'
+
 fn describe<K in "a" | "b">(k: K) -> String:
   match k:
     case "a": "A"
     case _: "other"
 
-fn equalsA<K in "a" | "b">(k: K) -> Bool:
-  k == "a"
+fn equalsA<K in "a" | "b">(k: K) -> Bool: k == "a"
 
 fn both<K in "a" | "b">(k: K) -> String:
   match k:
     case "a": "A"
     case "b": "B"
 
-fn reversed<K in "a" | "b">(k: K) -> Bool:
-  "b" == k
+fn reversed<K in "a" | "b">(k: K) -> Bool: "b" == k
 
-import * as runtime from 'runtime'
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> String:
   const results = [describe("a"), describe("b"), `${equalsA("a")}`, `${equalsA("b")}`]
   `${results.join("|")}|${both("a")}|${both("b")}|${reversed("b")}`

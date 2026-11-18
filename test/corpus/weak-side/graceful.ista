@@ -3,9 +3,9 @@
 # `disposing()` resumes there at once, within the disposal, and cleans up; its next `await`, here
 # the loop's next `select`, stops it. A call waiting on anything else is stopped where it waits.
 
-import Inbox from 'inbox'
-import * as time from 'time'
 import * as runtime from 'runtime'
+import * as time from 'time'
+import Inbox from 'inbox'
 
 fn note(log: Shared<Array<String>>, entry: String):
   log->value = [...log->value, entry]
@@ -27,7 +27,9 @@ ista async fn idle(log: Shared<Array<String>>) -> Unit:
   await time.delay(1d)
   note(log, "never: idle was stopped")
 
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> String:
   const empty: Array<String> = []
   const log = new Shared{value: empty}

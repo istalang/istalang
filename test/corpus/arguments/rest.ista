@@ -3,10 +3,11 @@
 # spread among them spreading anything iterable (§3.3); named, it takes a whole array. Fixed arity
 # beats a rest parameter (§3.7). A function with a rest parameter, named as a value, takes the
 # array as one argument (§3.14).
+import * as runtime from 'runtime'
+
 fn sum(...numbers: Array<Int>) -> Int:
   let total = 0
-  for each in numbers:
-    total += each
+  for each in numbers: total += each
   total
 
 fn words(first: String = "", ...rest: Array<String>) -> Int:
@@ -15,20 +16,28 @@ fn words(first: String = "", ...rest: Array<String>) -> Int:
 fn pick(x: Int) -> Int: 1
 fn pick(...xs: Array<Int>) -> Int: 2
 
-fn count<T>(...items: Array<T>) -> Int:
-  items.length()
+fn count<T>(...items: Array<T>) -> Int: items.length()
 
 fn apply(f: fn(String, Array<String>) -> Int, xs: Array<String>) -> Int:
   f("", xs)
 
-import * as runtime from 'runtime'
-live async fn main() -> Array<Int>: await runtime.run(runtime.id()) _main()
+live async fn main() -> Array<Int>:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> Array<Int>:
   const more = ["c", "d"]
   [
-    sum(), sum(1), sum(1, 2), sum(...[1, 2], 3),
-    words(), words("_", "a"), words("_", "a", "b", ...more), words(first: "_", rest: ["x", "y"]),
-    pick(1), pick(1, 2),
-    count(...0..3), count(..."ab"),
-    apply(words, ["1", "2"]),
+    sum()
+    sum(1)
+    sum(1, 2)
+    sum(...[1, 2], 3)
+    words()
+    words("_", "a")
+    words("_", "a", "b", ...more)
+    words(first: "_", rest: ["x", "y"])
+    pick(1)
+    pick(1, 2)
+    count(...0..3)
+    count(..."ab")
+    apply(words, ["1", "2"])
   ]

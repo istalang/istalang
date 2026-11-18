@@ -4,18 +4,18 @@
 
 import * as runtime from 'runtime'
 
-shared struct Count:
-  value: Int
+shared struct Count { value: Int }
 ista const made = new Count{value: 0}
 ista const count = _counted()
 ista fn _counted() -> Count:
   made->value = made->value + 1
   new Count{value: 0}
+
 ista fn bump() -> Int:
   count->value = count->value + 10
   count->value
-shared struct Box:
-  x: Int
+
+shared struct Box { x: Int }
 ista fn dispose(self: Box): made->value = made->value + c
 ista const c: Int = (new Box{x: 7})->x
 live async fn main() -> Int: await runtime.run("a") _read()

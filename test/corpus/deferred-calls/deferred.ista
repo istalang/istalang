@@ -6,14 +6,13 @@
 # does, an async callee's future forwarded as is and a value made a future where one is taken. A
 # call through `?.` makes it later, or gives `none`, its receiver read now.
 
-struct User:
-  id: Int
+import * as runtime from 'runtime'
 
-struct Box:
-  n: Int
+struct User { id: Int }
 
-struct Pool:
-  size: Int
+struct Box { n: Int }
+
+struct Pool { size: Int }
 
 fn note(log: Shared<String>, s: String, n: Int) -> Int:
   log->value += s
@@ -23,49 +22,41 @@ fn load(log: Shared<String>, n: Int) -> Box:
   log->value += "load "
   Box{n: n}
 
-fn process(self: Box) -> Int:
-  self.n * 10
+fn process(self: Box) -> Int: self.n * 10
 
 fn later(log: Shared<String>, f: fn() -> Int) -> Int:
   log->value += "later "
   f() + f()
 
-fn bump(n: Int, by: Int = 1) -> Int:
-  n + by
+fn bump(n: Int, by: Int = 1) -> Int: n + by
 
-fn outer(f: fn() -> Int) -> Int:
-  f()
+fn outer(f: fn() -> Int) -> Int: f()
 
 fn inner(log: Shared<String>, f: fn() -> Int) -> Int:
   log->value += "inner "
   f()
 
-ista async fn fetchUser(id: Int) -> User:
-  User{id: id}
+ista async fn fetchUser(id: Int) -> User: User{id: id}
 
 ista fn retry<T>(f: ista async fn() -> T, times: Int = 3) -> Future<T, "ista">:
   f()
 
-fn submit(self: Pool, job: fn() -> Int) -> Int:
-  job() + self.size
+fn submit(self: Pool, job: fn() -> Int) -> Int: job() + self.size
 
-fn encode(file: String) -> Int:
-  file.length()
+fn encode(file: String) -> Int: file.length()
 
-fn pick() -> Int:
-  3
+fn pick() -> Int: 3
 
-fn optional(f: fn() -> Int?) -> Int?:
-  f()
+fn optional(f: fn() -> Int?) -> Int?: f()
 
 ista async fn eventually(f: ista async fn() -> Int) -> Int:
   await f()
 
-fn apply(run: fn(fn() -> Int) -> Int) -> Int:
-  run encode("abcd")
+fn apply(run: fn(fn() -> Int) -> Int) -> Int: run encode("abcd")
 
-import * as runtime from 'runtime'
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> String:
   const log = new Shared{value: ""}
   const a = later(log) load(log, 2).process()

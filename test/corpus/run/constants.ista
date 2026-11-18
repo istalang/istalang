@@ -2,9 +2,9 @@
 # Top-level constants (§3): literals, a negated number, a duration, a struct built from them, and
 # constants built from other constants, each computed while compiling.
 
-struct Limits:
-  low: Int
-  high: Int
+import * as runtime from 'runtime'
+
+struct Limits { low: Int, high: Int }
 
 const base = 40
 const limits = Limits{low: -2, high: base}
@@ -14,7 +14,6 @@ const label = "total"
 const ratio = 0.5
 const shift = -(0.25)
 
-import * as runtime from 'runtime'
 live async fn main(): await runtime.run(runtime.id()) _main()
 ista async fn _main():
   const span = sameLimits.high + sameLimits.low

@@ -3,20 +3,23 @@
 # awaited value. A handle compares by identity, may be passed to another instance, and its
 # result() gives that instance's end, here in a third instance.
 
-ista async fn half(n: Int) -> Int:
-  n // 2
+import * as runtime from 'runtime'
+
+ista async fn half(n: Int) -> Int: n // 2
 
 ista async fn relay(other: Instance<Int>) -> Int:
   match await other.result():
     case Ok(value): value
     case Err(error): 0
 
-import * as runtime from 'runtime'
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> String:
   const first = spawn half(42)
   const second = spawn half(42)
   const relayed = spawn relay(first)
   match await relayed.result():
-    case Ok(value): "" + value + " " + (first == first) + " " + (first == second)
+    case Ok(value):
+      "" + value + " " + (first == first) + " " + (first == second)
     case Err(error): error.message

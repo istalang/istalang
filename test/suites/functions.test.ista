@@ -2,11 +2,11 @@
 # computed and what it sees, and constants another module computes. Each rule is its own function,
 # and its test asserts what the old lowering's unit test did.
 
-import Suite, Test, test, assertEq, mock, idle, waitingAt, spawnCrashingEveryAwait from 'testing'
 import * as runtime from 'runtime'
-import * as time from 'time'
 import * as strings from 'strings'
+import * as time from 'time'
 import Decimal from 'decimal'
+import assertEq, idle, mock, spawnCrashingEveryAwait, Suite, Test, test, waitingAt from 'testing'
 import * as lib from './functions-lib'
 
 fn note(log: Shared<String>, what: String, n: Int) -> Int:
@@ -21,7 +21,8 @@ fn defaultAfterArguments() -> String:
   f(log, b: note(log, "given ", 5))
   log->value
 
-fn stamp(counter: Shared<Int>, at: Int = counter->value) -> Int: at
+fn stamp(counter: Shared<Int>, at: Int = counter->value) -> Int:
+  at
 
 fn kept(g: fn() -> Int) -> fn() -> Int: g
 
@@ -31,14 +32,9 @@ fn deferredDefault() -> Int:
   counter->value = 5
   later()
 
-struct Retry:
-  times: Int = 3
-  backoff = times * 2
-  cap: Int
+struct Retry { times: Int = 3, backoff = times * 2, cap: Int }
 
-enum Shape:
-  Circle(r: Int = 2)
-  Square(side: Int)
+enum Shape { Circle(r: Int = 2), Square(side: Int) }
 
 fn area(shape: Shape) -> Int:
   match shape:
@@ -134,10 +130,10 @@ ista async fn widenedAcrossCommits() -> (Int?, Int?):
   await runtime.commit()
   (await pending, await widened(5))
 
-shared struct Stored:
-  future: Future<Int, "ista">
+shared struct Stored { future: Future<Int, "ista"> }
 
-ista fn storedFuture(stored: Stored) -> Future<Int, "ista">: stored->future
+ista fn storedFuture(stored: Stored) -> Future<Int, "ista">:
+  stored->future
 
 ista async fn widenedSharedFuture() -> (Int?, Int):
   const stored = new Stored{future: later(6)}
@@ -162,8 +158,7 @@ ista async fn widenedWatchedFuture() -> (Int?, Array<Int>):
   await time.delay(1ms)
   (value, log->value)
 
-shared struct WeakFuture:
-  weak: WeakRef<Future<Int, "ista">>?
+shared struct WeakFuture { weak: WeakRef<Future<Int, "ista">>? }
 
 ista fn weaklyWatched(out: WeakFuture) -> Future<Int, "ista">:
   const future = later(8)

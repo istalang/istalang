@@ -1,55 +1,40 @@
-# error: 5150 at 30:16
-# error: 5150 at 33:16
-# error: 5150 at 36:18
-# error: 5150 at 39:19
-# error: 5150 at 42:18
-# error: 5151 at 45:25
-# error: 5102 at 48:18
-# error: 5150 at 51:22
+# error: 5150 at 24:16
+# error: 5150 at 26:16
+# error: 5150 at 28:18
+# error: 5150 at 30:19
+# error: 5150 at 32:18
+# error: 5151 at 34:25
+# error: 5102 at 36:18
+# error: 5150 at 38:22
 # A trait an `any` type takes is object safe: its functions take Self first and nowhere else, none
 # is static, and no field is built from Self (§3.10). Its traits are a set of traits.
 
-trait Same:
-  fn same(self: Self, other: Self) -> Bool
+trait Same { fn same(self: Self, other: Self) -> Bool }
 
-trait Zero:
-  fn Self.zero() -> Self
+trait Zero { fn Self.zero() -> Self }
 
-trait Copied:
-  fn copied(self: Self) -> Self
+trait Copied { fn copied(self: Self) -> Self }
 
-trait Counted:
-  fn count(n: Int) -> Int
+trait Counted { fn count(n: Int) -> Int }
 
-trait Linked:
-  next: Self?
+trait Linked { next: Self? }
 
-trait Named:
-  fn name(self: Self) -> String
+trait Named { fn name(self: Self) -> String }
 
-fn same(x: any Same):
-  ()
+fn same(x: any Same): ()
 
-fn zero(x: any Zero):
-  ()
+fn zero(x: any Zero): ()
 
-fn copied(x: any Copied):
-  ()
+fn copied(x: any Copied): ()
 
-fn counted(x: any Counted):
-  ()
+fn counted(x: any Counted): ()
 
-fn linked(x: any Linked):
-  ()
+fn linked(x: any Linked): ()
 
-fn twice(x: any Named & Named):
-  ()
+fn twice(x: any Named & Named): ()
 
-fn number(x: any Int):
-  ()
+fn number(x: any Int): ()
 
-fn comparable(x: any Comparable):
-  ()
+fn comparable(x: any Comparable): ()
 
-fn iterable(x: any Iterable<Int>):
-  ()
+fn iterable(x: any Iterable<Int>): ()

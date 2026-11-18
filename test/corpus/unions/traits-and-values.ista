@@ -3,12 +3,13 @@
 # or through every member meeting an object-safe trait, trait calls through visible traits, == and
 # != comparing member type then value, unions as Map keys, and Sendable unions across spawn.
 
+import * as runtime from 'runtime'
+
 struct Email { to: String }
 struct Sms { number: String }
 type Contact = Email | Sms
 
-trait Notifier:
-  fn send(self: Self, text: String) -> String
+trait Notifier { fn send(self: Self, text: String) -> String }
 
 fn send(self: Email, text: String) -> String:
   `mail(${self.to}):${text}`
@@ -16,25 +17,22 @@ fn send(self: Email, text: String) -> String:
 fn send(self: Sms, text: String) -> String:
   `sms(${self.number}):${text}`
 
-fn toString(self: Email) -> String:
-  `Email(${self.to})`
+fn toString(self: Email) -> String: `Email(${self.to})`
 
-fn toString(self: Sms) -> String:
-  `Sms(${self.number})`
+fn toString(self: Sms) -> String: `Sms(${self.number})`
 
-fn showGen<T is Stringable>(v: T) -> String:
-  v.toString()
+fn showGen<T is Stringable>(v: T) -> String: v.toString()
 
-fn optDefault<T is Default>() -> T:
-  T.default()
+fn optDefault<T is Default>() -> T: T.default()
 
 ista async fn worker(v: Int | String) -> String:
   match v:
     case Int as n: `spawned:${n}`
     case String as s: `spawned:${s}`
 
-import * as runtime from 'runtime'
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> String:
   const c1: Contact = Email{to: "cfo"}
   const c2: Contact = Sms{number: "555"}

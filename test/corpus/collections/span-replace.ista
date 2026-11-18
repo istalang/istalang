@@ -2,11 +2,14 @@
 # Replacing a span of an array with an array of another length, longer or empty (§3.9); a copy taken
 # before is untouched (§3.1), and an open end means the start or the length.
 
+import * as runtime from 'runtime'
+
 fn show(xs: Array<Int>) -> String:
   "[" + [for x in xs: String(x)].join(", ") + "]"
 
-import * as runtime from 'runtime'
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> String:
   let a = [0, 1, 2, 3, 4, 5, 6]
   const before = a

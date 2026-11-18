@@ -6,9 +6,7 @@ import * as runtime from 'runtime'
 
 struct Box<T> { value: T }
 
-struct Tree:
-  value: Box<Int>
-  children: Array<Tree>
+struct Tree { value: Box<Int>, children: Array<Tree> }
 
 type TreeData<D> = match D:
   case Box<infer T>: T
@@ -17,16 +15,23 @@ type TreeData<D> = match D:
 
 fn sumTree(t: TreeData<Tree>) -> Int:
   let sum = t.value
-  for child in t.children:
-    sum += sumTree(child)
+  for child in t.children: sum += sumTree(child)
   sum
 
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> String:
-  const tree: TreeData<Tree> = struct{
-    value: 1,
-    children: [struct{value: 1, children: []}, struct{value: 1, children: []}],
-  }
-  const small: TreeData<Tree> = struct{value: 1, children: [struct{value: 1, children: []}]}
-  const same: TreeData<Tree> = struct{value: 1, children: [struct{value: 1, children: []}]}
+  const tree: TreeData<Tree> =
+    value: 1
+    children: [
+      struct{value: 1, children: []}
+      struct{value: 1, children: []}
+    ]
+  const small: TreeData<Tree> =
+    value: 1
+    children: [struct{value: 1, children: []}]
+  const same: TreeData<Tree> =
+    value: 1
+    children: [struct{value: 1, children: []}]
   `${sumTree(tree)}|${small == same}|${json.stringify(small)}`

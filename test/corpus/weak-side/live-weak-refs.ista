@@ -2,12 +2,9 @@
 # A weak reference holds nothing (§7): there is one per referent, `deref()` gives it while
 # something holds it and none once its last holder let go of it, which disposed it at once.
 
-shared struct Lease:
-  name: String
-  log: Shared<Array<String>>
+shared struct Lease { name: String, log: Shared<Array<String>> }
 
-fn dispose(self: Lease):
-  note(self->log, "closed " + self->name)
+fn dispose(self: Lease): note(self->log, "closed " + self->name)
 
 fn note(log: Shared<Array<String>>, text: String):
   log->value.push(text)

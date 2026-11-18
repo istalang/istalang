@@ -4,31 +4,26 @@
 # what the type it is made for has. A struct of sendable fields is Sendable without saying so
 # (§3.1).
 
-struct Money:
-  cents: Int
+import * as runtime from 'runtime'
 
-struct Pair<A, B>:
-  first: A
-  second: B
+struct Money { cents: Int }
 
-struct Envelope<T is Sendable>:
-  value: T
+struct Pair<A, B> { first: A, second: B }
+
+struct Envelope<T is Sendable> { value: T }
 
 trait Monoid:
   fn Self.zero() -> Self
   fn add(left: Self, right: Self) -> Self
 
-trait Priced:
-  cents: Int
+trait Priced { cents: Int }
 
 trait Pairable:
   fn pairWith<U>(self: Self, other: U) -> Pair<Self, U>
 
-fn Int.zero() -> Int:
-  0
+fn Int.zero() -> Int: 0
 
-fn Money.zero() -> Money:
-  Money{cents: 0}
+fn Money.zero() -> Money: Money{cents: 0}
 
 fn add(left: Money, right: Money) -> Money:
   Money{cents: left.cents + right.cents}
@@ -42,15 +37,20 @@ fn sum3<T is Monoid>(a: T, b: T, c: T) -> T:
   total = total + b
   total + c
 
-fn priceOf<T is Priced>(item: T) -> Int:
-  item.cents
+fn priceOf<T is Priced>(item: T) -> Int: item.cents
 
 fn tagged<T is Pairable>(item: T) -> Pair<T, String>:
   pairWith(item, "cents")
 
-import * as runtime from 'runtime'
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> String:
-  const money = sum3(Money{cents: 5}, Money{cents: 10}, Money{cents: 15})
-  const sealed: Envelope<Pair<Money, Int>> = Envelope{value: Pair{first: money, second: 1}}
+  const money = sum3(
+    Money{cents: 5}
+    Money{cents: 10}
+    Money{cents: 15}
+  )
+  const sealed: Envelope<Pair<Money, Int>> = Envelope:
+    value: Pair{first: money, second: 1}
   String(sum3(1, 2, 3)) + " " + String(money.cents) + " " + String(priceOf(Money{cents: 7})) + " " + tagged(money).second + " " + String(sealed.value.first.cents)

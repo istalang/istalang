@@ -7,15 +7,16 @@ import * as runtime from 'runtime'
 ista async fn fill(s: Slot<Int>):
   await runtime.commit()
   _ = s.put(42)
-live async fn main() -> Int: await runtime.run(runtime.id()) _main()
+
+live async fn main() -> Int:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> Int:
   const s = Slot.create<Int>()
   const filling = fill(s)
   const got = await select:
-    case s.read() as x:
-      x
-    case s.take() as y:
-      y
+    case s.read() as x: x
+    case s.take() as y: y
   const left = await s.take()
   await filling
   got * 100 + left

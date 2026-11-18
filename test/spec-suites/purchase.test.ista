@@ -7,32 +7,14 @@
 # of a receipt retracts that message (§3.6).
 
 import (
-  Suite
-  Test
-  test
-  group
-  assertEq
-  FakeClock
-  FakeQueue
-  FakeReceipts
-  withClock
-  Mock
-  mock
-  calls
-  handle
-  idle
+  * as testing
+  assertEq, calls, FakeClock, FakeQueue, FakeReceipts, group
+  handle, idle, Mock, mock, Suite, Test, test, withClock
 ) from 'testing'
-import * as testing from 'testing'
-import * as app from './purchase'
 import (
-  PurchaseRequest
-  ReviewRequest
-  Verdict
-  Notice
-  Cancel
-  ChargeResult
-  Queue
-  Sent
+  * as app
+  Cancel, ChargeResult, Notice, PurchaseRequest, Queue
+  ReviewRequest, Sent, Verdict
 ) from './purchase'
 
 struct PurchaseEnv:
@@ -44,10 +26,11 @@ struct PurchaseEnv:
   charges: Mock<ista fn(String, Int) -> Result<String>>
 
 ista async fn withPurchaseEnv(test: ista async fn(PurchaseEnv)):
-  await withClock(async fn(clock): {
-    const env = PurchaseEnv{
+  await withClock(async fn clock: {
+    const env = PurchaseEnv:
       clock
-      reviews: FakeQueue<Queue<ReviewRequest>, ReviewRequest>{make: handle}
+      reviews: FakeQueue<Queue<ReviewRequest>, ReviewRequest>:
+        make: handle
       verdicts: FakeQueue<Queue<Verdict>, Verdict>{make: handle}
       cancels: FakeQueue<Queue<Cancel>, Cancel>{make: handle}
       notices: FakeQueue<Queue<Notice>, Notice>{make: handle}
@@ -55,7 +38,6 @@ ista async fn withPurchaseEnv(test: ista async fn(PurchaseEnv)):
         app.chargeCard
         fn(id: String, amount: Int) -> Result<String>: Ok("r-" + id + "-" + amount)
       )
-    }
     hold _ = mock(app.reviewQueue, env.reviews.open)
     hold _ = mock(app.verdicts, env.verdicts.open)
     hold _ = mock(app.cancels, env.cancels.open)
@@ -69,23 +51,30 @@ ista async fn withPurchaseEnv(test: ista async fn(PurchaseEnv)):
     await test(env)
   })
 
-const laptop = PurchaseRequest{id: "p1", item: "laptop", amount: 900}
+const laptop = PurchaseRequest:
+  id: "p1"
+  item: "laptop"
+  amount: 900
 
 ista fn approveAll(env: PurchaseEnv, roles: Array<String>):
-  for role in roles: env.verdicts.post("p1", Verdict{role, ok: true, comment: ""})
+  for role in roles:
+    env.verdicts.post("p1", Verdict{role, ok: true, comment: ""})
 
 @Suite{"purchase approval"}
 ista fn approvalSuite() -> Array<Test>: [
-  test("expires after 5 days", withPurchaseEnv, async fn(env): {
+  test("expires after 5 days", withPurchaseEnv, async fn env: {
     const t = spawn app.purchase(laptop)
     await t.idle()
     env.clock.advance(5d)
     assertEq(await t.result(), Ok("expired"))
   })
-  test("reminds the roles yet to review every day, until it ends", withPurchaseEnv, async fn(env): {
+  test("reminds the roles yet to review every day, until it ends", withPurchaseEnv, async fn env: {
     const t = spawn app.purchase(laptop)
     await t.idle()
-    env.verdicts.post("p1", Verdict{role: "legal", ok: true, comment: ""})
+    env.verdicts.post(
+      "p1"
+      Verdict{role: "legal", ok: true, comment: ""}
+    )
     await t.idle()
     env.clock.advance(1d)
     await t.idle()
@@ -95,34 +84,44 @@ ista fn approvalSuite() -> Array<Test>: [
     assertEq(await t.result(), Ok("expired"))
     assertEq(env.notices.pending("finance"), [])
   })
-  test("is rejected by the first role saying no", withPurchaseEnv, async fn(env): {
+  test("is rejected by the first role saying no", withPurchaseEnv, async fn env: {
     const t = spawn app.purchase(laptop)
-    env.verdicts.post("p1", Verdict{role: "finance", ok: false, comment: "over budget"})
+    env.verdicts.post(
+      "p1"
+      Verdict{role: "finance", ok: false, comment: "over budget"}
+    )
     assertEq(await t.result(), Ok("rejected by finance"))
     assertEq(env.charges.calls(), [])
   })
   group("with cancellation", [
-    test("retracts review requests", withPurchaseEnv, async fn(env): {
+    test("retracts review requests", withPurchaseEnv, async fn env: {
       const t = spawn app.purchase(laptop)
       await t.idle()
       assertEq(env.reviews.pending("legal"), [
-        ReviewRequest{purchaseId: "p1", item: "laptop", amount: 900}
+        ReviewRequest{
+          purchaseId: "p1"
+          item: "laptop"
+          amount: 900
+        }
       ])
       env.cancels.post("p1", Cancel{reason: "changed my mind"})
       assertEq(await t.result(), Ok("cancelled: changed my mind"))
       assertEq(env.reviews.pending("legal"), [])
       assertEq(env.reviews.pending("finance"), [])
     })
-    test("cancels after a verdict has come", withPurchaseEnv, async fn(env): {
+    test("cancels after a verdict has come", withPurchaseEnv, async fn env: {
       const t = spawn app.purchase(laptop)
       await t.idle()
-      env.verdicts.post("p1", Verdict{role: "legal", ok: true, comment: ""})
+      env.verdicts.post(
+        "p1"
+        Verdict{role: "legal", ok: true, comment: ""}
+      )
       await t.idle()
       env.cancels.post("p1", Cancel{reason: "too late"})
       assertEq(await t.result(), Ok("cancelled: too late"))
     })
   ])
-  test("takes the verdicts that come after a reminder", withPurchaseEnv, async fn(env): {
+  test("takes the verdicts that come after a reminder", withPurchaseEnv, async fn env: {
     const t = spawn app.purchase(laptop)
     await t.idle()
     env.clock.advance(1d)
@@ -131,11 +130,17 @@ ista fn approvalSuite() -> Array<Test>: [
     assertEq(await t.result(), Ok("paid: r-p1-900"))
   })
   ...[
-    for amount in [10, 50_000, 60_000]: test("amount " + amount, withPurchaseEnv, async fn(env): {
-      const roles = if amount > 50_000: ["legal", "finance", "cfo"] else: ["legal", "finance"]
-      const t = spawn app.purchase(PurchaseRequest{id: "p1", item: "laptop", amount})
+    for amount in [10, 50_000, 60_000]: test("amount " + amount, withPurchaseEnv, async fn env: {
+      const roles = if amount > 50_000: ["legal", "finance", "cfo"]
+      else: ["legal", "finance"]
+      const t = spawn app.purchase(
+        PurchaseRequest{id: "p1", item: "laptop", amount}
+      )
       await t.idle()
-      assertEq(env.reviews.pending("cfo").length(), if amount > 50_000: 1 else: 0)
+      assertEq(
+        env.reviews.pending("cfo").length()
+        if amount > 50_000: 1 else: 0
+      )
       approveAll(env, roles)
       assertEq(await t.result(), Ok("paid: r-p1-" + amount))
       assertEq(env.charges.calls(), [("p1", amount)])
@@ -144,9 +149,12 @@ ista fn approvalSuite() -> Array<Test>: [
   test(
     "charges twice when its segment runs twice, so charging must be idempotent"
     withPurchaseEnv
-    async fn(env): {
+    async fn env: {
       const t = testing.spawnCrashingEveryAwait(fn(): app.charge(laptop))
-      assertEq(await t.result(), Ok(ChargeResult{ok: true, receipt: "r-p1-900"}))
+      assertEq(
+        await t.result()
+        Ok(ChargeResult{ok: true, receipt: "r-p1-900"})
+      )
       assertEq(env.charges.calls(), [("p1", 900), ("p1", 900)])
     }
   )

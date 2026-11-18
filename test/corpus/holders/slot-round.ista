@@ -5,9 +5,7 @@
 
 import * as runtime from 'runtime'
 
-shared struct Lease:
-  name: String
-  log: Shared<Array<String>>
+shared struct Lease { name: String, log: Shared<Array<String>> }
 
 fn dispose(self: Lease):
   self->log->value.push("disposed " + self->name)
@@ -41,7 +39,8 @@ ista async fn watchedUnnamed() -> String:
     await runtime.commit()
   log->value.join(", ")
 
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
 
 ista async fn _main() -> String:
   [await unwatched(), await watchedByName(), await watchedUnnamed()].join(" | ")

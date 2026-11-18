@@ -1,4 +1,5 @@
 # outcome: "2 10 66 33 10 6-1 6 1 02"
+# disable-ista-formatter
 # QA edges of §3.14: captured parameters, `return` in a lambda, destructured and loop `let`s, named
 # lambdas, `?.` on a function field, async lambdas, and shadowing a captured name.
 struct Op { run: fn(Int) -> Int, tag: String }

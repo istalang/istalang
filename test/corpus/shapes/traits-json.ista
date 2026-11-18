@@ -14,8 +14,7 @@ type Pair<A, B> = { first: A, second: B }
 struct Pixel { y: Int, x: Int }
 struct Duo<T> { second: T, first: Int }
 
-trait Area:
-  fn area(self: Self) -> Int
+trait Area { fn area(self: Self) -> Int }
 
 fn area(self: Point) -> Int: self.x * self.y
 
@@ -27,7 +26,9 @@ live async fn main(): await runtime.run(runtime.id()) _main()
 ista async fn _main():
   const shape: Spot = Pixel{x: 2, y: 3}
   const back = json.parse<Point>("{\"y\": 4, \"x\": 5}")
-  const text = json.stringify(struct{b: 1, a: [struct{x: 2, y: 1}]})
+  const text = json.stringify(
+    struct{b: 1, a: [struct{x: 2, y: 1}]}
+  )
   const x = match back:
     case Ok(value): value.x
     case Err(error): 0

@@ -8,13 +8,18 @@ struct RaceReads:
   first: Future<Int, "ista">
   second: Future<Int, "ista">
   type Mode = "ista"
+
 ista fn onAwait(self: RaceReads, done: Resolver<Int, "ista">):
   self.first.onAwait(done)
   self.second.onAwait(done)
+
 ista async fn fill(s: Slot<Int>):
   await runtime.commit()
   _ = s.put(7)
-live async fn main() -> (Int, Int): await runtime.run(runtime.id()) _main()
+
+live async fn main() -> (Int, Int):
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> (Int, Int):
   const s = Slot.create<Int>()
   const t = Slot.create<Int>()

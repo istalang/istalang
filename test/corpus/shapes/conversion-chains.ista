@@ -5,12 +5,13 @@
 # (§3.18), and a struct's spread into a generic literal infers its type arguments through the
 # conversion (§3.5).
 
+import * as runtime from 'runtime'
+
 type Point = { a: String, z: Int }
 struct Pixel { z: Int, a: String }
 struct Holder { p: Pixel }
 
-fn norm(self: Point) -> String:
-  self.a + self.z
+fn norm(self: Point) -> String: self.a + self.z
 
 shared struct Counter { z: Int, a: String }
 
@@ -18,7 +19,6 @@ type Pair<A, B> = { a: A, z: B }
 struct Boxed { z: String, a: Int }
 shared struct SharedBox<A, B> { a: A, z: B }
 
-import * as runtime from 'runtime'
 live async fn main(): await runtime.run(runtime.id()) _main()
 ista async fn _main():
   const p: Pixel? = Pixel{z: 10, a: "hi"}

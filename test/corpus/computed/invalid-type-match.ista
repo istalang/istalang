@@ -1,7 +1,7 @@
 # error: 5171 at 13:6
 # error: 5172 at 16:23
 # error: 5170 at 18:17
-# error: 5100 at 21:7
+# error: 5100 at 20:19
 # A type match no case of matches its use, one whose reductions never end, inference through a
 # type match, and `infer` outside a case's pattern (§3.5, §3.17).
 
@@ -17,5 +17,4 @@ fn misplaced(x: Array<infer T>): ()
 fn inferMatch<D>(x: OnlyField<D>) -> Int: 0
 fn badNoCase(x: OnlyField<Int>): ()
 
-fn badUses():
-  _ = inferMatch(1)
+fn badUses(): _ = inferMatch(1)

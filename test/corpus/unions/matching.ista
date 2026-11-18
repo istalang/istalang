@@ -5,15 +5,15 @@
 # alias, remaining binder types, alternatives binding a union, exhaustiveness without case _, and
 # collapse after substitution keeping the first matching arm.
 
+import * as runtime from 'runtime'
+
 type Status = "draft" | "sent" | "failed"
 type Point = { x: Int, y: Int }
 struct Email { to: String }
 struct Sms { number: String }
 type Contact = Email | Sms
 
-enum Decision:
-  Approved(by: String)
-  Expired
+enum Decision { Approved(by: String), Expired }
 
 enum First { Shared, OnlyFirst }
 enum Second { Shared, OnlySecond }
@@ -100,8 +100,9 @@ fn collapsedBox<T is Stringable>(x: Box<T> | Box<Int>) -> String:
     case Box<T>{value}: `first:${value}`
     case Box<Int>{value}: `second:${value}`
 
-import * as runtime from 'runtime'
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> String:
   const p1 = `${describe(none)}|${describe(42)}|${describe("ok")}|${label("draft")}|${label("failed")}|${contactTo(Email{to: "cfo"})}`
   const p2 = `${checkIntOpt(5)}:${checkIntOpt(none)}:${checkLitOpt(1)}:${checkLitOpt(2)}`

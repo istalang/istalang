@@ -1,44 +1,35 @@
-# error: 5600 at 17:10
-# error: 5601 at 19:7
-# error: 5602 at 25:5
-# error: 5022 at 29:7
-# error: 5025 at 35:10
-# error: 5005 at 43:7
+# error: 5600 at 16:10
+# error: 5601 at 17:7
+# error: 5602 at 21:5
+# error: 5022 at 24:7
+# error: 5025 at 29:10
+# error: 5005 at 34:20
 # select (§8): each case waits on a future. Without `await` it never waits, so it needs `else`;
 # with `await` it waits, so it has none, and only an async function may wait. A case without
 # `as` discards its value, so a value that must be used, such as a `Result`, is reported. The
 # case bodies agree on one type.
 
-ista async fn checked(s: Slot<Int>) -> Result<Int>:
-  Ok(1)
+ista async fn checked(s: Slot<Int>) -> Result<Int>: Ok(1)
 
 ista async fn cases(s: Slot<Int>):
   _ = await select:
-    case 3:
-      1
+    case 3: 1
   _ = select:
-    case s.read():
-      1
+    case s.read(): 1
   _ = await select:
-    case s.read():
-      1
-    else:
-      2
+    case s.read(): 1
+    else: 2
 
 ista fn plain(s: Slot<Int>):
   _ = await select:
-    case s.read():
-      1
+    case s.read(): 1
 
 ista async fn discarded(s: Slot<Int>):
   _ = await select:
-    case checked(s):
-      1
+    case checked(s): 1
 
 ista async fn disagreeing(s: Slot<Int>) -> Int:
   const value = await select:
-    case s.read() as n:
-      n
-    case s.take():
-      "two"
+    case s.read() as n: n
+    case s.take(): "two"
   1

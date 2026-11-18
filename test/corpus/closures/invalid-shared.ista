@@ -1,10 +1,10 @@
-# error: 5001 at 25:14
-# error: 5001 at 26:16
-# error: 5221 at 27:5
-# error: 5220 at 28:13
-# error: 5307 at 29:16
-# error: 5309 at 30:22
-# error: 5309 at 31:22
+# error: 5001 at 23:14
+# error: 5001 at 24:16
+# error: 5221 at 25:5
+# error: 5220 at 26:13
+# error: 5307 at 27:16
+# error: 5309 at 28:22
+# error: 5309 at 29:22
 # A Shared value's field is written with values of its type (§3.8, §3.9), whole or in part, and is
 # read through `->`, never `.`; only a shared struct has a value behind it. A shared struct's value
 # passed by `&` is a copy for the call (§3.7): never to an async function, and never beside
@@ -12,11 +12,9 @@
 
 struct Counter { n: Int }
 
-fn both(a: &Int, b: &Int):
-  a += b
+fn both(a: &Int, b: &Int): a += b
 
-ista async fn later(n: &Int):
-  n += 1
+ista async fn later(n: &Int): n += 1
 
 ista async fn subject():
   const c = new Shared{value: Counter{n: 1}}

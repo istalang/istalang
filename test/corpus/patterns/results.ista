@@ -1,4 +1,5 @@
 # outcome: "ok 6|failed: not a number|true|true|given kept"
+# disable-ista-formatter
 # A function that can fail returns a Result (§3.12): `?` passes on its `Ok` value, or returns its
 # `Err` from the enclosing function, whose Result holds the same error type. An `Error` built
 # without `trace` gets the frames where it was built; one that is given or spread keeps its own. A

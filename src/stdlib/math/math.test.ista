@@ -1,10 +1,9 @@
 # The math module (spec §3.8), as tables of cases: rounding in every mode, roots, and the order
 # functions on every ordered type.
 
-import Suite, Test, test, group, assert, assertEq, expectPanic from 'testing'
-import * as math from 'math'
-import Rounding, abs, clamp, max, min, round, sqrt from 'math'
+import * as math, abs, clamp, max, min, round, Rounding, sqrt from 'math'
 import * as time from 'time'
+import assert, assertEq, expectPanic, group, Suite, Test, test from 'testing'
 
 const ties = [-2.5, -1.5, -0.5, 0.4, 0.5, 1.5, 2.5, 2.6, -2.6]
 

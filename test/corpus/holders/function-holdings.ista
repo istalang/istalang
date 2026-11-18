@@ -5,8 +5,8 @@
 # releases its elements newest first, and a value another holder still reaches (a copy out of a
 # `Shared`) survives being overwritten there until the copy goes.
 
-import * as time from 'time'
 import * as runtime from 'runtime'
+import * as time from 'time'
 
 fn note(log: Shared<Array<String>>, text: String):
   log->value = [...log->value, text]
@@ -19,16 +19,14 @@ ista async fn a(log: Shared<Array<String>>):
   hold let h = sleeper(1, log)
   h = sleeper(2, log)
   note(log, "reassigned")
-  if true:
-    hold const k = sleeper(3, log)
+  if true: hold const k = sleeper(3, log)
   note(log, "block done")
   hold _ = sleeper(4, log)
   _ = sleeper(5, log)
   note(log, "end a")
 
 ista async fn withHeader(log: Shared<Array<String>>):
-  if sleeper(8, log) is _:
-    note(log, "body")
+  if sleeper(8, log) is _: note(log, "body")
   const arr = [sleeper(10, log), sleeper(11, log)]
   note(log, "arr")
   drop arr
@@ -41,7 +39,9 @@ ista async fn withHeader(log: Shared<Array<String>>):
   drop copy
   note(log, "copy dropped")
 
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> String:
   const empty: Array<String> = []
   const log = new Shared{value: empty}

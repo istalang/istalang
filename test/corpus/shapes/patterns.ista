@@ -3,6 +3,8 @@
 # against an `any` value it matches one whose own type is that shape, while a nominal value inside
 # keeps its own type, so the shape's pattern doesn't match it.
 
+import * as runtime from 'runtime'
+
 type Point = { x: Int, y: Int }
 struct Pixel { x: Int, y: Int }
 
@@ -16,7 +18,6 @@ fn which(v: any Sendable) -> String:
     case Pixel{x}: "pixel " + x
     case _: "other"
 
-import * as runtime from 'runtime'
 live async fn main(): await runtime.run(runtime.id()) _main()
 ista async fn _main():
   const shape: any Sendable = struct{x: 1, y: 2}

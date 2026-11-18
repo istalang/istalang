@@ -5,8 +5,7 @@
 import * as runtime from 'runtime'
 
 fn stock(item: String) -> Int:
-  if item == "":
-    panic("no stock")
+  if item == "": panic("no stock")
   item.length()
 
 ista async fn checked(item: String) -> String:
@@ -14,6 +13,8 @@ ista async fn checked(item: String) -> String:
     case Ok(value): "Ok " + value
     case Err(error): "Err " + error.code + ": " + error.message
 
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> String:
   await checked("") + "; " + await checked("pen")

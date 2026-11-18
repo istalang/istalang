@@ -9,5 +9,7 @@ ista fn watch():
   if true:
     const watching = Resolver.of(fn(_: Int): ())
     see(1)
-    watching.onCancel(fn(): see(if watching.tryResolve(1): 1 else: 0))
+    watching.onCancel(
+      fn(): see(if watching.tryResolve(1): 1 else: 0)
+    )
     later(2).onAwait(watching)

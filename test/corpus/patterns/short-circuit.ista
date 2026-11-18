@@ -1,4 +1,5 @@
 # outcome: "true|4|-1|-1|z|-|7|3|6"
+# disable-ista-formatter
 # What a pattern operator skips must not run (§3.12, §4): `?` returns the `Err` before the rest of
 # the function, `??` evaluates its right side only for `none`, and a `?.` chain that meets `none`
 # is `none` as a whole. Each skipped part panics, so running it fails the program. `is` bindings

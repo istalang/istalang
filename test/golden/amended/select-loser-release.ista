@@ -7,15 +7,14 @@ import * as time from 'time'
 fn note(log: Shared<Array<String>>, entry: String):
   log->value = [...log->value, entry]
 
-shared struct Lease:
-  log: Shared<Array<String>>
+shared struct Lease { log: Shared<Array<String>> }
 
 fn dispose(self: Lease): note(self->log, "disposed lease")
 
-struct Gate:
-  waiting: Shared<Array<Resolver<Int, "live">>>
+struct Gate { waiting: Shared<Array<Resolver<Int, "live">>> }
 
-live fn onAwait(self: Gate, done: Resolver<Int, "live">): self.waiting->value.push(done)
+live fn onAwait(self: Gate, done: Resolver<Int, "live">):
+  self.waiting->value.push(done)
 
 live async fn sleeper(lease: Lease) -> Int:
   await time.delay(1h)
@@ -23,8 +22,7 @@ live async fn sleeper(lease: Lease) -> Int:
 
 live async fn worker(gate: Gate, log: Shared<Array<String>>) -> Unit:
   await select:
-    case gate as job:
-      note(log, "job " + String(job))
+    case gate as job: note(log, "job " + String(job))
     case sleeper(new Lease{log}) as slept:
       note(log, "slept " + String(slept))
 

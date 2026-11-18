@@ -12,8 +12,7 @@
 #   its value and what it reads may all reach the computed again.
 
 # The nodes that read one another, on one clock.
-shared struct Graph:
-  now: Int = 0
+shared struct Graph { now: Int = 0 }
 
 # One per source and computed; not generic, so one `_track` serves every `Computed<T>`.
 shared struct _Dependency:
@@ -25,13 +24,10 @@ shared struct _Dependency:
   refresh: inert fn() -> Bool # evaluates, keeps an unequal result, and says whether it kept one
 
 # A value only the driver sets, between views.
-struct Source<T is Inert>:
-  _dep: _Dependency
-  _cell: Shared<T>
+struct Source<T is Inert> { _dep: _Dependency, _cell: Shared<T> }
 
 # A computed's cell once it evaluated, so that a `none` result is a value like any other.
-struct _Evaluated<T>:
-  value: T
+struct _Evaluated<T> { value: T }
 
 # A value derived by its evaluation from what that evaluation read.
 struct Computed<T is Inert>:
@@ -39,15 +35,13 @@ struct Computed<T is Inert>:
   _cell: Shared<_Evaluated<T>?>
 
 # What an outermost read shares with every read beneath it.
-struct _View:
-  graph: Graph
-  tick: Int
-  reader: _Dependency?
+struct _View { graph: Graph, tick: Int, reader: _Dependency? }
 
-fn source<T is Inert>(self: Graph, value: T) -> Source<T>: Source{
-  _dep: new _Dependency{graph: self, refresh: _unchanged}
-  _cell: new Shared<T>{value}
-}
+fn source<T is Inert>(self: Graph, value: T) -> Source<T>:
+  Source{
+    _dep: new _Dependency{graph: self, refresh: _unchanged}
+    _cell: new Shared<T>{value}
+  }
 
 fn computed<T is Inert>(self: Graph, eval: inert fn() -> T) -> Computed<T>:
   self._computed(eval, none)
@@ -64,7 +58,11 @@ fn _computed<T is Inert>(self: Graph, eval: inert fn() -> T, before: _Evaluated<
     if cell->value == next: return false
     cell->value = next
     true
-  Computed{_dep: new _Dependency{graph: self, refresh}, _cell: cell}
+
+  Computed{
+    _dep: new _Dependency{graph: self, refresh}
+    _cell: cell
+  }
 
 # Sets the source between views; only a different value counts as a change.
 fn set<T is Inert>(self: Source<T>, value: T):
@@ -79,7 +77,8 @@ fn read<T is Inert>(self: Source<T>) -> T:
 fn read<T is Inert>(self: Computed<T>) -> T:
   _track(self._dep)
   match self._cell->value:
-    case None: panic("A computed read itself in its first evaluation, before it had a value.")
+    case None:
+      panic("A computed read itself in its first evaluation, before it had a value.")
     case evaluated: evaluated.value
 
 # A source's evaluation: its value is set, never derived.
@@ -99,20 +98,31 @@ fn _track(dep: _Dependency):
     panic("A view reads one graph: another graph's ticks don't compare with its own.")
   view = current
   fn evaluate(node: _Dependency):
-    view = _View{graph: current.graph, tick: current.tick, reader: node}
+    view = _View:
+      graph: current.graph
+      tick: current.tick
+      reader: node
     node->reads = []
     const kept = node->refresh()
     view = current
     if kept: node->changed = node->graph._tick()
+
   fn bringUpToDate(node: _Dependency) -> Unit:
     if node->active: return
-    if node->checked is Int as checked and checked >= current.tick: return
+    if node->checked is Int as checked and checked >= current.tick:
+      return
     node->active = true
     const stale = match node->checked:
       case None: true
-      case checked: node->reads.some(fn(read): { bringUpToDate(read); read->changed > checked })
+      case checked:
+        node->reads.some(fn read: {
+          bringUpToDate(read)
+          read->changed > checked
+        })
     if stale: evaluate(node)
     node->checked = node->graph->now
     node->active = false
+
   bringUpToDate(dep)
-  if current.reader is _Dependency as reader: reader->reads.push(dep)
+  if current.reader is _Dependency as reader:
+    reader->reads.push(dep)

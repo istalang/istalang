@@ -1,52 +1,52 @@
 # outcome: ["job 1","job 2","alive","worker disposing","defer2","defer1","scope 3"]
 # QA M3 (§3.4, §6, §7, §8): a worker held by `hold _` sees `disposing()` when `scope` returns, ahead of the defers (reverse creation order); the watcher held by a `_` of the same block dies with it, so `disposed()` never logs. `scope` waits for the worker to report both jobs, not for a time, so a slow machine can't reorder them.
-import Inbox, Revertible from 'inbox'
-import * as time from 'time'
 import * as runtime from 'runtime'
+import * as time from 'time'
+import Inbox, Revertible from 'inbox'
 
 ista async fn worker(log: Inbox<String>, jobs: Inbox<Int>, done: Inbox<Int>):
-    while true:
-        await select:
-            case jobs.receive() as j:
-                log.send("job " + j.toString())
-                done.send(j)
-            case worker.disposing():
-                log.send("worker disposing")
-                return
+  while true:
+    await select:
+      case jobs.receive() as j:
+        log.send("job " + j.toString())
+        done.send(j)
+      case worker.disposing():
+        log.send("worker disposing")
+        return
 
 ista async fn watcher(log: Inbox<String>, w: WeakRef<Inbox<Int>>):
-    await w.disposed()
-    log.send("inbox gone")
+  await w.disposed()
+  log.send("inbox gone")
 
 ista async fn scope(log: Inbox<String>) -> Int:
-    const jobs = Inbox.create<Int>()
-    const done = Inbox.create<Int>()
-    const wk = WeakRef(jobs)
-    _ = watcher(log, wk)
-    _ = defer(fn(): log.send("defer1"))
-    _ = defer(fn(): log.send("defer2"))
-    hold _ = worker(log, jobs, done)
-    jobs.send(1)
-    jobs.send(2)
-    _ = await done.receive()
-    _ = await done.receive()
-    log.send(if wk.deref() is none: "dead" else: "alive")
-    3
+  const jobs = Inbox.create<Int>()
+  const done = Inbox.create<Int>()
+  const wk = WeakRef(jobs)
+  _ = watcher(log, wk)
+  _ = defer(fn(): log.send("defer1"))
+  _ = defer(fn(): log.send("defer2"))
+  hold _ = worker(log, jobs, done)
+  jobs.send(1)
+  jobs.send(2)
+  _ = await done.receive()
+  _ = await done.receive()
+  log.send(if wk.deref() is none: "dead" else: "alive")
+  3
 
-live async fn main() -> Array<String>: await runtime.run(runtime.id()) _main()
+live async fn main() -> Array<String>:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> Array<String>:
-    const log = Inbox.create<String>()
-    const r = await scope(log)
-    log.send("scope " + r.toString())
-    await time.delay(10ms)
-    let out: Array<String> = []
-    while true:
-        const more: Bool = select:
-            case log.receive() as s:
-                out.push(s)
-                true
-            else:
-                false
-        if not more:
-            break
-    out
+  const log = Inbox.create<String>()
+  const r = await scope(log)
+  log.send("scope " + r.toString())
+  await time.delay(10ms)
+  let out: Array<String> = []
+  while true:
+    const more: Bool = select:
+      case log.receive() as s:
+        out.push(s)
+        true
+      else: false
+    if not more: break
+  out

@@ -3,12 +3,12 @@
 # passed by `&`, or changed by a method taking `&self`, it is copied in and written back when the
 # call returns. A whole `*x` is written alone, assigned on its own or among other targets.
 
+import * as runtime from 'runtime'
+
 struct Counter { n: Int, items: Array<String> }
 
-fn bump(n: &Int):
-  n += 1
+fn bump(n: &Int): n += 1
 
-import * as runtime from 'runtime'
 live async fn main(): await runtime.run(runtime.id()) _main()
 ista async fn _main():
   const c = new Shared{value: Counter{n: 1, items: []}}

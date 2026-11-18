@@ -2,12 +2,10 @@
 # A `dispose` runs to its end before any other (§7): disposing the call holding `l0` releases it
 # within the round, and `l0` is disposed only after `l1`'s disposal, already running, is done.
 
-import * as time from 'time'
 import * as runtime from 'runtime'
+import * as time from 'time'
 
-shared struct Lease:
-  name: String
-  log: Shared<Array<String>>
+shared struct Lease { name: String, log: Shared<Array<String>> }
 
 fn dispose(self: Lease):
   self->log->value.push("start " + self->name)
@@ -17,7 +15,8 @@ ista async fn holder(l: Lease):
   await time.delay(1h)
   _ = l
 
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
 
 ista async fn _main() -> String:
   const log = new Shared<Array<String>>{value: []}

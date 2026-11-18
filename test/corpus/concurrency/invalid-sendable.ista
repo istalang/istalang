@@ -2,8 +2,8 @@
 # error: 5101 at 16:25
 # error: 5001 at 20:35
 # error: 5001 at 21:8
-# error: 5644 at 29:14
-# error: 5001 at 36:11
+# error: 5644 at 28:14
+# error: 5001 at 34:11
 # A sendable function type (§3.14) holds code, which only `spawn` sends: it isn't Encodable, so
 # an extern's types may not contain one (§9); and a function value capturing a `let`, which is a
 # `Shared`, has a plain function type, which doesn't fit where a sendable one is expected. One
@@ -21,15 +21,13 @@ fn uses():
   sent(fn(): count)
   count += 1
 
-fn sent(f: sendable fn() -> Int):
-  _ = f
+fn sent(f: sendable fn() -> Int): _ = f
 
 fn capturesShared():
   const log = new Shared{value: 1}
   sent(fn(): log->value)
 
-fn sentInt(f: sendable fn(Int) -> Int):
-  _ = f
+fn sentInt(f: sendable fn(Int) -> Int): _ = f
 
 fn misfitsBesides():
   const log = new Shared{value: 1}

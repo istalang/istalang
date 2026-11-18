@@ -4,17 +4,14 @@
 # what holds them allows, rebuilt where the layout changes. Converted values live across a commit
 # and round-trip through JSON; a generic body converts as each instantiation makes it.
 import * as json from 'json'
-import * as time from 'time'
 import * as runtime from 'runtime'
+import * as time from 'time'
 
-struct Box<T>:
-  value: T
+struct Box<T> { value: T }
 
 type Point = { x: Int, y: Int }
 type Tree<T> = T | Array<Tree<T>>
-struct Pixel:
-  x: Int
-  y: Int
+struct Pixel { x: Int, y: Int }
 
 fn first(xs: Array<Int?>) -> Int: xs[0] ?? -1
 fn sumX(points: Array<Point>) -> Int: points[0].x + points[1].x
@@ -41,8 +38,11 @@ ista async fn _main():
   const wider: Result<Int?, String> = result
   const pair: (Int, String) = (5, "p")
   const loose: (Int?, String) = pair
-  const pixels: Array<Pixel> = [Pixel{x: 2, y: 0}, Pixel{x: 3, y: 0}]
-  const doubled: fn(Int?) -> Int = fn(n): (n ?? 0) * 2
+  const pixels: Array<Pixel> = [
+    Pixel{x: 2, y: 0}
+    Pixel{x: 3, y: 0}
+  ]
+  const doubled: fn(Int?) -> Int = fn n: (n ?? 0) * 2
   const plains: Array<fn() -> Int> = [fn(): 7]
   const asyncs: Array<ista async fn() -> Int> = plains
   const nested: Array<Array<Int>> = [[1], [2, 3]]

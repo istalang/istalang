@@ -4,11 +4,11 @@
 # an instantiation collapses into one type calls that type's function, and a union converted into
 # an `any` type, alone or as a member of a union, is the member it holds, which a type pattern finds.
 
-trait Named:
-  fn name(self: Self) -> String
+import * as runtime from 'runtime'
 
-trait Bumpable:
-  fn bump(self: &Self)
+trait Named { fn name(self: Self) -> String }
+
+trait Bumpable { fn bump(self: &Self) }
 
 struct Email { to: String }
 struct Sms { number: String }
@@ -19,11 +19,9 @@ fn name(self: Sms) -> String: self.number
 fn name(self: None) -> String: "nobody"
 fn name(self: Int) -> String: `#${self}`
 
-fn bump(self: &Counter):
-  self.n = self.n + 1
+fn bump(self: &Counter): self.n = self.n + 1
 
-fn bump(self: &None):
-  ()
+fn bump(self: &None): ()
 
 fn show<T is Named>(x: T | Email) -> String: x.name()
 
@@ -43,8 +41,9 @@ fn count(x: Counter?) -> Int:
     case Counter as c: c.n
     case None: -1
 
-import * as runtime from 'runtime'
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> String:
   const nobody: Email? = none
   const somebody: Email? = Email{to: "p"}

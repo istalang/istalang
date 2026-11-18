@@ -4,10 +4,10 @@
 
 import * as time from 'time'
 
-struct Cold:
-  value: Int
+struct Cold { value: Int }
 
-live fn onAwait(self: Cold, done: Resolver<Int, "live">): done.resolve(self.value)
+live fn onAwait(self: Cold, done: Resolver<Int, "live">):
+  done.resolve(self.value)
 
 struct Keep:
   cancelled: Shared<Int>
@@ -21,7 +21,8 @@ live fn onAwait(self: Keep, done: Resolver<Int, "live">):
 
 live async fn main() -> Int:
   const cancelled = new Shared{value: 0}
-  const kept: Shared<Array<Resolver<Int, "live">>> = new Shared{value: []}
+  const kept: Shared<Array<Resolver<Int, "live">>> = new Shared:
+    value: []
   const cold = Cold{value: 4}
   const keep = Keep{cancelled, kept}
   const won = await select:

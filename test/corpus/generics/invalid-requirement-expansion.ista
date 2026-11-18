@@ -1,24 +1,22 @@
-# error: 5111 at 19:3
+# error: 5111 at 17:50
 # A call to what a constraint requires counts towards endless instantiation as a call to a
 # function does (§3.5): the requirement's witness is chosen where the caller's type is known, and
 # its type parameters take the requirement's own. So a generic requirement given a type argument
 # built from the caller's, met by a witness calling back, is reported at the call that grows it.
 
-trait Loop:
-  fn step<U>(self: Self, u: U, n: Int) -> Int
+import * as runtime from 'runtime'
 
-struct Stepper:
-  k: Int
+trait Loop { fn step<U>(self: Self, u: U, n: Int) -> Int }
+
+struct Stepper { k: Int }
 
 fn step<V>(self: Stepper, v: V, n: Int) -> Int:
-  if n == 0:
-    return 0
+  if n == 0: return 0
   run(self, v, n - 1)
 
-fn run<T is Loop, X>(t: T, x: X, n: Int) -> Int:
-  t.step((x,), n)
+fn run<T is Loop, X>(t: T, x: X, n: Int) -> Int: t.step((x,), n)
 
-import * as runtime from 'runtime'
-live async fn main() -> Int: await runtime.run(runtime.id()) _main()
-ista async fn _main() -> Int:
-  run(Stepper{k: 1}, 1, 3)
+live async fn main() -> Int:
+  await runtime.run(runtime.id()) _main()
+
+ista async fn _main() -> Int: run(Stepper{k: 1}, 1, 3)

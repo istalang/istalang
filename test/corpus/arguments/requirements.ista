@@ -3,6 +3,8 @@
 # (§3.10): named, in any order, through a constraint and through an `any` value alike; a function
 # meeting it may take more parameters, each with a default it computes; and a rest parameter
 # reaches it as one array.
+import * as runtime from 'runtime'
+
 trait Shape:
   fn area(self: Self, scale: Int, offset: Int) -> Int
   fn count(self: Self, ...parts: Array<Int>) -> Int
@@ -21,12 +23,18 @@ fn measure<T is Shape>(shape: T) -> Int:
 fn measureLater<T is Shape>(shape: T) -> Int:
   shape.area(10, offset: 5)
 
-fn counted<T is Shape>(shape: T) -> Int:
-  shape.count(1, ...[2, 3])
+fn counted<T is Shape>(shape: T) -> Int: shape.count(1, ...[2, 3])
 
-import * as runtime from 'runtime'
-live async fn main() -> Array<Int>: await runtime.run(runtime.id()) _main()
+live async fn main() -> Array<Int>:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> Array<Int>:
   const square = Square{side: 2}
   const any: any Shape = square
-  [measure(square), any.area(offset: 1, scale: 10), measureLater(square), counted(square), any.count(...[7])]
+  [
+    measure(square)
+    any.area(offset: 1, scale: 10)
+    measureLater(square)
+    counted(square)
+    any.count(...[7])
+  ]

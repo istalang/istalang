@@ -3,9 +3,9 @@
 # until it returns. Returning releases what it kept, so the job still waiting is disposed, stopped
 # at its await with its defers run, and so is the inbox it gave the jobs, before the caller goes on.
 
-import Inbox from 'inbox'
-import * as time from 'time'
 import * as runtime from 'runtime'
+import * as time from 'time'
+import Inbox from 'inbox'
 
 struct Job { id: Int, wait: time.Duration }
 
@@ -18,23 +18,28 @@ ista async fn runJob(job: Job, results: Inbox<String>, log: Shared<Array<String>
   results.send("done " + String(job.id))
 
 ista async fn processFirst(
-  jobs: Array<Job>,
-  needed: Int,
-  log: Shared<Array<String>>,
+  jobs: Array<Job>
+  needed: Int
+  log: Shared<Array<String>>
 ) -> Array<String>:
   const results = Inbox.create<String>()
-  for job in jobs:
-    hold _ = runJob(job, results, log)
+  for job in jobs: hold _ = runJob(job, results, log)
   let outcomes: Array<String> = []
   while outcomes.length() < needed:
     outcomes.push(await results.receive())
   outcomes
 
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> String:
   const empty: Array<String> = []
   const log = new Shared{value: empty}
-  const jobs = [Job{id: 1, wait: 1ms}, Job{id: 2, wait: 1h}, Job{id: 3, wait: 2ms}]
+  const jobs = [
+    Job{id: 1, wait: 1ms}
+    Job{id: 2, wait: 1h}
+    Job{id: 3, wait: 2ms}
+  ]
   const outcomes = await processFirst(jobs, 2, log)
   note(log, "returned")
   outcomes.join(", ") + " | " + log->value.join(", ")

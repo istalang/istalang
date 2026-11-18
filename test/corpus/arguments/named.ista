@@ -2,8 +2,8 @@
 # Named arguments fill the parameters of their names, in any order, so a call can leave a default
 # before one it gives (§3.3). Arguments run in the order written, then each default left out, which
 # sees the parameters before it however they were given.
-import Duration from 'time'
 import * as runtime from 'runtime'
+import Duration from 'time'
 
 fn retry(times = 3, backoff: Duration = 1s) -> String:
   String(times) + "/" + backoff.value
@@ -15,23 +15,29 @@ fn trace(log: &Array<String>, label: String) -> Int:
 fn ordered(log: &Array<String>, first: Int, second: Int, third: Int = trace(&log, "c")) -> Int:
   first + second + third
 
-fn window(start: Int, end: Int = start + 10) -> Int:
-  end
+fn window(start: Int, end: Int = start + 10) -> Int: end
 
 struct Bag { items: Array<Int> }
 
 fn add(self: &Bag, item: Int, times: Int = 1):
-  for _ in 0..times:
-    self.items.push(item)
+  for _ in 0..times: self.items.push(item)
 
 fn Bag.of(first: Int, second: Int = 20) -> Bag:
   Bag{items: [first]}
 
-live async fn main() -> Array<String>: await runtime.run(runtime.id()) _main()
+live async fn main() -> Array<String>:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> Array<String>:
   let log: Array<String> = []
   ordered(&log, second: trace(&log, "b"), first: trace(&log, "a"))
   let bag = Bag.of(second: 20, first: 10)
   bag.add(item: 20)
   bag.add(times: 1, item: 30)
-  [retry(backoff: 2s), retry(times: 5), ...log, String(window(end: 13, start: 1)), ...[for each in bag.items: String(each)]]
+  [
+    retry(backoff: 2s)
+    retry(times: 5)
+    ...log
+    String(window(end: 13, start: 1))
+    ...[for each in bag.items: String(each)]
+  ]

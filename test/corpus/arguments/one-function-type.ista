@@ -4,6 +4,8 @@
 # array too (§3.5), converting what it takes and gives; a generic one, or a variant's, gives the
 # future's value. A lambda's body gives the future's value, a plain one's made a future, or
 # the future itself.
+import * as runtime from 'runtime'
+
 struct Order { id: String }
 
 ista async fn retry(times: Int, call: ista async fn(String) -> Order) -> Order:
@@ -13,31 +15,49 @@ ista async fn later(x: Int) -> Int: x + 1
 
 ista fn starting(x: Int) -> Future<Int, "ista">: later(x)
 
-import * as runtime from 'runtime'
-live async fn main() -> (String, Int, Array<Int>, Array<Int?>, Int, Int, Array<Int?>, Array<Result<Int, String>>): await runtime.run(runtime.id()) _main()
-ista async fn _main() -> (String, Int, Array<Int>, Array<Int?>, Int, Int, Array<Int?>, Array<Result<Int, String>>):
-  const order = await retry(3, fn(id): Order{id})
+live async fn main() -> (
+  String
+  Int
+  Array<Int>
+  Array<Int?>
+  Int
+  Int
+  Array<Int?>
+  Array<Result<Int, String>>
+):
+  await runtime.run(runtime.id()) _main()
+
+ista async fn _main() -> (
+  String
+  Int
+  Array<Int>
+  Array<Int?>
+  Int
+  Int
+  Array<Int?>
+  Array<Result<Int, String>>
+):
+  const order = await retry(3, fn id: Order{id})
   const viaFuture: ista async fn(Int) -> Int = starting
   const plains: Array<fn() -> Int> = [fn(): 3, fn(): 4]
   const asyncs: Array<ista async fn() -> Int> = plains
   const widened: ista async fn(Int) -> Int? = fn(x: Int?) -> Int: (x ?? 0) * 2
   const absent: ista async fn(Int) -> Int? = fn(x: Int?) -> Int?: none
-  const asyncLambda: ista fn(Int) -> Future<Int, "ista"> = async fn(x): await later(x)
-  const forwarded: ista async fn(Int) -> Int = fn(x): later(x)
-  const returning: ista async fn(Int) -> Int? = fn(x): {
-    if x > 0:
-      return 1
+  const asyncLambda: ista fn(Int) -> Future<Int, "ista"> = async fn x: await later(x)
+  const forwarded: ista async fn(Int) -> Int = fn x: later(x)
+  const returning: ista async fn(Int) -> Int? = fn x: {
+    if x > 0: return 1
     none
   }
   const qualified: ista async fn(Int) -> Result<Int, String> = Result.Ok
   const bare: ista async fn(Int) -> Result<Int, String> = Ok
   (
-    order.id,
-    await viaFuture(5),
-    [await asyncs[0](), await asyncs[1]()],
-    [await widened(1), await absent(1)],
-    await asyncLambda(4),
-    await forwarded(7),
-    [await returning(1), await returning(0)],
-    [await qualified(2), await bare(3)],
+    order.id
+    await viaFuture(5)
+    [await asyncs[0](), await asyncs[1]()]
+    [await widened(1), await absent(1)]
+    await asyncLambda(4)
+    await forwarded(7)
+    [await returning(1), await returning(0)]
+    [await qualified(2), await bare(3)]
   )

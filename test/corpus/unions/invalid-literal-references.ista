@@ -1,13 +1,11 @@
-# error: 5101 at 14:3
+# error: 5101 at 12:3
 # A literal type's value is its base's (§2), so a value of one meets a trait through its base's
 # functions, but only by value: through `&` a place has its type exactly (§3.7), and the base's
 # function could write any value of the base there.
 
 trait Clearable { fn clear(self: &Self) }
-fn clear(self: &String):
-  self = ""
-fn cleared<T is Clearable>(x: &T):
-  x.clear()
+fn clear(self: &String): self = ""
+fn cleared<T is Clearable>(x: &T): x.clear()
 
 fn calls():
   let s: "draft" = "draft"

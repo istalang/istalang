@@ -18,7 +18,9 @@ fn valueOf(outcome: Result<Int>) -> Int:
     case Ok(value): value
     case Err(_): -1
 
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> String:
   const awaited = spawn slowly(3)
   const plain = spawn quickly(4)
@@ -29,9 +31,9 @@ ista async fn _main() -> String:
     case Ok(_): "done"
     case Err(_): "failed"
   const values = [
-    await awaited.result(),
-    await plain.result(),
-    await forwarding.result(),
-    await isolated,
+    await awaited.result()
+    await plain.result()
+    await forwarding.result()
+    await isolated
   ].map(valueOf)
   [for value in values: String(value)].join(" ") + " " + ended

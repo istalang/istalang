@@ -10,5 +10,4 @@ struct Holds<T>
 # Without it, a parameter taken by `&` keeps every other one, and nothing else is kept. On one with a
 # body, it stands for the body, which calls code the analysis can't follow (the prelude's resolvers,
 # deciding through the closures they hold): callers read the function as a native.
-struct Keeps:
-  into: Map<String, Array<String>>
+struct Keeps { into: Map<String, Array<String>> }

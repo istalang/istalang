@@ -7,28 +7,32 @@
 
 import * as json from 'json'
 
-struct Duration:
-  value: Int
+struct Duration { value: Int }
 
-struct Time:
-  value: Int
+struct Time { value: Int }
 
 extern fn now() -> Time
 
 extern K fn at<K in Persistence>(time: Time) -> Future<Unit, K>
 
-fn add(left: Time, right: Duration) -> Time: Time{value: left.value + right.value}
+fn add(left: Time, right: Duration) -> Time:
+  Time{value: left.value + right.value}
 
-fn add(left: Duration, right: Duration) -> Duration: Duration{value: left.value + right.value}
+fn add(left: Duration, right: Duration) -> Duration:
+  Duration{value: left.value + right.value}
 
-fn multiply(left: Duration, right: Int) -> Duration: Duration{value: left.value * right} # Duration * int
+fn multiply(left: Duration, right: Int) -> Duration:
+  Duration{value: left.value * right} # Duration * int
 
-K fn delay<K in Persistence>(duration: Duration) -> Future<Unit, K>: at(now() + duration)
+K fn delay<K in Persistence>(duration: Duration) -> Future<Unit, K>:
+  at(now() + duration)
 
 # Times and durations are ordered as the milliseconds they hold (§3.10 `Comparable`).
-fn compare(left: Time, right: Time) -> Int: compare(left.value, right.value)
+fn compare(left: Time, right: Time) -> Int:
+  compare(left.value, right.value)
 
-fn compare(left: Duration, right: Duration) -> Int: compare(left.value, right.value)
+fn compare(left: Duration, right: Duration) -> Int:
+  compare(left.value, right.value)
 
 # ISO 8601 text (§3.8, §9). Both are Stringable and Parsable, and cross as JSON as that text.
 #
@@ -54,14 +58,17 @@ fn toString(self: Time) -> String:
   date + "T" + hour + ":" + minute + ":" + second + "." + _padded(ofDay % 1000, 3) + "Z"
 
 fn toString(self: Duration) -> String:
-  const magnitude = if self.value < 0: -self.value else: self.value
+  const magnitude = if self.value < 0: -self.value
+  else: self.value
   const seconds = (magnitude % _millisecondsPerMinute) // _millisecondsPerSecond
   const milliseconds = magnitude % _millisecondsPerSecond
   let parts = ""
-  if magnitude >= _millisecondsPerHour: parts += String(magnitude // _millisecondsPerHour) + "H"
+  if magnitude >= _millisecondsPerHour:
+    parts += String(magnitude // _millisecondsPerHour) + "H"
   if magnitude % _millisecondsPerHour >= _millisecondsPerMinute:
     parts += String((magnitude % _millisecondsPerHour) // _millisecondsPerMinute) + "M"
-  if seconds > 0 or milliseconds > 0: parts += String(seconds) + _fraction(milliseconds) + "S"
+  if seconds > 0 or milliseconds > 0:
+    parts += String(seconds) + _fraction(milliseconds) + "S"
   const sign = if self.value < 0: "-" else: ""
   sign + "PT" + (if parts == "": "0S" else: parts)
 
@@ -79,7 +86,8 @@ fn toJson(self: Time) -> json.Json: json.encodeText(self)
 
 fn toJson(self: Duration) -> json.Json: json.encodeText(self)
 
-fn Time.fromJson(value: json.Json, path: String) -> Result<Time>: json.decodeText(value, path)
+fn Time.fromJson(value: json.Json, path: String) -> Result<Time>:
+  json.decodeText(value, path)
 
 fn Duration.fromJson(value: json.Json, path: String) -> Result<Duration>:
   json.decodeText(value, path)
@@ -105,7 +113,8 @@ struct DateTime:
 # Reads an IANA name in any case; a fixed offset, such as `+01:00`, is no IANA zone.
 fn Zone.parse(id: String) -> Result<Zone>:
   const read = Zone._read(id)
-  if read.length() == 1: Ok(read[0]) else: Err(Error.unparsed(id, "an IANA time zone"))
+  if read.length() == 1: Ok(read[0])
+  else: Err(Error.unparsed(id, "an IANA time zone"))
 
 # The zone `id` names, if it names one.
 extern fn Zone._read(id: String) -> Array<Zone>
@@ -115,7 +124,8 @@ extern fn toString(self: Zone) -> String
 
 fn toJson(self: Zone) -> json.Json: json.encodeText(self)
 
-fn Zone.fromJson(value: json.Json, path: String) -> Result<Zone>: json.decodeText(value, path)
+fn Zone.fromJson(value: json.Json, path: String) -> Result<Zone>:
+  json.decodeText(value, path)
 
 # As Temporal.PlainDateTime writes it: `2026-10-25T13:00:00`, a fraction of a second only when
 # there is one.
@@ -123,7 +133,8 @@ extern fn toString(self: DateTime) -> String
 
 fn DateTime.parse(text: String) -> Result<DateTime>:
   const read = DateTime._read(text)
-  if read.length() == 1: Ok(read[0]) else: Err(Error.unparsed(text, "an ISO 8601 date and time"))
+  if read.length() == 1: Ok(read[0])
+  else: Err(Error.unparsed(text, "an ISO 8601 date and time"))
 
 # The date and time `text` writes, if it writes one.
 extern fn DateTime._read(text: String) -> Array<DateTime>
@@ -163,13 +174,12 @@ fn _civilDate(days: Int) -> (Int, Int, Int):
   const shifted = days + 719_468
   const era = shifted // 146_097
   const dayOfEra = shifted - era * 146_097
-  const yearOfEra = (
-    dayOfEra - dayOfEra // 1460 + dayOfEra // 36_524 - dayOfEra // 146_096
-  ) // 365
+  const yearOfEra = (dayOfEra - dayOfEra // 1460 + dayOfEra // 36_524 - dayOfEra // 146_096) // 365
   const dayOfYear = dayOfEra - (365 * yearOfEra + yearOfEra // 4 - yearOfEra // 100)
   const shiftedMonth = (5 * dayOfYear + 2) // 153
   const day = dayOfYear - (153 * shiftedMonth + 2) // 5 + 1
-  const month = if shiftedMonth < 10: shiftedMonth + 3 else: shiftedMonth - 9
+  const month = if shiftedMonth < 10: shiftedMonth + 3
+  else: shiftedMonth - 9
   (yearOfEra + era * 400 + (if month <= 2: 1 else: 0), month, day)
 
 fn _civilDays(year: Int, month: Int, day: Int) -> Int:
@@ -196,7 +206,8 @@ fn _yearText(year: Int) -> String:
 
 # `value`, below `10 ** digits`, in exactly `digits` digits: the digits after the leading 1 of
 # `10 ** digits + value`. Every program loads this module, so it pads without importing `strings`.
-fn _padded(value: Int, digits: Int) -> String: String(10 ** digits + value)[1..]
+fn _padded(value: Int, digits: Int) -> String:
+  String(10 ** digits + value)[1..]
 
 # A count of milliseconds as the fraction of a second ending a duration's seconds, without the
 # zeros ending it: `.25` for 250; none for 0.
@@ -210,14 +221,18 @@ fn _fraction(milliseconds: Int) -> String:
   "." + _padded(digits, width)
 
 fn _notIso(text: String, what: String) -> Error:
-  Error{message: "'" + text + "' is not an ISO 8601 " + what + ".", code: "parse"}
+  Error{
+    message: "'" + text + "' is not an ISO 8601 " + what + "."
+    code: "parse"
+  }
 
 # The time `chars` name, in milliseconds since the epoch: a date and a time of day to the second,
 # maybe a fraction of up to three digits, then `Z` or an offset from UTC; none for text that isn't
 # one, or names no instant a JavaScript Date holds.
 fn _timeMilliseconds(chars: Array<String>) -> Int?:
   const signed = chars.length() > 0 and (chars[0] == "+" or chars[0] == "-")
-  const shape = if signed: "#000000-00-00T00:00:00" else: "0000-00-00T00:00:00"
+  const shape = if signed: "#000000-00-00T00:00:00"
+  else: "0000-00-00T00:00:00"
   if not _fits(chars, 0, shape): return none
   # Where the year ends, each later field a fixed step from it.
   const y = shape.length() - 15
@@ -228,7 +243,8 @@ fn _timeMilliseconds(chars: Array<String>) -> Int?:
   const minute = _number(chars, y + 10, y + 12)
   const second = _number(chars, y + 13, y + 15)
   const isCalendarTime = month >= 1 and month <= 12 and day >= 1
-  if not isCalendarTime or day > _daysInMonth(year, month): return none
+  if not isCalendarTime or day > _daysInMonth(year, month):
+    return none
   if hour >= 24 or minute >= 60 or second >= 60: return none
   let at = shape.length()
   let milliseconds = 0
@@ -250,13 +266,13 @@ fn _timeMilliseconds(chars: Array<String>) -> Int?:
 # offset below 24:00; none for anything else.
 fn _zoneOffset(chars: Array<String>, at: Int) -> Int?:
   if at + 1 == chars.length() and chars[at] == "Z": return 0
-  if at + 6 != chars.length() or not _fits(chars, at, "#00:00"): return none
+  if at + 6 != chars.length() or not _fits(chars, at, "#00:00"):
+    return none
   const hours = _number(chars, at + 1, at + 3)
   const minutes = _number(chars, at + 4, at + 6)
   if hours >= 24 or minutes >= 60: return none
   const offset = hours * _millisecondsPerHour + minutes * _millisecondsPerMinute
-  if chars[at] == "-": -offset
-  else: offset
+  if chars[at] == "-": -offset else: offset
 
 # The milliseconds `chars` name as a duration: an optional sign, `P`, days, then after `T` hours,
 # minutes and seconds with up to three digits of fraction, each optional and in that order, with at
@@ -270,7 +286,8 @@ fn _durationMilliseconds(chars: Array<String>) -> Int?:
   let counted = false
   const days = _digitRun(chars, at)
   if days > 0:
-    if at + days >= chars.length() or chars[at + days] != "D": return none
+    if at + days >= chars.length() or chars[at + days] != "D":
+      return none
     total += _number(chars, at, at + days) * _millisecondsPerDay
     at += days + 1
     counted = true
@@ -297,8 +314,7 @@ fn _durationMilliseconds(chars: Array<String>) -> Int?:
       counted = true
     if at != chars.length(): return none
   if not counted: return none
-  if chars[0] == "-": -total
-  else: total
+  if chars[0] == "-": -total else: total
 
 # Whether `chars` hold `shape` from `at`: `0` a digit, `#` a sign, and any other character itself.
 fn _fits(chars: Array<String>, at: Int, shape: String) -> Bool:
@@ -320,7 +336,8 @@ fn _digitRun(chars: Array<String>, at: Int) -> Int:
   while end < chars.length() and _isDigit(chars[end]): end += 1
   end - at
 
-fn _isDigit(character: String) -> Bool: character >= "0" and character <= "9"
+fn _isDigit(character: String) -> Bool:
+  character >= "0" and character <= "9"
 
 # The int the digits of `chars` from `start` to `end` write, which a sign may begin.
 fn _number(chars: Array<String>, start: Int, end: Int) -> Int:

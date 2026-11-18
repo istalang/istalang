@@ -10,8 +10,8 @@
 # written back, so nothing is taken by '&'. A host handle crosses only when it is 'sendable' or a
 # 'dispose' makes it a resource (invalid-resources.ista).
 
-import Encodable, Decodable from 'json'
 import * as runtime from 'runtime'
+import Decodable, Encodable from 'json'
 
 extern shared struct Connection
 

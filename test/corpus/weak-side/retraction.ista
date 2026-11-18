@@ -4,23 +4,22 @@
 # message) or already in the inbox's slot (`alone`). A copy received in time (`b`) is final, and
 # retracting it leaves `b` taking later messages as before.
 
-import Inbox from 'inbox'
-import * as time from 'time'
 import * as runtime from 'runtime'
+import * as time from 'time'
+import Inbox from 'inbox'
 
 ista async fn announce(boxes: Array<Inbox<String>>, text: String, visibleFor: time.Duration):
-  for box in boxes:
-    hold _ = box.sendRevertible(text)
+  for box in boxes: hold _ = box.sendRevertible(text)
   await time.delay(visibleFor)
 
 ista fn next(box: Inbox<String>) -> String:
   select:
-    case box.receive() as message:
-      message
-    else:
-      "nothing"
+    case box.receive() as message: message
+    else: "nothing"
 
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> String:
   const a = Inbox.create<String>()
   const b = Inbox.create<String>()

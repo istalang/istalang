@@ -1,23 +1,20 @@
 # error: 5026 at 12:17
-# error: 5014 at 15:3
-# error: 5014 at 18:3
+# error: 5014 at 14:20
+# error: 5014 at 16:24
 # An `Error`'s `trace` defaults to the frames where it is built (§3.1, §3.12), which compile time
 # can't compute: a top-level constant can't be an Error built that way. Its other fields are
 # required. `drop` discards a value; dropping a variable releases it (§7).
 
-struct Note:
-  message: String
-  trace: String
+import * as runtime from 'runtime'
+
+struct Note { message: String, trace: String }
 
 const failure = Error{message: "m", code: "c"}
 
-fn note() -> Note:
-  Note{message: "m"}
+fn note() -> Note: Note{message: "m"}
 
-fn uncoded() -> Error:
-  Error{message: "m"}
+fn uncoded() -> Error: Error{message: "m"}
 
-import * as runtime from 'runtime'
 live async fn main(): await runtime.run(runtime.id()) _main()
 ista async fn _main():
   const kept = note()

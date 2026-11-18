@@ -1,8 +1,6 @@
 # crm.ista — external CRM source for the supplier form.
 
-struct User:
-  id: String
-  name: String
+struct User { id: String, name: String }
 
 type Order = { note: String? }
 

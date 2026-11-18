@@ -1,13 +1,10 @@
 # A host starts any startable function by its key with JSON arguments, and is refused one whose
 # JSON doesn't fit, or a key no startable function has (§9).
-struct Order:
-  id: String
-  amount: Int
+struct Order { id: String, amount: Int }
 
 fn total(orders: Array<Order>, rate: Float) -> Float:
   let sum = 0.0
-  for order in orders:
-    sum += Float(order.amount) * rate
+  for order in orders: sum += Float(order.amount) * rate
   sum
 
 live async fn main() -> Int: 0

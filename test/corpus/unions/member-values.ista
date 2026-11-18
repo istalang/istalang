@@ -3,6 +3,8 @@
 # instantiation stands for, into a wider union through a literal's base, into its base, and into
 # an optional of either. A literal argument fills it with its literal type, or its base's member.
 
+import * as runtime from 'runtime'
+
 type Status = "draft" | "sent" | "failed"
 
 fn wide<S in Status>(s: S) -> String:
@@ -29,7 +31,8 @@ fn either<T in Int | String>(x: T) -> String:
     case Int as n: `${n}`
     case String as t: t
 
-import * as runtime from 'runtime'
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> String:
   `${wide("draft")}|${back("sent")}|${opt("failed")}|${either(1)}:${either("one")}`

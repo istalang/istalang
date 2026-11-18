@@ -8,12 +8,11 @@ import * as runtime from 'runtime'
 type Status = "draft" | "sent" | "failed"
 type Sign = -1 | 0 | 1 | 42
 
-struct Config:
-  mode: Status
-  tag: Status?
-  flag: true
+struct Config { mode: Status, tag: Status?, flag: true }
 
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> String:
   const s1: Status = "sent"
   const j1 = json.stringify(s1)

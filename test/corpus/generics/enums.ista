@@ -3,17 +3,17 @@
 # qualified elsewhere, called for a variant with fields. A generic enum's type arguments come
 # from the expected type, the fields, or the defaults (`Result<T, E = Error>`).
 
+import * as runtime from 'runtime'
+
 enum Color { Red, Green, Blue }
 
-enum Shape:
-  Circle(radius: Int)
-  Square(side: Int)
+enum Shape { Circle(radius: Int), Square(side: Int) }
 
-fn favorite() -> Color:
-  Green
+fn favorite() -> Color: Green
 
-import * as runtime from 'runtime'
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> String:
   const color: Color = Red
   const shape = Shape.Circle(2)

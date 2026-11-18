@@ -2,16 +2,18 @@
 # Elements are places (§3.7, §3.9): assigned whole, in part through a field, nested, compounded,
 # passed by `&`, and changed by a method taking `&self`. A copy taken before is untouched (§3.1).
 
+import * as runtime from 'runtime'
+
 struct Item { count: Int }
 
-fn bump(value: &Int):
-  value += 1
+fn bump(value: &Int): value += 1
 
 fn show(xs: Array<Int>) -> String:
   "[" + [for x in xs: String(x)].join(", ") + "]"
 
-import * as runtime from 'runtime'
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> String:
   let xs = [1, 2]
   const before = xs
@@ -29,13 +31,13 @@ ista async fn _main() -> String:
   let n = [10]
   bump(&n[0])
   const parts = [
-    show(xs),
-    String(items[0].count),
-    "[" + [for row in grid: show(row)].join(", ") + "]",
-    String(counts["a"]),
-    show(lists["x"]),
-    show(lists["y"]),
-    String(n[0]),
-    show(before),
+    show(xs)
+    String(items[0].count)
+    "[" + [for row in grid: show(row)].join(", ") + "]"
+    String(counts["a"])
+    show(lists["x"])
+    show(lists["y"])
+    String(n[0])
+    show(before)
   ]
   parts.join(" ")

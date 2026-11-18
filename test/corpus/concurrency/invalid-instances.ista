@@ -1,8 +1,10 @@
-# error: 5101 at 7:18
-# error: 5101 at 17:14
-# error: 5001 at 18:18
+# error: 5101 at 9:18
+# error: 5101 at 18:14
+# error: 5001 at 19:18
 # An Instance<T> is what spawn gives (§9): its result() copies the outcome out, so T must be
 # sendable, and as a handle it never crosses to the host.
+
+import * as runtime from 'runtime'
 
 extern fn report(instance: Instance<Int>)
 
@@ -10,7 +12,6 @@ ista fn slot() -> Slot<Int>: Slot.create<Int>()
 
 fn twice(n: Int) -> Int: n * 2
 
-import * as runtime from 'runtime'
 live async fn main(): await runtime.run(runtime.id()) _main()
 ista async fn _main():
   const s = spawn slot()

@@ -2,8 +2,6 @@
 fn sample() -> String: 'text'
 
 fn wrapper<R>(cb: (fn() -> R)): cb
-fn sample(x: String):
-  x + ""
+fn sample(x: String): x + ""
 
-fn main():
-  wrapper sample("")
+fn main(): wrapper sample("")

@@ -3,15 +3,14 @@
 # fields, or a qualified variant, then the rest of the pattern against the value inside; `as`
 # binds that value, of its own type.
 
-trait Named:
-  fn name(self: Self) -> String
+import * as runtime from 'runtime'
+
+trait Named { fn name(self: Self) -> String }
 
 struct Email { to: String }
 struct Sms { number: String }
-struct Marker {}
-enum Decision:
-  Approved(by: String)
-  Expired
+struct Marker
+enum Decision { Approved(by: String), Expired }
 
 fn name(self: Email) -> String: self.to
 fn name(self: Sms) -> String: self.number
@@ -20,21 +19,22 @@ fn name(self: Decision) -> String: "decision"
 
 fn describe(x: any Named) -> String:
   match x:
-    case Email{to}:
-      "email to " + to
+    case Email{to}: "email to " + to
     case Sms{number} as sms:
       if sms.name() == number: "sms" else: "?"
-    case Decision.Approved(by):
-      "decided by " + by
-    case Marker:
-      "marker"
-    case _:
-      "other"
+    case Decision.Approved(by): "decided by " + by
+    case Marker: "marker"
+    case _: "other"
 
-import * as runtime from 'runtime'
 live async fn main(): await runtime.run(runtime.id()) _main()
 ista async fn _main():
-  const items: Array<any Named> = [Email{to: "a"}, Sms{number: "1"}, Decision.Approved("legal"), Decision.Expired, Marker]
+  const items: Array<any Named> = [
+    Email{to: "a"}
+    Sms{number: "1"}
+    Decision.Approved("legal")
+    Decision.Expired
+    Marker
+  ]
   const email: any Named = Email{to: "a"}
   const found = if email is Email{to}: to else: "none"
   ([for item in items: describe(item)], email is Email{}, found)

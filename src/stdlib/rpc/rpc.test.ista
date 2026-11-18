@@ -1,13 +1,14 @@
 # The rpc module (spec §3.8): calls, their servers, calls let go without a reply and calls their
 # callers let go of.
 
-import Suite, Test, test, assert, assertEq from 'testing'
-import runAndReRun from '../testing/re-runs.test'
 import * as rpc from 'rpc'
 import * as runtime from 'runtime'
+import assert, assertEq, Suite, Test, test from 'testing'
+import runAndReRun from '../testing/re-runs.test'
 
 # Whether `reply` is the `Err` of a call let go without a reply.
-fn unanswered<R>(reply: Result<R>) -> Bool: reply is Err(error) and error.code == "unanswered"
+fn unanswered<R>(reply: Result<R>) -> Bool:
+  reply is Err(error) and error.code == "unanswered"
 
 # Two calls to a handler that waits at a gate opened once per call: the replies, and what the
 # handler logged.

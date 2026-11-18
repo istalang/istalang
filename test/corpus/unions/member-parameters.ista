@@ -3,14 +3,13 @@
 # the literal its literal type), instantiation per member, and building a generic struct with a
 # member parameter from an expected union of its instantiations.
 
+import * as runtime from 'runtime'
+
 type Status = "draft" | "sent" | "failed"
 
-fn describe<S in Status>(s: S) -> String:
-  `status:${s}`
+fn describe<S in Status>(s: S) -> String: `status:${s}`
 
-struct Entry<V, K in Status>:
-  key: K
-  value: V
+struct Entry<V, K in Status> { key: K, value: V }
 
 type AnyEntry = Entry<Int, "draft"> | Entry<String, "sent">
 
@@ -19,8 +18,9 @@ fn showEntry(e: AnyEntry) -> String:
     case Entry<Int, "draft">{value}: `d:${value}`
     case Entry<String, "sent">{value}: `s:${value}`
 
-import * as runtime from 'runtime'
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> String:
   const d1 = describe("draft")
   const status: Status = "sent"

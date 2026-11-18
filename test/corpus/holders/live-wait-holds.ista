@@ -7,18 +7,16 @@ import * as time from 'time'
 fn note(log: Shared<Array<String>>, text: String):
   log->value.push(text)
 
-shared struct Lease:
-  log: Shared<Array<String>>
+shared struct Lease { log: Shared<Array<String>> }
 
 fn dispose(self: Lease): note(self->log, "disposed")
 
-struct Given:
-  lease: Lease
+struct Given { lease: Lease }
 
-struct Box:
-  waiting: Shared<Array<Resolver<Given, "live">>>
+struct Box { waiting: Shared<Array<Resolver<Given, "live">>> }
 
-live fn onAwait(self: Box, done: Resolver<Given, "live">): self.waiting->value.push(done)
+live fn onAwait(self: Box, done: Resolver<Given, "live">):
+  self.waiting->value.push(done)
 
 live async fn giver(box: Box, log: Shared<Array<String>>):
   await time.delay(1ms)

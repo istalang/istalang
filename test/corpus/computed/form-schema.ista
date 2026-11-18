@@ -3,13 +3,13 @@
 # Group<S> with struct constraint and mapped struct type { [F in keyof S]: S[F].Data }, field loop
 # indexing data[field], and the equivalent DataOf<D> recursive type match alias.
 
+import * as runtime from 'runtime'
+
 trait FormNode:
   type Data
   fn validate(self: Self, data: Self.Data) -> Array<String>
 
-struct Field<T>:
-  value: T?
-  type Data = T
+struct Field<T> { value: T?, type Data = T }
 
 fn validate(self: Field<String>, data: String) -> Array<String>:
   if data == "": ["missing-country"] else: []
@@ -51,26 +51,25 @@ type DataOf<D> = match D:
 
 type MatchedOrder = DataOf<OrderForm>
 
-import * as runtime from 'runtime'
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> String:
-  const schema = Group{
-    fields: OrderForm{
-      country: Field{value: "DE"},
-      items: Repeat{
-        row: Group{fields: struct{sku: Field{value: "A1"}, qty: Field{value: 1}}},
-      },
-    },
-  }
-  const validOrder: Order = struct{
-    country: "DE",
-    items: [struct{sku: "A1", qty: 2}],
-  }
+  const schema = Group:
+    fields: OrderForm:
+      country: Field{value: "DE"}
+      items: Repeat:
+        row: Group:
+          fields:
+            sku: Field{value: "A1"}
+            qty: Field{value: 1}
+  const validOrder: Order =
+    country: "DE"
+    items: [struct{sku: "A1", qty: 2}]
   const matchedCopy: MatchedOrder = validOrder
-  const invalidOrder: Order = struct{
-    country: "",
-    items: [struct{sku: "A1", qty: 0}],
-  }
+  const invalidOrder: Order =
+    country: ""
+    items: [struct{sku: "A1", qty: 0}]
   const okErrs = schema.validate(validOrder)
   const badErrs = schema.validate(invalidOrder)
   `ok:${okErrs.length()}|bad:${badErrs.join(",")}|same:${validOrder == matchedCopy}`

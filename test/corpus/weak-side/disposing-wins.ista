@@ -3,27 +3,24 @@
 # the worker's last holder lets go of it before it runs, so it resumes on its `disposing()` case,
 # though that case comes later in the `select`.
 
-import Inbox from 'inbox'
 import * as runtime from 'runtime'
+import Inbox from 'inbox'
 
 fn note(log: Shared<Array<String>>, entry: String):
   log->value = [...log->value, entry]
 
 ista async fn worker(jobs: Inbox<Int>, log: Shared<Array<String>>) -> Unit:
   await select:
-    case jobs.receive() as job:
-      note(log, "job " + String(job))
-    case worker.disposing():
-      note(log, "cleaned up")
+    case jobs.receive() as job: note(log, "job " + String(job))
+    case worker.disposing(): note(log, "cleaned up")
 
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> String:
   const empty: Array<String> = []
   const log = new Shared{value: empty}
   const jobs = Inbox.create<Int>()
-  {
-    const running = worker(jobs, log)
-    jobs.send(3)
-  }
+  { const running = worker(jobs, log); jobs.send(3) }
   note(log, "job unhandled")
   log->value.join(" | ")

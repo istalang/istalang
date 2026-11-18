@@ -4,39 +4,30 @@
 # builds the first; or a struct whose default calls for a third whose default builds the first: no
 # default depends on itself (§3.1), and instantiation ends (§3.5).
 
-struct Id<T>:
-  k: Int
-  b: Back<T>?
+import * as runtime from 'runtime'
 
-struct Back<U>:
-  p = Id<U>{k: 1, b: none}
-  a: Ahead<U>?
+struct Id<T> { k: Int, b: Back<T>? }
 
-struct Ahead<T>:
-  b = Back<T>{a: none}
+struct Back<U> { p = Id<U>{k: 1, b: none}, a: Ahead<U>? }
 
-struct Made<T>:
-  f = make<T>()
+struct Ahead<T> { b = Back<T>{a: none} }
 
-struct Making<U>:
-  g = Made<U>{}
-  n = 2
+struct Made<T> { f = make<T>() }
+
+struct Making<U> { g = Made<U>{}, n = 2 }
 
 fn make<T>() -> Making<T>?: none
 
-struct Outer<T>:
-  f = Middle<T>{}
+struct Outer<T> { f = Middle<T>{} }
 
-struct Middle<U>:
-  h = inner<U>()
+struct Middle<U> { h = inner<U>() }
 
-struct Inner<V>:
-  g = Outer<V>{}
-  n = 3
+struct Inner<V> { g = Outer<V>{}, n = 3 }
 
 fn inner<U>() -> Inner<U>?: none
 
-import * as runtime from 'runtime'
-live async fn main() -> Int: await runtime.run(runtime.id()) _main()
+live async fn main() -> Int:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> Int:
   Ahead<String>{}.b.p.k + Making<Int>{}.n + Inner<Int>{}.n + 2

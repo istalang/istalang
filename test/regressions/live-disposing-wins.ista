@@ -6,17 +6,15 @@
 fn note(log: Shared<Array<String>>, entry: String):
   log->value = [...log->value, entry]
 
-struct Gate:
-  waiting: Shared<Array<Resolver<Int, "live">>>
+struct Gate { waiting: Shared<Array<Resolver<Int, "live">>> }
 
-live fn onAwait(self: Gate, done: Resolver<Int, "live">): self.waiting->value.push(done)
+live fn onAwait(self: Gate, done: Resolver<Int, "live">):
+  self.waiting->value.push(done)
 
 live async fn worker(gate: Gate, log: Shared<Array<String>>) -> Unit:
   await select:
-    case gate as job:
-      note(log, "job " + String(job))
-    case worker.disposing():
-      note(log, "cleaned up")
+    case gate as job: note(log, "job " + String(job))
+    case worker.disposing(): note(log, "cleaned up")
 
 live async fn main() -> String:
   const empty: Array<String> = []

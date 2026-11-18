@@ -3,5 +3,4 @@ import Json from 'json'
 
 struct Point { x: Int }
 
-fn toJson(self: Point) -> Json:
-  "point " + String(self.x)
+fn toJson(self: Point) -> Json: "point " + String(self.x)

@@ -1,23 +1,19 @@
-# error: 5912 at 15:19
-# error: 5912 at 19:16
-# error: 5912 at 23:16
+# error: 5912 at 14:19
+# error: 5912 at 16:37
+# error: 5912 at 19:22
 # Annotations apply to the fields of struct declarations and enum variants, never to a shape's,
 # which no declaration carries (§3.16): a field needing `@JsonName` lives in a struct. One is
 # refused before its value is checked, which may build the very struct its shape belongs to.
 
 import JsonName from 'json'
 
-struct Note:
-  reason: String
+struct Note { reason: String }
 
 struct Kept { id: Int @JsonName{"ID"} }
 
 fn f(p: { id: Int @Note{"x"} }) -> Int: p.id
 
-struct Wrapper:
-  data:
-    value: Int @JsonName{"v"}
+struct Wrapper { data: { value: Int @JsonName{"v"} } }
 
 struct Holder:
-  data:
-    value: Int @Holder{data: struct{value: 1}}
+  data: { value: Int @Holder{data: struct{value: 1}} }

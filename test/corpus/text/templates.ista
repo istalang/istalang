@@ -1,4 +1,5 @@
 # outcome: ["plain","a world b","Hello world!\n  point (1, 2)\ndone 1.5 true","nested 1","x is 3 of 7","`${not a value}`","between"]
+# disable-ista-formatter
 # A template writes each value with its toString, found as an operator's function is, so a type's
 # own `toString`, a type parameter's requirement and an `any Stringable` all work; a multi-line
 # one loses the line its backtick ends and the indentation its lines share (§2).

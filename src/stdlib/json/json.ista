@@ -15,16 +15,14 @@
 type Json = None | Bool | Int | Float | String | Array<Json> | Map<String, Json>
 
 # Each implies Sendable (§3.10): a value read from JSON is a copy, so it may go anywhere.
-trait Encodable:
-  fn toJson(self: Self) -> Json
+trait Encodable { fn toJson(self: Self) -> Json }
 
 trait Decodable:
   fn Self.fromJson(json: Json, path: String) -> Result<Self>
 
 # Annotations on fields (§3.16): the name a field has in JSON, a field left out of it, and an int
 # written as a string of its digits, for readers that would round a large number.
-struct JsonName:
-  name: String
+struct JsonName { name: String }
 
 struct JsonSkip
 
@@ -36,7 +34,8 @@ struct JsonBigInt
 # again would give equal JSON anyway.
 fn encode<T is Encodable>(value: T) -> Json:
   const written = _written(value)
-  if written.length() == 1: written[0] else: _remember(value, value.toJson())
+  if written.length() == 1: written[0]
+  else: _remember(value, value.toJson())
 
 # What the instance wrote `value` as before, as a `T`: each is an extern per type, since one value
 # may be written as two types whose codecs differ. A miss holds nothing: `none` is JSON.
@@ -45,13 +44,16 @@ extern fn _written<T>(value: T) -> Array<Json>
 # Keeps `json` as what `value` was written as, a `T`; `json` itself.
 extern fn _remember<T>(value: T, json: Json) -> Json
 
-fn decode<T is Decodable>(json: Json) -> Result<T>: T.fromJson(json, "$")
+fn decode<T is Decodable>(json: Json) -> Result<T>:
+  T.fromJson(json, "$")
 
-fn stringify<T is Encodable>(value: T) -> String: _write(encode(value))
+fn stringify<T is Encodable>(value: T) -> String:
+  _write(encode(value))
 
 fn parse<T is Decodable>(text: String) -> Result<T>:
   const read, problem = _read(text)
-  if read.length() == 1: T.fromJson(read[0], "$") else: Err(_error(problem))
+  if read.length() == 1: T.fromJson(read[0], "$")
+  else: Err(_error(problem))
 
 # The codecs of a type that crosses as the text its toString writes, read back through its parse,
 # such as `Time` and `Duration`: a type declares its own as one call to each.
@@ -75,7 +77,8 @@ extern fn _fromJson<T>(json: Json, path: String) -> Result<T>
 fn _hostResult<T>(read: Result<T>) -> T:
   match read:
     case Ok(value): value
-    case Err(error): panic("The host gave what doesn't fit: " + error.message)
+    case Err(error):
+      panic("The host gave what doesn't fit: " + error.message)
 
 fn _hostInput<T>(read: Result<T>) -> T:
   match read:
@@ -121,8 +124,7 @@ fn toJson<T is Encodable>(self: T?) -> Json:
 
 fn toJson<K is Stringable, V is Encodable>(self: Map<K, V>) -> Json:
   let fields: Map<String, Json> = [:]
-  for key, each in self:
-    fields[key.toString()] = encode(each)
+  for key, each in self: fields[key.toString()] = encode(each)
   fields
 
 fn _encodeBigInt(value: Int) -> Json: String(value)
@@ -156,13 +158,15 @@ fn Unit.fromJson(json: Json, path: String) -> Result<Unit>:
     case None: Ok(())
     case _: _mismatch(json, path, "null")
 
-fn Json.fromJson(json: Json, path: String) -> Result<Json>: Ok(json)
+fn Json.fromJson(json: Json, path: String) -> Result<Json>:
+  Ok(json)
 
 fn Array.fromJson<T is Decodable>(json: Json, path: String) -> Result<Array<T>>:
   match json:
     case Array<Json> as items:
       let decoded: Array<T> = []
-      for each in items: decoded.push(T.fromJson(each, _elementPath(path, decoded.length()))?)
+      for each in items:
+        decoded.push(T.fromJson(each, _elementPath(path, decoded.length()))?)
       Ok(decoded)
     case _: _mismatch(json, path, "an array")
 
@@ -200,7 +204,8 @@ fn _field(fields: Map<String, Json>, name: String, path: String) -> Result<Json>
   if fields.has(name): Ok(fields.get(name))
   else: _failure(_fieldPath(path, name), "missing")
 
-fn _optionalField(fields: Map<String, Json>, name: String) -> Json: fields.get(name)
+fn _optionalField(fields: Map<String, Json>, name: String) -> Json:
+  fields.get(name)
 
 fn _tag(fields: Map<String, Json>, key: String, path: String) -> Result<String>:
   String.fromJson(_field(fields, key, path)?, _fieldPath(path, key))
@@ -216,14 +221,17 @@ fn _elements(json: Json, path: String, count: Int) -> Result<Array<Json>>:
   match json:
     case Array<Json> as items:
       if items.length() == count: Ok(items)
-      else: _failure(path, "expected " + count + " elements, found " + items.length())
+      else:
+        _failure(path, "expected " + count + " elements, found " + items.length())
     case _: _mismatch(json, path, "an array")
 
 fn _element(items: Array<Json>, index: Int) -> Json: items[index]
 
-fn _fieldPath(path: String, name: String) -> String: path + "." + name
+fn _fieldPath(path: String, name: String) -> String:
+  path + "." + name
 
-fn _elementPath(path: String, index: Int) -> String: path + "[" + index + "]"
+fn _elementPath(path: String, index: Int) -> String:
+  path + "[" + index + "]"
 
 fn _parsed<T>(read: Result<T>, path: String) -> Result<T>:
   match read:
@@ -233,12 +241,12 @@ fn _parsed<T>(read: Result<T>, path: String) -> Result<T>:
 fn _mismatch<T>(json: Json, path: String, expected: String) -> Result<T>:
   _failure(path, "expected " + expected + ", found " + _kind(json))
 
-fn _failure<T>(path: String, message: String) -> Result<T>: Err(
-  _error(path + ": " + message)
-)
+fn _failure<T>(path: String, message: String) -> Result<T>:
+  Err(_error(path + ": " + message))
 
 # The Error every read of JSON fails with.
-fn _error(message: String) -> Error: Error{message: message, code: "json"}
+fn _error(message: String) -> Error:
+  Error{message: message, code: "json"}
 
 fn _kind(json: Json) -> String:
   match json:

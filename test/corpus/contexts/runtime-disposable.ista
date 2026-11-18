@@ -4,7 +4,8 @@
 
 import * as runtime from 'runtime'
 
-live fn watch(rt: runtime.Runtime) -> WeakRef<runtime.Runtime>: WeakRef(rt)
+live fn watch(rt: runtime.Runtime) -> WeakRef<runtime.Runtime>:
+  WeakRef(rt)
 
 live async fn main() -> Bool:
   const rt = await runtime.Runtime.open(runtime.hostStore())

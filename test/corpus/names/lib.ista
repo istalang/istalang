@@ -2,11 +2,8 @@
 
 struct Shape { radius: Int }
 
-fn circle() -> Shape:
-  Shape{radius: 1}
+fn circle() -> Shape: Shape{radius: 1}
 
-fn helper(shape: Shape) -> Int:
-  shape.radius + _internal()
+fn helper(shape: Shape) -> Int: shape.radius + _internal()
 
-fn _internal() -> Int:
-  0
+fn _internal() -> Int: 0

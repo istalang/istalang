@@ -2,16 +2,17 @@
 # each holder before what it holds. Each rule is its own function, and its test asserts what the old
 # runtime's unit test did.
 
-import Suite, Test, test, assertEq, spawnCrashingEveryAwait from 'testing'
 import * as runtime from 'runtime'
 import Inbox from 'inbox'
+import assertEq, spawnCrashingEveryAwait, Suite, Test, test from 'testing'
 
 shared struct Lease:
   name: String
   log: Shared<Array<String>>
   child: Lease? = none
 
-fn dispose(self: Lease): self->log->value.push("disposed " + self->name)
+fn dispose(self: Lease):
+  self->log->value.push("disposed " + self->name)
 
 ista async fn disposalRounds() -> String:
   const log = new Shared<Array<String>>{value: []}
@@ -26,7 +27,8 @@ ista async fn disposalRounds() -> String:
 ista async fn answersUntilGone(owner: WeakRef<Inbox<String>>, asked: Inbox<Int>) -> String:
   while true:
     await select:
-      case asked.receive() as n: owner.deref()?.send("answer " + String(n))
+      case asked.receive() as n:
+        owner.deref()?.send("answer " + String(n))
       case owner.disposed(): return "gone"
   "never"
 

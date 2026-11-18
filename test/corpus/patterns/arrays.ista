@@ -3,6 +3,8 @@
 # the start before the rest and from the end after it, the rest a new array of those between
 # (§3.11).
 
+import * as runtime from 'runtime'
+
 fn show(xs: Array<Int>) -> String:
   "[" + [for x in xs: String(x)].join(", ") + "]"
 
@@ -10,7 +12,8 @@ fn describe(xs: Array<Int>) -> String:
   match xs:
     case []: "empty"
     case [only]: "one " + only
-    case [first, ...middle, last]: first + ".." + last + " around " + middle.length()
+    case [first, ...middle, last]:
+      first + ".." + last + " around " + middle.length()
 
 fn heads(xs: Array<Int>) -> Int:
   match xs:
@@ -18,9 +21,17 @@ fn heads(xs: Array<Int>) -> Int:
     case [_, 2, ...rest]: rest.length()
     case _: -1
 
-import * as runtime from 'runtime'
-live async fn main() -> (String, String, String, String, Int, Int, Int): await runtime.run(runtime.id()) _main()
+live async fn main() -> (String, String, String, String, Int, Int, Int):
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> (String, String, String, String, Int, Int, Int):
   const tail = if [1, 2, 3] is [_, ...rest]: show(rest) else: ""
-  (describe([]), describe([7]), describe([1, 2, 3, 4]), tail, heads([1, 9]), heads([0, 2, 5, 6]),
-    heads([3]))
+  (
+    describe([])
+    describe([7])
+    describe([1, 2, 3, 4])
+    tail
+    heads([1, 9])
+    heads([0, 2, 5, 6])
+    heads([3])
+  )

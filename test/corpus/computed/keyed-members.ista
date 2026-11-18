@@ -4,13 +4,11 @@
 # is `x["k"]`. Each key is its own instantiation, so each read has its own type; a chain chooses
 # each read once its receiver is known, and `x.k(…)` calls the function a read gives.
 
-trait Node:
-  type Scope
-  fn scope(self: Self) -> Self.Scope
+import * as runtime from 'runtime'
 
-struct Field<T>:
-  value: T?
-  type Scope = T?
+trait Node { type Scope, fn scope(self: Self) -> Self.Scope }
+
+struct Field<T> { value: T?, type Scope = T? }
 
 fn scope<T>(self: Field<T>) -> T?: self.value
 
@@ -18,10 +16,10 @@ struct Group<S is struct { [_] is Node }>:
   fields: S
   type Scope = Reads<S>
 
-fn scope<S is struct { [_] is Node }>(self: Group<S>) -> Reads<S>: Reads{m: self.fields}
+fn scope<S is struct { [_] is Node }>(self: Group<S>) -> Reads<S>:
+  Reads{m: self.fields}
 
-struct Reads<S is struct { [_] is Node }>:
-  m: S
+struct Reads<S is struct { [_] is Node }> { m: S }
 
 fn index<S is struct { [_] is Node }, K in keyof S>(self: Reads<S>, key: K) -> S[K].Scope:
   self.m[key].scope()
@@ -31,8 +29,7 @@ struct Supplier { city: Field<String>, company: Group<Company> }
 
 type Event = "greet" | "count"
 
-struct Hooks:
-  name: String
+struct Hooks { name: String }
 
 fn index<K in Event>(self: Hooks, key: K) -> fn(String) -> String:
   match key:
@@ -42,11 +39,17 @@ fn index<K in Event>(self: Hooks, key: K) -> fn(String) -> String:
 fn sizeOf<S is struct { size: Field<Int>, [_] is Node }>(scope: Reads<S>) -> Int?:
   scope.size
 
-import * as runtime from 'runtime'
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> String:
-  const company = Company{size: Field{value: 5}, name: Field{value: "ACME"}}
-  const d = Reads{m: Supplier{city: Field{value: "Berlin"}, company: Group{fields: company}}}
+  const company = Company:
+    size: Field{value: 5}
+    name: Field{value: "ACME"}
+  const d = Reads:
+    m: Supplier:
+      city: Field{value: "Berlin"}
+      company: Group{fields: company}
   const called: String? = index(d, "city")
   const city: String? = d["city"]
   const size: Int? = d["company"]["size"]
@@ -54,7 +57,15 @@ ista async fn _main() -> String:
   const memberSize = d.company.size
   const maybe: Reads<Supplier>? = none
   const hooks = Hooks{name: "Ada"}
-  const parts = [called ?? "", city ?? "", `${size ?? 0}`, memberCity ?? "", `${memberSize ?? 0}`,
-    d.company.name ?? "", hooks.greet(hooks.name), `${maybe?.city ?? "none"}`,
-    `${(sizeOf(Reads{m: company}) ?? 0) + 2}`]
+  const parts = [
+    called ?? ""
+    city ?? ""
+    `${size ?? 0}`
+    memberCity ?? ""
+    `${memberSize ?? 0}`
+    d.company.name ?? ""
+    hooks.greet(hooks.name)
+    `${maybe?.city ?? "none"}`
+    `${(sizeOf(Reads{m: company}) ?? 0) + 2}`
+  ]
   parts.join("|")

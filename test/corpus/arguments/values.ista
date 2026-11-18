@@ -1,17 +1,18 @@
 # outcome: [11,12,3]
 # A function with defaults, named as a value of a shorter type, computes its defaults at each call;
 # one with a rest parameter takes the array as one argument (§3.14).
-fn window(start: Int, end: Int = start + 10) -> Int:
-  end
+import * as runtime from 'runtime'
+
+fn window(start: Int, end: Int = start + 10) -> Int: end
 
 fn count(first: Int, ...more: Array<Int>) -> Int:
   more.length() + 1
 
-fn applied(f: fn(Int, Array<Int>) -> Int) -> Int:
-  f(0, [1, 2])
+fn applied(f: fn(Int, Array<Int>) -> Int) -> Int: f(0, [1, 2])
 
-import * as runtime from 'runtime'
-live async fn main() -> Array<Int>: await runtime.run(runtime.id()) _main()
+live async fn main() -> Array<Int>:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> Array<Int>:
   const shorter: fn(Int) -> Int = window
   [shorter(1), shorter(2), applied(count)]

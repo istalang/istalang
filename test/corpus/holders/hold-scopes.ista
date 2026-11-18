@@ -4,8 +4,8 @@
 # `break` stands before the hold, and kept across `continue`; awaiting inside it keeps them across
 # a commit. `hold(f)` naming the function is plain `hold`. Each scope releases newest first (§7).
 
-import * as time from 'time'
 import * as runtime from 'runtime'
+import * as time from 'time'
 
 fn note(log: Shared<Array<String>>, text: String):
   log->value = [...log->value, text]
@@ -25,8 +25,7 @@ ista async fn rows(log: Shared<Array<String>>):
 ista async fn breaking(log: Shared<Array<String>>):
   outer: for i in 0..3:
     inner: for j in 0..3:
-      if j == 2:
-        break outer
+      if j == 2: break outer
       hold(inner) _ = sleeper(20 + j, log)
   note(log, "broke out")
 
@@ -35,24 +34,23 @@ ista async fn counting(log: Shared<Array<String>>):
   passes: while k < 3:
     k += 1
     hold(passes) _ = sleeper(30 + k, log)
-    if k < 3:
-      continue passes
+    if k < 3: continue passes
     note(log, "last pass")
   note(log, "while done")
 
 ista async fn batched(log: Shared<Array<String>>):
   batch:
-    for i in 0..2:
-      hold(batch) _ = sleeper(40 + i, log)
+    for i in 0..2: hold(batch) _ = sleeper(40 + i, log)
     note(log, "batch started")
   note(log, "after batch")
 
 ista async fn whole(log: Shared<Array<String>>):
-  for i in 0..1:
-    hold(whole) _ = sleeper(50 + i, log)
+  for i in 0..1: hold(whole) _ = sleeper(50 + i, log)
   note(log, "function done")
 
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> String:
   const empty: Array<String> = []
   const log = new Shared{value: empty}

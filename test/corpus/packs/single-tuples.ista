@@ -1,13 +1,16 @@
 # outcome: [3,[4],5,"6",null,7,"int 1","tuple"]
 # A one-element tuple and its element each fit where the other is expected (§3.15), once, before
 # a wrap into T? (§2); a function taking every argument as it is beats one converting it (§3.7).
+import * as runtime from 'runtime'
+
 fn twice(x: Int) -> Int: x * 2
 
 fn pick(x: Int) -> String: "int " + x
 fn pick(x: (Int,)) -> String: "tuple"
 
-import * as runtime from 'runtime'
-live async fn main() -> (Int, (Int,), Int, String, Int?, Int?, String, String): await runtime.run(runtime.id()) _main()
+live async fn main() -> (Int, (Int,), Int, String, Int?, Int?, String, String):
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> (Int, (Int,), Int, String, Int?, Int?, String, String):
   const one: (Int,) = 3
   const back: Int = one

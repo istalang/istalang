@@ -1,12 +1,14 @@
-# error: 5025 at 12:3
-# error: 5644 at 14:18
+# error: 5025 at 14:3
+# error: 5644 at 16:18
 # A revertible send's holder must be kept (§6, §7): left bare, it would retract the message at
 # once. Only a disposable has a weak reference, and a weak reference isn't sendable.
 
-import Inbox from 'inbox'
 import * as runtime from 'runtime'
+import Inbox from 'inbox'
 
-live async fn main() -> Unit: await runtime.run(runtime.id()) _main()
+live async fn main() -> Unit:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> Unit:
   const box = Inbox.create<Int>()
   box.sendRevertible(1)

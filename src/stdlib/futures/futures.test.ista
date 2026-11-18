@@ -3,23 +3,15 @@
 # twice: in the test's own instance, and in one that discards and re-runs every segment before
 # committing it (§10).
 
-import (
-  Suite
-  Test
-  test
-  assertEq
-  expectPanic
-  FakeClock
-  withClock
-  mock
-  spawnCrashingEveryAwait
-  idle
-) from 'testing'
-import * as testing from 'testing'
-import runAndReRun from '../testing/re-runs.test'
 import * as futures from 'futures'
 import * as runtime from 'runtime'
 import * as time from 'time'
+import (
+  * as testing
+  assertEq, expectPanic, FakeClock, idle, mock
+  spawnCrashingEveryAwait, Suite, Test, test, withClock
+) from 'testing'
+import runAndReRun from '../testing/re-runs.test'
 
 # What the futures under test give: a value, or the name of what failed.
 type Outcome = Result<Int, String>
@@ -65,16 +57,19 @@ fn firstSuite() -> Array<Test>: [
     firstArrivedBeforeItsAwait
     (0, 1)
   )
-  test("wins in a select when its future settles ahead of a later case's in one event", async fn(): {
-    const s = Slot.create<Int>()
-    const r0 = s.read()
-    const r1 = s.read()
-    _ = later(s, 7)
-    const got = await select:
-      case futures.first([r0]) as pair: pair.1
-      case r1: -1
-    assertEq(got, 7)
-  })
+  test(
+    "wins in a select when its future settles ahead of a later case's in one event"
+    async fn(): {
+      const s = Slot.create<Int>()
+      const r0 = s.read()
+      const r1 = s.read()
+      _ = later(s, 7)
+      const got = await select:
+        case futures.first([r0]) as pair: pair.1
+        case r1: -1
+      assertEq(got, 7)
+    }
+  )
   test("loses cleanly in a select after an earlier case already resolved", async fn(): {
     const s = Slot.create<Int>()
     const passedOver = s.take()
@@ -116,7 +111,8 @@ ista async fn allWithOneFailing() -> Result<Array<Int>, String>:
   await later(b, Err("b"))
   await all
 
-ista async fn allOfNone() -> Result<Array<Int>, String>: await futures.all<Int, String, "ista">([])
+ista async fn allOfNone() -> Result<Array<Int>, String>:
+  await futures.all<Int, String, "ista">([])
 
 @Suite{"futures › all"}
 fn allSuite() -> Array<Test>: [
@@ -180,7 +176,8 @@ ista async fn anyAllFailing() -> Result<Int, Array<String>>:
   await later(a, Err("a"))
   await either
 
-ista async fn anyOfNone() -> Result<Int, Array<String>>: await futures.any<Int, String, "ista">([])
+ista async fn anyOfNone() -> Result<Int, Array<String>>:
+  await futures.any<Int, String, "ista">([])
 
 @Suite{"futures › any"}
 fn anySuite() -> Array<Test>: [
@@ -312,13 +309,13 @@ ista async fn timeoutInTime() -> Int?:
 @Suite{"futures › timeout"}
 ista fn timeoutSuite() -> Array<Test>: [
   ...runAndReRun("gives the value when it arrives in time", timeoutInTime, 1)
-  test("gives none once the limit passes first", withClock, async fn(clock): {
+  test("gives none once the limit passes first", withClock, async fn clock: {
     const limited = futures.timeout(Slot.create<Int>().read(), 5s)
     await runtime.commit()
     clock.advance(5s)
     assertEq(await limited, none)
   })
-  test("gives the value when it arrives just before the limit passes", withClock, async fn(clock): {
+  test("gives the value when it arrives just before the limit passes", withClock, async fn clock: {
     const value = Slot.create<Int>()
     const limited = futures.timeout(value.read(), 5s)
     await runtime.commit()
@@ -326,9 +323,7 @@ ista fn timeoutSuite() -> Array<Test>: [
     clock.advance(5s)
     assertEq(await limited, 1)
   })
-  test("gives none when the value arrives just after the limit passes", withClock, async fn(
-    clock
-  ): {
+  test("gives none when the value arrives just after the limit passes", withClock, async fn clock: {
     const value = Slot.create<Int>()
     const limited = futures.timeout(value.read(), 5s)
     await runtime.commit()
@@ -360,27 +355,32 @@ ista async fn backingOff(clock: FakeClock, retrying: Instance<(Outcome, Array<In
 # Retries, twice a second apart, a plain attempt that always fails.
 ista async fn failingTwice() -> Outcome:
   let attempts = 0
-  await futures.retry(fn() -> Outcome: { attempts += 1; Err("attempt " + attempts) }, 2, 1s)
+  await futures.retry(
+    fn() -> Outcome: { attempts += 1; Err("attempt " + attempts) }
+    2
+    1s
+  )
 
-ista async fn succeedingFirstTime() -> Outcome: await futures.retry(fn() -> Outcome: Ok(1))
+ista async fn succeedingFirstTime() -> Outcome:
+  await futures.retry(fn() -> Outcome: Ok(1))
 
 @Suite{"futures › retry"}
 ista fn retrySuite() -> Array<Test>: [
   test(
     "waits backoff before the first retry and twice as long before the next"
     withClock
-    async fn(clock): {
+    async fn clock: {
       await backingOff(clock, spawn succeedingThirdTime())
     }
   )
   test(
     "waits backoff before the first retry and twice as long before the next, with every segment re-run"
     withClock
-    async fn(clock): {
+    async fn clock: {
       await backingOff(clock, spawnCrashingEveryAwait(succeedingThirdTime))
     }
   )
-  test("gives the last Err once every attempt failed", withClock, async fn(clock): {
+  test("gives the last Err once every attempt failed", withClock, async fn clock: {
     const retrying = spawn failingTwice()
     await retrying.idle()
     clock.advance(1s)

@@ -2,11 +2,9 @@
 # their steps, powers and bitwise operators, and the wait on a spawned instance's end (spec §3.8,
 # §3.9, §9); the rest of the prelude is the corpus's.
 
-import Suite, Test, test, group, assert, assertEq, expectPanic from 'testing'
+import assert, assertEq, expectPanic, group, Suite, Test, test from 'testing'
 
-struct Item:
-  name: String
-  rank: Int
+struct Item { name: String, rank: Int }
 
 fn byRank(left: Item, right: Item) -> Int: left.rank - right.rank
 
@@ -20,16 +18,16 @@ fn panicsOnThree(n: Int) -> Bool:
 fn arrays() -> Array<Test>: [
   group("transforming", [
     test("map gives each item's result, in order", fn(): {
-      assertEq([1, 2, 3].map(fn(n): n * 10), [10, 20, 30])
-      assertEq([1, 2].map(fn(n): "#" + n), ["#1", "#2"])
+      assertEq([1, 2, 3].map(fn n: n * 10), [10, 20, 30])
+      assertEq([1, 2].map(fn n: "#" + n), ["#1", "#2"])
     })
     test("filter keeps the items its test accepts, in order", fn(): {
       assertEq([1, 2, 3, 4].filter(isEven), [2, 4])
       assertEq([1, 3].filter(isEven), [])
     })
     test("flatMap joins each item's array", fn(): {
-      assertEq([1, 2].flatMap(fn(n): [n, n]), [1, 1, 2, 2])
-      assertEq([1, 2].flatMap(fn(n): [for _ in 0..0: n]), [])
+      assertEq([1, 2].flatMap(fn n: [n, n]), [1, 1, 2, 2])
+      assertEq([1, 2].flatMap(fn n: [for _ in 0..0: n]), [])
     })
     test("flat joins the arrays of an array, one level deep", fn(): {
       assertEq([[1], [], [2, 3]].flat(), [1, 2, 3])
@@ -67,8 +65,8 @@ fn arrays() -> Array<Test>: [
       assert(empty.every(isEven))
     })
     test("a search stops at the first item it finds", fn(): {
-      assertEq([1, 2, 3].find(fn(n): n == 2 or panicsOnThree(n)), 2)
-      assert([2, 3].some(fn(n): isEven(n) or panicsOnThree(n)))
+      assertEq([1, 2, 3].find(fn n: n == 2 or panicsOnThree(n)), 2)
+      assert([2, 3].some(fn n: isEven(n) or panicsOnThree(n)))
     })
     test("a panic in the function a method calls panics the caller", async fn(): {
       assertEq(await expectPanic(fn(): [1, 2, 3].filter(panicsOnThree)), "three")
@@ -95,9 +93,9 @@ fn arrays() -> Array<Test>: [
         Item{name: "b", rank: 1}
       ]
       items.sort(byRank)
-      assertEq(items.map(fn(item): item.name), ["a", "b", "c", "d"])
+      assertEq(items.map(fn item: item.name), ["a", "b", "c", "d"])
       items.sort(fn(left, right): right.rank - left.rank)
-      assertEq(items.map(fn(item): item.name), ["c", "d", "a", "b"])
+      assertEq(items.map(fn item: item.name), ["c", "d", "a", "b"])
     })
     test("sort leaves an empty array and a single item alone", fn(): {
       let empty: Array<Int> = []
@@ -118,7 +116,7 @@ fn arrays() -> Array<Test>: [
 @Suite{"prelude › maps"}
 fn maps() -> Array<Test>: [
   test("Map.groupBy groups items by key, keeping their order", fn(): {
-    const groups = Map.groupBy([1, 2, 3, 4, 5], fn(n): isEven(n))
+    const groups = Map.groupBy([1, 2, 3, 4, 5], fn n: isEven(n))
     assertEq(groups[true], [2, 4])
     assertEq(groups[false], [1, 3, 5])
     assertEq(groups.size(), 2)
@@ -213,7 +211,8 @@ fn numbers() -> Array<Test>: [
     assert(Bool.parse("true") == Ok(true) and Bool.parse("false") == Ok(false))
     match Bool.parse("True"):
       case Ok(_): panic("read True")
-      case Err(error): assertEq(error.code + ": " + error.message, "parse: 'True' is not a Bool.")
+      case Err(error):
+        assertEq(error.code + ": " + error.message, "parse: 'True' is not a Bool.")
   })
   test("an operator's function, passed as a value, computes as the operator does", async fn(): {
     const ints: Array<fn(Int, Int) -> Int> = [
@@ -224,11 +223,11 @@ fn numbers() -> Array<Test>: [
       remainder
       power
     ]
-    assertEq(ints.map(fn(operator): operator(-7, 2)), [-5, -9, -14, -4, 1, 49])
+    assertEq(ints.map(fn operator: operator(-7, 2)), [-5, -9, -14, -4, 1, 49])
     const bits: Array<fn(Int, Int) -> Int> = [bitAnd, bitOr, bitXor, shiftLeft, shiftRight, compare]
-    assertEq(bits.map(fn(operator): operator(12, 2)), [0, 14, 14, 48, 3, 1])
+    assertEq(bits.map(fn operator: operator(12, 2)), [0, 14, 14, 48, 3, 1])
     const floats: Array<fn(Float, Float) -> Float> = [add, subtract, multiply, divide, power]
-    assertEq(floats.map(fn(operator): operator(1.5, 2.0)), [3.5, -0.5, 3.0, 0.75, 2.25])
+    assertEq(floats.map(fn operator: operator(1.5, 2.0)), [3.5, -0.5, 3.0, 0.75, 2.25])
     const texts: Array<fn(String, String) -> Int> = [compare]
     const joined: fn(String, String) -> String = add
     assertEq([texts[0]("a", "b"), texts[0]("b", "a")], [-1, 1])

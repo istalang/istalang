@@ -1,12 +1,13 @@
-# error: 5001 at 12:19
-# error: 5001 at 13:36
-# error: 5302 at 14:27
-# error: 5303 at 16:3
-# error: 5016 at 17:17
+# error: 5001 at 13:19
+# error: 5001 at 14:36
+# error: 5302 at 15:27
+# error: 5303 at 17:3
+# error: 5016 at 18:17
 # Ranges hold ints (§3.8); a comprehension's condition is a bool and it runs over an iterable
 # (§4); a slice of a string can't be assigned, and a key no `index` takes can't slice (§3.9).
 
 import * as runtime from 'runtime'
+
 live async fn main(): await runtime.run(runtime.id()) _main()
 ista async fn _main():
   const letters = "a"..3

@@ -1,54 +1,51 @@
-# error: 5220 at 25:17
-# error: 5409 at 29:7
-# error: 5409 at 32:3
-# error: 5409 at 35:3
-# error: 5409 at 38:3
-# error: 5409 at 41:3
-# error: 5409 at 44:7
-# error: 5221 at 47:6
-# error: 5409 at 50:7
+# error: 5220 at 31:17
+# error: 5409 at 34:31
+# error: 5409 at 36:28
+# error: 5409 at 38:28
+# error: 5409 at 40:27
+# error: 5409 at 42:27
+# error: 5409 at 44:30
+# error: 5221 at 46:37
+# error: 5409 at 48:32
 # A step written on an optional where its value was meant points at the form of the same link
 # that reaches inside (§4): `?.` for a field, an element or a method, `?->` behind a shared struct,
 # `?.[` for an index and `?.(` for a call, whatever the value inside then takes. A prefix `*` has
 # no such form, so it is only refused.
 
+import * as runtime from 'runtime'
+
 shared struct Counter { count: Int }
 
 struct Pair { a: Int }
 
-struct Box { c: Counter?, t: (Int, Int)?, xs: Array<Int>?, f: (fn(Int) -> Int)?, p: Pair? }
+struct Box:
+  c: Counter?
+  t: (Int, Int)?
+  xs: Array<Int>?
+  f: (fn(Int) -> Int)?
+  p: Pair?
 
-fn size(self: Pair) -> Int:
-  1
+fn size(self: Pair) -> Int: 1
 
 fn whole(b: Box) -> Int:
   const value = *b.c
   0
 
-fn behind(b: Box) -> Int:
-  b.c.count
+fn behind(b: Box) -> Int: b.c.count
 
-fn element(b: Box) -> Int:
-  b.t.0
+fn element(b: Box) -> Int: b.t.0
 
-fn indexed(b: Box) -> Int:
-  b.xs[0]
+fn indexed(b: Box) -> Int: b.xs[0]
 
-fn called(b: Box) -> Int:
-  b.f(1)
+fn called(b: Box) -> Int: b.f(1)
 
-fn method(b: Box) -> Int:
-  b.p.size()
+fn method(b: Box) -> Int: b.p.size()
 
-fn field(b: Box) -> Int:
-  b.p.a
+fn field(b: Box) -> Int: b.p.a
 
-fn through(c: Counter?) -> Int?:
-  c?.count
+fn through(c: Counter?) -> Int?: c?.count
 
-fn unknown(b: Box) -> Int:
-  b.p.zzz
+fn unknown(b: Box) -> Int: b.p.zzz
 
-import * as runtime from 'runtime'
 live async fn main(): await runtime.run(runtime.id()) _main()
 ista async fn _main(): 0

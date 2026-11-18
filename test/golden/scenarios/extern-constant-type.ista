@@ -4,6 +4,7 @@ import * as runtime from 'runtime'
 
 extern limit: Int
 
-live async fn main() -> Int: await runtime.run(runtime.id()) _main()
+live async fn main() -> Int:
+  await runtime.run(runtime.id()) _main()
 
 ista async fn _main() -> Int: limit

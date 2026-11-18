@@ -1,10 +1,9 @@
-# error: 4015 at 5:18
+# error: 4015 at 6:18
 #
 # Only a test module may import the testing module (§10), so production code never installs a mock.
 
-import mock from 'testing'
 import * as runtime from 'runtime'
+import mock from 'testing'
 
 live async fn main(): await runtime.run(runtime.id()) _main()
-ista async fn _main():
-  ()
+ista async fn _main(): ()

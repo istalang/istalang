@@ -13,8 +13,7 @@ fn dispose(self: Lease): log.info("disposed " + String(self->id))
 live async fn returning() -> Lease:
   const inner = new Lease{id: 2}
   await select:
-    case returning.disposing():
-      return new Lease{id: 3}
+    case returning.disposing(): return new Lease{id: 3}
 
 live async fn waiting() -> Lease:
   const inner = new Lease{id: 4}

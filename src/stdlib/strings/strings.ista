@@ -14,8 +14,7 @@ fn lastIndexOf(self: String, search: String) -> Int:
   while found >= 0:
     last = found
     found = self._find(search, found + 1)
-  if last < 0: -1
-  else: self._between(0, last).length()
+  if last < 0: -1 else: self._between(0, last).length()
 
 fn startsWith(self: String, prefix: String) -> Bool:
   self._between(0, utf16Length(prefix)) == prefix
@@ -51,7 +50,8 @@ fn padEnd(self: String, length: Int, fill: String = " ") -> String:
 # `self` written `count` times. What is built doubles, so a count of n takes about twice log n
 # appends; a negative count is a bug in the program.
 fn repeat(self: String, count: Int) -> String:
-  if count < 0: panic("A string can't be repeated " + count + " times.")
+  if count < 0:
+    panic("A string can't be repeated " + count + " times.")
   let repeated = ""
   let doubled = self
   let rest = count
@@ -92,9 +92,11 @@ fn format(template: String, ...values: Array<String>) -> String:
     if brace == "{" and character == "{" and digits == "":
       written += "{"
       brace = ""
-    elif brace == "{" and character >= "0" and character <= "9": digits += character
+    elif brace == "{" and character >= "0" and character <= "9":
+      digits += character
     elif brace == "{" and character == "}":
-      const position = if digits == "": next else: _placeholder(digits)
+      const position = if digits == "": next
+      else: _placeholder(digits)
       if digits == "": next += 1
       if position >= values.length():
         const given = ": it was given " + values.length() + "."
@@ -136,5 +138,12 @@ fn _placeholder(digits: String) -> Int:
 
 fn _strayBrace(template: String, brace: String) -> Never:
   panic(
-    "The template '" + template + "' has a stray '" + brace + "'; '" + brace + brace + "' writes one."
+    "The template '" +
+      template +
+      "' has a stray '" +
+      brace +
+      "'; '" +
+      brace +
+      brace +
+      "' writes one."
   )

@@ -3,14 +3,17 @@
 # widen (§4, §5); under `[_]: Int` a member-parameter key reads and writes as an Int, every field
 # being one (§8).
 
+import * as runtime from 'runtime'
+
 struct P { b: Int, a: Int }
 
 fn bump<T is struct { [_]: Int }, K in keyof T>(t: &T, k: K) -> Int:
   t[k] += 1
   t[k]
 
-import * as runtime from 'runtime'
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> String:
   let p = P{b: 2, a: 6}
   const pairs = [for k, v in ...p: (k, v)]

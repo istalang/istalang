@@ -2,27 +2,23 @@
 # cancelled instead. Each rule is its own function, and its test asserts what the old runtime's unit
 # test did.
 
-import Suite, Test, test, assertEq, spawnCrashingEveryAwait from 'testing'
 import * as futures from 'futures'
 import * as runtime from 'runtime'
 import * as time from 'time'
+import assertEq, spawnCrashingEveryAwait, Suite, Test, test from 'testing'
 
-shared struct Seen:
-  value: Int
+shared struct Seen { value: Int }
 
-K fn see<K in Persistence>(seen: Seen, value: Int): seen->value = value
+K fn see<K in Persistence>(seen: Seen, value: Int):
+  seen->value = value
 
 ista async fn later(value: Int) -> Int:
   await runtime.commit()
   value
 
-shared struct Kept:
-  resolver: Resolver<Int, "ista">? = none
+shared struct Kept { resolver: Resolver<Int, "ista">? = none }
 
-struct Watched:
-  seen: Seen
-  kept: Kept
-  type Mode = "ista"
+struct Watched { seen: Seen, kept: Kept, type Mode = "ista" }
 
 ista fn onAwait(self: Watched, done: Resolver<Int, "ista">):
   const seen = self.seen
@@ -41,7 +37,7 @@ ista async fn afterResolverWaits() -> Int:
 ista async fn withoutAwait() -> Int:
   const seen = new Seen{value: 0}
   const pending = later(7)
-  pending.onAwait(Resolver.of(fn(value): see(seen, value)))
+  pending.onAwait(Resolver.of(fn value: see(seen, value)))
   const before = seen->value
   await runtime.commit()
   await runtime.commit()
@@ -52,7 +48,8 @@ struct Either:
   seen: Seen
   type Mode = "ista"
 
-ista fn offer(done: Resolver<Int, "ista">, value: Int): _ = done.tryResolve(value)
+ista fn offer(done: Resolver<Int, "ista">, value: Int):
+  _ = done.tryResolve(value)
 
 ista fn onAwait(self: Either, done: Resolver<Int, "ista">):
   const watching = Resolver.of(fn(value: Int): offer(done, value))
@@ -118,7 +115,8 @@ ista async fn losersDisposed() -> Int:
   const seen = new Seen{value: 0}
   const s = Slot.create<Int>()
   const won = await select:
-    case futures.first([tracked(seen, 10), s.take()]) as pair: pair.1
+    case futures.first([tracked(seen, 10), s.take()]) as pair:
+      pair.1
     case tracked(seen, 20) as slow: slow
     case later(4) as fast: fast
   _ = s.put(9)

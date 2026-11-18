@@ -1,34 +1,27 @@
-# error: 5152 at 23:9
-# error: 5152 at 27:8
-# error: 5152 at 31:9
-# error: 5152 at 34:15
+# error: 5152 at 18:41
+# error: 5152 at 22:8
+# error: 5152 at 25:46
+# error: 5152 at 27:49
 # A field a type parameter's trait requires is read through it but can't change: the parameter may
 # be an `any` type, through which only the value's own type has the field (§3.14).
 
-trait Sized:
-  size: Int
+trait Sized { size: Int }
 
 struct Counter { count: Int }
 
-fn bump(self: &Counter):
-  self.count += 1
+fn bump(self: &Counter): self.count += 1
 
-fn grow(amount: &Int):
-  amount += 1
+fn grow(amount: &Int): amount += 1
 
-trait Counted:
-  inner: Counter
+trait Counted { inner: Counter }
 
-fn resize<T is Sized>(value: &T):
-  value.size = 10
+fn resize<T is Sized>(value: &T): value.size = 10
 
 fn grown<T is Sized>(value: T) -> Int:
   let copy = value
   copy.size += 1
   copy.size
 
-fn bumpInner<T is Counted>(value: &T):
-  value.inner.bump()
+fn bumpInner<T is Counted>(value: &T): value.inner.bump()
 
-fn growSize<T is Sized>(value: &T):
-  grow(&value.size)
+fn growSize<T is Sized>(value: &T): grow(&value.size)

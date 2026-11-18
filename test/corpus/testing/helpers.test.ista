@@ -1,26 +1,24 @@
-# error: 5952 at 27:17
-# error: 5952 at 28:17
-# error: 5953 at 29:18
-# error: 5953 at 32:39
-# error: 5110 at 34:39
-# error: 5952 at 35:17
-# error: 5954 at 43:53
+# error: 5952 at 25:17
+# error: 5952 at 26:17
+# error: 5953 at 27:18
+# error: 5953 at 30:39
+# error: 5110 at 32:39
+# error: 5952 at 33:17
+# error: 5954 at 42:30
 #
 # A mock's target names a function, which has an identity to replace, never a variant, built
 # where it is called (§3.11), at a type taking every parameter, since its replacement is given its
 # defaults filled; and `handle` makes values of host types only (§10). A mock's target is the one
 # place `dispose` may be named (§7).
 
-import mock, handle from 'testing'
+import handle, mock from 'testing'
 
 extern shared struct Queue
 extern fn dispose(self: Queue)
 
 fn greet(name: String) -> String: name
 
-enum Plain:
-  One(by: String)
-  Other
+enum Plain { One(by: String), Other }
 
 ista async fn targets():
   const named = greet
@@ -40,4 +38,5 @@ ista async fn targets():
 
 fn hello(a: Int, b: String = "x") -> Int: a
 
-ista async fn shorter(): hold _ = mock<(Int,), Int>(hello, fn(a: Int): a)
+ista async fn shorter():
+  hold _ = mock<(Int,), Int>(hello, fn(a: Int): a)

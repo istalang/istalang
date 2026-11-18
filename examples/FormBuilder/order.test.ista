@@ -2,14 +2,14 @@
 # an edit re-evaluates, and what validating a whole value gives. The live drivers wrap these steps;
 # test/examples.test.ts runs them as their hosts do.
 
-import Suite, Test, test, assertEq, mock from 'testing'
-import FormEvent, Node, FieldWidget from './forms/tree'
+import assertEq, mock, Suite, Test, test from 'testing'
+import * as approvals from './approvals'
+import * as geo from './geo'
+import Graph from './computed'
 import Form, User, validate from './forms/form'
 import Group from './forms/model'
-import * as geo from './geo'
-import * as approvals from './approvals'
-import Graph from './computed'
-import OrderModel, OrderParams, openOrder from './order.gen'
+import FieldWidget, FormEvent, Node from './forms/tree'
+import openOrder, OrderModel, OrderParams from './order.gen'
 
 @Suite{"order"}
 fn orderSuite() -> Array<Test>: [
@@ -26,9 +26,15 @@ fn orderSuite() -> Array<Test>: [
   test("S7: a pattern's error", patternError)
 ]
 
-const user = User{id: "u1", name: "Ann", lang: "en", role: "buyer", today: "2026-11-15"}
+const user = User:
+  id: "u1"
+  name: "Ann"
+  lang: "en"
+  role: "buyer"
+  today: "2026-11-15"
 
-fn open() -> Form<OrderModel>: openOrder(OrderParams{region: "eu"}, user)
+fn open() -> Form<OrderModel>:
+  openOrder(OrderParams{region: "eu"}, user)
 
 fn countries(region: String) -> Array<geo.Country>: [
   geo.Country{id: "de", name: "Germany"}
@@ -41,7 +47,8 @@ fn cities(country: String) -> Array<geo.City>:
 
 fn approve(userId: String, totalQty: Int) -> Bool: true
 
-fn tree(form: Form<OrderModel>) -> Node: form.view.drawn.read().nodes[0]
+fn tree(form: Form<OrderModel>) -> Node:
+  form.view.drawn.read().nodes[0]
 
 # The keys of the nodes `node` shows, depth first.
 fn keys(node: Node) -> Array<String>: [for each in node.shown(): each.key()]
@@ -125,11 +132,17 @@ ista async fn validValue():
       country: "de"
       city: "ber"
       items: [struct{sku: "sku-1", qty: 2}]
-      payment: struct{tag: "card", value: struct{card: struct{last4: "1234"}, wire: none}}
+      payment: struct{
+        tag: "card"
+        value: struct{card: struct{last4: "1234"}, wire: none}
+      }
       note: "a note the hidden field drops"
     }
   ):
-    case Ok(data): { assertEq(data.city, "ber"); assertEq(data.note, none) }
+    case Ok(data): {
+      assertEq(data.city, "ber")
+      assertEq(data.note, none)
+    }
     case Err(problems): assertEq(problems, [:])
 
 ista async fn invalidValue():
@@ -143,15 +156,15 @@ ista async fn invalidValue():
 
 # What node `key` shows: its errors, and its widget's text rows if a textarea, from `node`'s tree.
 fn errorsAt(node: Node, key: String) -> Array<String>?:
-  node.shown().find(fn(each): each.key() == key)?.errors()
+  node.shown().find(fn each: each.key() == key)?.errors()
 
 fn fieldValue(node: Node, key: String) -> String?:
-  match node.shown().find(fn(each): each.key() == key):
+  match node.shown().find(fn each: each.key() == key):
     case Field(value: value, ...): value
     case _: none
 
 fn noteRows(node: Node) -> Int?:
-  match node.shown().find(fn(each): each.key() == "n12"):
+  match node.shown().find(fn each: each.key() == "n12"):
     case Field(widget: FieldWidget.Textarea(rows), ...): rows
     case _: none
 
@@ -166,7 +179,10 @@ fn rows(self: Form<OrderModel>, quantities: Array<Int>):
 ista async fn localizedRule():
   hold _ = mock(geo.countries, kpToo)
   hold _ = mock(geo.cities, cities)
-  const form = openOrder(OrderParams{region: "eu"}, User{...user, lang: "de"})
+  const form = openOrder(
+    OrderParams{region: "eu"}
+    User{...user, lang: "de"}
+  )
   form.enter("n2", "\"kp\"")
   assertEq(errorsAt(tree(form), "n2"), ["Wir liefern nicht nach kp"])
 

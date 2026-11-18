@@ -3,34 +3,36 @@
 # `default()` and assigns each entry with its `setIndex`, a spread's items included; `for` runs the
 # cursor its `iterate` gives; and its elements are places, also inside an array of them.
 
+import * as runtime from 'runtime'
+
 struct Bag { keys: Array<String>, values: Array<Int> }
 
-fn Bag.default() -> Bag:
-  Bag{keys: [], values: []}
+fn Bag.default() -> Bag: Bag{keys: [], values: []}
 
 fn index(self: Bag, key: String) -> Int:
   const position = self.keys.indexOf(key)
-  if position < 0: panic("No " + key + " in the bag.") else: self.values[position]
+  if position < 0: panic("No " + key + " in the bag.")
+  else: self.values[position]
 
 fn setIndex(self: &Bag, key: String, value: Int):
   const position = self.keys.indexOf(key)
   if position < 0:
     self.keys.push(key)
     self.values.push(value)
-  else:
-    self.values[position] = value
+  else: self.values[position] = value
 
 fn iterate(self: Bag) -> fn() -> Step<(String, Int)>:
   let position = 0
   fn next() -> Step<(String, Int)>:
-    if position == self.keys.length():
-      return Done
+    if position == self.keys.length(): return Done
     position += 1
     Next((self.keys[position - 1], self.values[position - 1]))
+
   next
 
-import * as runtime from 'runtime'
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> String:
   let bag: Bag = ["a": 1, "b": 2]
   bag["a"] = 10
@@ -45,11 +47,11 @@ ista async fn _main() -> String:
   shelves[0]["a"] = 100
   const empty: Bag = []
   const parts = [
-    text,
-    String(total),
-    String(copy.keys.length()),
-    String(shelves[0]["a"]),
-    String(empty.keys.length()),
-    String(["x": 1].size()),
+    text
+    String(total)
+    String(copy.keys.length())
+    String(shelves[0]["a"])
+    String(empty.keys.length())
+    String(["x": 1].size())
   ]
   parts.join(" ")

@@ -10,13 +10,13 @@
 # so its type is sendable, and it equals another value naming it with the same type arguments,
 # never one naming another variant.
 
+import * as runtime from 'runtime'
+
 enum Verdict:
   Approved
   Rejected(by: String, reason = "no reason given")
 
-enum Action:
-  Now(value: Int)
-  Later
+enum Action { Now(value: Int), Later }
 
 type Move = Action | fn(Int) -> Action
 
@@ -32,7 +32,8 @@ fn describe(verdict: Verdict) -> String:
 
 fn shown(node: Node) -> String:
   match node:
-    case Group(title: title, children: children, ...): `${children.length()} ${title}`
+    case Group(title: title, children: children, ...):
+      `${children.length()} ${title}`
     case _: ""
 
 fn valueOf(result: Result<Int>) -> Int:
@@ -40,9 +41,11 @@ fn valueOf(result: Result<Int>) -> Int:
     case Ok(value): value
     case Err(...): -1
 
-fn apply(f: fn(Int) -> Result<Int>, value: Int) -> Result<Int>: f(value)
+fn apply(f: fn(Int) -> Result<Int>, value: Int) -> Result<Int>:
+  f(value)
 
-fn sent(make: sendable fn(String) -> Verdict) -> String: describe(make("x"))
+fn sent(make: sendable fn(String) -> Verdict) -> String:
+  describe(make("x"))
 
 fn kept<T>(value: T) -> T: value
 
@@ -52,11 +55,10 @@ fn told(make: fn(Int) -> Result<Int>) -> String: "result"
 
 fn told(make: fn(String) -> String) -> String: "string"
 
-fn failed<A, E>(value: A, make: fn(A) -> Result<String, E>) -> Result<String, E>: make(value)
+fn failed<A, E>(value: A, make: fn(A) -> Result<String, E>) -> Result<String, E>:
+  make(value)
 
-struct Pair:
-  a: Int
-  b: String
+struct Pair { a: Int, b: String }
 
 fn each(pair: Pair) -> Int:
   let count = 0
@@ -68,8 +70,9 @@ fn chosen(action: Action) -> String: "value"
 
 fn chosen(make: fn(Int) -> Action) -> String: "function"
 
-import * as runtime from 'runtime'
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> String:
   const results = [1, 2, 3].map(Result.Ok)
   const wrap: fn(Int) -> Result<Int> = Ok

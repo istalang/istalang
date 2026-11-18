@@ -4,6 +4,8 @@
 # and a spread's items, and those of a program's own cursor, which gives `Done` once there are no
 # more, also through the `Iterable` constraint of generic code.
 
+import * as runtime from 'runtime'
+
 struct Holes { items: Array<Int?> }
 
 fn iterate(self: Holes) -> fn() -> Step<Int?>:
@@ -12,6 +14,7 @@ fn iterate(self: Holes) -> fn() -> Step<Int?>:
     if position == self.items.length(): return Done
     position += 1
     Next(self.items[position - 1])
+
   next
 
 fn shown(x: Int?) -> String:
@@ -21,17 +24,16 @@ fn shown(x: Int?) -> String:
 
 fn counted<C is Iterable<Int?>>(collection: C) -> Int:
   let count = 0
-  for _ in collection:
-    count += 1
+  for _ in collection: count += 1
   count
 
-import * as runtime from 'runtime'
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> String:
   const xs: Array<Int?> = [1, none, 3]
   let looped: Array<String> = []
-  for x in xs:
-    looped.push(shown(x))
+  for x in xs: looped.push(shown(x))
   const m: Map<String, Int?> = ["a": 1, "b": none, "c": 3]
   let text = ""
   for key, value in m:
@@ -39,11 +41,11 @@ ista async fn _main() -> String:
   const holes = Holes{items: xs}
   const spread: Array<Int?> = [...holes]
   const parts = [
-    looped.join(","),
-    text,
-    [for x in xs: shown(x)].join(","),
-    [for x in spread: shown(x)].join(","),
-    [for x in holes: shown(x)].join(","),
-    String(counted(holes)),
+    looped.join(",")
+    text
+    [for x in xs: shown(x)].join(",")
+    [for x in spread: shown(x)].join(",")
+    [for x in holes: shown(x)].join(",")
+    String(counted(holes))
   ]
   parts.join("|")

@@ -3,7 +3,10 @@
 # nested; the expected array's element type, through optionals around the array, guides the body.
 
 import * as runtime from 'runtime'
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> String:
   const doubled = [for i in 1..5: 5 * i]
   const small = [for x in doubled if x > 5 and x < 20: String(x)]
@@ -14,14 +17,13 @@ ista async fn _main() -> String:
   const optional: Array<Int?> = [for x in [1, 0]: x]
   const wrapped: Array<Int?>? = [for x in [1]: x]
   let flat = 0
-  for row in grid:
-    flat += row.length()
+  for row in grid: flat += row.length()
   const parts = [
-    small.join(","),
-    big.join(","),
-    labels.join(","),
-    String(flat + 2),
-    [for x in optional: if x == 1: "1" else: "0"].join(","),
-    String(wrapped == [1]),
+    small.join(",")
+    big.join(",")
+    labels.join(",")
+    String(flat + 2)
+    [for x in optional: if x == 1: "1" else: "0"].join(",")
+    String(wrapped == [1])
   ]
   parts.join(" ")

@@ -5,24 +5,21 @@
 
 import * as runtime from 'runtime'
 
-struct Inner:
-  items: Array<Int>
-  tags: Map<String, Int>
+struct Inner { items: Array<Int>, tags: Map<String, Int> }
 
-struct Outer:
-  left: Inner
-  right: Inner
+struct Outer { left: Inner, right: Inner }
 
 fn mutateFirst(items: &Array<Int>, outer: Outer) -> Array<Int>:
   items.push(99)
   outer.left.items
 
-live async fn main() -> Array<Int>: await runtime.run(runtime.id()) _main()
+live async fn main() -> Array<Int>:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> Array<Int>:
-  let o = Outer{
-    left: Inner{items: [1, 2], tags: ["a": 1]},
-    right: Inner{items: [10], tags: ["b": 2]},
-  }
+  let o = Outer:
+    left: Inner{items: [1, 2], tags: ["a": 1]}
+    right: Inner{items: [10], tags: ["b": 2]}
   o.left.items.push(3)
   o.left.tags["c"] = 3
   const snapConst = o
@@ -34,11 +31,11 @@ ista async fn _main() -> Array<Int>:
   snapLet.left.items.push(5)
   const fromCall = mutateFirst(&o.left.items, o)
   [
-    ...snapConst.left.items,
-    snapConst.left.tags["a"],
-    snapConst.left.tags.size(),
-    ...readLeft(),
-    ...snapLet.left.items,
-    ...fromCall,
-    ...o.left.items,
+    ...snapConst.left.items
+    snapConst.left.tags["a"]
+    snapConst.left.tags.size()
+    ...readLeft()
+    ...snapLet.left.items
+    ...fromCall
+    ...o.left.items
   ]

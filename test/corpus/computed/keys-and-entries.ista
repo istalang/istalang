@@ -3,6 +3,8 @@
 # multi-key writes converting into each field's type, compound assignment across uniform keys, and
 # the Entry<S, K> / AnyEntry<S> pattern.
 
+import * as runtime from 'runtime'
+
 struct Settings { retries: Int, region: String }
 struct Counts { x: Int, y: Int }
 struct Widened { a: Int?, b: Int | String }
@@ -10,17 +12,16 @@ struct Widened { a: Int?, b: Int | String }
 struct Entry<S is struct, K in keyof S> { key: K, value: S[K] }
 type AnyEntry<S is struct> = { [K in keyof S]: Entry<S, K> }[keyof S]
 
-trait Applies<S>:
-  fn apply(self: Self, target: &S)
+trait Applies<S> { fn apply(self: Self, target: &S) }
 
 fn apply<S is struct, K in keyof S>(self: Entry<S, K>, target: &S):
   target[self.key] = self.value
 
-fn addTen(target: &Int):
-  target += 10
+fn addTen(target: &Int): target += 10
 
-import * as runtime from 'runtime'
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> String:
   let settings = Settings{retries: 1, region: "us"}
   const e1: AnyEntry<Settings> = Entry{key: "region", value: "eu"}

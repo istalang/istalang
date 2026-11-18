@@ -11,8 +11,7 @@ fn dispose(self: Lease): log.info("disposed " + String(self->id))
 struct Pair { a: Int, b: Lease }
 
 fn walk(pair: Pair):
-  for key, value in ...pair:
-    log.info("visit " + key)
+  for key, value in ...pair: log.info("visit " + key)
 
 live async fn main() -> Int:
   walk(Pair{a: 1, b: new Lease{id: 7}})

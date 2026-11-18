@@ -2,11 +2,11 @@
 # case consumes and holds, and the order executions are readied in. Each rule is its own function,
 # and its test asserts what the old runtime's unit test did.
 
-import Suite, Test, test, assertEq from 'testing'
 import * as futures from 'futures'
 import * as runtime from 'runtime'
 import * as time from 'time'
 import Inbox from 'inbox'
+import assertEq, Suite, Test, test from 'testing'
 
 ista async fn firstInSelect() -> Int:
   const f1 = time.delay(1s)
@@ -80,11 +80,10 @@ ista async fn losingSlotKeeps() -> Int:
   await filling
   got * 10 + left
 
-struct ColdTake:
-  slot: Slot<Int>
-  type Mode = "ista"
+struct ColdTake { slot: Slot<Int>, type Mode = "ista" }
 
-ista fn onAwait(self: ColdTake, done: Resolver<Int, "ista">): self.slot.take().onAwait(done)
+ista fn onAwait(self: ColdTake, done: Resolver<Int, "ista">):
+  self.slot.take().onAwait(done)
 
 ista async fn fillLosingColdTake(s: Slot<Int>):
   await runtime.commit()
@@ -101,10 +100,10 @@ ista async fn losingColdTake() -> Int:
   await filling
   got * 100 + left
 
-struct Now:
-  type Mode = "ista"
+struct Now { type Mode = "ista" }
 
-ista fn onAwait(self: Now, done: Resolver<Unit, "ista">): done.resolve(())
+ista fn onAwait(self: Now, done: Resolver<Unit, "ista">):
+  done.resolve(())
 
 struct TakeOrDisposed:
   take: Future<Unit, "ista">
@@ -117,7 +116,11 @@ ista fn onAwait(self: TakeOrDisposed, done: Resolver<Unit, "ista">):
 
 ista async fn worker(s: Slot<Unit>) -> String:
   await select:
-    case TakeOrDisposed{take: s.take(), disposing: worker.disposing()}: "took"
+    case TakeOrDisposed{
+      take: s.take()
+      disposing: worker.disposing()
+    }:
+      "took"
     case Now: "now"
 
 ista async fn losingDisposingWatch() -> String:
@@ -132,7 +135,8 @@ ista async fn losingDisposingWatch() -> String:
 ista async fn workerLoserRevertibleAtResume(a: Slot<Int>, log: Inbox<String>) -> Int:
   await select:
     case a.take() as x: x
-    case (log.sendRevertible("stale"), workerLoserRevertibleAtResume.disposing()).1: 0
+    case (log.sendRevertible("stale"), workerLoserRevertibleAtResume.disposing()).1:
+      0
 
 ista async fn loserRevertibleAtResume() -> (Array<String>, Array<String>):
   const a = Slot.create<Int>()
@@ -208,11 +212,10 @@ ista async fn widenedTakeLosing() -> (Int, Int?, Int):
   const left = peek(s)
   (left, await pending, peek(s))
 
-shared struct Offered:
-  id: Int
-  log: Shared<Array<String>>
+shared struct Offered { id: Int, log: Shared<Array<String>> }
 
-fn dispose(self: Offered): self->log->value.push("disposed " + self->id)
+fn dispose(self: Offered):
+  self->log->value.push("disposed " + self->id)
 
 ista async fn waitingPutsHoldTheirValues() -> String:
   const log = new Shared<Array<String>>{value: []}
@@ -223,7 +226,8 @@ ista async fn waitingPutsHoldTheirValues() -> String:
     drop dropped
     log->value.push("dropped")
   await select:
-    case s.put(new Offered{id: 3, log}): log->value.push("put won")
+    case s.put(new Offered{id: 3, log}):
+      log->value.push("put won")
     case time.delay(1ms): log->value.push("timer won")
   log->value.join(", ")
 

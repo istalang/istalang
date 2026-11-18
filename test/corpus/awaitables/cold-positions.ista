@@ -9,12 +9,15 @@ import * as time from 'time'
 ista async fn later(value: Int) -> Int:
   await runtime.commit()
   value
-struct Earliest:
-  type Mode = "ista"
+
+struct Earliest { type Mode = "ista" }
 ista fn onAwait(self: Earliest, done: Resolver<(Int, Int), "ista">):
   later(2).onAwait(Resolver.at(done, 1))
   later(1).onAwait(Resolver.at(done, 0))
-live async fn main() -> Int: await runtime.run(runtime.id()) _main()
+
+live async fn main() -> Int:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> Int:
   const (position, value) = await Earliest
   position * 10 + value

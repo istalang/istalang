@@ -2,10 +2,9 @@
 # That a discarded segment logs nothing is the runtime's to show (runtime/host/commits.test.ts).
 # No function of the module can fail, so it has no failing case (m4-m5.md, "Acceptance").
 
-import Suite, Test, test, assertEq, mock, calls from 'testing'
-import * as log from 'log'
-import Level from 'log'
 import * as json from 'json'
+import * as log, Level from 'log'
+import assertEq, calls, mock, Suite, Test, test from 'testing'
 
 fn ignored(level: Level, message: String, fields: json.Json): ()
 

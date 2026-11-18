@@ -4,17 +4,15 @@
 # argument, one only taking it (`Sink`) for a narrower one. A call through it converts what it gives
 # and takes, a field it requires is read converted, and a downcast finds the value's own type.
 
-trait Source<T>:
-  fn next(self: Self) -> T
+import * as runtime from 'runtime'
 
-trait Sink<T>:
-  fn put(self: Self, x: T) -> Int
+trait Source<T> { fn next(self: Self) -> T }
 
-trait Sized<T>:
-  size: T
+trait Sink<T> { fn put(self: Self, x: T) -> Int }
 
-trait Later<T>:
-  ista async fn later(self: Self) -> T
+trait Sized<T> { size: T }
+
+trait Later<T> { ista async fn later(self: Self) -> T }
 
 struct Counter { n: Int, size: Int }
 struct OptionalSink { k: Int }
@@ -24,9 +22,9 @@ fn next(self: Counter) -> Int: self.n
 ista async fn later(self: Counter) -> Int: self.n + 1
 fn put(self: OptionalSink, x: Int?) -> Int: (x ?? 100) + self.k
 
-fn fromBound<T is Source<Int>>(source: T) -> any Source<Int?>: source
+fn fromBound<T is Source<Int>>(source: T) -> any Source<Int?>:
+  source
 
-import * as runtime from 'runtime'
 live async fn main(): await runtime.run(runtime.id()) _main()
 ista async fn _main():
   const narrow: any Source<Int> = Counter{n: 4, size: 0}
@@ -37,19 +35,20 @@ ista async fn _main():
     case _: 0
   const sink: any Sink<Int> = OptionalSink{k: 1}
   const sized: any Sized<Int?> = Counter{n: 0, size: 7}
-  const holder: Holder<Int> = Holder{source: Counter{n: 8, size: 0}}
+  const holder: Holder<Int> = Holder:
+    source: Counter{n: 8, size: 0}
   const widened: Holder<Int?> = holder
   const sources: Array<any Source<Int>> = [Counter{n: 9, size: 0}]
   const all: Array<any Source<Int?>> = sources
   const later: any Later<Int?> = Counter{n: 1, size: 0}
   (
-    wide.next(),
-    direct.next(),
-    found,
-    sink.put(2),
-    sized.size,
-    widened.source.next(),
-    all[0].next(),
-    await later.later(),
-    fromBound(Counter{n: 11, size: 0}).next(),
+    wide.next()
+    direct.next()
+    found
+    sink.put(2)
+    sized.size
+    widened.source.next()
+    all[0].next()
+    await later.later()
+    fromBound(Counter{n: 11, size: 0}).next()
   )

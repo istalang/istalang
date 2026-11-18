@@ -22,11 +22,15 @@ fn described(text: String) -> String:
       `${value.mode}|${tag}|${value.level}`
     case Err(error): error.message
 
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> String:
   const read = described("{\"mode\":\"sent\",\"flag\":true,\"level\":2}")
   const wrongFlag = described("{\"mode\":\"sent\",\"flag\":false,\"level\":2}")
   const wrongLevel = described("{\"mode\":\"sent\",\"flag\":true,\"level\":3}")
   const wrongMode = described("{\"mode\":\"archived\",\"flag\":true,\"level\":1}")
-  const written = json.stringify(Config{mode: "failed", tag: "draft", flag: true, level: 1})
+  const written = json.stringify(
+    Config{mode: "failed", tag: "draft", flag: true, level: 1}
+  )
   `${read}|${wrongFlag}|${wrongLevel}|${wrongMode}|${written}`

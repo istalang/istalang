@@ -9,6 +9,8 @@
 # of a function type is called as `x.f(…)` when no method shares its name, or as `(x.f)(…)`, and
 # through `?.` as a link of the chain; an async function value's call is awaited.
 
+import * as runtime from 'runtime'
+
 struct Op { run: fn(Int) -> Int }
 
 fn twice(f: fn(Int) -> Int, x: Int) -> Int: f(f(x))
@@ -19,17 +21,19 @@ fn inc(n: Int) -> Int: n + 1
 
 fn id<T>(value: T) -> T: value
 
-fn greet(name: String, greeting = "hi") -> String: `${greeting} ${name}`
+fn greet(name: String, greeting = "hi") -> String:
+  `${greeting} ${name}`
 
 fn run(f: fn(String) -> String) -> String: f("x")
 
-fn pipe<A, B, C>(value: A, f: fn(A) -> B, g: fn(B) -> C) -> C: g(f(value))
+fn pipe<A, B, C>(value: A, f: fn(A) -> B, g: fn(B) -> C) -> C:
+  g(f(value))
 
 fn pick(n: Int) -> Int: n * 3
 
 fn pick(s: String) -> String: s
 
-fn Op.identity() -> Op: Op{run: fn(n): n}
+fn Op.identity() -> Op: Op{run: fn n: n}
 
 fn Op.scale(n: Int) -> Int: n * 10
 
@@ -39,15 +43,16 @@ ista async fn later(n: Int) -> Int: n + 1
 
 fn viaChain(op: Op?) -> Int: op?.run(5) ?? 0
 
-import * as runtime from 'runtime'
 live async fn main(): await runtime.run(runtime.id()) _main()
 ista async fn _main():
   const a = twice(fn x: x * 2, 2)
   const b = twice(inc, 4)
   const c = apply(6, fn n: n + 1)
-  const fact: fn(Int) -> Int = fn f(n): if n < 2: 1 else: n * f(n - 1)
+  const fact: fn(Int) -> Int = fn f(n): if n < 2: 1
+  else: n * f(n - 1)
   fn sumTo(n: Int) -> Int:
     if n == 0: 0 else: n + sumTo(n - 1)
+
   const make = Op.identity
   const op = make()
   const thrice: fn(Int) -> Int = pick

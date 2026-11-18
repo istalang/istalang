@@ -10,12 +10,12 @@
       },
       {
         "panicked": "boom",
-        "frame": "at callback-holdings._main (callback-holdings.ista:25:3)",
+        "frame": "at callback-holdings._main (callback-holdings.ista:26:3)",
         "hostCalls": ["callback-holdings.makeLease() []"]
       },
       {
         "terminated": "boom",
-        "frame": "at callback-holdings._main (callback-holdings.ista:25:3)",
+        "frame": "at callback-holdings._main (callback-holdings.ista:26:3)",
         "hostCalls": ["callback-holdings.dispose(callback-holdings.Lease) [\"lease-2\"]"]
       }
     ]
@@ -133,7 +133,7 @@
           {
             "instance": "run/1",
             "panicked": "not ready",
-            "frame": "at retry.child (retry.ista:10:5)"
+            "frame": "at retry.child (retry.ista:9:19)"
           }
         ],
         "hostCalls": ["retry.ready() []"]
@@ -143,7 +143,7 @@
       },
       {
         "panicked": "not ready",
-        "frame": "at retry.child (retry.ista:10:5)"
+        "frame": "at retry.child (retry.ista:9:19)"
       },
       {},
       {
@@ -201,7 +201,7 @@
     "steps": [
       {
         "panicked": "no",
-        "frame": "at spawn-panic._main (spawn-panic.ista:14:3)"
+        "frame": "at spawn-panic._main (spawn-panic.ista:15:3)"
       },
       {
         "stored": ["run"]
@@ -233,7 +233,7 @@
           {
             "instance": "run/1",
             "panicked": "gave up on child's",
-            "frame": "at terminate.child (terminate.ista:15:3)"
+            "frame": "at terminate.child (terminate.ista:13:3)"
           }
         ]
       },
@@ -242,21 +242,21 @@
       },
       {
         "panicked": "gave up on child's",
-        "frame": "at terminate.child (terminate.ista:15:3)",
+        "frame": "at terminate.child (terminate.ista:13:3)",
         "waitingAt": [
           {
-            "location": "terminate.ista:14:3"
+            "location": "terminate.ista:12:3"
           }
         ]
       },
       {
         "terminated": "gave up on child's",
-        "frame": "at terminate.child (terminate.ista:15:3)",
+        "frame": "at terminate.child (terminate.ista:13:3)",
         "logs": ["info disposed child's {}"]
       },
       {
         "terminated": "gave up on child's",
-        "frame": "at terminate.child (terminate.ista:15:3)"
+        "frame": "at terminate.child (terminate.ista:13:3)"
       },
       {
         "refused": "notPanicked"

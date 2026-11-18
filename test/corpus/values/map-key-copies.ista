@@ -5,10 +5,11 @@
 
 import * as runtime from 'runtime'
 
-struct Key:
-  parts: Array<Int>
+struct Key { parts: Array<Int> }
 
-live async fn main() -> Array<Int>: await runtime.run(runtime.id()) _main()
+live async fn main() -> Array<Int>:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> Array<Int>:
   let k = Key{parts: [1, 2]}
   k.parts.push(3)
@@ -20,9 +21,9 @@ ista async fn _main() -> Array<Int>:
   v.push(40)
   const originalKey = Key{parts: [1, 2, 3]}
   [
-    if originalKey in m: 1 else: 0,
-    if k in m: 1 else: 0,
-    ...m[originalKey],
-    ...k.parts,
-    ...v,
+    if originalKey in m: 1 else: 0
+    if k in m: 1 else: 0
+    ...m[originalKey]
+    ...k.parts
+    ...v
   ]

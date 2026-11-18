@@ -15,7 +15,8 @@ ista async fn finishWithRun() -> Int:
   r.resolve(lease)
   0
 
-live async fn main() -> Int: await runtime.run(runtime.id()) _main()
+live async fn main() -> Int:
+  await runtime.run(runtime.id()) _main()
 
 ista async fn _main() -> Int:
   const lease = makeLease()
@@ -24,4 +25,5 @@ ista async fn _main() -> Int:
   await runtime.commit()
   panic("boom")
 
-live async fn finishing() -> Int: await runtime.run(runtime.id()) finishWithRun()
+live async fn finishing() -> Int:
+  await runtime.run(runtime.id()) finishWithRun()

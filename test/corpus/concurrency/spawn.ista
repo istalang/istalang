@@ -4,28 +4,26 @@
 # function type, such as a lambda or local function capturing only sendable values. Its sendable
 # arguments are copied into the new instance, which runs to its own outcome.
 
-import * as time from 'time'
 import * as runtime from 'runtime'
+import * as time from 'time'
 
-struct Order:
-  id: Int
-  items: Array<String>
+struct Order { id: Int, items: Array<String> }
 
-fn total(self: Order) -> Int:
-  self.items.length()
+fn total(self: Order) -> Int: self.items.length()
 
 ista async fn ship(order: Order) -> String:
   await time.delay(1ms)
   String(order.id) + ":" + order.items.join(",")
 
-fn echo<T>(value: T) -> T:
-  value
+fn echo<T>(value: T) -> T: value
 
 ista fn startAll(order: Order):
   spawn ship(order)
   spawn order.total()
 
-live async fn main() -> Int: await runtime.run(runtime.id()) _main()
+live async fn main() -> Int:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> Int:
   const order = Order{id: 7, items: ["a", "b"]}
   startAll(order)
@@ -33,8 +31,7 @@ ista async fn _main() -> Int:
   const bonus = 10
   const priced = fn(n: Int): n + bonus
   spawn priced(order.id)
-  fn named(times: Int) -> Int:
-    times * bonus
+  fn named(times: Int) -> Int: times * bonus
   spawn named(2)
   const stored: sendable fn(Int) -> Int = priced
   spawn stored(1)

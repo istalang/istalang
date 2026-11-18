@@ -2,11 +2,13 @@
 # An element passed by `&` is read before its call (§3.7), so a key the map doesn't hold panics
 # even when the callee only writes it; assigning `m[k] = v` adds the key instead.
 
-fn reset(value: &Int):
-  value = 0
-
 import * as runtime from 'runtime'
-live async fn main() -> Int: await runtime.run(runtime.id()) _main()
+
+fn reset(value: &Int): value = 0
+
+live async fn main() -> Int:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> Int:
   let m = ["a": 1]
   reset(&m["b"])

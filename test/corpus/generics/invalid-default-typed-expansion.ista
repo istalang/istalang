@@ -1,10 +1,10 @@
-# error: 5125 at 24:3
-# error: 5125 at 30:3
-# error: 5125 at 36:3
-# error: 5125 at 39:3
-# error: 5125 at 42:3
-# error: 5125 at 44:3
-# error: 5125 at 50:3
+# error: 5125 at 21:19
+# error: 5125 at 24:18
+# error: 5125 at 28:3
+# error: 5125 at 31:20
+# error: 5125 at 33:19
+# error: 5125 at 34:22
+# error: 5125 at 38:22
 # A field typed by its default counts towards endless instantiation as a written one does (§3.5),
 # once its default is checked: its type may name a generic type whose fields name its own again
 # with a type argument built from its parameter. A cycle that grows only through such a field is
@@ -12,49 +12,37 @@
 # one's, waits on its default; a cycle through several such fields is cut at each. A default
 # whose code walks a value of such a type meets it cut.
 
-struct Phantom<T>:
-  n: Int
+import * as runtime from 'runtime'
 
-struct Back<U>:
-  n = 1
-  p = Phantom<U>{n: 2}
-  a: Ahead<(U,)>?
+struct Phantom<T> { n: Int }
 
-struct Ahead<T>:
-  b = Back<T>{a: none}
+struct Back<U> { n = 1, p = Phantom<U>{n: 2}, a: Ahead<(U,)>? }
 
-struct Box<U>:
-  item: U
-  w: Wrap<U>
-struct Wrap<T>:
-  x = Phantom<Box<(T,)>>{n: 1}
+struct Ahead<T> { b = Back<T>{a: none} }
 
-struct Rooted<T>:
-  k: Int
-  b: Behind<T>?
+struct Box<U> { item: U, w: Wrap<U> }
+struct Wrap<T> { x = Phantom<Box<(T,)>>{n: 1} }
+
+struct Rooted<T> { k: Int, b: Behind<T>? }
 struct Behind<U>:
   p = Rooted<U>{k: 1, b: none}
   a: Before<(U,)>?
-struct Before<T>:
-  b = Behind<T>{a: none}
 
-struct Built<T>:
-  f = build<T>()
-struct Building<U>:
-  g = Built<U>{}
+struct Before<T> { b = Behind<T>{a: none} }
+
+struct Built<T> { f = build<T>() }
+struct Building<U> { g = Built<U>{} }
 fn build<T>() -> Building<(T,)>?: none
 
-struct Spun<U>:
-  a: Spinning<(U,)>?
-struct Spinning<T>:
-  b = Spun<T>{a: none}
-struct Held:
-  s = keep(Spun<Int>{a: none})
+struct Spun<U> { a: Spinning<(U,)>? }
+struct Spinning<T> { b = Spun<T>{a: none} }
+struct Held { s = keep(Spun<Int>{a: none}) }
 fn keep<S is Sendable>(x: S) -> S: x
 fn holding(s = keep(Spun<Int>{a: none})) -> Int: 1
 
-import * as runtime from 'runtime'
-live async fn main() -> Int: await runtime.run(runtime.id()) _main()
+live async fn main() -> Int:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> Int:
   const back = Back<Int>{a: none}
   const box = Box<(Int,)>{item: (1,), w: Wrap<(Int,)>{}}

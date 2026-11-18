@@ -12,10 +12,8 @@ live async fn worker(log: Shared<Array<String>>):
   _ = defer(fn(): note(log, "deferred ran"))
   note(log, "worker started")
   await select:
-    case time.delay(1h):
-      note(log, "woke")
-    case worker.disposing():
-      note(log, "cleaned up")
+    case time.delay(1h): note(log, "woke")
+    case worker.disposing(): note(log, "cleaned up")
   await time.delay(1ms)
   note(log, "never here")
 

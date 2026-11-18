@@ -8,18 +8,18 @@ import * as runtime from 'runtime'
 
 struct Tag<T>
 
-struct Note:
-  text: String
+struct Note { text: String }
 
 @Tag<T>
 @Note{"kept for tools"}
-struct Box<T>:
-  item: T @Tag<Box<Int>>
+struct Box<T> { item: T @Tag<Box<Int>> }
 
-@Tag<(Int, String)> fn unboxed<U>(box: Box<U>, _tag: Tag<U>) -> U:
-  box.item
+@Tag<(Int, String)>
+fn unboxed<U>(box: Box<U>, _tag: Tag<U>) -> U: box.item
 
-live async fn main() -> Int: await runtime.run(runtime.id()) _main()
+live async fn main() -> Int:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> Int:
   const tag: Tag<Int> = Tag<Int>
   const same = tag == Tag

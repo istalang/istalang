@@ -3,25 +3,26 @@
 # nothing alive; it answers through `deref()` while the inbox lives, and its `disposed()` resolves
 # once the owner releases the inbox, at the end of the block that holds it.
 
-import Inbox from 'inbox'
 import * as runtime from 'runtime'
+import Inbox from 'inbox'
 
-struct Status:
-  text: String
+struct Status { text: String }
 
-struct Command:
-  n: Int
+struct Command { n: Int }
 
 ista async fn child(parent: WeakRef<Inbox<Status>>, mine: Inbox<Command>) -> String:
   while true:
     await select:
       case mine.receive() as command:
-        parent.deref()?.send(Status{text: "pong:" + String(command.n)})
-      case parent.disposed():
-        return "child saw the inbox go"
+        parent.deref()?.send(
+          Status{text: "pong:" + String(command.n)}
+        )
+      case parent.disposed(): return "child saw the inbox go"
   "never"
 
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> String:
   const commands = Inbox.create<Command>()
   let replies = ""

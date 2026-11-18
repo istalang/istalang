@@ -1,21 +1,22 @@
 # outcome: "13 true false"
 # Structs built with named fields, read by field, nested, and compared by value (§3.1, §3.9).
 
+import * as runtime from 'runtime'
+
 struct Point { x: Int, y: Int }
 
-struct Segment:
-  start: Point
-  end: Point
+struct Segment { start: Point, end: Point }
 
 fn length(s: Segment) -> Int:
   const dx = s.end.x - s.start.x
   const dy = s.end.y - s.start.y
   dx + dy
 
-import * as runtime from 'runtime'
 live async fn main(): await runtime.run(runtime.id()) _main()
 ista async fn _main():
-  const s = Segment{start: Point{x: 1, y: 2}, end: Point{x: 4, y: 12}}
+  const s = Segment:
+    start: Point{x: 1, y: 2}
+    end: Point{x: 4, y: 12}
   const same = Point{x: 1, y: 2} == s.start
   const other = s.start == s.end
   "" + length(s) + " " + same + " " + other

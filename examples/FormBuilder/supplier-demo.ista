@@ -7,20 +7,27 @@
 
 import * as json from 'json'
 import replaceAll from 'strings'
-import Group from './forms/model'
-import User from './forms/form'
 import * as crm from './crm'
 import Graph from './computed'
-import (SupplierModel, SupplierParams, supplierForm, validateSupplier) from './supplier.gen'
+import User from './forms/form'
+import Group from './forms/model'
+import supplierForm, SupplierModel, SupplierParams, validateSupplier from './supplier.gen'
 
 live async fn main() -> String:
-  const params = SupplierParams{
+  const params = SupplierParams:
     region: "eu"
     tier: "gold"
-    products: [struct{sku: "p1", name: "Widget"}, struct{sku: "p2", name: "Gadget"}]
+    products: [
+      struct{sku: "p1", name: "Widget"}
+      struct{sku: "p2", name: "Gadget"}
+    ]
     owner: crm.User{id: "o1", name: "Olga"}
-  }
-  const user = User{id: "u1", name: "Ann", lang: "de", role: "buyer", today: "2026-11-15"}
+  const user = User:
+    id: "u1"
+    name: "Ann"
+    lang: "de"
+    role: "buyer"
+    today: "2026-11-15"
   const served = json.stringify(await supplierForm(params, user))
   json.stringify([
     served
@@ -32,5 +39,6 @@ live async fn main() -> String:
 # What the backend gives for `value`, received as JSON.
 live fn validated(params: SupplierParams, user: User, value: String) -> String:
   match json.parse<Group<SupplierModel>.Seen>(value):
-    case Ok(received): json.stringify(validateSupplier(params, user, received))
+    case Ok(received):
+      json.stringify(validateSupplier(params, user, received))
     case Err(error): error.message

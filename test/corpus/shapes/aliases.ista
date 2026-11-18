@@ -3,32 +3,27 @@
 # it, whichever alias of the shape they are declared through, and a generic one names a family. An
 # alias of an enum qualifies its variants.
 
+import * as runtime from 'runtime'
+
 type Point = { x: Int, y: Int }
 type Spot = { y: Int, x: Int }
 type Pair<A, B> = { first: A, second: B }
 
-fn Point.origin() -> Point:
-  Point{x: 0, y: 0}
+fn Point.origin() -> Point: Point{x: 0, y: 0}
 
-fn Spot.of(x: Int, y: Int) -> Spot:
-  struct{x, y}
+fn Spot.of(x: Int, y: Int) -> Spot: struct{x, y}
 
 fn Pair.of<A, B>(first: A, second: B) -> Pair<A, B>:
   Pair{first, second}
 
-fn sum(p: { x: Int, y: Int }) -> Int:
-  p.x + p.y
+fn sum(p: { x: Int, y: Int }) -> Int: p.x + p.y
 
-enum Color:
-  Red
-  Green
+enum Color { Red, Green }
 
 type Hue = Color
 type Tint = Hue
 
-enum Figure:
-  Square(side: Int)
-  Dot
+enum Figure { Square(side: Int), Dot }
 
 type Form = Figure
 
@@ -42,7 +37,6 @@ fn name(c: Hue) -> String:
     case Hue.Red: "red"
     case Tint.Green: "green"
 
-import * as runtime from 'runtime'
 live async fn main(): await runtime.run(runtime.id()) _main()
 ista async fn _main():
   const a = Point{x: 1, y: 2}

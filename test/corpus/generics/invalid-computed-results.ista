@@ -1,23 +1,18 @@
-# error: 5001 at 32:22
-# error: 5001 at 33:22
-# error: 5001 at 34:24
-# error: 5001 at 38:21
+# error: 5001 at 28:22
+# error: 5001 at 29:22
+# error: 5001 at 30:24
+# error: 5001 at 34:21
 # A method call whose receiver gives its type parameters (§3.5) opens a result computed from the
 # rest, `Person[K].Scope` or `keyof Outer[K]`, which stays what it is until `K` is found, so an
 # optional chain reading it reports what it gives.
 
-trait Node:
-  type Scope
-  fn scope(self: Self) -> Self.Scope
+trait Node { type Scope, fn scope(self: Self) -> Self.Scope }
 
-struct Field<T>:
-  value: T?
-  type Scope = T?
+struct Field<T> { value: T?, type Scope = T? }
 
 fn scope<T>(self: Field<T>) -> T?: self.value
 
-struct Reads<S is struct { [_] is Node }>:
-  m: S
+struct Reads<S is struct { [_] is Node }> { m: S }
 
 fn index<S is struct { [_] is Node }, K in keyof S>(self: Reads<S>, key: K) -> S[K].Scope:
   self.m[key].scope()
@@ -26,7 +21,8 @@ struct Person { name: Field<String> }
 struct Inner { x: String }
 struct Outer { a: Inner }
 
-fn keysAt<S is struct { [_] is struct }, K in keyof S>(self: S, key: K) -> keyof S[K]: panic("keys")
+fn keysAt<S is struct { [_] is struct }, K in keyof S>(self: S, key: K) -> keyof S[K]:
+  panic("keys")
 
 fn read(maybe: Reads<Person>?) -> Int:
   const named: Int = maybe?.index("name")

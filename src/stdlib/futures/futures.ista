@@ -30,8 +30,10 @@ K fn first<T, K in Persistence>(futures: Array<Future<T, K>>) -> First<T, K>:
   First<T, K>{futures, positions: _everyPosition(futures)}
 
 K fn onAwait<T, K in Persistence>(self: First<T, K>, done: Resolver<(Int, T), K>):
-  if self.positions.length() == 0: panic("futures.first was given no futures.")
-  for position in self.positions: self.futures[position].onAwait(Resolver.at(done, position))
+  if self.positions.length() == 0:
+    panic("futures.first was given no futures.")
+  for position in self.positions:
+    self.futures[position].onAwait(Resolver.at(done, position))
 
 # Every `Ok` value in position order, or the first `Err` as soon as it arrives.
 K async fn all<T, E, K in Persistence>(
@@ -41,7 +43,10 @@ K async fn all<T, E, K in Persistence>(
   let values: Map<Int, T> = [:]
   let out = _everyPosition(futures)
   while out.length() > 0:
-    const (position, result) = await First<Result<T, E>, K>{futures: arrivals, positions: out}
+    const (position, result) = await First<Result<T, E>, K>{
+      futures: arrivals
+      positions: out
+    }
     out = _without(out, position)
     match result:
       case Ok(value): values[position] = value
@@ -66,7 +71,10 @@ K async fn any<T, E, K in Persistence>(
   let errors: Map<Int, E> = [:]
   let out = _everyPosition(futures)
   while out.length() > 0:
-    const (position, result) = await First<Result<T, E>, K>{futures: arrivals, positions: out}
+    const (position, result) = await First<Result<T, E>, K>{
+      futures: arrivals
+      positions: out
+    }
     out = _without(out, position)
     match result:
       case Ok(value): return Ok(value)
@@ -86,13 +94,17 @@ K async fn quorum<T, E, K in Persistence>(
   let errors: Map<Int, E> = [:]
   let out = _everyPosition(futures)
   while values.length() < n:
-    const (position, result) = await First<Result<T, E>, K>{futures: arrivals, positions: out}
+    const (position, result) = await First<Result<T, E>, K>{
+      futures: arrivals
+      positions: out
+    }
     out = _without(out, position)
     match result:
       case Ok(value): values.push(value)
       case Err(error):
         errors[position] = error
-        if errors.size() > futures.length() - n: return Err(_inOrder(errors, futures.length()))
+        if errors.size() > futures.length() - n:
+          return Err(_inOrder(errors, futures.length()))
   Ok(values)
 
 # The value of `future`, or `none` if `limit` passes first. When both are there, the value wins.
@@ -108,7 +120,8 @@ K async fn retry<T, E, K in Persistence>(
   times: Int = 3
   backoff: time.Duration = 1s
 ) -> Result<T, E>:
-  if times < 1: panic("retry needs at least one attempt, not " + times + ".")
+  if times < 1:
+    panic("retry needs at least one attempt, not " + times + ".")
   let wait = backoff
   for _ in 1..times:
     const result = await attempt()
@@ -122,7 +135,8 @@ K fn _arrivals<T, K in Persistence>(futures: Array<Future<T, K>>) -> Array<Futur
   for future in futures: _arrival(future)
 ]
 
-K async fn _arrival<T, K in Persistence>(future: Future<T, K>) -> T: await future
+K async fn _arrival<T, K in Persistence>(future: Future<T, K>) -> T:
+  await future
 
 # Every position of `items`, in order.
 fn _everyPosition<T>(items: Array<T>) -> Array<Int>: [for position in 0..items.length(): position]

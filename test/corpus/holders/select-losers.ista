@@ -5,9 +5,9 @@
 # lost, so each one would be lost if that receive still waited. A future made outside the select,
 # held by its variable, survives losing and races again.
 
-import Inbox from 'inbox'
-import * as time from 'time'
 import * as runtime from 'runtime'
+import * as time from 'time'
+import Inbox from 'inbox'
 
 ista async fn produce(box: Inbox<Int>, ticks: Inbox<Unit>):
   for i in 0..5:
@@ -29,17 +29,15 @@ ista async fn consume(box: Inbox<Int>, ticks: Inbox<Unit>, count: Int) -> String
 ista async fn survives() -> Bool:
   const later = time.delay(5ms)
   await select:
-    case later:
-      false
-    case time.delay(1ms):
-      true
+    case later: false
+    case time.delay(1ms): true
   await select:
-    case later:
-      true
-    case time.delay(1h):
-      false
+    case later: true
+    case time.delay(1h): false
 
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> String:
   const box = Inbox.create<Int>()
   const ticks = Inbox.create<Unit>()

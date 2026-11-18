@@ -4,19 +4,16 @@
 
 import * as runtime from 'runtime'
 
-shared struct Lease:
-  name: String
+shared struct Lease { name: String }
 
 fn dispose(self: Lease): ()
 
-shared struct Grabber:
-  w: WeakRef<Lease>
-  box: Shared<Lease?>
+shared struct Grabber { w: WeakRef<Lease>, box: Shared<Lease?> }
 
-fn dispose(self: Grabber):
-  self->box->value = self->w.deref()
+fn dispose(self: Grabber): self->box->value = self->w.deref()
 
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
 
 ista async fn _main() -> String:
   const box = new Shared<Lease?>{value: none}

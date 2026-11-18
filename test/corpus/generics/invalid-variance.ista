@@ -1,16 +1,16 @@
 # error: 5260 at 22:35
 # error: 5260 at 23:29
-# error: 5261 at 25:19
-# error: 5261 at 26:20
-# error: 5261 at 28:18
-# error: 5262 at 29:19
-# error: 5262 at 31:21
-# error: 5001 at 44:28
-# error: 5001 at 45:39
-# error: 5001 at 46:33
-# error: 5001 at 47:27
-# error: 5001 at 48:28
-# error: 5001 at 49:32
+# error: 5261 at 24:19
+# error: 5261 at 25:20
+# error: 5261 at 26:18
+# error: 5262 at 27:19
+# error: 5262 at 28:21
+# error: 5001 at 39:28
+# error: 5001 at 40:39
+# error: 5001 at 41:33
+# error: 5001 at 42:27
+# error: 5001 at 43:28
+# error: 5001 at 44:32
 # Variance (§3.5): a handle, a map's keys and a member parameter are invariant, a function's
 # parameter is contravariant, and a one-element tuple converts only at the top. Only an extern
 # value, a struct or an enum takes `gives` or `takes`, and a struct's or an enum's must agree with
@@ -20,18 +20,13 @@ import * as inbox from 'inbox'
 type Status = "draft" | "sent"
 
 extern shared struct Handle<gives T>
-shared struct Counter<takes T>:
-  value: T
+shared struct Counter<takes T> { value: T }
 fn identity<gives T>(x: T) -> T: x
-trait Source<takes T>:
-  fn next(self: Self) -> T
+trait Source<takes T> { fn next(self: Self) -> T }
 type Alias<gives T> = Array<T>
-struct Sink<gives T>:
-  take: fn(T) -> Unit
-struct Tagged<gives S in Status>:
-  tag: S
-struct Reader<T>:
-  read: fn(T) -> Unit
+struct Sink<gives T> { take: fn(T) -> Unit }
+struct Tagged<gives S in Status> { tag: S }
+struct Reader<T> { read: fn(T) -> Unit }
 
 ista fn bad(
   slot: Slot<Int>

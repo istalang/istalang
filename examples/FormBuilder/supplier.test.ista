@@ -2,16 +2,16 @@
 # spec's §9 lists, each through what a view shows, what an event changes, and what validating a
 # whole value gives. supplier-demo.ista runs it through the two live functions.
 
-import Suite, Test, test, assertEq, mock, Mock from 'testing'
-import FormEvent, Node, LayoutWidget, LabelStyle from './forms/tree'
-import Form, User, validate from './forms/form'
-import Group, FormSnapshot from './forms/model'
-import * as geo from './geo'
-import * as crm from './crm'
+import assertEq, Mock, mock, Suite, Test, test from 'testing'
 import * as approvals from './approvals'
+import * as crm from './crm'
 import * as formsCatalog from './forms-catalog'
+import * as geo from './geo'
 import Graph from './computed'
-import (SupplierModel, SupplierParams, SupplierCategoriesRow, openSupplier) from './supplier.gen'
+import Form, User, validate from './forms/form'
+import FormSnapshot, Group from './forms/model'
+import FormEvent, LabelStyle, LayoutWidget, Node from './forms/tree'
+import openSupplier, SupplierCategoriesRow, SupplierModel, SupplierParams from './supplier.gen'
 
 @Suite{"supplier"}
 fn supplierSuite() -> Array<Test>: [
@@ -38,14 +38,22 @@ fn supplierSuite() -> Array<Test>: [
   test("a whole value's rows of the recursive def are made from it", recursiveValue)
 ]
 
-const user = User{id: "u1", name: "Ann", lang: "de", role: "buyer", today: "2026-11-15"}
+const user = User:
+  id: "u1"
+  name: "Ann"
+  lang: "de"
+  role: "buyer"
+  today: "2026-11-15"
 
 fn open() -> Form<SupplierModel>:
   openSupplier(
     SupplierParams{
       region: "eu"
       tier: "gold"
-      products: [struct{sku: "p1", name: "Widget"}, struct{sku: "p2", name: "Gadget"}]
+      products: [
+        struct{sku: "p1", name: "Widget"}
+        struct{sku: "p2", name: "Gadget"}
+      ]
       owner: crm.User{id: "o1", name: "Olga"}
     }
     user
@@ -57,30 +65,48 @@ fn countries(region: String) -> Array<geo.Country>: [
   geo.Country{id: "de", name: "Germany"}
   geo.Country{id: "nl", name: "Netherlands"}
 ]
-fn cities(country: String) -> Array<geo.City>: [geo.City{id: "ber", name: "Berlin"}]
-fn regions() -> Array<geo.Region>: [geo.Region{code: "eu", name: "Europe"}]
+
+fn cities(country: String) -> Array<geo.City>: [
+  geo.City{id: "ber", name: "Berlin"}
+]
+
+fn regions() -> Array<geo.Region>: [
+  geo.Region{code: "eu", name: "Europe"}
+]
+
 fn users(search: String) -> Array<crm.User>:
-  [crm.User{id: "u7", name: "Anna"}, crm.User{id: "u8", name: "Ben"}].filter(
-    fn(u): u.name.includes(search)
-  )
-fn userById(id: String) -> crm.User?: users("").filter(fn(u): u.id == id).at(0)
+  [
+    crm.User{id: "u7", name: "Anna"}
+    crm.User{id: "u8", name: "Ben"}
+  ].filter(fn u: u.name.includes(search))
+
+fn userById(id: String) -> crm.User?:
+  users("").filter(fn u: u.id == id).at(0)
+
 fn creditLimit(vatId: String) -> Int?:
-  if vatId == "DE123456": 5000
-  else: none
+  if vatId == "DE123456": 5000 else: none
+
 fn orders(vatId: String) -> Array<crm.Order>:
-  if vatId == "DE123456": [struct{note: "first"}, struct{note: none}]
+  if vatId == "DE123456": [
+    struct{note: "first"}
+    struct{note: none}
+  ]
   else: []
+
 fn entries(region: String) -> Array<formsCatalog.Entry>: [questionnaire]
+
 fn entryById(id: String) -> formsCatalog.Entry?:
-  if id == questionnaire.id: questionnaire
-  else: none
+  if id == questionnaire.id: questionnaire else: none
+
 fn approve(ownerId: String, companyName: String) -> Bool: true
 
-const questionnaire = formsCatalog.Entry{
+const questionnaire = formsCatalog.Entry:
   id: "q1"
   title: "Questionnaire"
-  schema: FormSnapshot{id: "q1", version: "1.0.0", module: "q1.gen"}
-}
+  schema: FormSnapshot:
+    id: "q1"
+    version: "1.0.0"
+    module: "q1.gen"
 
 # Every source mocked, for as long as it is held.
 struct Sources:
@@ -95,29 +121,32 @@ struct Sources:
   get: Mock<fn(String) -> formsCatalog.Entry?>
   ask: Mock<fn(String, String) -> Bool>
 
-fn mocked() -> Sources: Sources{
-  countries: mock(geo.countries, countries)
-  cities: mock(geo.cities, cities)
-  regions: mock(geo.regions, regions)
-  users: mock(crm.users, users)
-  user: mock(crm.user, userById)
-  creditLimit: mock(crm.creditLimit, creditLimit)
-  orders: mock(crm.orders, orders)
-  list: mock(formsCatalog.list, entries)
-  get: mock(formsCatalog.get, entryById)
-  ask: mock(approvals.ask, approve)
-}
+fn mocked() -> Sources:
+  Sources{
+    countries: mock(geo.countries, countries)
+    cities: mock(geo.cities, cities)
+    regions: mock(geo.regions, regions)
+    users: mock(crm.users, users)
+    user: mock(crm.user, userById)
+    creditLimit: mock(crm.creditLimit, creditLimit)
+    orders: mock(crm.orders, orders)
+    list: mock(formsCatalog.list, entries)
+    get: mock(formsCatalog.get, entryById)
+    ask: mock(approvals.ask, approve)
+  }
 
 # ── reading the tree ──
 
-fn tree(form: Form<SupplierModel>) -> Node: form.view.drawn.read().nodes[0]
+fn tree(form: Form<SupplierModel>) -> Node:
+  form.view.drawn.read().nodes[0]
 
 fn keys(form: Form<SupplierModel>) -> Array<String>: [for each in tree(form).shown(): each.key()]
 
 fn at(form: Form<SupplierModel>, key: String) -> Node?:
-  tree(form).shown().find(fn(each): each.key() == key)
+  tree(form).shown().find(fn each: each.key() == key)
 
-fn shows(form: Form<SupplierModel>, key: String) -> Bool: at(form, key) != none
+fn shows(form: Form<SupplierModel>, key: String) -> Bool:
+  at(form, key) != none
 
 # A field's value, JSON-encoded, as the frontend gets it.
 fn value(form: Form<SupplierModel>, key: String) -> String?:
@@ -125,7 +154,8 @@ fn value(form: Form<SupplierModel>, key: String) -> String?:
     case Field(value: v, ...): v
     case _: none
 
-fn errors(form: Form<SupplierModel>, key: String) -> Array<String>: at(form, key)?.errors() ?? []
+fn errors(form: Form<SupplierModel>, key: String) -> Array<String>:
+  at(form, key)?.errors() ?? []
 
 fn rowKeys(form: Form<SupplierModel>, key: String) -> Array<String>:
   match at(form, key):
@@ -148,7 +178,8 @@ ista async fn firstView():
   const shown = keys(form)
   for key in ["n1", "n2", "n13", "n22", "n23", "n42", "n57"]:
     assertEq((key, shown.includes(key)), (key, true))
-  for key in ["n18/n1", "n19", "n56"]: assertEq((key, shown.includes(key)), (key, false))
+  for key in ["n18/n1", "n19", "n56"]:
+    assertEq((key, shown.includes(key)), (key, false))
   assertEq(rowKeys(form, "n23"), ["p1", "p2"])
   match at(form, "n3"):
     case Layout(widget: widget, ...):
@@ -219,10 +250,14 @@ ista async fn search():
   _ = tree(form)
   form.apply(FormEvent.Search(key: "n20", text: "Be"))
   match at(form, "n20"):
-    case Field(options: options, ...): assertEq([for o in options: o.label], ["Ben"])
+    case Field(options: options, ...):
+      assertEq([for o in options: o.label], ["Ben"])
     case _: assertEq("manager", "missing")
   form.enter("n20", `{"id":"u8","name":"Ben"}`)
-  assertEq(form.model.fields.manager.seen(), crm.User{id: "u8", name: "Ben"})
+  assertEq(
+    form.model.fields.manager.seen()
+    crm.User{id: "u8", name: "Ben"}
+  )
   assertEq(errors(form, "n20"), [])
   assertEq(sources.users.calls().includes(("Be",)), true)
 
@@ -256,12 +291,20 @@ fn scopedReads():
   const graph = new Graph{}
   const model = Group.make<SupplierModel>(graph, none)
   model.fields.contacts.load([
-    struct{name: "Ada", email: none, primary: none, card: struct{phone: "+49 30 1234"}}
+    struct{
+      name: "Ada"
+      email: none
+      primary: none
+      card: struct{phone: "+49 30 1234"}
+    }
   ])
   const row = model.fields.contacts.rows.read()[0].node
   const contact = row.scope()
   const runs = new Shared<Int>{value: 0}
-  const phone = graph.computed(fn(): { runs->value += 1; contact.card.phone })
+  const phone = graph.computed(fn(): {
+    runs->value += 1
+    contact.card.phone
+  })
   assertEq(phone.read(), "+49 30 1234")
   row.fields.name.load("Eve")
   assertEq(phone.read(), "+49 30 1234")
@@ -273,11 +316,16 @@ fn scopedReads():
   const address = model.fields.company.fields.address
   const visible = graph.source(false)
   address.shown.add(graph.computed(fn(): visible.read()))
-  address.node.load(struct{street: none, zip: none, city: "Berlin"})
+  address.node.load(
+    struct{street: none, zip: none, city: "Berlin"}
+  )
   assertEq(data.company.address?.city, none) # hidden while no view shows it
   visible.set(true)
   const cityRuns = new Shared<Int>{value: 0}
-  const city = graph.computed(fn(): { cityRuns->value += 1; data.company.address?.city })
+  const city = graph.computed(fn(): {
+    cityRuns->value += 1
+    data.company.address?.city
+  })
   assertEq(city.read(), "Berlin")
   address.node.fields.street.load("Main 1")
   assertEq(city.read(), "Berlin")
@@ -317,7 +365,8 @@ ista async fn defaultCase():
   hold _ = mocked()
   const form = open()
   match at(form, "n52"):
-    case Variant(active: active, ...): assertEq(active, "standard")
+    case Variant(active: active, ...):
+      assertEq(active, "standard")
     case _: assertEq("delivery", "missing")
   assertEq(shows(form, "n53"), true)
 
@@ -330,7 +379,8 @@ ista async fn dynamicRef():
     `{"id":"q1","title":"Questionnaire","schema":{"id":"q1","version":"1.0.0","module":"q1.gen"}}`
   )
   match at(form, "n56"):
-    case Mount(form: snapshot, ...): assertEq(snapshot, questionnaire.schema)
+    case Mount(form: snapshot, ...):
+      assertEq(snapshot, questionnaire.schema)
     case _: assertEq("questionnaire", "missing")
   form.apply(FormEvent.Submit)
   assertEq(errors(form, "n56"), ["Required"])
@@ -360,18 +410,29 @@ ista async fn validValue():
 ista async fn loadedRows():
   hold _ = mocked()
   const value = complete()
-  const unpriced = struct{
+  const unpriced =
     ...value
-    prices: [struct{sku: "p1", name: "Widget", amount: none, regions: ["eu"]}, value.prices[1]]
-  }
+    prices: [
+      struct{
+        sku: "p1"
+        name: "Widget"
+        amount: none
+        regions: ["eu"]
+      }
+      value.prices[1]
+    ]
   match open().validate(unpriced):
     case Ok(...): assertEq("valid", "invalid")
-    case Err(problems): assertEq(problems, ["n27@p1": ["Required"]])
+    case Err(problems):
+      assertEq(problems, ["n27@p1": ["Required"]])
 
 ista async fn recursiveValue():
   hold _ = mocked()
   const categories: Array<SupplierCategoriesRow.Seen> = [
-    struct{name: "Bolts", children: [struct{name: "M3", children: []}]}
+    struct{
+      name: "Bolts"
+      children: [struct{name: "M3", children: []}]
+    }
   ]
   match open().validate(struct{...complete(), categories}):
     case Ok(data):
@@ -402,43 +463,73 @@ ista async fn emptyValue():
     }
 
 # A whole valid value: a sole trader, so the capital it holds is dropped.
-fn complete() -> Group<SupplierModel>.Seen: struct{
-  company: struct{
-    name: "ACME"
-    vatId: "DE123456"
-    email: "a@b.de"
-    description: "Bolts"
-    size: "small"
-    legalForm: "sole"
-    capital: 5000.0
-    employees: 5
-    founded: "2001-01-01"
-    logo: "logo-1"
-    country: "de"
-    address: struct{street: "Main 1", zip: "10115", city: "Berlin"}
-    city: "ber"
+fn complete() -> Group<SupplierModel>.Seen:
+  struct{
+    company: struct{
+      name: "ACME"
+      vatId: "DE123456"
+      email: "a@b.de"
+      description: "Bolts"
+      size: "small"
+      legalForm: "sole"
+      capital: 5000.0
+      employees: 5
+      founded: "2001-01-01"
+      logo: "logo-1"
+      country: "de"
+      address: struct{
+        street: "Main 1"
+        zip: "10115"
+        city: "Berlin"
+      }
+      city: "ber"
+    }
+    confirmEmail: "a@b.de"
+    manager: crm.User{id: "u7", name: "Anna"}
+    creditLimit: 5000
+    prices: [
+      struct{
+        sku: "p1"
+        name: "Widget"
+        amount: 1.0
+        regions: ["eu"]
+      }
+      struct{
+        sku: "p2"
+        name: "Gadget"
+        amount: 2.0
+        regions: ["eu"]
+      }
+    ]
+    contacts: [
+      struct{
+        name: "Ada"
+        email: "ada@b.de"
+        primary: true
+        card: struct{phone: "+49 30 1234"}
+      }
+    ]
+    certifications: ["iso9001"]
+    categories: []
+    history: [
+      struct{note: "first"}
+      struct{note: none}
+    ]
+    payment: struct{
+      tag: "card"
+      value: struct{
+        card: struct{holder: "Ann", last4: "1234"}
+        wire: none
+        invoice: none
+      }
+    }
+    delivery: struct{
+      tag: "standard"
+      value: struct{standard: struct{window: "am"}, express: none}
+    }
+    extraForm: questionnaire
+    extra: `{"answer":"yes"}`
+    score: none
+    notes: ""
+    agree: true
   }
-  confirmEmail: "a@b.de"
-  manager: crm.User{id: "u7", name: "Anna"}
-  creditLimit: 5000
-  prices: [
-    struct{sku: "p1", name: "Widget", amount: 1.0, regions: ["eu"]}
-    struct{sku: "p2", name: "Gadget", amount: 2.0, regions: ["eu"]}
-  ]
-  contacts: [
-    struct{name: "Ada", email: "ada@b.de", primary: true, card: struct{phone: "+49 30 1234"}}
-  ]
-  certifications: ["iso9001"]
-  categories: []
-  history: [struct{note: "first"}, struct{note: none}]
-  payment: struct{
-    tag: "card"
-    value: struct{card: struct{holder: "Ann", last4: "1234"}, wire: none, invoice: none}
-  }
-  delivery: struct{tag: "standard", value: struct{standard: struct{window: "am"}, express: none}}
-  extraForm: questionnaire
-  extra: `{"answer":"yes"}`
-  score: none
-  notes: ""
-  agree: true
-}

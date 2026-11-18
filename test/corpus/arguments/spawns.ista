@@ -1,6 +1,8 @@
 # outcome: [12,30]
 # A spawned call names its arguments as any call does; the new instance computes the defaults it
 # leaves out (§3.3, §9).
+import * as runtime from 'runtime'
+
 ista async fn scaled(base: Int = 1, by: Int = 10, offset: Int = 0) -> Int:
   base * by + offset
 
@@ -9,8 +11,9 @@ fn valueOf(outcome: Result<Int>) -> Int:
     case Ok(value): value
     case Err(...): -1
 
-import * as runtime from 'runtime'
-live async fn main() -> Array<Int>: await runtime.run(runtime.id()) _main()
+live async fn main() -> Array<Int>:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> Array<Int>:
   const first = await (spawn scaled(offset: 2)).result()
   const second = await (spawn scaled(3)).result()

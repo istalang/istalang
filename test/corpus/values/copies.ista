@@ -5,6 +5,8 @@
 # variable leaves the copy as it was at the call; nested tuples copy deeply; top-level constants
 # destructure into constants of their own.
 
+import * as runtime from 'runtime'
+
 struct P { x: Int, y: Int }
 
 struct W { p: P, n: (Int, Int) }
@@ -13,8 +15,7 @@ const base = (1, P{x: 2, y: 3})
 
 const first, P{y as last} = base
 
-fn reset(p: &P):
-  p = P{x: 0, y: 0}
+fn reset(p: &P): p = P{x: 0, y: 0}
 
 fn resetWhole(w: &W):
   w.p = P{x: -1, y: -1}
@@ -31,7 +32,6 @@ fn setFrom(a: &P, b: P):
 
 fn get(self: W) -> P: self.p
 
-import * as runtime from 'runtime'
 live async fn main(): await runtime.run(runtime.id()) _main()
 ista async fn _main():
   let p = P{x: 1, y: 2}

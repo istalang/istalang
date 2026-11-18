@@ -3,12 +3,13 @@
 # a value apart by tuple and struct patterns at any depth, and assignments to tuples and structs
 # of places, element assignment among them.
 
+import * as runtime from 'runtime'
+
 struct Pair { first: Int, second: Int }
 
 fn ordered(a: Int, b: Int) -> (Int, Int):
   if a < b: (a, b) else: (b, a)
 
-import * as runtime from 'runtime'
 live async fn main(): await runtime.run(runtime.id()) _main()
 ista async fn _main():
   const t = (1, "x")
@@ -19,7 +20,9 @@ ista async fn _main():
   const Pair{first, second as s} = Pair{first: 9, second: 2}
   let p = Pair{first: 1, second: 2}
   let other = 0
-  Pair{first: p.second, second: other} = Pair{first: 5, second: 7}
+  Pair{first: p.second, second: other} = Pair:
+    first: 5
+    second: 7
   const (x, y), z = nested
   let u = (0, 0)
   u.0 = 7

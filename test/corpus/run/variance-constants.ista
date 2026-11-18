@@ -4,11 +4,8 @@
 import * as json from 'json'
 import * as runtime from 'runtime'
 
-struct Box<T>:
-  value: T
-struct Pixel:
-  x: Int
-  y: Int
+struct Box<T> { value: T }
+struct Pixel { x: Int, y: Int }
 
 const a: Box<"s"> = Box{value: "s"}
 const b: Box<String> = a

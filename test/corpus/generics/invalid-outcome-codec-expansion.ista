@@ -1,24 +1,23 @@
-# error: 5111 at 14:17
+# error: 5111 at 13:17
 # An instance's outcome is encoded for its host by the codec writing it (§9), which an
 # instantiation finds once it knows the outcome's type, so code naming an `Instance` of a type it
 # grows from its own reaches that codec as a call (§3.5): a codec naming an instance of a bigger
 # value it writes is reported where it names it.
 
-import Json from 'json'
-import * as json from 'json'
+import * as json, Json from 'json'
+import * as runtime from 'runtime'
 
-struct Box<T>:
-  v: T
+struct Box<T> { v: T }
 
 fn toJson<T is json.Encodable & Sendable>(self: Box<T>) -> Json:
   const found = peek<Box<(T,)>>(none)
   json.encode(found)
 
-fn peek<U>(instance: Instance<U>?) -> Int:
-  0
+fn peek<U>(instance: Instance<U>?) -> Int: 0
 
-import * as runtime from 'runtime'
-live async fn main() -> Int: await runtime.run(runtime.id()) _main()
+live async fn main() -> Int:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> Int:
   const text = json.stringify(Box<Int>{v: 1})
   1

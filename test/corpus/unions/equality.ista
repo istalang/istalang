@@ -2,10 +2,13 @@
 # `==` on unions (§6): either side fits the other's type, a literal's value compares as its base, and
 # values of a union compare their members' types, then the values, so a union is a map key.
 
+import * as runtime from 'runtime'
+
 type Status = "draft" | "sent"
 struct Email { to: String }
-import * as runtime from 'runtime'
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> String:
   const s: Status = "sent"
   const name = "sent"

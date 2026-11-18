@@ -3,6 +3,8 @@
 # through K.Key.default(), and contextual `type: X` field), plus struct constraints (§2) across
 # all 5 table forms and reading/writing named fields in generic code.
 
+import * as runtime from 'runtime'
+
 trait Keyed:
   type Key is Stringable & Default
   fn key(self: Self) -> Self.Key
@@ -15,10 +17,7 @@ struct Token<T>:
   type Pair = (Item, Item)
   type Item = T
 
-enum Stage<T>:
-  type Value = T
-  Ready(item: Value)
-  Empty
+enum Stage<T> { type Value = T, Ready(item: Value), Empty }
 
 struct Tag { text: String }
 
@@ -26,12 +25,9 @@ fn Tag.default() -> Tag: Tag{text: "user-"}
 
 fn toString(self: Tag) -> String: self.text
 
-struct UserKey:
-  id: Int
-  type Key = Tag
+struct UserKey { id: Int, type Key = Tag }
 
-fn key(self: UserKey) -> Tag:
-  Tag{text: `${self.id}`}
+fn key(self: UserKey) -> Tag: Tag{text: `${self.id}`}
 
 fn defaultAndFormat<K is Keyed>(item: K) -> String:
   const fallback: K.Key = K.Key.default()
@@ -44,8 +40,9 @@ fn updateTitle<S is struct { title: String, [_]: Int }>(s: &S, next: String) -> 
   s.title = next
   old
 
-import * as runtime from 'runtime'
-live async fn main() -> String: await runtime.run(runtime.id()) _main()
+live async fn main() -> String:
+  await runtime.run(runtime.id()) _main()
+
 ista async fn _main() -> String:
   const tok = Token<Int>{type: "bearer", first: (20, 22)}
   const cellVal: Cell<Int>.Data = tok.first.0 + tok.first.1
