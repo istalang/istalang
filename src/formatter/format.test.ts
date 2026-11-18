@@ -108,7 +108,7 @@ describe('key types and mapped struct types (§3.1)', () => {
 });
 
 describe('comprehensions over fields (§3.1, §4)', () => {
-  it('prints an array and a struct comprehension as written, and breaks a long one inside', () => {
+  it('prints an array and a struct comprehension as written, and moves a long body below its header, broken inside', () => {
     const text = lines(
       'fn f<S is struct>(s: S) -> { [F in keyof S]: S[F] }:',
       '  const keys = [for k, _ in ...s: k]',
@@ -122,7 +122,8 @@ describe('comprehensions over fields (§3.1, §4)', () => {
       '  struct{first: compute(s.first, 1), second: compute(s.second, 2), for key, value in ...s.rest: [key]: compute(value, 3)}',
     );
     const broken = formatText(long) ?? '';
-    expect(broken).toContain('\n  for key, value in ...s.rest: [key]: compute(value, 3)\n}');
+    expect(broken).toContain('fn g(s: Settings):\n  struct{\n    first: compute(s.first, 1)\n');
+    expect(broken).toContain('\n    for key, value in ...s.rest: [key]: compute(value, 3)\n  }');
     expect(formatText(broken)).toBe(broken);
     const { actual, expected } = roundTripOf(text);
     expect(actual).toEqual(expected);
@@ -219,13 +220,7 @@ describe('the canonical style', () => {
     ).toBe(lines('fn f():', '  const v = if a: 1 else: 2', '  v'));
     const long = 'y'.repeat(60);
     expect(formatText(lines('fn f():', `  const v = if a: ${long} else: ${long}`, '  v'))).toBe(
-      lines('fn f():', `  const v = if a: ${long}`, `  else: ${long}`, '  v'),
-    );
-  });
-
-  it('prints struct declarations indented, and anonymous struct types in braces', () => {
-    expect(formatText('struct Req { id: Int, data: struct { v: Int } }\n')).toBe(
-      lines('struct Req:', '  id: Int', '  data: { v: Int }'),
+      lines('fn f():', '  const v = if a:', `    ${long}`, '  else:', `    ${long}`, '  v'),
     );
   });
 
@@ -285,6 +280,7 @@ describe('the canonical style', () => {
       'struct S:',
       '  a: Int # on a',
       '  # end of S',
+      '',
       'fn f():',
       '  match x:',
       '    case 1: a',
@@ -388,7 +384,7 @@ describe("a head's modifiers", () => {
     ['type F = sendable inert fn(Int)', 'type F = sendable fn(Int)'],
     ['type F = inert sendable fn(Int)', 'type F = sendable fn(Int)'],
     ['type F = sendable live inert fn(Int)', 'type F = sendable live fn(Int)'],
-    ['const f = async fn(x): x', 'const f = async fn(x): x'],
+    ['const f = async fn(x): x', 'const f = async fn x: x'],
   ])('print `%s` in their one order, once and for all', (text, ordered) => {
     expect(formatText(text)).toBe(`${ordered}\n`);
     const { actual, expected } = roundTripOf(text);

@@ -14,7 +14,8 @@ import Form, Problems, User from './forms/form'
 import Field, Group, Hidden, List, Variant from './forms/model'
 import FieldWidget, LayoutWidget, ParentUi, RepeatWidget, VariantWidget from './forms/tree'
 import (
-  CaseView, Choice, FieldView, LayoutView, Options, Place, RepeatView, VariantView, View
+  CaseView, Choice, FieldView, LayoutView, Options, Place
+  RepeatView, VariantView, View
 ) from './forms/views'
 
 const translations: Map<String, Map<String, String>> = [
@@ -23,12 +24,9 @@ const translations: Map<String, Map<String, String>> = [
 
 # ═══════════ form "order" ═══════════
 
-struct OrderParams:
-  region: String
+struct OrderParams { region: String }
 
-struct OrderCtx:
-  params: OrderParams
-  user: User
+struct OrderCtx { params: OrderParams, user: User }
 
 struct OrderModel:
   country: Field<String>
@@ -62,7 +60,7 @@ fn orderView(at: Place, m: OrderModel, ctx: OrderCtx) -> View:
       )
     ]
     children: [
-      fn(at): FieldView{
+      fn at: FieldView{
         key: "n2"
         field: m.country
         widget: fn(): FieldWidget.Select(none)
@@ -82,12 +80,15 @@ fn orderView(at: Place, m: OrderModel, ctx: OrderCtx) -> View:
         ]
         options: Options.Rows(
           from: fn(): [
-            for row in geo.countries(ctx.params.region): Choice{value: (row.id), label: (row.name)}
+            for row in geo.countries(ctx.params.region): Choice{
+              value: (row.id)
+              label: (row.name)
+            }
           ]
-          resolve: fn(): geo.countries(ctx.params.region).some(fn(c): c.id == data.country)
+          resolve: fn(): geo.countries(ctx.params.region).some(fn c: c.id == data.country)
         )
       }.build(at)
-      fn(at): FieldView{
+      fn at: FieldView{
         key: "n3"
         when: fn(): data.country != none
         field: m.city.node
@@ -97,12 +98,15 @@ fn orderView(at: Place, m: OrderModel, ctx: OrderCtx) -> View:
         checks: [checks.answered()]
         options: Options.Rows(
           from: fn(): [
-            for row in geo.cities(data.country ?? ""): Choice{value: (row.id), label: (row.name)}
+            for row in geo.cities(data.country ?? ""): Choice{
+              value: (row.id)
+              label: (row.name)
+            }
           ]
-          resolve: fn(): geo.cities(data.country ?? "").some(fn(c): c.id == data.city)
+          resolve: fn(): geo.cities(data.country ?? "").some(fn c: c.id == data.city)
         )
       }.build(at)
-      fn(at): RepeatView{
+      fn at: RepeatView{
         key: "n4"
         list: m.items
         widget: fn(): RepeatWidget.Table(none)
@@ -115,14 +119,14 @@ fn orderView(at: Place, m: OrderModel, ctx: OrderCtx) -> View:
             key: `n5@${row1}`
             widget: fn(): LayoutWidget.Tablerow
             children: [
-              fn(at): FieldView{
+              fn at: FieldView{
                 key: `n6@${row1}`
                 field: r1.fields.sku
                 widget: fn(): FieldWidget.Input(none)
                 label: fn(): "SKU"
                 checks: [checks.required(fn(): true)]
               }.build(at)
-              fn(at): FieldView{
+              fn at: FieldView{
                 key: `n7@${row1}`
                 parent: fn(): ParentUi.Tablerow(80)
                 field: r1.fields.qty
@@ -134,13 +138,13 @@ fn orderView(at: Place, m: OrderModel, ctx: OrderCtx) -> View:
           }.build(at)
         }
       }.build(at)
-      fn(at): FieldView{
+      fn at: FieldView{
         key: "n8"
         widget: fn(): FieldWidget.Input(none)
         label: fn(): "Total quantity"
         value: fn(): logic.totalQty(data.items)
       }.build(at)
-      fn(at): VariantView{
+      fn at: VariantView{
         key: "n9"
         variant: m.payment
         widget: fn(): VariantWidget.Inline
@@ -149,7 +153,7 @@ fn orderView(at: Place, m: OrderModel, ctx: OrderCtx) -> View:
         cases: struct{
           card: CaseView{
             label: fn(): "Credit card"
-            body: fn(at): {
+            body: fn at: {
               const p = m.payment.cases.card.scope()
               FieldView{
                 key: "n10"
@@ -162,7 +166,7 @@ fn orderView(at: Place, m: OrderModel, ctx: OrderCtx) -> View:
           }
           wire: CaseView{
             label: fn(): "Bank transfer"
-            body: fn(at): {
+            body: fn at: {
               const p = m.payment.cases.wire.scope()
               FieldView{
                 key: "n11"
@@ -175,12 +179,14 @@ fn orderView(at: Place, m: OrderModel, ctx: OrderCtx) -> View:
           }
         }
       }.build(at)
-      fn(at): FieldView{
+      fn at: FieldView{
         key: "n12"
         when: fn(): logic.totalQty(data.items) > 100
         field: m.note.node
         hide: m.note.shown
-        widget: fn(): FieldWidget.Textarea((if logic.totalQty(data.items) > 1000: 6 else: 3))
+        widget: fn(): FieldWidget.Textarea(
+          (if logic.totalQty(data.items) > 1000: 6 else: 3)
+        )
         label: fn(): "Delivery note"
         checks: [checks.answered()]
       }.build(at)
@@ -191,7 +197,11 @@ fn orderView(at: Place, m: OrderModel, ctx: OrderCtx) -> View:
 fn openOrder(params: OrderParams, user: User) -> Form<OrderModel>:
   const graph = new Graph{}
   const model = Group.make<OrderModel>(graph, none)
-  Form.open(graph, model, fn(at): orderView(at, model.fields, OrderCtx{params, user}))
+  Form.open(
+    graph
+    model
+    fn at: orderView(at, model.fields, OrderCtx{params, user})
+  )
 
 # ═══════════ The entry points its hosts start ═══════════
 

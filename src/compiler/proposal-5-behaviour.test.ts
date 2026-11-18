@@ -289,8 +289,8 @@ describe('proposal 5 behaviour table: row by row', () => {
     expect(formatText(longBare)).toBe(
       lines(
         'import (',
-        '  approvePurchaseRequest, cancelPurchaseRequest, ChargeVerdict, notifyPurchaseReviewers',
-        '  rejectPurchaseRequest',
+        '  approvePurchaseRequest, cancelPurchaseRequest, ChargeVerdict',
+        '  notifyPurchaseReviewers, rejectPurchaseRequest',
         ") from 'purchase/approval/workflow'",
         '',
       ),

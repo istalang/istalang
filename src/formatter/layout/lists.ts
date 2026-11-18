@@ -11,21 +11,70 @@
 
 import { builders, printer as docPrinter, utils } from 'prettier/doc';
 import { extentIn, type SyntaxNode } from '../../compiler/syntax/tree/index.ts';
+import { memo } from '../../foundation/structures/memo.ts';
+import { encloses } from '../../foundation/text/span.ts';
 import { hasBlankLine } from '../comments/comments.ts';
 import type { Printer } from '../printer.ts';
+import { tabWidth } from './widths.ts';
 
-const { breakParent, conditionalGroup, group, hardline, ifBreak, indent, join, line, softline } =
-  builders;
+const {
+  breakParent,
+  conditionalGroup,
+  group,
+  hardline,
+  hardlineWithoutBreakParent,
+  ifBreak,
+  indent,
+  join,
+  line,
+  softline,
+} = builders;
 
-/** Items one per line, with one blank line where the source had one or more between them. */
+/**
+ * Items one per line, with one blank line where the source had one or more between them, and
+ * after a declaration with a body or members printed on several lines (`spacedDeclaration`).
+ */
 export function itemLines(printer: Printer, items: readonly SyntaxNode[]): builders.Doc {
   return items.map((item, index) => {
     const previous = items[index - 1];
     if (previous === undefined) {
       return printer.print(item);
     }
-    return [hardline, blankBetween(printer, previous, item) ? hardline : '', printer.print(item)];
+    const blank = blankBetween(printer, previous, item) ? hardline : blankAfter(previous);
+    return [hardline, blank, printer.print(item)];
   });
+}
+
+/** Declarations a blank line follows once printed on several lines. */
+const spacedKinds: ReadonlySet<SyntaxNode['kind']> = new Set([
+  'FunctionDeclaration',
+  'StructDeclaration',
+  'SharedStructDeclaration',
+  'ExternStructDeclaration',
+  'EnumDeclaration',
+  'TraitDeclaration',
+]);
+
+const spacingGroups = new WeakMap<SyntaxNode, symbol>();
+
+function spacingGroupOf(node: SyntaxNode): symbol {
+  return memo(spacingGroups, node, () => Symbol(node.kind));
+}
+
+/**
+ * `doc`, `node`'s, as one group, which breaks exactly when `node` takes several lines, so the item
+ * after it knows (`itemLines`): a group around a whole item changes none of the choices inside it.
+ */
+export function spacedDeclaration(node: SyntaxNode, doc: builders.Doc): builders.Doc {
+  return group(doc, { id: spacingGroupOf(node) });
+}
+
+/** A blank line after `node` when it is a declaration printed on several lines; else nothing. */
+function blankAfter(node: SyntaxNode): builders.Doc {
+  // A line only the broken declaration prints, which mustn't break the groups around.
+  return spacedKinds.has(node.kind)
+    ? ifBreak(hardlineWithoutBreakParent, '', { groupId: spacingGroupOf(node) })
+    : '';
 }
 
 /** Whether the source has a blank line between two items, their comments included. */
@@ -152,7 +201,7 @@ export function angled(printer: Printer, items: readonly SyntaxNode[]): builders
 
 /** `doc` on one line, however long, for a place that has no line break to offer. */
 export function oneLine(doc: builders.Doc): string {
-  return docPrinter.printDocToString(doc, { printWidth: Number.POSITIVE_INFINITY, tabWidth: 2 })
+  return docPrinter.printDocToString(doc, { printWidth: Number.POSITIVE_INFINITY, tabWidth })
     .formatted;
 }
 
@@ -161,6 +210,26 @@ export function hasComments(printer: Printer, node: SyntaxNode): boolean {
   const withComments = printer.extentOf(node);
   const extent = extentIn(printer.tree, node);
   return withComments.start !== extent.start || withComments.end !== extent.end;
+}
+
+const lineBreak = /[\n\r]/u;
+
+/**
+ * Whether a comment is written in `node`'s own lines: inside the text it and everything under it
+ * cover, or, when that text spans lines, at the end of its last line, where a comment belongs to
+ * whatever that line ends with. A compressed form would part either from its code.
+ */
+export function holdsComments(printer: Printer, node: SyntaxNode): boolean {
+  const { text } = printer.tree.source;
+  const extent = extentIn(printer.tree, node);
+  const spansLines = lineBreak.test(text.slice(extent.start, extent.end));
+  return printer.tree.comments.some(
+    ({ span }) =>
+      encloses(extent, span) ||
+      (spansLines &&
+        span.start >= extent.end &&
+        !lineBreak.test(text.slice(extent.end, span.start))),
+  );
 }
 
 /**

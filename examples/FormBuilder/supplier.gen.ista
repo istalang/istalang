@@ -15,14 +15,16 @@ import * as logic from './supplier'
 import Graph from './computed'
 import Form, Problems, User from './forms/form'
 import (
-  Date, DateTime, Dynamic, Field, FileId, Group, Hidden, List, Local, Variant
+  Date, DateTime, Dynamic, Field, FileId, Group, Hidden, List
+  Local, Variant
 ) from './forms/model'
 import (
-  FieldWidget, Gap, LabelStyle, LayoutWidget, Orientation, ParentUi, RepeatWidget, VariantWidget
+  FieldWidget, Gap, LabelStyle, LayoutWidget, Orientation
+  ParentUi, RepeatWidget, VariantWidget
 ) from './forms/tree'
 import (
-  CaseView, Choice, DynamicView, FieldView, Item, LayoutView, Options, Place, Recompute, RepeatView
-  VariantView, View
+  CaseView, Choice, DynamicView, FieldView, Item, LayoutView
+  Options, Place, Recompute, RepeatView, VariantView, View
 ) from './forms/views'
 
 const translations: Map<String, Map<String, String>> = [
@@ -34,15 +36,15 @@ const translations: Map<String, Map<String, String>> = [
 
 # ═══════════ def "#address" ═══════════
 
-struct AddressParams:
-  country: String
+struct AddressParams { country: String }
 
 struct AddressCtx:
   user: User
   paramsFrom: inert fn() -> AddressParams
 
 # Its params as its mount gives them, read when an expression reads them.
-fn get params(self: AddressCtx) -> AddressParams: (self.paramsFrom)()
+fn get params(self: AddressCtx) -> AddressParams:
+  (self.paramsFrom)()
 
 struct AddressModel:
   street: Field<String>
@@ -55,18 +57,18 @@ fn addressView(at: Place, m: AddressModel, ctx: AddressCtx, k: String) -> View:
     key: `${k}/n1`
     widget: fn(): LayoutWidget.Labeled(LabelStyle.Top)
     children: [
-      fn(at): FieldView{
+      fn at: FieldView{
         key: `${k}/n2`
         field: m.street
         widget: fn(): FieldWidget.Input(none)
         label: fn(): "Street"
         checks: [checks.required(fn(): true), checks.maxLength(fn(): 120)]
       }.build(at)
-      fn(at): LayoutView{
+      fn at: LayoutView{
         key: `${k}/n3`
         widget: fn(): LayoutWidget.Hstack(gap: Gap.Sm, labels: none)
         children: [
-          fn(at): FieldView{
+          fn at: FieldView{
             key: `${k}/n4`
             parent: fn(): ParentUi.Hstack(1.0)
             field: m.zip
@@ -74,7 +76,7 @@ fn addressView(at: Place, m: AddressModel, ctx: AddressCtx, k: String) -> View:
             label: fn(): "ZIP"
             checks: [checks.answered(), checks.pattern(fn(): logic.zipPattern(ctx.params.country))]
           }.build(at)
-          fn(at): FieldView{
+          fn at: FieldView{
             key: `${k}/n5`
             parent: fn(): ParentUi.Hstack(3.0)
             field: m.city
@@ -96,7 +98,8 @@ struct CategoryCtx:
   paramsFrom: inert fn() -> CategoryParams
 
 # Its params as its mount gives them, read when an expression reads them.
-fn get params(self: CategoryCtx) -> CategoryParams: (self.paramsFrom)()
+fn get params(self: CategoryCtx) -> CategoryParams:
+  (self.paramsFrom)()
 
 struct CategoryModel:
   name: Field<String>
@@ -115,14 +118,14 @@ fn categoryView(at: Place, m: CategoryModel, ctx: CategoryCtx, k: String) -> Vie
       labels: none
     )
     children: [
-      fn(at): FieldView{
+      fn at: FieldView{
         key: `${k}/n2`
         field: m.name
         widget: fn(): FieldWidget.Input(none)
         label: fn(): "Category"
         checks: [checks.answered()]
       }.build(at)
-      fn(at): RepeatView{
+      fn at: RepeatView{
         key: `${k}/n3`
         list: m.children
         widget: fn(): RepeatWidget.List(addLabel: "Add subcategory", reorderable: none)
@@ -131,7 +134,10 @@ fn categoryView(at: Place, m: CategoryModel, ctx: CategoryCtx, k: String) -> Vie
         item: fn(r1, row1, at): categoryView(
           at
           r1.fields
-          CategoryCtx{user: ctx.user, paramsFrom: fn(): CategoryParams}
+          CategoryCtx{
+            user: ctx.user
+            paramsFrom: fn(): CategoryParams
+          }
           `${k}/n4@${row1}`
         )
       }.build(at)
@@ -146,9 +152,7 @@ struct SupplierParams:
   products: Array<{ sku: String, name: String }>
   owner: crm.User
 
-struct SupplierCtx:
-  params: SupplierParams
-  user: User
+struct SupplierCtx { params: SupplierParams, user: User }
 
 struct SupplierModel:
   company: Group<{
@@ -214,20 +218,20 @@ fn supplierView(at: Place, m: SupplierModel, ctx: SupplierCtx) -> View:
     key: "n1"
     widget: fn(): LayoutWidget.Wizard
     children: [
-      fn(at): LayoutView{
+      fn at: LayoutView{
         key: "n2"
         widget: fn(): LayoutWidget.Step(
           title: checks.t(translations, ctx.user.lang, "Company", "Company", [])
           labels: LabelStyle.Start
         )
         children: [
-          fn(at): LayoutView{
+          fn at: LayoutView{
             key: "n3"
             widget: fn(): LayoutWidget.Markdown(
               (`Welcome, **${ctx.user.name}**. Tier: ${ctx.params.tier}.`)
             )
           }.build(at)
-          fn(at): LayoutView{
+          fn at: LayoutView{
             key: "n4"
             widget: fn(): LayoutWidget.Section(
               title: checks.t(translations, ctx.user.lang, "Company", "Company", [])
@@ -236,11 +240,11 @@ fn supplierView(at: Place, m: SupplierModel, ctx: SupplierCtx) -> View:
               labels: none
             )
             children: [
-              fn(at): LayoutView{
+              fn at: LayoutView{
                 key: "n5"
                 widget: fn(): LayoutWidget.Hstack(gap: Gap.Md, labels: none)
                 children: [
-                  fn(at): FieldView{
+                  fn at: FieldView{
                     key: "n6"
                     parent: fn(): ParentUi.Hstack(2.0)
                     field: m.company.fields.name
@@ -253,7 +257,7 @@ fn supplierView(at: Place, m: SupplierModel, ctx: SupplierCtx) -> View:
                       checks.maxLength(fn(): 100)
                     ]
                   }.build(at)
-                  fn(at): FieldView{
+                  fn at: FieldView{
                     key: "n7"
                     parent: fn(): ParentUi.Hstack(1.0)
                     field: m.company.fields.vatId
@@ -263,14 +267,14 @@ fn supplierView(at: Place, m: SupplierModel, ctx: SupplierCtx) -> View:
                   }.build(at)
                 ]
               }.build(at)
-              fn(at): FieldView{
+              fn at: FieldView{
                 key: "n8"
                 field: m.company.fields.email
                 widget: fn(): FieldWidget.Input(none)
                 label: fn(): "Email"
                 checks: [checks.answered(), checks.format(checks.Format.Email)]
               }.build(at)
-              fn(at): FieldView{
+              fn at: FieldView{
                 key: "n9"
                 field: m.confirmEmail.node
                 widget: fn(): FieldWidget.Input(none)
@@ -283,15 +287,17 @@ fn supplierView(at: Place, m: SupplierModel, ctx: SupplierCtx) -> View:
                   )
                 ]
               }.build(at)
-              fn(at): FieldView{
+              fn at: FieldView{
                 key: "n10"
                 field: m.company.fields.description
-                widget: fn(): FieldWidget.Textarea((if ctx.params.tier == "gold": 8 else: 4))
+                widget: fn(): FieldWidget.Textarea(
+                  (if ctx.params.tier == "gold": 8 else: 4)
+                )
                 label: fn(): "Description"
                 default: fn(): ""
                 checks: [checks.maxLength(fn(): 2000)]
               }.build(at)
-              fn(at): FieldView{
+              fn at: FieldView{
                 key: "n11"
                 field: m.company.fields.size
                 widget: fn(): FieldWidget.Select(none)
@@ -302,11 +308,13 @@ fn supplierView(at: Place, m: SupplierModel, ctx: SupplierCtx) -> View:
                   Item{value: "medium", label: fn(): "Medium"}
                   Item{
                     value: "large"
-                    label: fn(): if ctx.params.tier == "gold": "Large (priority)" else: "Large"
+                    label: fn(): if ctx.params.tier == "gold":
+                      "Large (priority)"
+                    else: "Large"
                   }
                 ])
               }.build(at)
-              fn(at): FieldView{
+              fn at: FieldView{
                 key: "n12"
                 field: m.company.fields.legalForm
                 widget: fn(): FieldWidget.Radio(Orientation.Horizontal)
@@ -318,7 +326,7 @@ fn supplierView(at: Place, m: SupplierModel, ctx: SupplierCtx) -> View:
                   Item{value: "sole", label: fn(): "Sole trader"}
                 ])
               }.build(at)
-              fn(at): FieldView{
+              fn at: FieldView{
                 key: "n13"
                 when: fn(): data.company.legalForm != "sole"
                 field: m.company.fields.capital.node
@@ -327,7 +335,7 @@ fn supplierView(at: Place, m: SupplierModel, ctx: SupplierCtx) -> View:
                 label: fn(): "Share capital"
                 checks: [checks.answered(), checks.min(fn(): 0.0), checks.multipleOf(fn(): 1000.0)]
               }.build(at)
-              fn(at): FieldView{
+              fn at: FieldView{
                 key: "n14"
                 field: m.company.fields.employees
                 widget: fn(): FieldWidget.Input(none)
@@ -352,7 +360,7 @@ fn supplierView(at: Place, m: SupplierModel, ctx: SupplierCtx) -> View:
                   )
                 ]
               }.build(at)
-              fn(at): FieldView{
+              fn at: FieldView{
                 key: "n15"
                 field: m.company.fields.founded
                 widget: fn(): FieldWidget.Datepicker
@@ -363,7 +371,7 @@ fn supplierView(at: Place, m: SupplierModel, ctx: SupplierCtx) -> View:
                   checks.max(fn(): ctx.user.today)
                 ]
               }.build(at)
-              fn(at): FieldView{
+              fn at: FieldView{
                 key: "n16"
                 field: m.company.fields.logo
                 widget: fn(): FieldWidget.Upload(true)
@@ -374,7 +382,7 @@ fn supplierView(at: Place, m: SupplierModel, ctx: SupplierCtx) -> View:
                   checks.maxBytes(1048576)
                 ]
               }.build(at)
-              fn(at): FieldView{
+              fn at: FieldView{
                 key: "n17"
                 field: m.company.fields.country
                 widget: fn(): FieldWidget.Select(none)
@@ -388,20 +396,22 @@ fn supplierView(at: Place, m: SupplierModel, ctx: SupplierCtx) -> View:
                     }
                   ]
                   resolve: fn(): geo.countries(ctx.params.region).some(
-                    fn(c): c.id == data.company.country
+                    fn c: c.id == data.company.country
                   )
                 )
               }.build(at)
-              fn(at): addressView(
+              fn at: addressView(
                 at.within(fn(): data.company.country != none, m.company.fields.address.shown)
                 m.company.fields.address.node.fields
                 AddressCtx{
                   user: ctx.user
-                  paramsFrom: fn(): AddressParams{country: (data.company.country ?? "")}
+                  paramsFrom: fn(): AddressParams{
+                    country: (data.company.country ?? "")
+                  }
                 }
                 "n18"
               )
-              fn(at): FieldView{
+              fn at: FieldView{
                 key: "n19"
                 when: fn(): data.company.country != none
                 field: m.company.fields.city.node
@@ -417,27 +427,35 @@ fn supplierView(at: Place, m: SupplierModel, ctx: SupplierCtx) -> View:
                     }
                   ]
                   resolve: fn(): geo.cities(data.company.country ?? "").some(
-                    fn(c): c.id == data.company.city
+                    fn c: c.id == data.company.city
                   )
                 )
               }.build(at)
             ]
           }.build(at)
-          fn(at): FieldView{
+          fn at: FieldView{
             key: "n20"
             field: m.manager
             widget: fn(): FieldWidget.Autocomplete("Type a name")
             label: fn(): "Account manager"
             checks: [checks.answered()]
             options: Options.Search(
-              from: fn(search): {
-                const ctx = struct{search, params: ctx.params, user: ctx.user}
-                [for row in crm.users(ctx.search): Choice{value: row, label: (row.name)}]
+              from: fn search: {
+                const ctx =
+                  search
+                  params: ctx.params
+                  user: ctx.user
+                [
+                  for row in crm.users(ctx.search): Choice{
+                    value: row
+                    label: (row.name)
+                  }
+                ]
               }
               resolve: fn(): crm.user(data.manager?.id ?? "") != none
             )
           }.build(at)
-          fn(at): FieldView{
+          fn at: FieldView{
             key: "n21"
             field: m.creditLimit
             widget: fn(): FieldWidget.Input(none)
@@ -446,11 +464,11 @@ fn supplierView(at: Place, m: SupplierModel, ctx: SupplierCtx) -> View:
           }.build(at)
         ]
       }.build(at)
-      fn(at): LayoutView{
+      fn at: LayoutView{
         key: "n22"
         widget: fn(): LayoutWidget.Step(title: "Catalog", labels: none)
         children: [
-          fn(at): RepeatView{
+          fn at: RepeatView{
             key: "n23"
             list: m.prices
             widget: fn(): RepeatWidget.Table(none)
@@ -464,7 +482,7 @@ fn supplierView(at: Place, m: SupplierModel, ctx: SupplierCtx) -> View:
                 regions: []
               }
             ]
-            rowKey: fn(price): price.sku
+            rowKey: fn price: price.sku
             recomputeUntil: Recompute.RowsEdited
             item: fn(r1, row1, at): {
               const price = r1.scope()
@@ -472,14 +490,14 @@ fn supplierView(at: Place, m: SupplierModel, ctx: SupplierCtx) -> View:
                 key: `n24@${row1}`
                 widget: fn(): LayoutWidget.Tablerow
                 children: [
-                  fn(at): FieldView{
+                  fn at: FieldView{
                     key: `n25@${row1}`
                     field: r1.fields.sku
                     widget: fn(): FieldWidget.Input(none)
                     label: fn(): "SKU"
                     value: fn(): price.sku ?? ""
                   }.build(at)
-                  fn(at): FieldView{
+                  fn at: FieldView{
                     key: `n26@${row1}`
                     parent: fn(): ParentUi.Tablerow(240)
                     field: r1.fields.name
@@ -487,7 +505,7 @@ fn supplierView(at: Place, m: SupplierModel, ctx: SupplierCtx) -> View:
                     label: fn(): "Product"
                     default: fn(): ""
                   }.build(at)
-                  fn(at): FieldView{
+                  fn at: FieldView{
                     key: `n27@${row1}`
                     parent: fn(): ParentUi.Tablerow(100)
                     field: r1.fields.amount
@@ -495,7 +513,7 @@ fn supplierView(at: Place, m: SupplierModel, ctx: SupplierCtx) -> View:
                     label: fn(): "Price"
                     checks: [checks.answered(), checks.min(fn(): 0.0)]
                   }.build(at)
-                  fn(at): RepeatView{
+                  fn at: RepeatView{
                     key: `n28@${row1}`
                     list: r1.fields.regions
                     widget: fn(): RepeatWidget.Multiselect(none)
@@ -510,11 +528,14 @@ fn supplierView(at: Place, m: SupplierModel, ctx: SupplierCtx) -> View:
                       checks: [checks.answered()]
                       options: Options.Rows(
                         from: fn(): [
-                          for row in geo.regions(): Choice{value: (row.code), label: (row.name)}
+                          for row in geo.regions(): Choice{
+                            value: (row.code)
+                            label: (row.name)
+                          }
                         ]
                         resolve: fn(): {
                           const region = r2.scope()
-                          geo.regions().some(fn(r): r.code == region)
+                          geo.regions().some(fn r: r.code == region)
                         }
                       )
                     }.build(at)
@@ -523,14 +544,16 @@ fn supplierView(at: Place, m: SupplierModel, ctx: SupplierCtx) -> View:
               }.build(at)
             }
           }.build(at)
-          fn(at): RepeatView{
+          fn at: RepeatView{
             key: "n30"
             list: m.contacts
             widget: fn(): RepeatWidget.List(addLabel: "Add contact", reorderable: true)
             label: fn(): "Contacts"
             checks: [
               checks.minItems(fn(): 1)
-              checks.maxItems(fn(): if ctx.params.tier == "gold": 10 else: 3)
+              checks.maxItems(
+                fn(): if ctx.params.tier == "gold": 10 else: 3
+              )
             ]
             canAdd: true
             item: fn(r1, row1, at): {
@@ -544,7 +567,7 @@ fn supplierView(at: Place, m: SupplierModel, ctx: SupplierCtx) -> View:
                   labels: none
                 )
                 children: [
-                  fn(at): FieldView{
+                  fn at: FieldView{
                     key: `n32@${row1}`
                     parent: fn(): ParentUi.Section(1)
                     field: r1.fields.name
@@ -552,7 +575,7 @@ fn supplierView(at: Place, m: SupplierModel, ctx: SupplierCtx) -> View:
                     label: fn(): "Name"
                     checks: [checks.answered()]
                   }.build(at)
-                  fn(at): FieldView{
+                  fn at: FieldView{
                     key: `n33@${row1}`
                     parent: fn(): ParentUi.Section(1)
                     field: r1.fields.email
@@ -560,19 +583,21 @@ fn supplierView(at: Place, m: SupplierModel, ctx: SupplierCtx) -> View:
                     label: fn(): "Email"
                     checks: [checks.answered(), checks.format(checks.Format.Email)]
                   }.build(at)
-                  fn(at): FieldView{
+                  fn at: FieldView{
                     key: `n34@${row1}`
                     field: r1.fields.primary
                     widget: fn(): FieldWidget.Toggle
                     label: fn(): "Primary contact"
                     default: fn(): false
                   }.build(at)
-                  fn(at): contactCard.view(
+                  fn at: contactCard.view(
                     at
                     r1.fields.card.fields
                     contactCard.Ctx{
                       user: ctx.user
-                      paramsFrom: fn(): contactCard.Params{name: (contact.name ?? "")}
+                      paramsFrom: fn(): contactCard.Params{
+                        name: (contact.name ?? "")
+                      }
                     }
                     `n35@${row1}`
                   )
@@ -580,7 +605,7 @@ fn supplierView(at: Place, m: SupplierModel, ctx: SupplierCtx) -> View:
               }.build(at)
             }
           }.build(at)
-          fn(at): RepeatView{
+          fn at: RepeatView{
             key: "n36"
             list: m.certifications
             widget: fn(): RepeatWidget.Checkboxes(Orientation.Vertical)
@@ -598,7 +623,7 @@ fn supplierView(at: Place, m: SupplierModel, ctx: SupplierCtx) -> View:
               ])
             }.build(at)
           }.build(at)
-          fn(at): RepeatView{
+          fn at: RepeatView{
             key: "n38"
             list: m.categories
             widget: fn(): RepeatWidget.Cards(addLabel: "Add category", title: "Category")
@@ -607,11 +632,14 @@ fn supplierView(at: Place, m: SupplierModel, ctx: SupplierCtx) -> View:
             item: fn(r1, row1, at): categoryView(
               at
               r1.fields
-              CategoryCtx{user: ctx.user, paramsFrom: fn(): CategoryParams}
+              CategoryCtx{
+                user: ctx.user
+                paramsFrom: fn(): CategoryParams
+              }
               `n39@${row1}`
             )
           }.build(at)
-          fn(at): RepeatView{
+          fn at: RepeatView{
             key: "n40"
             list: m.history
             widget: fn(): RepeatWidget.List(addLabel: none, reorderable: none)
@@ -632,11 +660,11 @@ fn supplierView(at: Place, m: SupplierModel, ctx: SupplierCtx) -> View:
           }.build(at)
         ]
       }.build(at)
-      fn(at): LayoutView{
+      fn at: LayoutView{
         key: "n42"
         widget: fn(): LayoutWidget.Step(title: "Payment", labels: none)
         children: [
-          fn(at): FieldView{
+          fn at: FieldView{
             key: "n43"
             field: m.payment.tag
             widget: fn(): FieldWidget.Segmented
@@ -648,7 +676,7 @@ fn supplierView(at: Place, m: SupplierModel, ctx: SupplierCtx) -> View:
               Item{value: "invoice", label: fn(): "Invoice"}
             ])
           }.build(at)
-          fn(at): VariantView{
+          fn at: VariantView{
             key: "n44"
             variant: m.payment
             widget: fn(): VariantWidget.Panel("Details")
@@ -656,7 +684,7 @@ fn supplierView(at: Place, m: SupplierModel, ctx: SupplierCtx) -> View:
             cases: struct{
               card: CaseView{
                 label: fn(): "Card"
-                body: fn(at): {
+                body: fn at: {
                   const pay = m.payment.cases.card.scope()
                   LayoutView{
                     key: "n45"
@@ -667,14 +695,14 @@ fn supplierView(at: Place, m: SupplierModel, ctx: SupplierCtx) -> View:
                       labels: none
                     )
                     children: [
-                      fn(at): FieldView{
+                      fn at: FieldView{
                         key: "n46"
                         field: m.payment.cases.card.fields.holder
                         widget: fn(): FieldWidget.Input(none)
                         label: fn(): "Card holder"
                         checks: [checks.answered()]
                       }.build(at)
-                      fn(at): FieldView{
+                      fn at: FieldView{
                         key: "n47"
                         field: m.payment.cases.card.fields.last4
                         widget: fn(): FieldWidget.Input(none)
@@ -687,21 +715,21 @@ fn supplierView(at: Place, m: SupplierModel, ctx: SupplierCtx) -> View:
               }
               wire: CaseView{
                 label: fn(): "Wire"
-                body: fn(at): {
+                body: fn at: {
                   const pay = m.payment.cases.wire.scope()
                   LayoutView{
                     key: "n48"
                     widget: fn(): LayoutWidget.Money
                     label: fn(): "Deposit"
                     children: [
-                      fn(at): FieldView{
+                      fn at: FieldView{
                         key: "n49"
                         field: m.payment.cases.wire.fields.deposit.fields.amount
                         widget: fn(): FieldWidget.Raw
                         label: fn(): "Amount"
                         checks: [checks.answered(), checks.min(fn(): 0.0)]
                       }.build(at)
-                      fn(at): FieldView{
+                      fn at: FieldView{
                         key: "n50"
                         field: m.payment.cases.wire.fields.deposit.fields.currency
                         widget: fn(): FieldWidget.Choice
@@ -718,7 +746,7 @@ fn supplierView(at: Place, m: SupplierModel, ctx: SupplierCtx) -> View:
               }
               invoice: CaseView{
                 label: fn(): "Invoice"
-                body: fn(at): {
+                body: fn at: {
                   const pay = m.payment.cases.invoice.scope()
                   FieldView{
                     key: "n51"
@@ -732,7 +760,7 @@ fn supplierView(at: Place, m: SupplierModel, ctx: SupplierCtx) -> View:
               }
             }
           }.build(at)
-          fn(at): VariantView{
+          fn at: VariantView{
             key: "n52"
             variant: m.delivery
             widget: fn(): VariantWidget.Inline
@@ -741,7 +769,7 @@ fn supplierView(at: Place, m: SupplierModel, ctx: SupplierCtx) -> View:
             cases: struct{
               standard: CaseView{
                 label: fn(): "Standard"
-                body: fn(at): {
+                body: fn at: {
                   const d = m.delivery.cases.standard.scope()
                   FieldView{
                     key: "n53"
@@ -758,7 +786,7 @@ fn supplierView(at: Place, m: SupplierModel, ctx: SupplierCtx) -> View:
               }
               express: CaseView{
                 label: fn(): "Express"
-                body: fn(at): {
+                body: fn at: {
                   const d = m.delivery.cases.express.scope()
                   FieldView{
                     key: "n54"
@@ -771,7 +799,7 @@ fn supplierView(at: Place, m: SupplierModel, ctx: SupplierCtx) -> View:
               }
             }
           }.build(at)
-          fn(at): FieldView{
+          fn at: FieldView{
             key: "n55"
             field: m.extraForm
             widget: fn(): FieldWidget.Select(none)
@@ -787,7 +815,7 @@ fn supplierView(at: Place, m: SupplierModel, ctx: SupplierCtx) -> View:
               resolve: fn(): formsCatalog.get(data.extraForm?.id ?? "") != none
             )
           }.build(at)
-          fn(at): DynamicView{
+          fn at: DynamicView{
             key: "n56"
             when: fn(): data.extraForm != none
             value: m.extra.node
@@ -797,39 +825,40 @@ fn supplierView(at: Place, m: SupplierModel, ctx: SupplierCtx) -> View:
           }.build(at)
         ]
       }.build(at)
-      fn(at): LayoutView{
+      fn at: LayoutView{
         key: "n57"
         widget: fn(): LayoutWidget.Step(title: "Review", labels: none)
         children: [
-          fn(at): LayoutView{
+          fn at: LayoutView{
             key: "n58"
             widget: fn(): LayoutWidget.Markdown(
               (`Supplier **${data.company.name ?? "?"}**, ${data.prices.length()} prices.`)
             )
           }.build(at)
-          fn(at): FieldView{
+          fn at: FieldView{
             key: "n59"
             widget: fn(): FieldWidget.Input(none)
             label: fn(): "Catalog value"
             value: fn(): logic.catalogValue(data.prices)
           }.build(at)
-          fn(at): FieldView{
+          fn at: FieldView{
             key: "n60"
             field: m.score
             widget: fn(): FieldWidget.Input(none)
             label: fn(): "Risk score"
             value: fn(): logic.score(data.company.employees ?? 0, data.certifications.length())
           }.build(at)
-          fn(at): FieldView{
+          fn at: FieldView{
             key: "n61"
             field: m.notes
             widget: fn(): FieldWidget.Textarea(none)
-            label: fn(): if ctx.params.tier == "gold": "Notes for your account manager"
+            label: fn(): if ctx.params.tier == "gold":
+              "Notes for your account manager"
             else: "Notes"
             default: fn(): ""
             checks: [checks.required(fn(): (data.score ?? 0) > 70)]
           }.build(at)
-          fn(at): FieldView{
+          fn at: FieldView{
             key: "n62"
             field: m.agree
             widget: fn(): FieldWidget.Checkbox
@@ -839,13 +868,16 @@ fn supplierView(at: Place, m: SupplierModel, ctx: SupplierCtx) -> View:
               checks.rule(fn(): data.agree == true, fn(): `Please accept the terms`)
             ]
           }.build(at)
-          fn(at): LayoutView{key: "n63", widget: fn(): LayoutWidget.Divider}.build(at)
-          fn(at): LayoutView{
+          fn at: LayoutView{
+            key: "n63"
+            widget: fn(): LayoutWidget.Divider
+          }.build(at)
+          fn at: LayoutView{
             key: "n64"
             widget: fn(): LayoutWidget.Errors
             checks: [
               checks.rule(
-                fn(): data.contacts.some(fn(c): c.primary == true)
+                fn(): data.contacts.some(fn c: c.primary == true)
                 fn(): `Mark one contact as primary`
               )
               checks.rule(
@@ -865,7 +897,15 @@ fn supplierView(at: Place, m: SupplierModel, ctx: SupplierCtx) -> View:
 fn openSupplier(params: SupplierParams, user: User) -> Form<SupplierModel>:
   const graph = new Graph{}
   const model = Group.make<SupplierModel>(graph, none)
-  Form.open(graph, model, fn(at): supplierView(at, model.fields, SupplierCtx{params, user}))
+  Form.open(
+    graph
+    model
+    fn at: supplierView(
+      at
+      model.fields
+      SupplierCtx{params, user}
+    )
+  )
 
 # ═══════════ The entry points its hosts start ═══════════
 

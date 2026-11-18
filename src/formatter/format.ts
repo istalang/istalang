@@ -2,7 +2,8 @@
  * The formatter's entry (formatter.md): a syntax tree to its canonical text, and the public API
  * `istalang/formatter` over text.
  *
- * The style has no options (2-space indent, width 100). A tree with syntax diagnostics is refused:
+ * The style has no options (2-space indent, width 100, and 66 for a line holding a compressed
+ * form, layout/compact.ts). A tree with syntax diagnostics is refused:
  * the parser recovered from the errors by guesses, and printing a guess would rewrite the user's
  * code into something they didn't write.
  *
@@ -11,6 +12,10 @@
  * groups break to keep within the width. The table of printers is exhaustive by type, the binder's
  * pattern (foundation/structures/kind-table.ts), so a new node kind fails to compile until it
  * prints.
+ *
+ * A module whose banner, the comments before its first item, holds `# disable-ista-formatter` is
+ * kept as written by `ista fmt` and editors, which ask `isFormattingDisabled`; the formatter itself
+ * still formats it, so its tests keep reading such a module's hand-written layout.
  *
  * A node's doc depends on the node alone, so each is printed once and kept: a construct offering
  * Prettier two layouts, as a hugged last argument does (layout/lists.ts `hugging`), shares the docs
@@ -32,7 +37,7 @@ import { handlerOf } from '../foundation/structures/kind-table.ts';
 import { memo } from '../foundation/structures/memo.ts';
 import { unreachable } from '../foundation/structures/unreachable.ts';
 import { createSourceText, type SourceText } from '../foundation/text/source-text.ts';
-import { encloses, type Span } from '../foundation/text/span.ts';
+import { encloses, type Span, textOf } from '../foundation/text/span.ts';
 import { placeComments } from './comments/comment-placement.ts';
 import {
   type CommentsOf,
@@ -48,13 +53,12 @@ import { expressionPrinters } from './expressions/index.ts';
 import { isMultiLine, literalPrinters } from './expressions/literals.ts';
 import { importPrinters } from './imports.ts';
 import { nodesInBrackets } from './layout/brackets.ts';
+import { placeholderFor, withCompactWidths, withoutPlaceholders } from './layout/compact.ts';
+import { compactWidth, printWidth, tabWidth } from './layout/widths.ts';
 import { patternPrinters } from './patterns.ts';
 import type { Printer, Printers } from './printer.ts';
 import { statementPrinters } from './statements.ts';
 import { typePrinters } from './types.ts';
-
-const printWidth = 100;
-const tabWidth = 2;
 
 const errorNode = (): never =>
   unreachable('The formatter refuses trees with syntax diagnostics, so none holds an error node.');
@@ -156,6 +160,17 @@ function copiedSpans(tree: SyntaxTree, node: SyntaxNode): readonly Span[] {
     : childrenOf(tree, node).flatMap((child) => copiedSpans(tree, child));
 }
 
+const disablingComment = '# disable-ista-formatter';
+
+/** Whether `tree`'s banner, the comments before its first item, keeps it as written (banner). */
+export function isFormattingDisabled(tree: SyntaxTree): boolean {
+  const [first] = childrenOf(tree, tree.root);
+  const end = first === undefined ? tree.source.text.length : extentIn(tree, first).start;
+  return tree.comments.some(
+    ({ span }) => span.end <= end && textOf(tree.source, span).trim() === disablingComment,
+  );
+}
+
 /** `tree`'s canonical text; undefined when it has syntax diagnostics, which are the reason. */
 export function formatTree(tree: SyntaxTree): string | undefined {
   if (tree.diagnostics.length > 0) {
@@ -171,7 +186,13 @@ export function formatTree(tree: SyntaxTree): string | undefined {
   if (missed !== undefined) {
     unreachable(`No printer printed the comment at ${missed.span.start}: ${missed.text}`);
   }
-  return docPrinter.printDocToString(doc, { printWidth, tabWidth }).formatted;
+  const placeholder = placeholderFor(tree.source.text);
+  const reserve = placeholder.repeat(printWidth - compactWidth);
+  const printed = docPrinter.printDocToString(withCompactWidths(doc, reserve), {
+    printWidth,
+    tabWidth,
+  });
+  return withoutPlaceholders(printed.formatted, placeholder);
 }
 
 /** What formatting a source gives: its tree, whose diagnostics say why `text` is undefined. */

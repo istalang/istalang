@@ -36,9 +36,8 @@ export const formattableInputs: readonly { readonly name: string; readonly text:
 
 /**
  * Acceptance 1–3 for `text` (formatter.md): what its format re-parses to (diagnostics, tree,
- * comments) and formats to again, beside what each must be. The formatter merges and sorts the
- * imports (imports.ts), so trees compare with imports as `importsAsSet` reads them, and comments,
- * which move with imports, compare as a sorted list.
+ * comments) and formats to again, beside what each must be. Trees compare as `dumpAsFormatted`
+ * reads them, and comments, which move with imports, as a sorted list.
  */
 export function roundTripOf(text: string) {
   const tree = parseText(text);
@@ -49,13 +48,13 @@ export function roundTripOf(text: string) {
     reparsed,
     actual: {
       diagnostics: reparsed.diagnostics,
-      tree: dumpWithImportsAsSet(reparsed),
+      tree: dumpAsFormatted(reparsed),
       comments: commentTexts(reparsed).toSorted(),
       formattedAgain: formatTree(reparsed),
     },
     expected: {
       diagnostics: [],
-      tree: dumpWithImportsAsSet(tree),
+      tree: dumpAsFormatted(tree),
       comments: commentTexts(tree).toSorted(),
       formattedAgain: formatted,
     },
@@ -63,10 +62,12 @@ export function roundTripOf(text: string) {
 }
 
 /**
- * `tree` dumped as its items other than imports, in order, and what its imports bind, one entry
- * per item and path, sorted: what formatting keeps of a module, whose imports it merges and sorts.
+ * `tree` dumped as formatting keeps it: its items other than imports, in order, then what its
+ * imports bind, one entry per item and path, sorted, since the formatter merges and sorts them
+ * (imports.ts); and a struct value in braces or indented alike, whose form its width picks
+ * (expressions/struct-values.ts).
  */
-function dumpWithImportsAsSet(tree: SyntaxTree): string {
+function dumpAsFormatted(tree: SyntaxTree): string {
   const { items } = tree.root;
   const imported = items.flatMap((item) =>
     item.kind === 'ImportDeclaration'
@@ -74,7 +75,11 @@ function dumpWithImportsAsSet(tree: SyntaxTree): string {
       : [],
   );
   const others = items.filter((item) => item.kind !== 'ImportDeclaration');
-  return [...imported.toSorted(), ...others.map((item) => dump(tree, item))].join('\n');
+  return [...imported.toSorted(), ...others.map((item) => dump(tree, item))]
+    .join('\n')
+    .replaceAll('(IndentedValue ', '(StructLiteral ')
+    .replaceAll('(NewStructLiteral ', '(StructLiteral ')
+    .replaceAll(' isNew [', ' [');
 }
 
 /** The text of each comment of `tree`, in order. */

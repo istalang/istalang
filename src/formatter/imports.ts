@@ -7,14 +7,15 @@
  *   statements holding a comment that ends one of their lines, after `(` or after the path, one
  *   merges with the others and the rest stand alone.
  * - Statements sort by path: paths from the project root or the std first, then `../` ones, the
- *   farthest first, then `./` ones. Among paths of one kind, a statement with `*` comes first,
+ *   farthest first, then `./` ones. Among paths of one kind, those printed on one line come
+ *   before those taking several, a comment above one among its lines; then a statement with `*`,
  *   then one with `* as m`, then the rest, each alphabetically by path.
  * - In a statement, `*` comes first, then each `* as m` by `m`, then the names alphabetically.
- *   A statement of one item stands on one line. Names alone stand bare on the import's line while
- *   they fit; else in parentheses, broken into as many lines as the width needs. Beside `*` or
- *   `* as m` the items are always in parentheses, each star on a line of its own and the names
- *   filling the lines after them. A `*` first on a line starts an item (§2), so the broken list
- *   reads back as printed.
+ *   The items stand bare on the import's line while they fit; else in parentheses, each star on a
+ *   line of its own and the names packed into the lines after them, each within a compressed
+ *   form's width (layout/compact.ts), since several names share one. A `*` first
+ *   on a line starts an item (§2), so the broken list reads back as printed. An import holding a
+ *   comment always takes the parentheses, so each comment stays beside its item.
  * - Alphabetical is by letter regardless of case, then by code unit, so the order never depends on
  *   a locale.
  */
@@ -28,20 +29,28 @@ import type {
 import { extentIn } from '../compiler/syntax/tree/index.ts';
 import { compareOrdered } from '../foundation/language/order.ts';
 import { annotated } from './layout/bodies.ts';
-import { hasComments } from './layout/lists.ts';
+import { hasComments, oneLine } from './layout/lists.ts';
+import { compactWidth, printsOnOneLine, tabWidth } from './layout/widths.ts';
 import type { Printer, Printers } from './printer.ts';
 
-const { fill, group, hardline, ifBreak, indent, line, softline } = builders;
+const { group, hardline, hardlineWithoutBreakParent, ifBreak, indent, join, softline } = builders;
 
 /** `imports`, the module's, merged by path and sorted, one statement per line. */
 export function importBlock(printer: Printer, imports: readonly ImportDeclaration[]): builders.Doc {
-  const statements = mergedByPath(printer, imports).toSorted((first, second) =>
-    compareStatements(first, second),
-  );
-  return statements.map((merged, index) => [
-    index === 0 ? '' : hardline,
-    merged.length === 1 ? printer.print(merged[0]) : mergedStatement(printer, merged),
-  ]);
+  const statements = mergedByPath(printer, imports).map((merged): Statement => {
+    const doc = merged.length === 1 ? printer.print(merged[0]) : mergedStatement(printer, merged);
+    return { merged, doc, isOneLine: printsOnOneLine(doc) };
+  });
+  return statements
+    .toSorted(compareStatements)
+    .map(({ doc }, index) => [index === 0 ? '' : hardline, doc]);
+}
+
+/** A statement of the block, printed, and whether it takes one line, as sorting reads it. */
+interface Statement {
+  readonly merged: Merged;
+  readonly doc: builders.Doc;
+  readonly isOneLine: boolean;
 }
 
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
@@ -133,34 +142,38 @@ function itemsDoc(printer: Printer, merged: Merged, items: readonly ImportItem[]
   const commented =
     merged.some((declaration) => printer.hasDangling(declaration)) ||
     items.some((item) => hasComments(printer, item));
-  const [only] = items;
-  if (!commented && stars.length === 0) {
-    const filled = filledNames(printer, names);
-    return group([ifBreak('('), indent([softline, filled]), softline, ifBreak(')')]);
+  const starDocs = stars.map((star) => printer.print(star));
+  if (!commented) {
+    const flat = join(', ', [...starDocs, ...names.map((name) => printer.print(name))]);
+    // Line breaks only the broken form prints, which mustn't break the group as a hard line would.
+    const broken = join(hardlineWithoutBreakParent, [...starDocs, ...packedNames(printer, names)]);
+    return group([ifBreak('('), indent([softline, ifBreak(broken, flat)]), softline, ifBreak(')')]);
   }
-  if (!commented && items.length === 1 && only !== undefined) {
-    return printer.print(only);
-  }
-  const starLines = stars.map((star) => [hardline, printer.print(star)]);
-  const nameLines = names.length === 0 ? '' : [hardline, filledNames(printer, names)];
-  return ['(', indent([inside, starLines, nameLines]), hardline, ')'];
+  const lines = [...starDocs, ...packedNames(printer, names)];
+  return ['(', indent([inside, lines.map((each) => [hardline, each])]), hardline, ')'];
 }
 
 /**
- * `names` filling lines up to the width, `, ` between two on a line. A name with comments stands
- * on a line of its own, so each comment stays beside its name.
+ * `names` packed into the lines of a broken import, one doc per line, `, ` between two on a line, each line within
+ * a compressed form's width; a name with comments stands on a line of its own, so each comment
+ * stays beside its name. A broken import's items stand one level in from its line's start.
  */
-function filledNames(printer: Printer, names: readonly ImportedName[]): builders.Doc {
-  return fill(
-    names.flatMap((name, index) => {
-      const previous = names[index - 1];
-      if (previous === undefined) {
-        return [printer.print(name)];
-      }
-      const apart = hasComments(printer, previous) || hasComments(printer, name);
-      return [apart ? hardline : [ifBreak('', ','), line], printer.print(name)];
-    }),
-  );
+function packedNames(printer: Printer, names: readonly ImportedName[]): builders.Doc[] {
+  const budget = compactWidth - tabWidth;
+  const lines: { names: builders.Doc[]; width: number; alone: boolean }[] = [];
+  for (const name of names) {
+    const doc = printer.print(name);
+    const width = oneLine(doc).length;
+    const alone = hasComments(printer, name);
+    const last = lines.at(-1);
+    if (last !== undefined && !alone && !last.alone && last.width + ', '.length + width <= budget) {
+      last.names.push(doc);
+      last.width += ', '.length + width;
+    } else {
+      lines.push({ names: [doc], width, alone });
+    }
+  }
+  return lines.map((each) => join(', ', each.names));
 }
 
 function pathOf(declaration: ImportDeclaration): string {
@@ -169,16 +182,18 @@ function pathOf(declaration: ImportDeclaration): string {
 
 /**
  * Root and std paths, then `../` ones from the farthest, then `./` ones; among paths of one kind,
- * statements by their first item's rank (`*`, `* as m`, a name), then alphabetically by path.
+ * statements on one line first, then by their first item's rank (`*`, `* as m`, a name), then
+ * alphabetically by path.
  */
-function compareStatements(first: Merged, second: Merged): number {
-  const [firstPath, secondPath] = [pathOf(first[0]), pathOf(second[0])];
+function compareStatements(first: Statement, second: Statement): number {
+  const [firstPath, secondPath] = [pathOf(first.merged[0]), pathOf(second.merged[0])];
   const [firstKind, firstDepth] = pathRank(firstPath);
   const [secondKind, secondDepth] = pathRank(secondPath);
   return (
     firstKind - secondKind ||
     firstDepth - secondDepth ||
-    statementRank(first) - statementRank(second) ||
+    Number(second.isOneLine) - Number(first.isOneLine) ||
+    statementRank(first.merged) - statementRank(second.merged) ||
     alphabetically(firstPath, secondPath)
   );
 }

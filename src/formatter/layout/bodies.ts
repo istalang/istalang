@@ -2,9 +2,11 @@
  * Bodies after a header's `:`, docstrings and annotations: how an item's parts stand on lines
  * (formatter.md, Style).
  *
- * A one-item body stays on its header's line when it fits, unless the item opens a body of its own
- * outside brackets: an `else` after it would then belong to it (spec §4, "Continuing a
- * construct"). A body with a docstring is always indented, the docstring first. A braced block
+ * A one-item body stays on its header's line when the line fits a compressed form's width
+ * (compact.ts), which the caller's group decides, unless the item opens a body of its own outside
+ * brackets: an `else` after it would then belong to it (spec §4, "Continuing a construct"). A
+ * collection literal keeps its opening bracket on the header's line when it breaks; a struct
+ * literal never does, moving to the next line whole. A body with a docstring is always indented, the docstring first. A braced block
  * never moves off the header's line, since breaking before its `{` only adds a level of
  * indentation around the braces; unless a comment or annotation stands before its `{`.
  *
@@ -92,8 +94,6 @@ const huggedKinds: ReadonlySet<SyntaxNode['kind']> = new Set([
   'MapLiteral',
   'Comprehension',
   'FieldComprehension',
-  'StructLiteral',
-  'NewStructLiteral',
 ]);
 
 function hugsItsBrackets(printer: Printer, statement: SyntaxNode): boolean {

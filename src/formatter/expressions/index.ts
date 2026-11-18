@@ -13,9 +13,11 @@ import type {
   Binary,
   Expression,
   ExpressionPart,
+  Lambda,
 } from '../../compiler/syntax/expressions/index.ts';
 import { modifiersText } from '../../compiler/syntax/tokens/modifiers.ts';
 import { childrenOf, type SyntaxNode, type SyntaxTree } from '../../compiler/syntax/tree/index.ts';
+import { asCompact } from '../layout/compact.ts';
 import {
   angled,
   bracketed,
@@ -29,6 +31,26 @@ import type { Printer, Printers } from '../printer.ts';
 import { opened } from './indented-values.ts';
 
 const { group, indent, join, line, softline } = builders;
+
+/**
+ * A lambda's parameters: one bare untyped name as `fn x:`, the form the parser reads as that
+ * parameter (§3.14), unless a comment needs the parentheses; else the list in parentheses.
+ */
+function lambdaParameters(printer: Printer, node: Lambda): builders.Doc {
+  const [only, ...rest] = node.parameters;
+  const bare =
+    node.name === undefined &&
+    rest.length === 0 &&
+    only?.kind === 'Parameter' &&
+    only.name !== undefined &&
+    only.pattern === undefined &&
+    only.type === undefined &&
+    only.defaultValue === undefined &&
+    !only.isRest &&
+    !hasComments(printer, only) &&
+    !printer.hasDangling(node);
+  return bare ? [' ', printer.print(only)] : bracketed(printer, node, ['(', ')'], node.parameters);
+}
 
 type ExpressionKind = Exclude<
   Expression | ExpressionPart,
@@ -235,12 +257,12 @@ export const expressionPrinters: Printers<ExpressionKind> = {
   Parenthesized: (printer, node) => enclosed(printer, node, ['(', ')'], node.expression),
   StructLiteral: (printer, node) => [
     node.type === undefined ? 'struct' : printer.print(node.type),
-    bracketed(printer, node, ['{', '}'], node.items),
+    asCompact(bracketed(printer, node, ['{', '}'], node.items)),
   ],
   NewStructLiteral: (printer, node) => [
     'new ',
     printer.print(node.type),
-    bracketed(printer, node, ['{', '}'], node.items),
+    asCompact(bracketed(printer, node, ['{', '}'], node.items)),
   ],
   FieldInitializer: (printer, node) =>
     node.value === undefined
@@ -260,7 +282,7 @@ export const expressionPrinters: Printers<ExpressionKind> = {
     modifiersText(node.qualifiers),
     'fn',
     node.name === undefined ? '' : [' ', printer.print(node.name)],
-    bracketed(printer, node, ['(', ')'], node.parameters),
+    lambdaParameters(printer, node),
     node.returnType === undefined ? '' : [' -> ', printer.print(node.returnType)],
     ': ',
     printer.print(node.body),

@@ -1,8 +1,8 @@
 /**
- * Declarations and the module (spec §3). Every declaration with members prints them indented
- * under its `:`, one per line, so the braced form `struct Req { id: Int, value: String }` reads as
- * the indented one: the tree doesn't record which was written, and one canonical form is the
- * point. A variant's fields are its parameters, listed in parentheses as a function's are.
+ * Declarations and the module (spec §3). A declaration with members prints them in braces,
+ * `struct Req { id: Int, value: String }`, when that line fits a compressed form's width
+ * (layout/compact.ts), else indented under its `:`, one per line: the tree doesn't record which
+ * was written, and one canonical form per width is the point. A variant's fields are its parameters, listed in parentheses as a function's are.
  *
  * A docstring stands first in an indented body; a declaration without one takes it on the next
  * line, deeper (§2).
@@ -29,11 +29,20 @@ import { namedTypeText } from '../compiler/syntax/types/index.ts';
 import { opened } from './expressions/indented-values.ts';
 import { importBlock } from './imports.ts';
 import { annotated, docBelow, functionBody, indentedBody } from './layout/bodies.ts';
-import { angled, bracketed, itemLines } from './layout/lists.ts';
+import { compactGroup } from './layout/compact.ts';
+import {
+  angled,
+  blankBetween,
+  bracketed,
+  hasComments,
+  holdsComments,
+  itemLines,
+  spacedDeclaration,
+} from './layout/lists.ts';
 import type { Printer, Printers } from './printer.ts';
 import { constraintsAfterIs } from './types.ts';
 
-const { group, hardline, join } = builders;
+const { hardline, hardlineWithoutBreakParent, ifBreak, indent, join } = builders;
 
 type DeclarationKind =
   | Exclude<
@@ -67,20 +76,48 @@ function functionDoc(printer: Printer, node: FunctionDeclaration): builders.Doc 
   const body = bodyOf(printer.tree, node);
   return body === undefined
     ? [marked, header, docBelow(printer, node.doc)]
-    : [marked, group([header, ':', functionBody(printer, node.doc, body)])];
+    : [marked, compactGroup([header, ':', functionBody(printer, node.doc, body)])];
 }
 
-/** `members` indented under the header's `:`, or the docstring alone below a header without. */
+/**
+ * `members` in braces, `{ a: Int, b: Int }`, when that line fits a compressed form's width, else
+ * indented under the header's `:`; or the docstring alone below a header without members.
+ */
 function members(
   printer: Printer,
   node: SyntaxNode & Documented,
   items: readonly SyntaxNode[],
 ): builders.Doc {
-  // A comment after the braces' `{` of `struct S { …` ends the header's line.
-  const opening = printer.dangling(node);
-  return items.length === 0
-    ? [opening, docBelow(printer, node.doc)]
-    : [':', opening, indentedBody(printer, node.doc, items)];
+  if (items.length === 0) {
+    return [printer.dangling(node), docBelow(printer, node.doc)];
+  }
+  if (keepsIndented(printer, node, items)) {
+    // A comment after the braces' `{` of `struct S { …` ends the header's line.
+    return [':', printer.dangling(node), indentedBody(printer, node.doc, items)];
+  }
+  const docs = items.map((item) => printer.print(item));
+  // Line breaks only the broken form prints, which mustn't break the group as a hard line would.
+  const lines = join(hardlineWithoutBreakParent, docs);
+  return compactGroup(
+    ifBreak([':', indent([hardlineWithoutBreakParent, lines])], [' { ', join(', ', docs), ' }']),
+  );
+}
+
+/**
+ * Whether `items` stay indented whatever their width: a docstring, a comment or a blank line among
+ * them has no place on one line.
+ */
+function keepsIndented(
+  printer: Printer,
+  node: SyntaxNode & Documented,
+  items: readonly SyntaxNode[],
+): boolean {
+  return (
+    node.doc !== undefined ||
+    holdsComments(printer, node) ||
+    items.some((item) => hasComments(printer, item)) ||
+    items.some((item, index) => index > 0 && blankBetween(printer, items[index - 1] ?? item, item))
+  );
 }
 
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
@@ -98,26 +135,36 @@ export const declarationPrinters: Printers<DeclarationKind> = {
     return sections.length === 0 ? '' : [join([hardline, hardline], sections), hardline];
   },
   Annotation: (printer, node) => ['@', printer.print(node.value)],
-  FunctionDeclaration: (printer, node) => annotated(printer, node, functionDoc(printer, node)),
+  FunctionDeclaration: (printer, node) =>
+    spacedDeclaration(node, annotated(printer, node, functionDoc(printer, node))),
   StructDeclaration: (printer, node) =>
-    annotated(printer, node, [
-      'struct ',
-      named(printer, node.name, node.typeParameters),
-      members(printer, node, membersAsWritten(node)),
-    ]),
+    spacedDeclaration(
+      node,
+      annotated(printer, node, [
+        'struct ',
+        named(printer, node.name, node.typeParameters),
+        members(printer, node, membersAsWritten(node)),
+      ]),
+    ),
   SharedStructDeclaration: (printer, node) =>
-    annotated(printer, node, [
-      'shared struct ',
-      named(printer, node.name, node.typeParameters),
-      members(printer, node, membersAsWritten(node)),
-    ]),
+    spacedDeclaration(
+      node,
+      annotated(printer, node, [
+        'shared struct ',
+        named(printer, node.name, node.typeParameters),
+        members(printer, node, membersAsWritten(node)),
+      ]),
+    ),
   ExternStructDeclaration: (printer, node) =>
-    annotated(printer, node, [
-      modifiersText({ extern: 'extern', handle: node.handle }),
-      'struct ',
-      named(printer, node.name, node.typeParameters),
-      members(printer, node, membersAsWritten(node)),
-    ]),
+    spacedDeclaration(
+      node,
+      annotated(printer, node, [
+        modifiersText({ extern: 'extern', handle: node.handle }),
+        'struct ',
+        named(printer, node.name, node.typeParameters),
+        members(printer, node, membersAsWritten(node)),
+      ]),
+    ),
   ExternConstantDeclaration: (printer, node) =>
     annotated(printer, node, ['extern ', printer.print(node.name), ': ', printer.print(node.type)]),
   ContextConstantDeclaration: (printer, node) =>
@@ -129,11 +176,14 @@ export const declarationPrinters: Printers<DeclarationKind> = {
       opened(printer, '=', node.initializer),
     ]),
   EnumDeclaration: (printer, node) =>
-    annotated(printer, node, [
-      'enum ',
-      named(printer, node.name, node.typeParameters),
-      members(printer, node, membersAsWritten(node)),
-    ]),
+    spacedDeclaration(
+      node,
+      annotated(printer, node, [
+        'enum ',
+        named(printer, node.name, node.typeParameters),
+        members(printer, node, membersAsWritten(node)),
+      ]),
+    ),
   AssociatedType: (printer, node) =>
     annotated(printer, node, ['type ', printer.print(node.name), ' = ', printer.print(node.type)]),
   RequiredAssociatedType: (printer, node) =>
@@ -153,11 +203,14 @@ export const declarationPrinters: Printers<DeclarationKind> = {
         : bracketed(printer, node, ['(', ')'], node.fields),
     ]),
   TraitDeclaration: (printer, node) =>
-    annotated(printer, node, [
-      'trait ',
-      named(printer, node.name, node.typeParameters),
-      members(printer, node, node.members),
-    ]),
+    spacedDeclaration(
+      node,
+      annotated(printer, node, [
+        'trait ',
+        named(printer, node.name, node.typeParameters),
+        members(printer, node, node.members),
+      ]),
+    ),
   TypeAliasDeclaration: (printer, node) =>
     annotated(printer, node, [
       'type ',

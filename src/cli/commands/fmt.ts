@@ -1,7 +1,8 @@
 /**
  * `ista fmt [files…]`: rewrite modules in the canonical format (docs/work/done/m6-m7/formatter.md).
  *
- * With no files, every source under the project root. `--check` writes nothing and lists the files
+ * With no files, every source under the project root. A module whose banner disables formatting
+ * (`# disable-ista-formatter`) is left as it is, syntax errors and all. `--check` writes nothing and lists the files
  * that would change, for CI. A file with syntax errors is reported and left as it is: the parser
  * recovered from them by guessing, and printing its guesses would rewrite code the user didn't
  * write. Every named file is found before any is written, so a typo in the command line changes
@@ -14,7 +15,7 @@
 
 import { writeFileSync } from 'node:fs';
 import { relative, resolve } from 'node:path';
-import { formatSource } from '../../formatter/format.ts';
+import { formatSource, isFormattingDisabled } from '../../formatter/format.ts';
 import { createSourceText } from '../../foundation/text/source-text.ts';
 import { findProjectSources } from '../../project/project.ts';
 import { diskFiles } from '../../project/project-files.ts';
@@ -52,7 +53,8 @@ function fmt(files: readonly string[], check: boolean, environment: CliEnvironme
   const results = named.map((file) => {
     const path = resolve(cwd, file);
     const original = diskFiles.read(path);
-    return { path, original, ...formatSource(createSourceText(relative(cwd, path), original)) };
+    const { tree, text } = formatSource(createSourceText(relative(cwd, path), original));
+    return { path, original, tree, text: isFormattingDisabled(tree) ? original : text };
   });
   const refused = results.filter(({ text }) => text === undefined);
   reportDiagnostics(

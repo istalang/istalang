@@ -1,20 +1,20 @@
 import { describe, expect, it } from 'vitest';
 import { DocumentFormattingRequest } from 'vscode-languageserver/node';
-import { formatTree } from '../../../formatter/format.ts';
+import { formatTree, isFormattingDisabled } from '../../../formatter/format.ts';
 import { corpusDocuments, sharedCorpusClient } from '../corpus-client.test-kit.ts';
 
 const client = sharedCorpusClient();
 
 describe('formatting a document', () => {
   it.each(corpusDocuments)(
-    'gives the canonical format as one edit of the whole text, or none: $uri',
+    'gives the canonical format as one edit of the whole text, or none, as its banner asks: $uri',
     async ({ uri, text, tree }) => {
       const edits =
         (await client().connection.sendRequest(DocumentFormattingRequest.type, {
           textDocument: { uri },
           options: { tabSize: 8, insertSpaces: false },
         })) ?? [];
-      const formatted = formatTree(tree) ?? text;
+      const formatted = isFormattingDisabled(tree) ? text : (formatTree(tree) ?? text);
       const lines = text.split('\n');
       const whole = {
         start: { line: 0, character: 0 },

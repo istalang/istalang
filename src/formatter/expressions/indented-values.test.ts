@@ -1,7 +1,8 @@
 /**
  * Formatting indented values (proposal 5 §1, notes 4 and 11): an indented value is printed as
- * written, never turned into braces/brackets or back; comments and blank lines inside it are
- * preserved; and formatting is a fixpoint that reparses to the same syntax tree.
+ * written, but for a struct one short enough for braces (../compressed-forms.test.ts); comments and
+ * blank lines inside it are preserved; and formatting is a fixpoint that reparses to the same
+ * syntax tree.
  */
 
 import fc from 'fast-check';
@@ -20,6 +21,7 @@ describe('formatting indented values as written (§1, note 4)', () => {
       '  retry: Retry =',
       '    times: 3',
       '    backoffMs: 200',
+      '    jitterMilliseconds: 50',
       '',
       'const api = Service:',
       '  ...base',
@@ -35,6 +37,8 @@ describe('formatting indented values as written (§1, note 4)', () => {
       '  retry:',
       '    times: 3',
       '    backoffMs: 200',
+      '    jitterMilliseconds: 50',
+      '    maximumAttempts: 10',
     );
     expect(formatText(text)).toBe(text);
     const { actual, expected, reparsed } = roundTripOf(text);
@@ -47,6 +51,7 @@ describe('formatting indented values as written (§1, note 4)', () => {
       'fn build(rest: Settings) -> Array<Service>:',
       '  const c = new Counter:',
       '    count: 1',
+      '    label: "a counter whose label is long enough"',
       '  const mapped: Settings =',
       '    id: "main"',
       '    for field, node in ...rest: [field]: node',
@@ -56,12 +61,14 @@ describe('formatting indented values as written (§1, note 4)', () => {
       '      retry: Retry:',
       '        times: 3',
       '        backoffMs: 200',
+      '        jitterMilliseconds: 50',
       '    - Service:',
       '        name: "worker"',
       '        port: 90',
       '    -',
       '      name: "cron"',
       '      port: 100',
+      '      schedule: "every day at midnight"',
     );
     expect(formatText(text)).toBe(text);
     const { actual, expected } = roundTripOf(text);
@@ -78,6 +85,7 @@ describe('formatting indented values as written (§1, note 4)', () => {
       'const api = Service:',
       '  retry: Retry:',
       '    times: 3, backoffMs: 200',
+      '    jitterMilliseconds: 50, maximumAttempts: 10',
       '  ports:',
       '    - 80',
       '    - key: "k", count: 3',
@@ -98,6 +106,7 @@ describe('formatting indented values as written (§1, note 4)', () => {
       'fn f() -> Config:',
       '  return # after return',
       '    retries: 3',
+      '',
       'const d: Config =',
       '  retry: # after the key',
       '    times: 3',
@@ -107,7 +116,7 @@ describe('formatting indented values as written (§1, note 4)', () => {
     expect(actual).toEqual(expected);
   });
 
-  it('never turns brace/bracket literals into indented values or indented values into braces/brackets', () => {
+  it('keeps a short braced value in braces, and an array or a map indented, with the struct holding it', () => {
     const braced = lines('const a = Service{name: "api", ports: [80, 443]}');
     expect(formatText(braced)).toBe(braced);
     const indented = lines(

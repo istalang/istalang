@@ -51,6 +51,19 @@ describe('ista fmt', () => {
     expect(readFileSync(join(root, 'a.ista'), 'utf8')).toBe(formatted);
   });
 
+  it('leaves a module whose banner disables formatting as written, broken or not', async () => {
+    const disabled = `# a layout kept as written\n# disable-ista-formatter\n\n${unformatted}`;
+    const root = project({ 'a.ista': disabled, 'bad.ista': `# disable-ista-formatter\n${broken}` });
+    expect(await ista(root, 'fmt', '--check')).toEqual({ code: 0, out: '', err: '' });
+    expect(await ista(root, 'fmt')).toEqual({ code: 0, out: '', err: '' });
+    expect(readFileSync(join(root, 'a.ista'), 'utf8')).toBe(disabled);
+  });
+
+  it('formats a module whose directive stands after its first item', async () => {
+    const root = project({ 'a.ista': `${unformatted}# disable-ista-formatter\n` });
+    expect((await ista(root, 'fmt', '--check')).out).toBe('a.ista\n');
+  });
+
   it('names a file with syntax errors by its path in the project', async () => {
     const root = project({ 'lib/bad.ista': broken });
     const run = await ista(root, 'fmt');

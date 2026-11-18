@@ -16,13 +16,13 @@ import type {
 } from '../compiler/syntax/statements/index.ts';
 import type { SyntaxNode } from '../compiler/syntax/tree/index.ts';
 import type { Identifier } from '../compiler/syntax/tree/node.ts';
-import { ifChain } from './expressions/branches.ts';
 import { opened } from './expressions/indented-values.ts';
 import { annotated, body, indentedBlock } from './layout/bodies.ts';
+import { compactGroup } from './layout/compact.ts';
 import { itemLines } from './layout/lists.ts';
 import type { Printer, Printers } from './printer.ts';
 
-const { group, hardline, join } = builders;
+const { join } = builders;
 
 type StatementKind = Exclude<Statement | StatementPart | Block, { kind: 'FunctionDeclaration' }>;
 
@@ -56,14 +56,7 @@ function jump(printer: Printer, keyword: string, target: SyntaxNode | undefined)
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
 export const statementPrinters: Printers<StatementKind> = {
   Block: (printer, node) => itemLines(printer, node.statements),
-  ExpressionStatement: (printer, node) =>
-    annotated(
-      printer,
-      node,
-      node.expression.kind === 'If'
-        ? printer.withComments(node.expression, ifChain(printer, node.expression, hardline))
-        : printer.print(node.expression),
-    ),
+  ExpressionStatement: (printer, node) => annotated(printer, node, printer.print(node.expression)),
   VariableDeclaration: (printer, node) =>
     annotated(printer, node, [
       node.hold === undefined ? '' : [printer.print(node.hold), ' '],
@@ -96,7 +89,7 @@ export const statementPrinters: Printers<StatementKind> = {
     annotated(
       printer,
       node,
-      group([
+      compactGroup([
         label(printer, node.label),
         'for ',
         join(
@@ -113,7 +106,7 @@ export const statementPrinters: Printers<StatementKind> = {
     annotated(
       printer,
       node,
-      group([
+      compactGroup([
         label(printer, node.label),
         'for ',
         printer.print(node.header),
@@ -125,7 +118,7 @@ export const statementPrinters: Printers<StatementKind> = {
     annotated(
       printer,
       node,
-      group([
+      compactGroup([
         label(printer, node.label),
         'while ',
         printer.print(node.condition),

@@ -110,8 +110,8 @@ describe('formatting parenthesized and bare imports (§7)', () => {
     expect(formatted).toBe(
       lines(
         'import (',
-        '  approvePurchaseRequest, cancelPurchaseRequest, ChargeVerdict, notifyPurchaseReviewers',
-        '  rejectPurchaseRequest',
+        '  approvePurchaseRequest, cancelPurchaseRequest, ChargeVerdict',
+        '  notifyPurchaseReviewers, rejectPurchaseRequest',
         ") from 'purchase/approval/workflow'",
         '',
       ),

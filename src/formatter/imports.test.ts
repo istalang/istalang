@@ -34,7 +34,7 @@ describe('the import block', () => {
     );
   });
 
-  it('merges the imports of a path: *, each * as m by m, then the names, each star on its own line', () => {
+  it('merges the imports of a path: *, each * as m by m, then the names, on one line when they fit', () => {
     const text = lines(
       "import encode, Decoder as D from 'json'",
       "import * as j from 'json'",
@@ -42,7 +42,24 @@ describe('the import block', () => {
       "import * as a from 'json'",
     );
     expect(formatText(text)).toBe(
-      lines('import (', '  *', '  * as a', '  * as j', '  Decoder as D, encode', ") from 'json'"),
+      lines("import *, * as a, * as j, Decoder as D, encode from 'json'"),
+    );
+  });
+
+  it('puts each star on a line of its own once the import breaks, the names filling the lines after', () => {
+    const [first, second] = ['firstNamespaceAlias', 'secondNamespaceAlias'];
+    const text = lines(
+      `import (*, * as ${second}, * as ${first}, decodeAll, encodeAll) from 'module/path'`,
+    );
+    expect(formatText(text)).toBe(
+      lines(
+        'import (',
+        '  *',
+        `  * as ${first}`,
+        `  * as ${second}`,
+        '  decodeAll, encodeAll',
+        ") from 'module/path'",
+      ),
     );
   });
 
@@ -54,6 +71,25 @@ describe('the import block', () => {
     );
     expect(formatText(text)).toBe(
       lines("import * from 'time'", "import * as json from 'json'", "import a, b from 'x'"),
+    );
+  });
+
+  it('puts statements on one line before broken ones among paths of one kind, stars or not', () => {
+    const names = ['firstExportedName', 'secondExportedName', 'thirdExportedName', 'thirdOfThem'];
+    const text = lines(
+      `import ${names.join(', ')}, fifthExportedName from 'a'`,
+      "import * from 'b'",
+      "import c from 'c'",
+    );
+    expect(formatText(text)).toBe(
+      lines(
+        "import * from 'b'",
+        "import c from 'c'",
+        'import (',
+        `  fifthExportedName, ${names.slice(0, 2).join(', ')}`,
+        `  ${names.slice(2).join(', ')}`,
+        ") from 'a'",
+      ),
     );
   });
 
@@ -70,10 +106,7 @@ describe('the import block', () => {
     );
     expect(formatText(text)).toBe(
       lines(
-        'import (',
-        '  *',
-        '  d',
-        ") from 'd'",
+        "import *, d from 'd'",
         "import * as c from 'c'",
         "import b from 'b'",
         "import * as f from '../f'",
@@ -85,13 +118,13 @@ describe('the import block', () => {
     );
   });
 
-  it('fills lines with names past the width, alphabetically regardless of case', () => {
+  it('packs names past the width into lines within 66 columns, alphabetically regardless of case', () => {
     const names = Array.from({ length: 14 }, (_, index) => `name${String(index).padStart(2, '0')}`);
     const formatted = formatText(lines(`import Zed, ${names.join(', ')} from 'module/path'`)) ?? '';
     expect(formatted.split('\n')).toEqual([
       'import (',
-      `  ${names.slice(0, 12).join(', ')}`,
-      `  ${names.slice(12).join(', ')}, Zed`,
+      `  ${names.slice(0, 8).join(', ')}`,
+      `  ${names.slice(8).join(', ')}, Zed`,
       ") from 'module/path'",
       '',
     ]);
