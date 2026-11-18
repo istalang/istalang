@@ -15,25 +15,17 @@
 #   so nothing reads a row before its view binds it. The views are kept by row, in a memo the
 #   repeat's evaluation prunes to the rows it shows.
 
-import Graph, Source, Computed from '../computed'
-import Encodable, Decodable from 'json'
-import * as json from 'json'
-import (
-  FormNode
-  Field
-  Entry
-  Derivation
-  List
-  ListRow
-  RowsFrom
-  Variant
-  Shown
-  Dynamic
-  FormSnapshot
-) from './model'
+import * as json, Decodable, Encodable from 'json'
+import Computed, Graph, Source from '../computed'
 import Check from './checks'
-import Node, Option, Row, FormEvent from './tree'
-import FieldWidget, RepeatWidget, VariantWidget, LayoutWidget, ParentUi from './tree'
+import (
+  Derivation, Dynamic, Entry, Field, FormNode, FormSnapshot, List
+  ListRow, RowsFrom, Shown, Variant
+) from './model'
+import (
+  FieldWidget, FormEvent, LayoutWidget, Node, Option, ParentUi
+  RepeatWidget, Row, VariantWidget
+) from './tree'
 
 # Where a view is built: its form's graph and submit flag, and whether its parent is visible.
 struct Place:
@@ -46,16 +38,15 @@ fn within(self: Place, when: (inert fn() -> Bool)?, hide: Shown?) -> Place:
   const parent = self.visible
   const visible = match when:
     case None: parent
-    case shows: self.graph.computed(fn(): parent.read() and shows())
+    case shows:
+      self.graph.computed(fn(): parent.read() and shows())
   match hide:
     case None: ()
     case shown: shown.add(visible)
   Place{graph: self.graph, submitted: self.submitted, visible}
 
 # A node's drawing: its nodes, none when hidden, and whether it and everything in it is valid.
-struct Drawn:
-  nodes: Array<Node>
-  valid: Bool
+struct Drawn { nodes: Array<Node>, valid: Bool }
 
 # A built view node.
 struct View:
@@ -97,12 +88,11 @@ fn _failing<T>(checks: Array<Check<T>>, v: T?) -> Array<String>:
 
 # What a node shows of its errors: all of them once touched or submitted, none before.
 fn _shown(errors: Array<String>, touched: Bool, at: Place) -> Array<String>:
-  if touched or at.submitted.read(): errors
-  else: []
+  if touched or at.submitted.read(): errors else: []
 
 struct Item<T>:
   value: T
-  label: inert fn() -> String # a static option
+  label: Label # a static option
 
 struct Choice<T>:
   value: T
@@ -113,9 +103,7 @@ enum Options<T>:
   Rows(from: inert fn() -> Array<Choice<T>>, resolve: inert fn() -> Bool)
   Search(from: inert fn(String) -> Array<Choice<T>>, resolve: inert fn() -> Bool) # `from` takes the typed text, ctx.search
 
-enum Recompute:
-  RowsEdited
-  AnyEdit
+enum Recompute { RowsEdited, AnyEdit }
 
 # A field, as shown. One FieldView per writer: two views may hold one Field.
 struct FieldView<T is Inert>:
@@ -125,8 +113,8 @@ struct FieldView<T is Inert>:
   field: Field<T>? = none # none: pathless, shows `value` only
   hide: Shown? = none # the hidden node wrapping `field`, if `when` can hide it
   widget: inert fn() -> FieldWidget
-  label: inert fn() -> String
-  help: (inert fn() -> String)? = none
+  label: Label
+  help: Label? = none
   value: (inert fn() -> T?)? = none # a computed value: read-only
   default: (inert fn() -> T?)? = none # until the user edits the field
   checks: Array<Check<T>> = []
@@ -152,11 +140,21 @@ fn build<T is Inert & Encodable & Decodable>(self: FieldView<T>, at: Place) -> V
     const resolves: (inert fn() -> Bool)? = match self.options:
       case None: none
       case Items(items): {
-        options = [for it in items: Option{value: json.stringify(it.value), label: it.label()}]
+        options = [
+          for it in items: Option{
+            value: json.stringify(it.value)
+            label: it.label.toValue()
+          }
+        ]
         none
       }
       case Options.Rows(from, resolve): {
-        options = [for ch in from(): Option{value: json.stringify(ch.value), label: ch.label}]
+        options = [
+          for ch in from(): Option{
+            value: json.stringify(ch.value)
+            label: ch.label
+          }
+        ]
         resolve
       }
       case Search(from, resolve): {
@@ -168,7 +166,8 @@ fn build<T is Inert & Encodable & Decodable>(self: FieldView<T>, at: Place) -> V
         ]
         resolve
       }
-    if current != none and _maybe(resolves) == false: errors.push("Invalid choice")
+    if current != none and _maybe(resolves) == false:
+      errors.push("Invalid choice")
     const encoded: String? = match current:
       case None: none
       case v: json.stringify(v)
@@ -178,8 +177,8 @@ fn build<T is Inert & Encodable & Decodable>(self: FieldView<T>, at: Place) -> V
           key: self.key
           widget: self.widget()
           parent: _maybe(self.parent)
-          label: self.label()
-          help: _maybe(self.help)
+          label: self.label.toValue()
+          help: _maybe(self.help?.toFn())
           value: encoded
           options: options
           errors: _shown(errors, self.field?.entry.read().touched ?? false, here)
@@ -188,10 +187,12 @@ fn build<T is Inert & Encodable & Decodable>(self: FieldView<T>, at: Place) -> V
       ]
       valid: errors.length() == 0
     }
+
   fn route(event: FormEvent) -> Bool:
     match event:
       case Set(key, value) if key == self.key: {
-        if here.visible.read() and self.value == none: _ = self.field?.setJson(value)
+        if here.visible.read() and self.value == none:
+          _ = self.field?.setJson(value)
         true
       }
       case Search(key, text) if key == self.key: {
@@ -199,6 +200,7 @@ fn build<T is Inert & Encodable & Decodable>(self: FieldView<T>, at: Place) -> V
         true
       }
       case _: false
+
   View{drawn: here.graph.computed(draw), route}
 
 # A repeat: a list's rows, each with its own view.
@@ -209,7 +211,7 @@ struct RepeatView<R is FormNode & Inert>:
   list: List<R>
   hide: Shown? = none
   widget: inert fn() -> RepeatWidget
-  label: (inert fn() -> String)? = none
+  label: Label? = none
   checks: Array<Check<Array<String>>> = [] # on its rows' keys: how many rows it has
   canAdd: Bool = true # false: editableCount false, or computed rows
   rows: (inert fn() -> Array<R.Seen>)? = none # a default, or computed rows
@@ -219,30 +221,34 @@ struct RepeatView<R is FormNode & Inert>:
   item: inert fn(R, String, Place) -> View # a row's view, from its node and key
 
 # A row and the view built for it.
-struct _RowView<R>:
-  row: ListRow<R>
-  view: View
+struct _RowView<R> { row: ListRow<R>, view: View }
 
 fn build<R is FormNode & Inert>(self: RepeatView<R>, at: Place) -> View:
   const here = at.within(self.when, self.hide)
   match self.rows:
     case None: ()
     case rows: {
-      const from: RowsFrom<R.Seen> = if self.computedRows: RowsFrom.Always(rows, self.rowKey)
-      else: RowsFrom.Default(rows, self.rowKey, follow: self.recomputeUntil == Recompute.RowsEdited)
+      const from: RowsFrom<R.Seen> = if self.computedRows:
+        RowsFrom.Always(rows, self.rowKey)
+      else:
+        RowsFrom.Default(rows, self.rowKey, follow: self.recomputeUntil == Recompute.RowsEdited)
       self.list.derive(from)
     }
   const built = new Shared<Array<_RowView<R>>>{value: []}
   self.list.bind(
-    fn(row): built->value.push(_RowView{row, view: (self.item)(row.node, row.key, here)})
+    fn row: built->value.push(
+      _RowView{row, view: (self.item)(row.node, row.key, here)}
+    )
   )
   # The views of the rows shown, each built as its row was made.
   fn rowViews() -> Array<_RowView<R>>:
     let views: Array<_RowView<R>> = []
     for row in self.list.rows.read():
-      if built->value.filter(fn(b): b.row == row).at(0) is _RowView<R> as each: views.push(each)
+      if built->value.filter(fn b: b.row == row).at(0) is _RowView<R> as each:
+        views.push(each)
     built->value = views
     views
+
   fn draw() -> Drawn:
     if not here.visible.read(): return _hidden
     const views = rowViews()
@@ -251,11 +257,13 @@ fn build<R is FormNode & Inert>(self: RepeatView<R>, at: Place) -> View:
     for each in views: {
       const drawn = each.view.drawn.read()
       valid = valid and drawn.valid
-      if drawn.nodes.at(0) is Node as first: rows.push(Row{key: each.row.key, node: first})
+      if drawn.nodes.at(0) is Node as first:
+        rows.push(Row{key: each.row.key, node: first})
     }
     const keys = [for each in views: each.row.key]
-    const unique = [for i in 0..keys.length(): keys.indexOf(keys[i]) == i].every(fn(first): first)
-    const duplicates: Array<String> = if unique: [] else: ["Duplicate row keys"]
+    const unique = [for i in 0..keys.length(): keys.indexOf(keys[i]) == i].every(fn first: first)
+    const duplicates: Array<String> = if unique: []
+    else: ["Duplicate row keys"]
     const errors = [..._failing(self.checks, keys), ...duplicates]
     Drawn{
       nodes: [
@@ -263,7 +271,7 @@ fn build<R is FormNode & Inert>(self: RepeatView<R>, at: Place) -> View:
           key: self.key
           widget: self.widget()
           parent: _maybe(self.parent)
-          label: _maybe(self.label)
+          label: _maybe(self.label?.toFn())
           rows: rows
           canAdd: self.canAdd
           errors: _shown(errors, self.list.entered.read().edited, here)
@@ -271,6 +279,7 @@ fn build<R is FormNode & Inert>(self: RepeatView<R>, at: Place) -> View:
       ]
       valid: valid and errors.length() == 0
     }
+
   fn route(event: FormEvent) -> Bool:
     match event:
       case AddRow(key) if key == self.key: {
@@ -278,10 +287,13 @@ fn build<R is FormNode & Inert>(self: RepeatView<R>, at: Place) -> View:
         true
       }
       case RemoveRow(key, row) if key == self.key: {
-        if self.canAdd and here.visible.read(): self.list.remove(row)
+        if self.canAdd and here.visible.read():
+          self.list.remove(row)
         true
       }
-      case _: here.visible.read() and rowViews().some(fn(each): each.view.route(event))
+      case _:
+        here.visible.read() and rowViews().some(fn each: each.view.route(event))
+
   View{drawn: here.graph.computed(draw), route}
 
 # A variant: a picker writing its tag, and the active case's view.
@@ -292,21 +304,27 @@ struct VariantView<C is struct { [_] is FormNode & Inert }>:
   variant: Variant<C>
   hide: Shown? = none
   widget: inert fn() -> VariantWidget
-  label: (inert fn() -> String)? = none
+  label: Label? = none
   checks: Array<Check<keyof C>> = [] # on the tag: answered() where its picker is the variant's
   default: (inert fn() -> (keyof C)?)? = none # the initial case
   tag: (inert fn() -> (keyof C)?)? = none # a computed tag
   cases: { [K in keyof C]: CaseView }
 
-# A case: its label, and its body, built with the case's own scope.
-struct CaseView:
-  label: inert fn() -> String
-  body: inert fn(Place) -> View
+type Label = String | inert fn() -> String
+fn toFn(self: Label):
+  match self:
+    case String as s: fn(): s
+    case _ as f: f
 
-struct _CaseBuilt:
-  id: String
-  label: inert fn() -> String
-  view: View
+fn toValue(self: Label):
+  match self:
+    case String as s: s
+    case _ as f: f()
+
+# A case: its label, and its body, built with the case's own scope.
+struct CaseView { label: Label, body: inert fn(Place) -> View }
+
+struct _CaseBuilt { id: String, label: Label, view: View }
 
 fn build<C is struct { [_] is FormNode & Inert }>(self: VariantView<C>, at: Place) -> View:
   const here = at.within(self.when, self.hide)
@@ -325,7 +343,11 @@ fn build<C is struct { [_] is FormNode & Inert }>(self: VariantView<C>, at: Plac
     const id: String = k
     ids.push((id, k))
     cases.push(
-      _CaseBuilt{id, label: c.label, view: c.body(here.within(fn(): active() == id, none))}
+      _CaseBuilt{
+        id
+        label: c.label.toFn()
+        view: c.body(here.within(fn(): active() == id, none))
+      }
     )
   }
   fn draw() -> Drawn:
@@ -350,8 +372,13 @@ fn build<C is struct { [_] is FormNode & Inert }>(self: VariantView<C>, at: Plac
           key: key
           widget: widget()
           parent: _maybe(parent)
-          label: _maybe(label)
-          cases: [for c in cases: Option{value: c.id, label: c.label()}]
+          label: _maybe(label?.toFn())
+          cases: [
+            for c in cases: Option{
+              value: c.id
+              label: c.label.toValue()
+            }
+          ]
           active: current
           body: body
           errors: _shown(errors, entry.touched, here)
@@ -359,13 +386,17 @@ fn build<C is struct { [_] is FormNode & Inert }>(self: VariantView<C>, at: Plac
       ]
       valid: valid and errors.length() == 0
     }
+
   fn route(event: FormEvent) -> Bool:
     match event:
       case Set(eventKey, value) if eventKey == key: {
-        if here.visible.read() and computedTag == none: _pick(tag, ids, value)
+        if here.visible.read() and computedTag == none:
+          _pick(tag, ids, value)
         true
       }
-      case _: cases.some(fn(c): c.id == active() and c.view.route(event))
+      case _:
+        cases.some(fn c: c.id == active() and c.view.route(event))
+
   View{drawn: here.graph.computed(draw), route}
 
 # What a variant's picker writes, its case id JSON-encoded, into the tag.
@@ -376,7 +407,12 @@ fn _pick<K is Inert>(tag: Field<K>, ids: Array<(String, K)>, value: String):
       return
     }
   tag.entry.set(
-    Entry{value: tag.entry.read().value, edited: true, touched: true, parseError: "Invalid option"}
+    Entry{
+      value: tag.entry.read().value
+      edited: true
+      touched: true
+      parseError: "Invalid option"
+    }
   )
 
 # A layout: its children in place, and the rules it shows once submitted.
@@ -385,7 +421,7 @@ struct LayoutView:
   parent: (inert fn() -> ParentUi)? = none
   when: (inert fn() -> Bool)? = none
   widget: inert fn() -> LayoutWidget
-  label: (inert fn() -> String)? = none # control layouts only
+  label: Label? = none # control layouts only
   checks: Array<Check<Unit>> = [] # rules; an `errors` layout shows only these
   children: Array<inert fn(Place) -> View> = []
 
@@ -408,16 +444,17 @@ fn build(self: LayoutView, at: Place) -> View:
           key: self.key
           widget: self.widget()
           parent: _maybe(self.parent)
-          label: _maybe(self.label)
+          label: _maybe(self.label?.toFn())
           errors: _shown(errors, false, here)
           children: nodes
         )
       ]
       valid: valid and errors.length() == 0
     }
+
   View{
     drawn: here.graph.computed(draw)
-    route: fn(event): children.some(fn(child): child.route(event))
+    route: fn event: children.some(fn child: child.route(event))
   }
 
 # A mounted form chosen at run time. The host runs its compiled module as an instance of its own,
@@ -429,7 +466,7 @@ struct DynamicView:
   when: (inert fn() -> Bool)? = none
   value: Dynamic
   hide: Shown? = none
-  label: (inert fn() -> String)? = none
+  label: Label? = none
   schema: inert fn() -> FormSnapshot?
 
 fn build(self: DynamicView, at: Place) -> View:
@@ -439,13 +476,14 @@ fn build(self: DynamicView, at: Place) -> View:
     match self.schema():
       case None: _hidden
       case form: {
-        const errors: Array<String> = if self.value.value.read() == none: ["Required"] else: []
+        const errors: Array<String> = if self.value.value.read() == none: ["Required"]
+        else: []
         Drawn{
           nodes: [
             Node.Mount(
               key: self.key
               parent: _maybe(self.parent)
-              label: _maybe(self.label)
+              label: _maybe(self.label?.toFn())
               form: form
               errors: _shown(errors, false, here)
             )
@@ -453,6 +491,7 @@ fn build(self: DynamicView, at: Place) -> View:
           valid: errors.length() == 0
         }
       }
+
   fn route(event: FormEvent) -> Bool:
     match event:
       case Set(key, value) if key == self.key: {
@@ -460,4 +499,5 @@ fn build(self: DynamicView, at: Place) -> View:
         true
       }
       case _: false
+
   View{drawn: here.graph.computed(draw), route}

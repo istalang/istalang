@@ -10,29 +10,50 @@
   },
   "params": {
     "region": "text",
-    "tier": { "type": "literal", "values": ["basic", "gold"] },
+    "tier": {
+      "type": "literal",
+      "values": ["basic", "gold"]
+    },
     "products": {
       "type": "array",
-      "items": { "type": "object", "properties": { "sku": "text", "name": "text" } }
+      "items": {
+        "type": "object",
+        "properties": {
+          "sku": "text",
+          "name": "text"
+        }
+      }
     },
-    "owner": { "ista": "crm.User" }
+    "owner": {
+      "ista": "crm.User"
+    }
   },
   "types": {
-    "data.company.vatId": { "type": "text", "pattern": "^[A-Z]{2}[0-9]{6,12}$" }
+    "data.company.vatId": {
+      "type": "text",
+      "pattern": "^[A-Z]{2}[0-9]{6,12}$"
+    }
   },
   "localization": {
-    "Company": { "de": "Unternehmen", "fr": "Entreprise" },
+    "Company": {
+      "de": "Unternehmen",
+      "fr": "Entreprise"
+    },
     "Only ${data.company.employees} employees allowed for a ${data.company.size} company": {
       "de": "Nur $0 Mitarbeitende für ein Unternehmen der Größe $1 erlaubt"
     }
   },
   "defs": {
     "address": {
-      "params": { "country": "text" },
+      "params": {
+        "country": "text"
+      },
       "root": {
         "node": "layout",
         "widget": "labeled",
-        "ui": { "labels": "top" },
+        "ui": {
+          "labels": "top"
+        },
         "children": [
           {
             "node": "field",
@@ -40,12 +61,17 @@
             "type": "text",
             "widget": "input",
             "label": "Street",
-            "constraints": { "required": true, "maxLength": 120 }
+            "constraints": {
+              "required": true,
+              "maxLength": 120
+            }
           },
           {
             "node": "layout",
             "widget": "hstack",
-            "ui": { "gap": "sm" },
+            "ui": {
+              "gap": "sm"
+            },
             "children": [
               {
                 "node": "field",
@@ -53,8 +79,16 @@
                 "type": "text",
                 "widget": "input",
                 "label": "ZIP",
-                "constraints": { "pattern": { "expr": "logic.zipPattern(ctx.params.country)" } },
-                "ui": { "parent": { "grow": 1 } }
+                "constraints": {
+                  "pattern": {
+                    "expr": "logic.zipPattern(ctx.params.country)"
+                  }
+                },
+                "ui": {
+                  "parent": {
+                    "grow": 1
+                  }
+                }
               },
               {
                 "node": "field",
@@ -62,7 +96,11 @@
                 "type": "text",
                 "widget": "input",
                 "label": "City",
-                "ui": { "parent": { "grow": 3 } }
+                "ui": {
+                  "parent": {
+                    "grow": 3
+                  }
+                }
               }
             ]
           }
@@ -87,8 +125,14 @@
             "as": "child",
             "widget": "list",
             "label": "Subcategories",
-            "ui": { "addLabel": "Add subcategory" },
-            "item": { "node": "ref", "form": "#category", "path": "child" }
+            "ui": {
+              "addLabel": "Add subcategory"
+            },
+            "item": {
+              "node": "ref",
+              "form": "#category",
+              "path": "child"
+            }
           }
         ]
       }
@@ -101,24 +145,35 @@
       {
         "node": "layout",
         "widget": "step",
-        "ui": { "title": "Company", "labels": "start" },
+        "ui": {
+          "title": "Company",
+          "labels": "start"
+        },
         "children": [
           {
             "node": "layout",
             "widget": "markdown",
             "ui": {
-              "markdown": { "expr": "`Welcome, **${ctx.user.name}**. Tier: ${ctx.params.tier}.`" }
+              "markdown": {
+                "expr": "`Welcome, **${ctx.user.name}**. Tier: ${ctx.params.tier}.`"
+              }
             }
           },
           {
             "node": "layout",
             "widget": "section",
-            "ui": { "title": "Company", "description": "Legal details", "collapsible": false },
+            "ui": {
+              "title": "Company",
+              "description": "Legal details",
+              "collapsible": false
+            },
             "children": [
               {
                 "node": "layout",
                 "widget": "hstack",
-                "ui": { "gap": "md" },
+                "ui": {
+                  "gap": "md"
+                },
                 "children": [
                   {
                     "node": "field",
@@ -127,8 +182,17 @@
                     "widget": "input",
                     "label": "Name",
                     "help": "As registered",
-                    "ui": { "placeholder": "ACME Ltd.", "parent": { "grow": 2 } },
-                    "constraints": { "required": true, "minLength": 2, "maxLength": 100 }
+                    "ui": {
+                      "placeholder": "ACME Ltd.",
+                      "parent": {
+                        "grow": 2
+                      }
+                    },
+                    "constraints": {
+                      "required": true,
+                      "minLength": 2,
+                      "maxLength": 100
+                    }
                   },
                   {
                     "node": "field",
@@ -136,7 +200,11 @@
                     "type": "text",
                     "widget": "input",
                     "label": "VAT ID",
-                    "ui": { "parent": { "grow": 1 } }
+                    "ui": {
+                      "parent": {
+                        "grow": 1
+                      }
+                    }
                   }
                 ]
               },
@@ -146,7 +214,9 @@
                 "type": "text",
                 "widget": "input",
                 "label": "Email",
-                "constraints": { "format": "email" }
+                "constraints": {
+                  "format": "email"
+                }
               },
               {
                 "node": "field",
@@ -171,8 +241,14 @@
                 "widget": "textarea",
                 "label": "Description",
                 "default": "",
-                "ui": { "rows": { "expr": "if ctx.params.tier == \"gold\": 8 else: 4" } },
-                "constraints": { "maxLength": 2000 }
+                "ui": {
+                  "rows": {
+                    "expr": "if ctx.params.tier == \"gold\": 8 else: 4"
+                  }
+                },
+                "constraints": {
+                  "maxLength": 2000
+                }
               },
               {
                 "node": "field",
@@ -183,8 +259,14 @@
                 "default": "small",
                 "options": {
                   "items": [
-                    { "value": "small", "label": "Small" },
-                    { "value": "medium", "label": "Medium" },
+                    {
+                      "value": "small",
+                      "label": "Small"
+                    },
+                    {
+                      "value": "medium",
+                      "label": "Medium"
+                    },
                     {
                       "value": "large",
                       "label": {
@@ -200,12 +282,23 @@
                 "type": "text",
                 "widget": "radio",
                 "label": "Legal form",
-                "ui": { "orientation": "horizontal" },
+                "ui": {
+                  "orientation": "horizontal"
+                },
                 "options": {
                   "items": [
-                    { "value": "llc", "label": "LLC" },
-                    { "value": "plc", "label": "PLC" },
-                    { "value": "sole", "label": "Sole trader" }
+                    {
+                      "value": "llc",
+                      "label": "LLC"
+                    },
+                    {
+                      "value": "plc",
+                      "label": "PLC"
+                    },
+                    {
+                      "value": "sole",
+                      "label": "Sole trader"
+                    }
                   ]
                 }
               },
@@ -216,7 +309,10 @@
                 "widget": "input",
                 "label": "Share capital",
                 "when": "data.company.legalForm != \"sole\"",
-                "constraints": { "min": 0, "multipleOf": 1000 }
+                "constraints": {
+                  "min": 0,
+                  "multipleOf": 1000
+                }
               },
               {
                 "node": "field",
@@ -243,7 +339,12 @@
                 "type": "date",
                 "widget": "datepicker",
                 "label": "Founded",
-                "constraints": { "min": "1800-01-01", "max": { "expr": "ctx.user.today" } }
+                "constraints": {
+                  "min": "1800-01-01",
+                  "max": {
+                    "expr": "ctx.user.today"
+                  }
+                }
               },
               {
                 "node": "field",
@@ -251,8 +352,13 @@
                 "type": "file",
                 "widget": "upload",
                 "label": "Logo",
-                "ui": { "dropzone": true },
-                "constraints": { "accept": ["image/png", "image/svg+xml"], "maxBytes": 1048576 }
+                "ui": {
+                  "dropzone": true
+                },
+                "constraints": {
+                  "accept": ["image/png", "image/svg+xml"],
+                  "maxBytes": 1048576
+                }
               },
               {
                 "node": "field",
@@ -272,7 +378,11 @@
                 "form": "#address",
                 "path": "data.company.address",
                 "when": "data.company.country != none",
-                "params": { "country": { "expr": "data.company.country ?? \"\"" } }
+                "params": {
+                  "country": {
+                    "expr": "data.company.country ?? \"\""
+                  }
+                }
               },
               {
                 "node": "field",
@@ -297,7 +407,9 @@
             "widget": "autocomplete",
             "label": "Account manager",
             "store": "snapshot",
-            "ui": { "placeholder": "Type a name" },
+            "ui": {
+              "placeholder": "Type a name"
+            },
             "options": {
               "from": "crm.users(ctx.search)",
               "value": "row.id",
@@ -321,7 +433,9 @@
       {
         "node": "layout",
         "widget": "step",
-        "ui": { "title": "Catalog" },
+        "ui": {
+          "title": "Catalog"
+        },
         "children": [
           {
             "node": "repeat",
@@ -354,7 +468,11 @@
                   "widget": "input",
                   "label": "Product",
                   "default": "",
-                  "ui": { "parent": { "width": 240 } }
+                  "ui": {
+                    "parent": {
+                      "width": 240
+                    }
+                  }
                 },
                 {
                   "node": "field",
@@ -362,8 +480,14 @@
                   "type": "number",
                   "widget": "input",
                   "label": "Price",
-                  "constraints": { "min": 0 },
-                  "ui": { "parent": { "width": 100 } }
+                  "constraints": {
+                    "min": 0
+                  },
+                  "ui": {
+                    "parent": {
+                      "width": 100
+                    }
+                  }
                 },
                 {
                   "node": "repeat",
@@ -371,7 +495,9 @@
                   "as": "region",
                   "widget": "multiselect",
                   "label": "Regions",
-                  "constraints": { "required": true },
+                  "constraints": {
+                    "required": true
+                  },
                   "item": {
                     "node": "field",
                     "path": "region",
@@ -395,10 +521,15 @@
             "as": "contact",
             "widget": "list",
             "label": "Contacts",
-            "ui": { "addLabel": "Add contact", "reorderable": true },
+            "ui": {
+              "addLabel": "Add contact",
+              "reorderable": true
+            },
             "constraints": {
               "minItems": 1,
-              "maxItems": { "expr": "if ctx.params.tier == \"gold\": 10 else: 3" }
+              "maxItems": {
+                "expr": "if ctx.params.tier == \"gold\": 10 else: 3"
+              }
             },
             "item": {
               "node": "layout",
@@ -410,7 +541,11 @@
                   "type": "text",
                   "widget": "input",
                   "label": "Name",
-                  "ui": { "parent": { "span": 1 } }
+                  "ui": {
+                    "parent": {
+                      "span": 1
+                    }
+                  }
                 },
                 {
                   "node": "field",
@@ -418,8 +553,14 @@
                   "type": "text",
                   "widget": "input",
                   "label": "Email",
-                  "constraints": { "format": "email" },
-                  "ui": { "parent": { "span": 1 } }
+                  "constraints": {
+                    "format": "email"
+                  },
+                  "ui": {
+                    "parent": {
+                      "span": 1
+                    }
+                  }
                 },
                 {
                   "node": "field",
@@ -433,7 +574,11 @@
                   "node": "ref",
                   "form": "catalog:contact-card@^1",
                   "path": "contact.card",
-                  "params": { "name": { "expr": "contact.name ?? \"\"" } }
+                  "params": {
+                    "name": {
+                      "expr": "contact.name ?? \"\""
+                    }
+                  }
                 }
               ]
             }
@@ -444,7 +589,9 @@
             "as": "cert",
             "widget": "checkboxes",
             "label": "Certifications",
-            "ui": { "orientation": "vertical" },
+            "ui": {
+              "orientation": "vertical"
+            },
             "item": {
               "node": "field",
               "path": "cert",
@@ -453,8 +600,14 @@
               "label": "Certification",
               "options": {
                 "items": [
-                  { "value": "iso9001", "label": "ISO 9001" },
-                  { "value": "iso14001", "label": "ISO 14001" }
+                  {
+                    "value": "iso9001",
+                    "label": "ISO 9001"
+                  },
+                  {
+                    "value": "iso14001",
+                    "label": "ISO 14001"
+                  }
                 ]
               }
             }
@@ -465,8 +618,15 @@
             "as": "cat",
             "widget": "cards",
             "label": "Categories",
-            "ui": { "title": "Category", "addLabel": "Add category" },
-            "item": { "node": "ref", "form": "#category", "path": "cat" }
+            "ui": {
+              "title": "Category",
+              "addLabel": "Add category"
+            },
+            "item": {
+              "node": "ref",
+              "form": "#category",
+              "path": "cat"
+            }
           },
           {
             "node": "repeat",
@@ -489,7 +649,9 @@
       {
         "node": "layout",
         "widget": "step",
-        "ui": { "title": "Payment" },
+        "ui": {
+          "title": "Payment"
+        },
         "children": [
           {
             "node": "field",
@@ -499,9 +661,18 @@
             "label": "Method",
             "options": {
               "items": [
-                { "value": "card", "label": "Card" },
-                { "value": "wire", "label": "Wire" },
-                { "value": "invoice", "label": "Invoice" }
+                {
+                  "value": "card",
+                  "label": "Card"
+                },
+                {
+                  "value": "wire",
+                  "label": "Wire"
+                },
+                {
+                  "value": "invoice",
+                  "label": "Invoice"
+                }
               ]
             }
           },
@@ -512,7 +683,9 @@
             "tag": "method",
             "widget": "panel",
             "label": "Payment details",
-            "ui": { "title": "Details" },
+            "ui": {
+              "title": "Details"
+            },
             "cases": {
               "card": {
                 "label": "Card",
@@ -533,7 +706,9 @@
                       "type": "text",
                       "widget": "input",
                       "label": "Last 4 digits",
-                      "constraints": { "pattern": "^[0-9]{4}$" }
+                      "constraints": {
+                        "pattern": "^[0-9]{4}$"
+                      }
                     }
                   ]
                 }
@@ -551,7 +726,9 @@
                       "type": "number",
                       "widget": "raw",
                       "label": "Amount",
-                      "constraints": { "min": 0 }
+                      "constraints": {
+                        "min": 0
+                      }
                     },
                     {
                       "node": "field",
@@ -561,8 +738,14 @@
                       "label": "Currency",
                       "options": {
                         "items": [
-                          { "value": "EUR", "label": "€" },
-                          { "value": "USD", "label": "$" }
+                          {
+                            "value": "EUR",
+                            "label": "€"
+                          },
+                          {
+                            "value": "USD",
+                            "label": "$"
+                          }
                         ]
                       }
                     }
@@ -578,7 +761,10 @@
                   "widget": "input",
                   "label": "Payment terms (days)",
                   "default": 30,
-                  "constraints": { "min": 7, "max": 90 }
+                  "constraints": {
+                    "min": 7,
+                    "max": 90
+                  }
                 }
               }
             }
@@ -602,8 +788,14 @@
                   "label": "Time window",
                   "options": {
                     "items": [
-                      { "value": "am", "label": "Morning" },
-                      { "value": "pm", "label": "Afternoon" }
+                      {
+                        "value": "am",
+                        "label": "Morning"
+                      },
+                      {
+                        "value": "pm",
+                        "label": "Afternoon"
+                      }
                     ]
                   }
                 }
@@ -647,7 +839,9 @@
       {
         "node": "layout",
         "widget": "step",
-        "ui": { "title": "Review" },
+        "ui": {
+          "title": "Review"
+        },
         "children": [
           {
             "node": "layout",
@@ -682,7 +876,11 @@
               "expr": "if ctx.params.tier == \"gold\": \"Notes for your account manager\" else: \"Notes\""
             },
             "default": "",
-            "constraints": { "required": { "expr": "(data.score ?? 0) > 70" } }
+            "constraints": {
+              "required": {
+                "expr": "(data.score ?? 0) > 70"
+              }
+            }
           },
           {
             "node": "field",
@@ -691,10 +889,18 @@
             "widget": "checkbox",
             "label": "I accept the terms",
             "constraints": {
-              "rules": [{ "check": "data.agree == true", "message": "Please accept the terms" }]
+              "rules": [
+                {
+                  "check": "data.agree == true",
+                  "message": "Please accept the terms"
+                }
+              ]
             }
           },
-          { "node": "layout", "widget": "divider" },
+          {
+            "node": "layout",
+            "widget": "divider"
+          },
           {
             "node": "layout",
             "widget": "errors",
