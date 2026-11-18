@@ -23,7 +23,7 @@
 import type { Invalid } from '../../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
-import { breakSeparatesItems } from '../layout/item-breaks.ts';
+import { breakSeparatesItems, noItemOpeners } from '../layout/item-breaks.ts';
 import type { Parser } from '../parser.ts';
 import {
   type BracketOpener,
@@ -184,8 +184,6 @@ function atListSeparator(parser: Parser, itemOpeners: ReadonlySet<CursorKind>): 
   const { cursor } = parser;
   return cursor.at(',') || cursor.at(';') || breakSeparatesItems(parser, 0, itemOpeners);
 }
-
-const noItemOpeners: ReadonlySet<CursorKind> = new Set();
 
 /**
  * Takes the separator next, if any: a `,`, a `;` in its place, reported once (`;` separates only

@@ -29,20 +29,12 @@ import { namedTypeText } from '../compiler/syntax/types/index.ts';
 import { opened } from './expressions/indented-values.ts';
 import { importBlock } from './imports.ts';
 import { annotated, docBelow, functionBody, indentedBody } from './layout/bodies.ts';
-import { compactGroup } from './layout/compact.ts';
-import {
-  angled,
-  blankBetween,
-  bracketed,
-  hasComments,
-  holdsComments,
-  itemLines,
-  spacedDeclaration,
-} from './layout/lists.ts';
+import { bracedOrIndented, compactGroup } from './layout/compact.ts';
+import { angled, bracketed, itemLines, keepsItsLines, spacedDeclaration } from './layout/lists.ts';
 import type { Printer, Printers } from './printer.ts';
 import { constraintsAfterIs } from './types.ts';
 
-const { hardline, hardlineWithoutBreakParent, ifBreak, indent, join } = builders;
+const { hardline, join } = builders;
 
 type DeclarationKind =
   | Exclude<
@@ -91,33 +83,18 @@ function members(
   if (items.length === 0) {
     return [printer.dangling(node), docBelow(printer, node.doc)];
   }
-  if (keepsIndented(printer, node, items)) {
+  // A docstring has no place on one line, nor do the comments and blank lines `keepsItsLines` finds.
+  if (node.doc !== undefined || keepsItsLines(printer, node, items)) {
     // A comment after the braces' `{` of `struct S { …` ends the header's line.
     return [':', printer.dangling(node), indentedBody(printer, node.doc, items)];
   }
   const docs = items.map((item) => printer.print(item));
-  // Line breaks only the broken form prints, which mustn't break the group as a hard line would.
-  const lines = join(hardlineWithoutBreakParent, docs);
-  return compactGroup(
-    ifBreak([':', indent([hardlineWithoutBreakParent, lines])], [' { ', join(', ', docs), ' }']),
-  );
-}
-
-/**
- * Whether `items` stay indented whatever their width: a docstring, a comment or a blank line among
- * them has no place on one line.
- */
-function keepsIndented(
-  printer: Printer,
-  node: SyntaxNode & Documented,
-  items: readonly SyntaxNode[],
-): boolean {
-  return (
-    node.doc !== undefined ||
-    holdsComments(printer, node) ||
-    items.some((item) => hasComments(printer, item)) ||
-    items.some((item, index) => index > 0 && blankBetween(printer, items[index - 1] ?? item, item))
-  );
+  return bracedOrIndented({
+    before: '',
+    braced: [' { ', join(', ', docs), ' }'],
+    header: ':',
+    rows: (newline) => join(newline, docs),
+  });
 }
 
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.

@@ -19,8 +19,8 @@ import { checkProgram } from '../src/compiler/checker/check.ts';
 import { diagnosticsWithoutPlaces } from '../src/compiler/compile.test-kit.ts';
 import { diagnose } from '../src/compiler/compile.ts';
 import type { Program } from '../src/compiler/program/program.ts';
-import { formattableInputs } from '../src/formatter/format.test-kit.ts';
-import { formatText } from '../src/formatter/format.ts';
+import { formattableInputs, parseText } from '../src/formatter/format.test-kit.ts';
+import { formatTree } from '../src/formatter/format.ts';
 import { tempProject } from '../src/project/project.test-kit.ts';
 import { findProjectSources, loadProject } from '../src/project/project.ts';
 import { corpusDirectory, runPrograms } from './corpus/programs.ts';
@@ -98,11 +98,15 @@ describe('ista fmt over the corpus', () => {
 });
 
 describe('ista fmt over line breaks (spec §2: `\\n`, `\\r\\n` or a lone `\\r`)', () => {
-  /** Each formattable input formatted as written, with `\n`, once for both line breaks. */
-  let lfTwins: readonly ReturnType<typeof formatText>[];
+  /**
+   * Each formattable input formatted as written, with `\n`, once for both line breaks, by the
+   * formatter itself, which formats a module its banner keeps as written too.
+   */
+  let lfTwins: readonly (string | undefined)[];
+  const formatted = (text: string) => formatTree(parseText(text));
 
   beforeAll(() => {
-    lfTwins = formattableInputs.map(({ text }) => formatText(text));
+    lfTwins = formattableInputs.map(({ text }) => formatted(text));
   });
 
   it.each([
@@ -110,7 +114,7 @@ describe('ista fmt over line breaks (spec §2: `\\n`, `\\r\\n` or a lone `\\r`)'
     ['a lone-CR', '\r'],
   ])('formats %s module as its LF twin', (_, lineBreak) => {
     const different = formattableInputs.filter(
-      ({ text }, index) => formatText(text.replaceAll('\n', lineBreak)) !== lfTwins[index],
+      ({ text }, index) => formatted(text.replaceAll('\n', lineBreak)) !== lfTwins[index],
     );
     expect(different.map(({ name }) => name)).toEqual([]);
   });

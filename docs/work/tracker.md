@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-11-11
-last_updated: 2026-11-17
+last_updated: 2026-11-18
 tags: [tracker]
 ---
 
@@ -38,7 +38,7 @@ tags: [tracker]
 
 ## Filed
 
-Open items only: an item is removed once it is resolved; git history keeps it. Each group numbers its own items and keeps counting up: the next ids are F40, P59, Q85, B123. Items filed before 2026-10-28 shared one `D` series; older docs and git history keep the closed `D` ids.
+Open items only: an item is removed once it is resolved; git history keeps it. Each group numbers its own items and keeps counting up: the next ids are F40, P59, Q89, B123. Items filed before 2026-10-28 shared one `D` series; older docs and git history keep the closed `D` ids.
 
 Size: easy (one short, local change), medium (several files or a design choice inside one layer), big (cross-layer, or a decision first). Depends on: what must happen first, or "none" when it can be done now.
 
@@ -171,6 +171,9 @@ DRY, double standards, cohesion, layering, dead or misplaced code.
 | P58 | Every entry that read an `any` type's variants is lowered again each time that type gains one (lowering/tables/function-table.ts), so the rewrites grow with the square of the conversions into one `any` type met late. Std tests and FormBuilder don't show it; measure a trait-object-heavy program before it matters. | medium | none | b115-mocks review 2026-11-18 |
 | Q84 | A conversion or wrapping entry stands in the prelude as a whole, so a panic trace through a wrapped closure shows a synthetic prelude frame. Hide synthesized conversion frames in traces (runtime/run/traces.ts), as a `rebound` frame is hidden. | easy | none | b115-mocks review 2026-11-18 |
 | Q85 | The rule "a test taking more than a third of its limit under load is made faster, sliced, or given the longer limit" (vitest.config.ts) lives only in a comment: nothing reports a test drifting toward its limit, so the next drift surfaces as a flaky timeout again. A reporter comparing each test's and hook's duration with its own limit (warning past a third) would hold it. | small | none | test-timeouts review 2026-11-18 |
+| Q86 | The formatter asks whether a node has comments two ways: through placement (`hasComments`, `Printer.hasDangling`, `Printer.extentOf`) and by scanning `tree.comments` by span (`holdsComments` and `commentedBefore` in formatter/, `isFormattingDisabled`, comment-placement.ts `headsModule`). The scans cost O(comments) a call and can disagree with placement. One query family on `Printer` over placed comments, its line breaks read through foundation/text. | medium | none | formatter review 2026-11-18 |
+| Q87 | A list's item openers come two ways (parser/layout/item-breaks.ts): `@` hard-coded for every list in `breakSeparatesItems`, `*` passed by the import list through `parseDelimited`'s `itemOpeners`. Pass `@` as an opener of the lists whose items take annotations. | small | none | formatter review 2026-11-18 |
+| Q88 | A broken import's names are packed into 66-column lines by hand (formatter/imports.ts `packedNames`), since the compact reserve (layout/compact.ts) doesn't reach Prettier's `fill`, which measures each separator against the full width. Teach compact.ts to narrow a `fill`, and pack with `fill` again. | medium | none | formatter review 2026-11-18 |
 | F39 | `Mock<F>` can't name its calls' type: a struct takes no pack, and a type `match` can't `infer` `Fn`'s parameter tuple (`case Fn<infer A, infer R, infer K is Mark, infer S is Sendability>` fails 5690/5131) nor reduce over a generic `Fn<A, R, M>`. So testing.ista recovers it through a transient rendezvous (`_offer`, `_metCalls`). Either feature lets `Mock` hold `_calls: Shared<Array<ArgsOf<F>>>` and deletes the rendezvous; weigh against the spec cost. | medium | none | b115-mocks review 2026-11-17 |
 
 ### Behaviour and correctness (B)

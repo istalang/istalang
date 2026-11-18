@@ -7,11 +7,17 @@ import { corpusFiles } from '../../test/corpus/programs.ts';
 import { specExamples } from '../../test/corpus/spec-examples.ts';
 import { parse } from '../compiler/parser/parse.ts';
 import { scan } from '../compiler/scanner/scan.ts';
-import { extentIn, nodesUnder, type SyntaxTree } from '../compiler/syntax/tree/index.ts';
-import { dump } from '../compiler/syntax/tree/tree.test-kit.ts';
+import {
+  extentIn,
+  nodesUnder,
+  type SyntaxNode,
+  type SyntaxTree,
+} from '../compiler/syntax/tree/index.ts';
+import { dump, dumpViewed } from '../compiler/syntax/tree/tree.test-kit.ts';
 import { lineMapOf, splitLines } from '../foundation/text/line-map.ts';
 import { createSourceText } from '../foundation/text/source-text.ts';
 import { textOf } from '../foundation/text/span.ts';
+import { isStructShaped } from './expressions/struct-values.ts';
 import { formatTree } from './format.ts';
 import { nodesInBrackets } from './layout/brackets.ts';
 
@@ -75,11 +81,20 @@ function dumpAsFormatted(tree: SyntaxTree): string {
       : [],
   );
   const others = items.filter((item) => item.kind !== 'ImportDeclaration');
-  return [...imported.toSorted(), ...others.map((item) => dump(tree, item))]
-    .join('\n')
-    .replaceAll('(IndentedValue ', '(StructLiteral ')
-    .replaceAll('(NewStructLiteral ', '(StructLiteral ')
-    .replaceAll(' isNew [', ' [');
+  return [...imported.toSorted(), ...others.map((item) => dumpViewed(tree, item, asBraced))].join(
+    '\n',
+  );
+}
+
+/** A struct value as the literal in braces it builds; any other node as it is. */
+function asBraced(node: SyntaxNode): SyntaxNode {
+  if (node.kind !== 'IndentedValue' || !isStructShaped(node)) {
+    return node;
+  }
+  const { span, type, entries: items } = node;
+  return node.isNew && type !== undefined
+    ? { kind: 'NewStructLiteral', span, type, items }
+    : { kind: 'StructLiteral', span, type, items };
 }
 
 /** The text of each comment of `tree`, in order. */

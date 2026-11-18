@@ -19,7 +19,7 @@ import { extentIn, nodesUnder, type SyntaxNode } from '../compiler/syntax/tree/i
 import { dump } from '../compiler/syntax/tree/tree.test-kit.ts';
 import { encloses, type Span } from '../foundation/text/span.ts';
 import { commentTexts, formattableInputs, parseText } from './format.test-kit.ts';
-import { formatText } from './format.ts';
+import { formatTree } from './format.ts';
 import { nodesInBrackets } from './layout/brackets.ts';
 
 interface Gap {
@@ -115,7 +115,8 @@ describe('whitespace where line breaks mean nothing', () => {
             dump(changed, changed.root) === dump(original, original.root) &&
             commentTexts(changed).join('\n') === commentTexts(original).join('\n'),
         );
-        expect(formatText(variant)).toBe(formatText(text));
+        // The formatter itself, which formats a module its banner keeps as written too.
+        expect(formatTree(parseText(variant))).toBe(formatTree(parseText(text)));
       }),
       { numRuns: 300 },
     );

@@ -24,7 +24,7 @@ import { spanIn } from '../../compiler/syntax/tree/positions.ts';
 import { indentationAt, splitLines } from '../../foundation/text/line-map.ts';
 import { createSourceText } from '../../foundation/text/source-text.ts';
 import { textOf } from '../../foundation/text/span.ts';
-import { oneLine } from '../layout/lists.ts';
+import { oneLine } from '../layout/widths.ts';
 import type { Printer, Printers } from '../printer.ts';
 
 const { lineSuffixBoundary, literalline, markAsRoot } = builders;

@@ -35,6 +35,9 @@ import type { CursorKind } from '../cursor/index.ts';
 import type { Parser } from '../parser.ts';
 import { annotationOpener } from './annotations.ts';
 
+/** The item openers of a list whose items start with nothing of their own. */
+export const noItemOpeners: ReadonlySet<CursorKind> = new Set();
+
 /**
  * Whether the line break before the token `ahead` positions on separates two items of the
  * enclosing list, where an item could end: the token starts a line and can start an item, by the
@@ -43,7 +46,7 @@ import { annotationOpener } from './annotations.ts';
 export function breakSeparatesItems(
   parser: Parser,
   ahead = 0,
-  itemOpeners: ReadonlySet<CursorKind> = new Set(),
+  itemOpeners: ReadonlySet<CursorKind> = noItemOpeners,
 ): boolean {
   const { cursor } = parser;
   if (!cursor.startsLineInList(ahead)) {

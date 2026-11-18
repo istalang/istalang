@@ -15,7 +15,7 @@
 
 import { writeFileSync } from 'node:fs';
 import { relative, resolve } from 'node:path';
-import { formatSource, isFormattingDisabled } from '../../formatter/format.ts';
+import { formatSource } from '../../formatter/format.ts';
 import { createSourceText } from '../../foundation/text/source-text.ts';
 import { findProjectSources } from '../../project/project.ts';
 import { diskFiles } from '../../project/project-files.ts';
@@ -53,8 +53,7 @@ function fmt(files: readonly string[], check: boolean, environment: CliEnvironme
   const results = named.map((file) => {
     const path = resolve(cwd, file);
     const original = diskFiles.read(path);
-    const { tree, text } = formatSource(createSourceText(relative(cwd, path), original));
-    return { path, original, tree, text: isFormattingDisabled(tree) ? original : text };
+    return { path, original, ...formatSource(createSourceText(relative(cwd, path), original)) };
   });
   const refused = results.filter(({ text }) => text === undefined);
   reportDiagnostics(

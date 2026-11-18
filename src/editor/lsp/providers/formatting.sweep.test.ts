@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DocumentFormattingRequest } from 'vscode-languageserver/node';
-import { formatTree, isFormattingDisabled } from '../../../formatter/format.ts';
+import { formatModule } from '../../../formatter/format.ts';
 import { corpusDocuments, sharedCorpusClient } from '../corpus-client.test-kit.ts';
 
 const client = sharedCorpusClient();
@@ -14,7 +14,7 @@ describe('formatting a document', () => {
           textDocument: { uri },
           options: { tabSize: 8, insertSpaces: false },
         })) ?? [];
-      const formatted = isFormattingDisabled(tree) ? text : (formatTree(tree) ?? text);
+      const formatted = formatModule(tree) ?? text;
       const lines = text.split('\n');
       const whole = {
         start: { line: 0, character: 0 },

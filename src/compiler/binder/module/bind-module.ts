@@ -23,10 +23,11 @@ import { bindExpression } from '../constructs/expressions.ts';
 import { bindPattern } from '../constructs/patterns.ts';
 import { bindBlock } from '../constructs/statements.ts';
 import { bindType } from '../constructs/types.ts';
+import type { VariableEntity } from '../entities.ts';
 import { type Declared, declaredBy } from './declared.ts';
 import { LocalBinder, type LocalResult, type Walk } from './local-binder.ts';
 import { defineModuleScope, type ModuleScope } from './module-scope.ts';
-import { universe } from './scope.ts';
+import { type LocalEntity, universe } from './scope.ts';
 
 const walk: Walk = {
   expression: bindExpression,
@@ -47,6 +48,21 @@ export interface ModuleBindings extends Omit<ModuleScope, 'scope'>, LocalResult 
 }
 
 const bound = new WeakMap<SyntaxTree, ModuleBindings>();
+
+const transients = new WeakMap<ModuleBindings, readonly VariableEntity[]>();
+
+/** The transients `bindings`' scopes defined (§3.4), which its tree alone decides. */
+export function transientsOf(bindings: ModuleBindings): readonly VariableEntity[] {
+  return memo(transients, bindings, () => [...bindings.defined].filter(isTransient));
+}
+
+function isTransient(entity: LocalEntity): entity is VariableEntity {
+  return (
+    entity.kind === 'variable' &&
+    entity.owner.kind === 'VariableDeclaration' &&
+    entity.owner.isTransient
+  );
+}
 
 export function bindModule(tree: SyntaxTree, module: ModuleId): ModuleBindings {
   const bindings = memo(bound, tree, () => {

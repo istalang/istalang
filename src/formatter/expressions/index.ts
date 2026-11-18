@@ -18,15 +18,8 @@ import type {
 import { modifiersText } from '../../compiler/syntax/tokens/modifiers.ts';
 import { childrenOf, type SyntaxNode, type SyntaxTree } from '../../compiler/syntax/tree/index.ts';
 import { asCompact } from '../layout/compact.ts';
-import {
-  angled,
-  bracketed,
-  enclosed,
-  hasComments,
-  hugging,
-  oneLine,
-  tupleList,
-} from '../layout/lists.ts';
+import { angled, bracketed, enclosed, hasComments, hugging, tupleList } from '../layout/lists.ts';
+import { oneLine } from '../layout/widths.ts';
 import type { Printer, Printers } from '../printer.ts';
 import { opened } from './indented-values.ts';
 

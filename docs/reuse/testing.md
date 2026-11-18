@@ -19,7 +19,7 @@ tags: [reuse, testing, test-kit, arbitraries, fast-check, corpus]
 - make nodes or spans by hand, in a segment that starts the text → `handMadeSpan` (`src/compiler/syntax/tree/tree.test-kit.ts`)
 - read where a node of a program's module stands in its text → `textSpanOf` (`src/compiler/program/program.test-kit.ts`)
 - read every corpus module, programs and module corpora alike → `corpusFiles` (`test/corpus/programs.ts`)
-- run a property over every corpus file and spec example that parses clean, or explain a line past the width → `formattableInputs`, `parseText`, `commentTexts`, `unexplainedLongLines`; what a module's format re-parses to beside what it must, its imports compared as a set since the formatter merges and sorts them → `roundTripOf` (`src/formatter/format.test-kit.ts`)
+- run a property over every corpus file and spec example that parses clean, or explain a line past the width → `formattableInputs`, `parseText`, `commentTexts`, `unexplainedLongLines`; what a module's format re-parses to beside what it must, its imports compared as a set since the formatter merges and sorts them, and a struct value as the braced literal it builds since the formatter picks its form by width → `roundTripOf` (`src/formatter/format.test-kit.ts`); a dump that shows nodes as a reader takes them → `dumpViewed` (`src/compiler/syntax/tree/tree.test-kit.ts`)
 - check syntax tree span nesting or list error nodes → `spanViolations`, `errorNodes` (`src/compiler/syntax/tree/tree.test-kit.ts`)
 - parse a single grammar category or dump a clean parse → `parseAs`, `dumpClean`, `reported`, `lines` (`src/compiler/parser/parse.test-kit.ts`)
 - generate random token soup in parser tests → `tokenSoup`, `parenFreeSoup` (`src/compiler/parser/parse.test-kit.ts`)

@@ -14,8 +14,8 @@
  * prints.
  *
  * A module whose banner, the comments before its first item, holds `# disable-ista-formatter` is
- * kept as written by `ista fmt` and editors, which ask `isFormattingDisabled`; the formatter itself
- * still formats it, so its tests keep reading such a module's hand-written layout.
+ * kept as written by what writes a module (`formatModule`, and through it `formatSource` and
+ * `formatText`); `formatTree` still formats it, so tests keep reading its hand-written layout.
  *
  * A node's doc depends on the node alone, so each is printed once and kept: a construct offering
  * Prettier two layouts, as a hugged last argument does (layout/lists.ts `hugging`), shares the docs
@@ -106,16 +106,31 @@ class TreePrinter implements Printer {
   }
 
   withComments(node: SyntaxNode, doc: builders.Doc): builders.Doc {
-    const { leading, trailing } = this.#commentsOf(node);
+    return [this.leadingOf(node), doc, this.trailingOf(node, doc)];
+  }
+
+  leadingOf(node: SyntaxNode): builders.Doc {
+    const { leading } = this.#commentsOf(node);
     this.#mark(leading);
+    return leadingDocs(leading);
+  }
+
+  trailingOf(node: SyntaxNode, after: builders.Doc): builders.Doc {
+    const { trailing } = this.#commentsOf(node);
     this.#mark(trailing);
-    return [leadingDocs(leading), doc, trailingDocs(trailing, doc)];
+    return trailingDocs(trailing, after);
   }
 
   dangling(node: SyntaxNode): builders.Doc {
     const { dangling } = this.#commentsOf(node);
     this.#mark(dangling);
     return danglingDocs(dangling);
+  }
+
+  danglingAbove(node: SyntaxNode): builders.Doc {
+    const { dangling } = this.#commentsOf(node);
+    this.#mark(dangling);
+    return leadingDocs(dangling.map((comment) => ({ ...comment, ownLine: true })));
   }
 
   hasDangling(node: SyntaxNode): boolean {
@@ -163,7 +178,7 @@ function copiedSpans(tree: SyntaxTree, node: SyntaxNode): readonly Span[] {
 const disablingComment = '# disable-ista-formatter';
 
 /** Whether `tree`'s banner, the comments before its first item, keeps it as written (banner). */
-export function isFormattingDisabled(tree: SyntaxTree): boolean {
+function isFormattingDisabled(tree: SyntaxTree): boolean {
   const [first] = childrenOf(tree, tree.root);
   const end = first === undefined ? tree.source.text.length : extentIn(tree, first).start;
   return tree.comments.some(
@@ -195,19 +210,27 @@ export function formatTree(tree: SyntaxTree): string | undefined {
   return withoutPlaceholders(printed.formatted, placeholder);
 }
 
+/**
+ * `tree`'s text as `ista fmt` and editors write it: canonical, or as written when its banner
+ * disables formatting; undefined when it has syntax diagnostics and formatting isn't disabled.
+ */
+export function formatModule(tree: SyntaxTree): string | undefined {
+  return isFormattingDisabled(tree) ? tree.source.text : formatTree(tree);
+}
+
 /** What formatting a source gives: its tree, whose diagnostics say why `text` is undefined. */
 export interface FormattedSource {
   readonly tree: SyntaxTree;
   readonly text: string | undefined;
 }
 
-/** `source` parsed and formatted. */
+/** `source` parsed and formatted as a module (`formatModule`). */
 export function formatSource(source: SourceText): FormattedSource {
   const tree = parse(source, scan(source));
-  return { tree, text: formatTree(tree) };
+  return { tree, text: formatModule(tree) };
 }
 
-/** `text` formatted as a module; undefined when it has syntax errors. */
+/** `text` formatted as a module (`formatModule`); undefined when it has syntax errors. */
 export function formatText(text: string): string | undefined {
   return formatSource(createSourceText('formatted.ista', text)).text;
 }

@@ -9,13 +9,12 @@
  * Everywhere else a line break would end the construct, so nothing else here breaks a line.
  */
 
-import { builders, printer as docPrinter, utils } from 'prettier/doc';
+import { builders, utils } from 'prettier/doc';
 import { extentIn, type SyntaxNode } from '../../compiler/syntax/tree/index.ts';
 import { memo } from '../../foundation/structures/memo.ts';
 import { encloses } from '../../foundation/text/span.ts';
 import { hasBlankLine } from '../comments/comments.ts';
 import type { Printer } from '../printer.ts';
-import { tabWidth } from './widths.ts';
 
 const {
   breakParent,
@@ -199,12 +198,6 @@ export function angled(printer: Printer, items: readonly SyntaxNode[]): builders
       ];
 }
 
-/** `doc` on one line, however long, for a place that has no line break to offer. */
-export function oneLine(doc: builders.Doc): string {
-  return docPrinter.printDocToString(doc, { printWidth: Number.POSITIVE_INFINITY, tabWidth })
-    .formatted;
-}
-
 /** Whether comments are printed before or after `node`, which a run around it must keep apart. */
 export function hasComments(printer: Printer, node: SyntaxNode): boolean {
   const withComments = printer.extentOf(node);
@@ -229,6 +222,22 @@ export function holdsComments(printer: Printer, node: SyntaxNode): boolean {
       (spansLines &&
         span.start >= extent.end &&
         !lineBreak.test(text.slice(extent.end, span.start))),
+  );
+}
+
+/**
+ * Whether `items` of `node` keep the lines they stand on whatever their width: a comment in their
+ * lines, on one of them, or a blank line between two has no place on one line.
+ */
+export function keepsItsLines(
+  printer: Printer,
+  node: SyntaxNode,
+  items: readonly SyntaxNode[],
+): boolean {
+  return (
+    holdsComments(printer, node) ||
+    items.some((item) => hasComments(printer, item)) ||
+    items.some((item, index) => index > 0 && blankBetween(printer, items[index - 1] ?? item, item))
   );
 }
 

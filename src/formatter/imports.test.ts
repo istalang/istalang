@@ -149,13 +149,16 @@ describe('the import block', () => {
       lines(
         '# header',
         '',
-        '# about a',
         'import (',
-        '  a, d',
+        '  # about a',
+        '  a',
+        '  d',
         '  e # why e',
         ") from 'lib'",
-        "import b from './x' # why b",
-        "import c from './x' # why c",
+        'import (',
+        '  b # why b',
+        '  c # why c',
+        ") from './x'",
       ),
     );
   });
@@ -186,7 +189,7 @@ describe('the import block', () => {
         : `${leading}import ${[head, ...tail].join(', ')} from '${path}'${trailing}`,
     );
 
-  it('keeps what generated imports bind and their comments, one statement per path but where comments share a line, formatting once and for all', () => {
+  it('keeps what generated imports bind and their comments, one statement per path, formatting once and for all', () => {
     fc.assert(
       fc.property(fc.array(statement, { minLength: 1, maxLength: 8 }), (statements) => {
         const text = lines(...statements, 'fn f(): 1');
@@ -197,8 +200,7 @@ describe('the import block', () => {
             ? [item.path.value]
             : [],
         );
-        const commented = text.includes(' #');
-        expect(commented || written.length === new Set(written).size).toBe(true);
+        expect(written).toEqual([...new Set(written)]);
         expect(parseText(statements.join('\n')).diagnostics).toEqual([]);
       }),
       { numRuns: 200 },

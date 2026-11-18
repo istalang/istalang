@@ -18,7 +18,7 @@
 
 import { builders } from 'prettier/doc';
 
-const { group, ifBreak } = builders;
+const { group, hardlineWithoutBreakParent, ifBreak, indent } = builders;
 
 type Doc = builders.Doc;
 
@@ -40,6 +40,28 @@ export function asCompact(doc: Doc): Doc {
     compactGroups.add(doc);
   }
   return doc;
+}
+
+/** What a form in braces or indented below its header is made of (`bracedOrIndented`). */
+export interface BracedOrIndented {
+  /** What stands before either form, on its line. */
+  readonly before: builders.Doc;
+  /** The form on one line, braces and all. */
+  readonly braced: builders.Doc;
+  /** What ends the line the indented form's rows stand below. */
+  readonly header: builders.Doc;
+  /** The indented form's rows, `newline` between two. */
+  readonly rows: (newline: builders.Doc) => builders.Doc;
+}
+
+/**
+ * `before` and the braced form when its line fits the compact width, else `header` with the rows
+ * indented below it: a declaration's members, a struct value's fields.
+ */
+export function bracedOrIndented({ before, braced, header, rows }: BracedOrIndented): Doc {
+  // Line breaks only the indented form prints, which mustn't break the group as a hard line would.
+  const newline = hardlineWithoutBreakParent;
+  return compactGroup([before, ifBreak([header, indent([newline, rows(newline)])], braced)]);
 }
 
 /** The private-use characters a placeholder is taken from, the first the source doesn't hold. */
@@ -138,7 +160,7 @@ function reserving(
   walk: Walk,
   reserve: string,
 ): Doc {
-  const id = Symbol('compact');
+  const id = node.id ?? Symbol('compact');
   const whileOuterBroken =
     enclosing === undefined ? reserve : ifBreak(reserve, '', { groupId: enclosing });
   return { ...node, id, contents: [walk(node.contents, id), ifBreak('', whileOuterBroken)] };

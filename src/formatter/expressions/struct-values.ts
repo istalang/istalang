@@ -16,14 +16,20 @@
  */
 
 import { builders } from 'prettier/doc';
-import type { FieldsLiteral, IndentedValue } from '../../compiler/syntax/expressions/index.ts';
+import type {
+  FieldsLiteral,
+  IndentedEntry,
+  IndentedItem,
+  IndentedValue,
+  QuotedEntry,
+} from '../../compiler/syntax/expressions/index.ts';
 import { extentIn, parentOf, type SyntaxNode } from '../../compiler/syntax/tree/index.ts';
-import { compactGroup } from '../layout/compact.ts';
-import { blankBetween, hasComments, holdsComments } from '../layout/lists.ts';
+import { bracedOrIndented } from '../layout/compact.ts';
+import { hasComments, keepsItsLines } from '../layout/lists.ts';
 import type { Printer } from '../printer.ts';
 import { entryRows } from './entry-rows.ts';
 
-const { hardlineWithoutBreakParent, ifBreak, indent, join } = builders;
+const { join } = builders;
 
 /** A struct value either form can print. */
 type StructValue = FieldsLiteral | IndentedValue;
@@ -39,39 +45,38 @@ export function structValueForms(
   if (!(isStructValue(value) && movesForm(printer, value))) {
     return;
   }
-  const entries = entriesOf(value);
+  const docs = entriesOf(value).map((entry) => printer.print(entry));
   const type = typeDoc(printer, value);
-  const flat = join(
-    ', ',
-    entries.map((entry) => printer.print(entry)),
-  );
-  const braces = [' ', type ?? 'struct', '{', flat, '}'];
-  // Line breaks only the indented form prints, which mustn't break the group as a hard line would.
-  const block = indent([hardlineWithoutBreakParent, indentedRows(printer, value)]);
-  const indented = type === undefined ? block : [' ', type, ':', block];
-  return compactGroup([opening, ifBreak(indented, braces)]);
+  return bracedOrIndented({
+    before: opening,
+    braced: [' ', type ?? 'struct', '{', join(', ', docs), '}'],
+    header: type === undefined ? '' : [' ', type, ':'],
+    rows: (newline) =>
+      value.kind === 'IndentedValue'
+        ? entryRows(printer, value.entries, newline)
+        : join(newline, docs),
+  });
 }
 
 function isStructValue(node: SyntaxNode): node is StructValue {
   if (node.kind === 'StructLiteral' || node.kind === 'NewStructLiteral') {
     return true;
   }
-  return node.kind === 'IndentedValue' && node.entries.every(isNamedEntry);
+  return node.kind === 'IndentedValue' && isStructShaped(node);
+}
+
+/** Entries both forms hold: a named field, a spread or a struct comprehension. */
+type NamedEntry = Exclude<IndentedEntry, QuotedEntry | IndentedItem>;
+
+/** Whether `value` builds a struct, as a literal in braces would: named entries only. */
+export function isStructShaped(
+  value: IndentedValue,
+): value is IndentedValue & { readonly entries: readonly NamedEntry[] } {
+  return value.entries.every(isNamedEntry);
 }
 
 function entriesOf(value: StructValue): readonly SyntaxNode[] {
   return value.kind === 'IndentedValue' ? value.entries : value.items;
-}
-
-/** An indented value's entries on the lines they were written on; a literal's, one per line. */
-function indentedRows(printer: Printer, value: StructValue): builders.Doc {
-  if (value.kind === 'IndentedValue') {
-    return entryRows(printer, value.entries, hardlineWithoutBreakParent);
-  }
-  return join(
-    hardlineWithoutBreakParent,
-    value.items.map((item) => printer.print(item)),
-  );
 }
 
 /** `T`, `new T`, or undefined for a value naming no type. */
@@ -84,8 +89,8 @@ function typeDoc(printer: Printer, value: StructValue): builders.Doc | undefined
   return [isNew ? 'new ' : '', printer.print(value.type)];
 }
 
-/** Whether `entry` is one both forms hold: a named field, a spread or a struct comprehension. */
-function isNamedEntry(entry: SyntaxNode): boolean {
+/** Whether `entry` is one both forms hold (`NamedEntry`). */
+function isNamedEntry(entry: SyntaxNode): entry is NamedEntry {
   return (
     entry.kind === 'FieldInitializer' ||
     entry.kind === 'Spread' ||
@@ -107,12 +112,8 @@ function movesForm(printer: Printer, value: StructValue): boolean {
     !spreadsLater &&
     !comprehendsEarlier &&
     !hasComments(printer, value) &&
-    !holdsComments(printer, value) &&
     !commentedBefore(printer, value) &&
-    !entries.some((entry) => hasComments(printer, entry)) &&
-    !entries.some(
-      (entry, index) => index > 0 && blankBetween(printer, entries[index - 1] ?? entry, entry),
-    ) &&
+    !keepsItsLines(printer, value, entries) &&
     opensIndentedValue(printer, value)
   );
 }

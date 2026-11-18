@@ -5,8 +5,8 @@
  *
  * No name is bound twice, so nothing shadows implicitly: a name a `*` brings that the module's top
  * level already binds, by a declaration or an import, or that an earlier `*` brought, is reported
- * on the `*`, and the earlier binding keeps it. A prelude name is reused as by any import: only a
- * function joins the prelude's overloads (top-level-rules.ts).
+ * on the `*`, and the explicit binding, or the earlier `*`'s, keeps it. A prelude name is reused
+ * as by any import: only a function joins the prelude's overloads (top-level-rules.ts).
  *
  * Only exports are brought, never a private name, even into a test module, which names a private
  * declaration only by importing it by name (§10).

@@ -39,6 +39,7 @@ import { type ModuleId, type Program, programModule } from '../../program/progra
 import type {
   EnumDeclaration,
   FunctionDeclaration,
+  ImportDeclaration,
   Module,
 } from '../../syntax/declarations/index.ts';
 import type { Identifier, NodeOf } from '../../syntax/tree/node.ts';
@@ -54,10 +55,9 @@ import {
   type VariableEntity,
   type VariantEntity,
 } from '../entities.ts';
-import type { ModuleBindings } from '../module/bind-module.ts';
+import { type ModuleBindings, transientsOf } from '../module/bind-module.ts';
 import type { FreeName, QualifiedPath } from '../module/local-binder.ts';
 import { noOwnCall } from '../module/own-calls.ts';
-import type { LocalEntity } from '../module/scope.ts';
 import { unresolvedName } from '../naming.ts';
 import {
   declaresAtTopLevel,
@@ -77,9 +77,6 @@ import { checkTestImports, meetPrelude } from './top-level-rules.ts';
  * body keeps it, and everything the checker took over about it.
  */
 const unseenFunctions = new SequenceMemo<Module['items'][number], Map<string, FunctionsEntity>>();
-
-/** Per module's own bindings, the transients its scopes defined, which its tree alone decides. */
-const transients = new WeakMap<ModuleBindings, readonly VariableEntity[]>();
 
 /** Every module's own bindings (`locals`), linked across `program`. */
 export function link(program: Program, locals: ReadonlyMap<ModuleId, ModuleBindings>): Bindings {
@@ -113,6 +110,7 @@ class Linker {
   readonly #variantsByName = new Map<string, VariantEntity[]>();
   readonly #variantsOfEnum = new Map<EnumDeclaration, ReadonlyMap<string, VariantEntity>>();
   readonly #overloads = new Map<FunctionsEntity, readonly FunctionDeclaration[]>();
+  readonly #beyond = new Map<ModuleId, ReadonlyMap<string, Entity>>();
 
   constructor(program: Program, locals: ReadonlyMap<ModuleId, ModuleBindings>) {
     this.#program = program;
@@ -140,27 +138,36 @@ class Linker {
       : (links.resolved.get(name) ?? resolvedImport(links, links.local.entities.get(name)));
   }
 
-  /** What `name` denotes at the top level of `module`: its own name or import, or the prelude's. */
+  /**
+   * What `name` denotes at the top level of `module`: its own name or import, else what it sees
+   * beyond (`#beyondTopLevel`).
+   */
   topLevelNamed(module: ModuleId, name: string): Entity | undefined {
     const links = this.#links.get(module);
     const own = links?.local.topLevel.get(name)?.entity;
     const linked = links === undefined ? undefined : resolvedImport(links, own);
-    return linked ?? links?.starred.get(name) ?? this.#preludeFor(module)?.exports.get(name);
+    return linked ?? this.#beyondTopLevel(module).get(name);
   }
 
   topLevelNames(module: ModuleId): readonly string[] {
-    const links = this.#links.get(module);
-    const own = links?.local.topLevel.keys() ?? [];
-    const starred = links?.starred.keys() ?? [];
-    const prelude = this.#preludeFor(module)?.exports.keys() ?? [];
-    return [...new Set([...own, ...starred, ...prelude])];
+    const own = this.#links.get(module)?.local.topLevel.keys() ?? [];
+    return [...new Set([...own, ...this.#beyondTopLevel(module).keys()])];
+  }
+
+  /**
+   * What `module` sees past its own top level, in the order a free name resolves: the names its
+   * `*` imports bind over the prelude's. The one home of that order, which every lookup reads.
+   */
+  #beyondTopLevel(module: ModuleId): ReadonlyMap<string, Entity> {
+    return memo(this.#beyond, module, () => {
+      const prelude = this.#preludeFor(module)?.exports ?? [];
+      return new Map([...prelude, ...(this.#links.get(module)?.starred ?? [])]);
+    });
   }
 
   transientsOf(module: ModuleId): readonly VariableEntity[] {
     const local = this.local(module);
-    return local === undefined
-      ? []
-      : memo(transients, local, () => [...local.defined].filter(isTransient));
+    return local === undefined ? [] : transientsOf(local);
   }
 
   moduleOf(entity: Entity): ModuleId | undefined {
@@ -198,15 +205,13 @@ class Linker {
     const variants = [...this.#variantsByName.keys()].map(
       (name) => [name, links.local.variantsNamed(name)] as const,
     );
-    const prelude = this.#preludeFor(module)?.exports ?? [];
     const linked = [...scoped].map(
       ([name, entity]) => [name, resolvedImport(links, entity)] as const,
     );
     // A later entry hides an earlier one, as a free name resolves; an import that failed hides too.
     const visible = new Map<string, Entity | undefined>([
       ...variants,
-      ...prelude,
-      ...links.starred,
+      ...this.#beyondTopLevel(module),
       ...linked,
     ]);
     return new Map(
@@ -247,7 +252,7 @@ class Linker {
     const diagnostics: ModuleLinks['diagnostics'] = [];
     const prelude = this.#preludeFor(id);
     const starred = linkStarImports(local, diagnostics, {
-      loadedBy: (declaration) => this.#program.modules.get(id)?.imports.get(declaration),
+      loadedBy: (declaration) => this.#loadedBy(id, declaration),
       exportsOf: (module) => this.#locals.get(module)?.exports,
       prelude,
     });
@@ -262,7 +267,7 @@ class Linker {
     };
     this.#links.set(id, links);
     for (const placeholder of local.imports) {
-      const module = this.#program.modules.get(id)?.imports.get(placeholder.declaration);
+      const module = this.#loadedBy(id, placeholder.declaration);
       const entity =
         module === undefined
           ? undefined
@@ -310,8 +315,7 @@ class Linker {
   #resolveFree(id: ModuleId, links: ModuleLinks, { name, role, miss, variants }: FreeName): void {
     const isVariant = variants !== undefined && this.variantsNamed(name.text).length > 0;
     const entity =
-      links.starred.get(name.text) ??
-      this.#preludeFor(id)?.exports.get(name.text) ??
+      this.#beyondTopLevel(id).get(name.text) ??
       (isVariant ? variants : undefined) ??
       (role === 'callee' && miss === undefined ? this.#unseenFunction(id, name.text) : undefined);
     if (entity !== undefined) {
@@ -413,21 +417,16 @@ class Linker {
   /** The module a namespace's import loaded. */
   #importedBy(namespace: NamespaceEntity): ModuleId | undefined {
     const importer = this.moduleOf(namespace);
-    return importer === undefined
-      ? undefined
-      : this.#program.modules.get(importer)?.imports.get(namespace.declaration);
+    return importer === undefined ? undefined : this.#loadedBy(importer, namespace.declaration);
+  }
+
+  /** The module `declaration`, an import of module `importer`, loaded. */
+  #loadedBy(importer: ModuleId, declaration: ImportDeclaration): ModuleId | undefined {
+    return this.#program.modules.get(importer)?.imports.get(declaration);
   }
 }
 
 /** Whether the enum `declaration` declares an associated type named as `part` (§3.1). */
 function declaresAssociated(declaration: EnumDeclaration, part: Identifier): boolean {
   return declaration.associatedTypes.some((associated) => associated.name.text === part.text);
-}
-
-function isTransient(entity: LocalEntity): entity is VariableEntity {
-  return (
-    entity.kind === 'variable' &&
-    entity.owner.kind === 'VariableDeclaration' &&
-    entity.owner.isTransient
-  );
 }

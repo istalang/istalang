@@ -19,8 +19,19 @@ export interface Printer {
   readonly print: (node: SyntaxNode) => builders.Doc;
   /** `doc`, printed in place of `node`'s own printer, with `node`'s comments around it. */
   readonly withComments: (node: SyntaxNode, doc: builders.Doc) => builders.Doc;
+  /**
+   * `node`'s comments before it, and after it, the doc printed last before them `after`, apart:
+   * for a printer that puts them around different parts, as merging imports does.
+   */
+  readonly leadingOf: (node: SyntaxNode) => builders.Doc;
+  readonly trailingOf: (node: SyntaxNode, after: builders.Doc) => builders.Doc;
   /** The comments left to `node`'s own printer, printed where it puts them; '' for none. */
   readonly dangling: (node: SyntaxNode) => builders.Doc;
+  /**
+   * The comments left to `node`'s own printer, each on a line of its own and the line after them
+   * started: for a printer that moves what they were written after, as merging imports does.
+   */
+  readonly danglingAbove: (node: SyntaxNode) => builders.Doc;
   /** Whether `node` has comments left to its own printer, asked without printing them. */
   readonly hasDangling: (node: SyntaxNode) => boolean;
   /** `node`'s span widened to the comments printed before and after it. */

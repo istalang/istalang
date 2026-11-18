@@ -2,10 +2,10 @@
  * A module's imports (spec §3.13), printed as one block at its top, before every other item, with
  * no blank line inside: declarations may come in any order, and imports read best together.
  *
- * - Imports of one path merge into one statement. The comments of each statement merged print
- *   around the merged one, so none is lost. A line ends in at most one comment, so of the
- *   statements holding a comment that ends one of their lines, after `(` or after the path, one
- *   merges with the others and the rest stand alone.
+ * - Imports of one path merge into one statement, their items sorted together. A statement's own
+ *   comments, which no single statement holds any more, stand above its first item and after its
+ *   last, so every comment stays beside the items it was written by. An annotated import, which
+ *   only an erroneous program holds (§3.16), stands alone.
  * - Statements sort by path: paths from the project root or the std first, then `../` ones, the
  *   farthest first, then `./` ones. Among paths of one kind, those printed on one line come
  *   before those taking several, a comment above one among its lines; then a statement with `*`,
@@ -13,31 +13,27 @@
  * - In a statement, `*` comes first, then each `* as m` by `m`, then the names alphabetically.
  *   The items stand bare on the import's line while they fit; else in parentheses, each star on a
  *   line of its own and the names packed into the lines after them, each within a compressed
- *   form's width (layout/compact.ts), since several names share one. A `*` first
- *   on a line starts an item (§2), so the broken list reads back as printed. An import holding a
- *   comment always takes the parentheses, so each comment stays beside its item.
+ *   form's width (layout/compact.ts), since several names share one. A `*` first on a line starts
+ *   an item (§2), so the broken list reads back as printed. An import holding a comment takes the
+ *   parentheses and puts each item on a line of its own, so each comment stays beside its item.
  * - Alphabetical is by letter regardless of case, then by code unit, so the order never depends on
  *   a locale.
  */
 
 import { builders } from 'prettier/doc';
-import type {
-  ImportDeclaration,
-  ImportedName,
-  ImportItem,
-} from '../compiler/syntax/declarations/index.ts';
-import { extentIn } from '../compiler/syntax/tree/index.ts';
+import type { ImportDeclaration, ImportItem } from '../compiler/syntax/declarations/index.ts';
 import { compareOrdered } from '../foundation/language/order.ts';
+import { unreachable } from '../foundation/structures/unreachable.ts';
 import { annotated } from './layout/bodies.ts';
-import { hasComments, oneLine } from './layout/lists.ts';
-import { compactWidth, printsOnOneLine, tabWidth } from './layout/widths.ts';
+import { hasComments } from './layout/lists.ts';
+import { compactWidth, oneLine, printsOnOneLine, tabWidth } from './layout/widths.ts';
 import type { Printer, Printers } from './printer.ts';
 
 const { group, hardline, hardlineWithoutBreakParent, ifBreak, indent, join, softline } = builders;
 
 /** `imports`, the module's, merged by path and sorted, one statement per line. */
 export function importBlock(printer: Printer, imports: readonly ImportDeclaration[]): builders.Doc {
-  const statements = mergedByPath(printer, imports).map((merged): Statement => {
+  const statements = mergedByPath(imports).map((merged): Statement => {
     const doc = merged.length === 1 ? printer.print(merged[0]) : mergedStatement(printer, merged);
     return { merged, doc, isOneLine: printsOnOneLine(doc) };
   });
@@ -68,112 +64,143 @@ export const importPrinters: Printers<ImportDeclaration | ImportItem> = {
 /** A non-empty run of import statements printed as one. */
 type Merged = readonly [ImportDeclaration, ...ImportDeclaration[]];
 
-/**
- * `imports` grouped by path, in the order each group starts. A statement with comments ending its
- * lines (`endsLineInComment`) joins its path's first group only when no statement there has such;
- * else it stands alone.
- */
-function mergedByPath(printer: Printer, imports: readonly ImportDeclaration[]): readonly Merged[] {
-  const firstOfPath = new Map<string, ImportDeclaration[]>();
+/** `imports` grouped by path, in the order each path first appears (banner). */
+function mergedByPath(imports: readonly ImportDeclaration[]): readonly Merged[] {
+  const byPath = new Map<string, ImportDeclaration[]>();
   const groups: Merged[] = [];
   for (const declaration of imports) {
-    const path = pathOf(declaration);
-    const first = firstOfPath.get(path);
-    const fits = !(
-      endsLineInComment(printer, declaration) &&
-      first?.some((each) => endsLineInComment(printer, each))
-    );
-    if (first !== undefined && fits) {
-      first.push(declaration);
-    } else {
+    const joined =
+      (declaration.annotations ?? []).length > 0 ? undefined : byPath.get(pathOf(declaration));
+    if (joined === undefined) {
       const started: Merged & ImportDeclaration[] = [declaration];
       groups.push(started);
-      if (first === undefined) {
-        firstOfPath.set(path, started);
-      }
+      byPath.set(pathOf(declaration), started);
+    } else {
+      joined.push(declaration);
     }
   }
   return groups;
 }
 
-/** Whether a comment ends a line of `declaration`: after its `(`, its path, or the whole. */
-function endsLineInComment(printer: Printer, declaration: ImportDeclaration): boolean {
-  const trails = [declaration, declaration.path].some(
-    (node) => printer.extentOf(node).end !== extentIn(printer.tree, node).end,
-  );
-  return trails || printer.hasDangling(declaration);
+/**
+ * Statements of one path as one, their items sorted together. A statement's own comments, which
+ * no single statement holds any more, stand with its items: those before it and after its `(`
+ * above its first item, those after it and around its path after its last (banner).
+ */
+function mergedStatement(printer: Printer, merged: Merged): builders.Doc {
+  const [first] = merged;
+  if (!merged.some((declaration) => hasOwnComments(printer, declaration))) {
+    return statement(printer, merged);
+  }
+  const owned = merged
+    .flatMap((owner) => itemsOf(owner).map((item) => ({ item, owner })))
+    .toSorted((one, other) => compareItems(one.item, other.item));
+  const placed = owned.map(({ item, owner }, index): Placed => {
+    const doc = printer.print(item);
+    const opens = owned.findIndex((each) => each.owner === owner) === index;
+    const closes = owned.findLastIndex((each) => each.owner === owner) === index;
+    const before = opens ? [printer.danglingAbove(owner), printer.leadingOf(owner)] : '';
+    // `first`'s path prints with the statement, the others' only through their comments.
+    const ownPath = owner !== first;
+    const path = closes && ownPath ? printer.withComments(owner.path, '') : '';
+    const after = closes ? [printer.trailingOf(owner, doc), path] : '';
+    return { item, doc: [before, doc, after] };
+  });
+  const commenting = { commented: true, inside: '' };
+  return ['import ', listed(placed, commenting), ' from ', printer.print(first.path)];
 }
 
-/** Statements of one path as one, each one's comments and annotations around it. */
-function mergedStatement(printer: Printer, [first, ...rest]: Merged): builders.Doc {
-  return rest.reduce<builders.Doc>(
-    (doc, declaration) => printer.withComments(declaration, annotated(printer, declaration, doc)),
-    printer.withComments(first, statement(printer, [first, ...rest])),
+/** Whether comments stand around `declaration`, after its `(` or around its path. */
+function hasOwnComments(printer: Printer, declaration: ImportDeclaration): boolean {
+  return (
+    hasComments(printer, declaration) ||
+    hasComments(printer, declaration.path) ||
+    printer.hasDangling(declaration)
   );
 }
 
 /** `import items from 'path'`: the items of every statement in `merged`, which share the path. */
 function statement(printer: Printer, merged: Merged): builders.Doc {
-  const [first, ...rest] = merged;
-  const items = merged
-    .flatMap((declaration) => declaration.items)
-    .filter((item) => item.kind !== 'Invalid')
-    .toSorted(compareItems);
-  // The paths of the statements merged into `first` print nothing but their comments.
-  const otherPaths = rest.map((declaration) => printer.withComments(declaration.path, ''));
+  const [first] = merged;
+  const items = merged.flatMap(itemsOf).toSorted(compareItems);
+  const placed = items.map((item): Placed => ({ item, doc: printer.print(item) }));
+  const commented =
+    merged.some((each) => printer.hasDangling(each)) ||
+    items.some((item) => hasComments(printer, item));
+  const inside = merged.map((declaration) => printer.dangling(declaration));
   return annotated(printer, first, [
     'import ',
-    itemsDoc(printer, merged, items),
+    listed(placed, { commented, inside }),
     ' from ',
     printer.print(first.path),
-    otherPaths,
   ]);
 }
 
-/**
- * The items of `merged`: names alone bare while they fit, a star alone on the import's line, else
- * in parentheses, each star on a line of its own above the names. Comments inside always take
- * the parentheses, whose line breaks are sure, so a comment after the path still ends its line.
- */
-function itemsDoc(printer: Printer, merged: Merged, items: readonly ImportItem[]): builders.Doc {
-  const inside = merged.map((declaration) => printer.dangling(declaration));
-  const stars = items.filter((item) => item.kind !== 'ImportedName');
-  const names = items.filter((item) => item.kind === 'ImportedName');
-  const commented =
-    merged.some((declaration) => printer.hasDangling(declaration)) ||
-    items.some((item) => hasComments(printer, item));
-  const starDocs = stars.map((star) => printer.print(star));
-  if (!commented) {
-    const flat = join(', ', [...starDocs, ...names.map((name) => printer.print(name))]);
-    // Line breaks only the broken form prints, which mustn't break the group as a hard line would.
-    const broken = join(hardlineWithoutBreakParent, [...starDocs, ...packedNames(printer, names)]);
-    return group([ifBreak('('), indent([softline, ifBreak(broken, flat)]), softline, ifBreak(')')]);
-  }
-  const lines = [...starDocs, ...packedNames(printer, names)];
-  return ['(', indent([inside, lines.map((each) => [hardline, each])]), hardline, ')'];
+/** `declaration`'s items: the formatter refuses trees with syntax diagnostics, so none is Invalid. */
+function itemsOf(declaration: ImportDeclaration): readonly ImportItem[] {
+  return declaration.items.map((item) =>
+    item.kind === 'Invalid' ? unreachable('A tree the formatter prints holds no Invalid.') : item,
+  );
+}
+
+/** An item as a statement prints it, with the comments it stands by. */
+interface Placed {
+  readonly item: ImportItem;
+  readonly doc: builders.Doc;
+}
+
+/** Whether a statement holds comments, and those after its `(`, which follow it there. */
+interface Commenting {
+  readonly commented: boolean;
+  readonly inside: builders.Doc;
 }
 
 /**
- * `names` packed into the lines of a broken import, one doc per line, `, ` between two on a line, each line within
- * a compressed form's width; a name with comments stands on a line of its own, so each comment
- * stays beside its name. A broken import's items stand one level in from its line's start.
+ * The items, sorted: bare on the import's line while they fit, else in parentheses, each star on a
+ * line of its own above the names packed. An import holding a comment takes the parentheses, an
+ * item a line, so where a comment attaches when read back never moves an item; and its line breaks
+ * are sure, so a comment after the path still ends its line.
  */
-function packedNames(printer: Printer, names: readonly ImportedName[]): builders.Doc[] {
+function listed(placed: readonly Placed[], { commented, inside }: Commenting): builders.Doc {
+  if (!commented) {
+    const flat = join(
+      ', ',
+      placed.map((each) => each.doc),
+    );
+    // Line breaks only the broken form prints, which mustn't break the group as a hard line would.
+    const broken = join(hardlineWithoutBreakParent, brokenLines(placed));
+    return group([ifBreak('('), indent([softline, ifBreak(broken, flat)]), softline, ifBreak(')')]);
+  }
+  const lines = placed.map((each) => [hardline, each.doc]);
+  return ['(', indent([inside, lines]), hardline, ')'];
+}
+
+/** The lines of a broken import: each star on its own, then the names packed. */
+function brokenLines(placed: readonly Placed[]): builders.Doc[] {
+  const stars = placed.filter((each) => each.item.kind !== 'ImportedName');
+  const names = placed.filter((each) => each.item.kind === 'ImportedName');
+  return [...stars.map((each) => each.doc), ...packedNames(names)];
+}
+
+/**
+ * `names` packed into the lines of a broken import, one doc per line, `, ` between two on a line,
+ * each line within a compressed form's width. A broken import's items stand one level in from its
+ * line's start.
+ */
+function packedNames(names: readonly Placed[]): builders.Doc[] {
   const budget = compactWidth - tabWidth;
-  const lines: { names: builders.Doc[]; width: number; alone: boolean }[] = [];
-  for (const name of names) {
-    const doc = printer.print(name);
+  const lines: { docs: builders.Doc[]; width: number }[] = [];
+  for (const { doc } of names) {
     const width = oneLine(doc).length;
-    const alone = hasComments(printer, name);
     const last = lines.at(-1);
-    if (last !== undefined && !alone && !last.alone && last.width + ', '.length + width <= budget) {
-      last.names.push(doc);
+    if (last !== undefined && last.width + ', '.length + width <= budget) {
+      last.docs.push(doc);
       last.width += ', '.length + width;
     } else {
-      lines.push({ names: [doc], width, alone });
+      lines.push({ docs: [doc], width });
     }
   }
-  return lines.map((each) => join(', ', each.names));
+  return lines.map((each) => join(', ', each.docs));
 }
 
 function pathOf(declaration: ImportDeclaration): string {
@@ -200,12 +227,7 @@ function compareStatements(first: Statement, second: Statement): number {
 
 /** The rank of the item `merged` prints first: 0 with a `*`, 1 with a `* as m`, else 2. */
 function statementRank(merged: Merged): number {
-  const items = merged.flatMap((declaration) => declaration.items);
-  return Math.min(
-    ...items.map((item) =>
-      item.kind === 'Invalid' ? itemRanks.ImportedName : itemRanks[item.kind],
-    ),
-  );
+  return Math.min(...merged.flatMap(itemsOf).map((item) => itemRanks[item.kind]));
 }
 
 const leadingParents = /^(?:\.\.\/)*/u;

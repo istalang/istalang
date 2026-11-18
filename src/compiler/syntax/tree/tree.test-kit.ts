@@ -22,7 +22,12 @@ export function handMadeSpan(from: number, to = from): AnchoredSpan {
   return { segment: handMade, from, to };
 }
 
-function dumpField(tree: TreeBodies, name: string, value: unknown): string | undefined {
+function dumpField(
+  tree: TreeBodies,
+  name: string,
+  value: unknown,
+  view: NodeView,
+): string | undefined {
   // A head's mark is among its words, as its qualifiers are: none written shows nothing.
   if (name === 'mark') {
     return value === undefined ? undefined : namedTypeText(value as NamedType);
@@ -34,12 +39,12 @@ function dumpField(tree: TreeBodies, name: string, value: unknown): string | und
     return value ? name : undefined;
   }
   if (Array.isArray(value)) {
-    return `[${value.map((each) => dumpValue(tree, each)).join(' ')}]`;
+    return `[${value.map((each) => dumpValue(tree, each, view)).join(' ')}]`;
   }
   if (name === 'qualifiers') {
     return wordsOf(value as FunctionQualifiers);
   }
-  return dumpValue(tree, value);
+  return dumpValue(tree, value, view);
 }
 
 /** A function's qualifiers: the words they hold, or nothing when they hold none. */
@@ -48,13 +53,20 @@ function wordsOf(qualifiers: FunctionQualifiers): string | undefined {
   return words.length === 0 ? undefined : words.join(' ');
 }
 
-function dumpValue(tree: TreeBodies, value: unknown): string {
-  return isNode(value) ? dump(tree, value) : String(value);
+function dumpValue(tree: TreeBodies, value: unknown, view: NodeView): string {
+  return isNode(value) ? dumpViewed(tree, value, view) : String(value);
 }
 
-/** A node's fields by name, a function's body among them, after its return type. */
-function fieldsOf(tree: TreeBodies, node: SyntaxNode): readonly (readonly [string, unknown])[] {
-  const fields = Object.entries(node);
+/**
+ * A node's fields by name, as `shown`, the node viewed, holds them; a function's body among them,
+ * after its return type, read through the node itself, which the tree keys bodies by.
+ */
+function fieldsOf(
+  tree: TreeBodies,
+  node: SyntaxNode,
+  shown: SyntaxNode,
+): readonly (readonly [string, unknown])[] {
+  const fields = Object.entries(shown);
   if (node.kind !== 'FunctionDeclaration') {
     return fields;
   }
@@ -87,15 +99,27 @@ function dumpLeaf(node: SyntaxNode): string | undefined {
 
 /** `node` of `tree`, and everything under it, as a one-line S-expression. */
 export function dump(tree: TreeBodies, node: SyntaxNode): string {
+  return dumpViewed(tree, node, (each) => each);
+}
+
+/** What a dump shows of a node: the node itself, or another its reader takes it as. */
+export type NodeView = (node: SyntaxNode) => SyntaxNode;
+
+/**
+ * `node` and everything under it as `dump` shows them, each node as `view` shows it, so a reader
+ * that takes two shapes as one meaning compares them alike.
+ */
+export function dumpViewed(tree: TreeBodies, node: SyntaxNode, view: NodeView): string {
   const leaf = dumpLeaf(node);
   if (leaf !== undefined) {
     return leaf;
   }
-  const fields = fieldsOf(tree, node)
+  const shown = view(node);
+  const fields = fieldsOf(tree, node, shown)
     .filter(([name]) => name !== 'kind' && name !== 'span')
-    .map(([name, value]) => dumpField(tree, name, value))
+    .map(([name, value]) => dumpField(tree, name, value, view))
     .filter((field) => field !== undefined);
-  return `(${[node.kind, ...fields].join(' ')})`;
+  return `(${[shown.kind, ...fields].join(' ')})`;
 }
 
 /**

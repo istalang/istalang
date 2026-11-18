@@ -5,7 +5,7 @@
  * file.
  */
 
-import { formatTree, isFormattingDisabled } from '../../../formatter/format.ts';
+import { formatModule } from '../../../formatter/format.ts';
 import { moduleIdOfUri, rangeOf } from '../locations.ts';
 import type { Provider } from './provider.ts';
 
@@ -14,7 +14,7 @@ export const formatting: Provider = {
   register: (connection, workspace) => {
     connection.onDocumentFormatting(({ textDocument }) => {
       const tree = workspace.treeOf(moduleIdOfUri(textDocument.uri));
-      const formatted = tree && !isFormattingDisabled(tree) ? formatTree(tree) : undefined;
+      const formatted = tree && formatModule(tree);
       if (tree === undefined || formatted === undefined || formatted === tree.source.text) {
         return [];
       }

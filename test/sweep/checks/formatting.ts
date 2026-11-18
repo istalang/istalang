@@ -10,14 +10,16 @@ import { isDeepStrictEqual } from 'node:util';
 import { expect } from 'vitest';
 import { diagnosticsWithoutPlaces } from '../../../src/compiler/compile.test-kit.ts';
 import { withoutPlaces } from '../../../src/definition/definition.test-kit.ts';
-import { formatText } from '../../../src/formatter/format.ts';
+import { parseText } from '../../../src/formatter/format.test-kit.ts';
+import { formatTree } from '../../../src/formatter/format.ts';
 import type { Observation } from '../../golden/observation.ts';
 import { compiledAt, observeCompiled } from '../../golden/pipeline/index.ts';
 import type { ProgramSubject } from '../../golden/subjects.ts';
 import { type Check, compiledOf, observedOf } from '../swept.ts';
 
 async function behavesAlike(_: undefined, { subject }: { readonly subject: ProgramSubject }) {
-  const text = formatText(subject.text);
+  // The formatter itself, which formats a module its banner keeps as written too.
+  const text = formatTree(parseText(subject.text));
   expect(text).toBeDefined();
   if (text === undefined || text === subject.text) {
     return 0;
