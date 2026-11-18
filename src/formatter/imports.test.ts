@@ -170,6 +170,16 @@ describe('the import block', () => {
     );
   });
 
+  it('leaves an annotated import alone, its annotation on it only', () => {
+    const plain = lines('@foo', "import a from 'x'", "import b from 'x'");
+    // The annotated import takes two lines, so it sorts after the one on one line.
+    expect(formatText(plain)).toBe(lines("import b from 'x'", '@foo', "import a from 'x'"));
+    const commented = lines('@foo', "import a from 'x'", "import b from 'x' # bee");
+    const { actual, expected, formatted } = roundTripOf(commented);
+    expect(actual).toEqual(expected);
+    expect(formatted).toContain('@foo\nimport a from');
+  });
+
   const paths = ['lib', 'a/b', '../up', '../../far', './near', './Near'];
   const items = ['*', '* as ns', '* as other', 'one', 'two as deux', 'Three', 'four'];
   const comment = (text: string) => fc.constantFrom('', text);
@@ -179,24 +189,38 @@ describe('the import block', () => {
       items: fc.uniqueArray(fc.constantFrom(...items), { minLength: 1, maxLength: 4 }),
       parenthesized: fc.boolean(),
       leading: comment('# leading\n'),
+      annotation: fc.constantFrom('', '@foo\n'),
       opening: comment(' # opening'),
       first: comment(' # first'),
       trailing: comment('  # trailing'),
     })
-    .map(({ path, items: [head, ...tail], parenthesized, leading, opening, first, trailing }) =>
-      parenthesized
-        ? `${leading}import (${opening}\n  ${[`${head}${first}`, ...tail].join('\n  ')}\n) from '${path}'${trailing}`
-        : `${leading}import ${[head, ...tail].join(', ')} from '${path}'${trailing}`,
+    .map(
+      ({
+        path,
+        items: [head, ...tail],
+        parenthesized,
+        leading,
+        annotation,
+        opening,
+        first,
+        trailing,
+      }) =>
+        parenthesized
+          ? `${leading}${annotation}import (${opening}\n  ${[`${head}${first}`, ...tail].join('\n  ')}\n) from '${path}'${trailing}`
+          : `${leading}${annotation}import ${[head, ...tail].join(', ')} from '${path}'${trailing}`,
     );
 
-  it('keeps what generated imports bind and their comments, one statement per path, formatting once and for all', () => {
+  it('keeps what generated imports bind, their comments and annotations, one statement per path but for annotated ones, formatting once and for all', () => {
     fc.assert(
       fc.property(fc.array(statement, { minLength: 1, maxLength: 8 }), (statements) => {
         const text = lines(...statements, 'fn f(): 1');
         const { actual, expected, reparsed } = roundTripOf(text);
         expect(actual).toEqual(expected);
+        // An annotated import stands alone; every other path has one statement.
         const written = reparsed.root.items.flatMap((item) =>
-          item.kind === 'ImportDeclaration' && item.path.kind === 'StringLiteral'
+          item.kind === 'ImportDeclaration' &&
+          item.path.kind === 'StringLiteral' &&
+          (item.annotations ?? []).length === 0
             ? [item.path.value]
             : [],
         );

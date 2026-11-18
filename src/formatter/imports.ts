@@ -69,17 +69,24 @@ function mergedByPath(imports: readonly ImportDeclaration[]): readonly Merged[] 
   const byPath = new Map<string, ImportDeclaration[]>();
   const groups: Merged[] = [];
   for (const declaration of imports) {
-    const joined =
-      (declaration.annotations ?? []).length > 0 ? undefined : byPath.get(pathOf(declaration));
+    const alone = isAnnotated(declaration);
+    const joined = alone ? undefined : byPath.get(pathOf(declaration));
     if (joined === undefined) {
       const started: Merged & ImportDeclaration[] = [declaration];
       groups.push(started);
-      byPath.set(pathOf(declaration), started);
+      // An annotated import is a group of one, which nothing joins.
+      if (!alone) {
+        byPath.set(pathOf(declaration), started);
+      }
     } else {
       joined.push(declaration);
     }
   }
   return groups;
+}
+
+function isAnnotated(declaration: ImportDeclaration): boolean {
+  return (declaration.annotations ?? []).length > 0;
 }
 
 /**
@@ -89,6 +96,9 @@ function mergedByPath(imports: readonly ImportDeclaration[]): readonly Merged[] 
  */
 function mergedStatement(printer: Printer, merged: Merged): builders.Doc {
   const [first] = merged;
+  if (merged.some(isAnnotated)) {
+    unreachable('An annotated import stands alone (mergedByPath), so no merge holds one.');
+  }
   if (!merged.some((declaration) => hasOwnComments(printer, declaration))) {
     return statement(printer, merged);
   }
