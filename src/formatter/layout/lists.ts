@@ -12,7 +12,7 @@
 import { builders, utils } from 'prettier/doc';
 import { extentIn, type SyntaxNode } from '../../compiler/syntax/tree/index.ts';
 import { memo } from '../../foundation/structures/memo.ts';
-import { encloses } from '../../foundation/text/span.ts';
+import { lineMapOf } from '../../foundation/text/line-map.ts';
 import { hasBlankLine } from '../comments/comments.ts';
 import type { Printer } from '../printer.ts';
 
@@ -205,24 +205,23 @@ export function hasComments(printer: Printer, node: SyntaxNode): boolean {
   return withComments.start !== extent.start || withComments.end !== extent.end;
 }
 
-const lineBreak = /[\n\r]/u;
-
 /**
  * Whether a comment is written in `node`'s own lines: inside the text it and everything under it
  * cover, or, when that text spans lines, at the end of its last line, where a comment belongs to
- * whatever that line ends with. A compressed form would part either from its code.
+ * whatever that line ends with, whichever node it was placed on. A compressed form would part
+ * either from its code.
  */
-export function holdsComments(printer: Printer, node: SyntaxNode): boolean {
-  const { text } = printer.tree.source;
+function holdsComments(printer: Printer, node: SyntaxNode): boolean {
   const extent = extentIn(printer.tree, node);
-  const spansLines = lineBreak.test(text.slice(extent.start, extent.end));
-  return printer.tree.comments.some(
-    ({ span }) =>
-      encloses(extent, span) ||
-      (spansLines &&
-        span.start >= extent.end &&
-        !lineBreak.test(text.slice(extent.end, span.start))),
-  );
+  if (printer.commentsIn(extent).length > 0) {
+    return true;
+  }
+  const lines = lineMapOf(printer.tree.source);
+  const last = lines.positionAt(extent.end).line;
+  if (lines.positionAt(extent.start).line === last) {
+    return false;
+  }
+  return printer.commentsIn({ start: extent.end, end: lines.lineSpan(last).end }).length > 0;
 }
 
 /**

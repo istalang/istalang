@@ -120,6 +120,9 @@ export function parseBlockBraces<Item extends SyntaxNode>(
   return parseEnclosedIn(parser, '{', enter, () => parseLines(parser, rules));
 }
 
+/** An item of these lists may start with its annotations, whose `@` starts it on a new line. */
+const annotatedItemOpeners: ReadonlySet<CursorKind> = new Set([annotationOpener]);
+
 /**
  * `{ a: Int, b: Int }`, or a variant's `(a: Int, b: Int)`: `rules` items as a list (§2), each with
  * its annotations; the cursor must be at `opener`.
@@ -130,7 +133,11 @@ export function parseItemEntries<Item extends SyntaxNode>(
   rules: ItemRules<Item>,
 ): Enclosed<Items<Item>> {
   return parseList(parser, opener, () =>
-    parseCommaSeparated(parser, () => parseListItem(parser, rules)).items.flat(),
+    parseCommaSeparated(
+      parser,
+      () => parseListItem(parser, rules),
+      annotatedItemOpeners,
+    ).items.flat(),
   );
 }
 

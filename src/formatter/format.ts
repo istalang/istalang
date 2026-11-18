@@ -35,10 +35,11 @@ import {
 import { spanIn } from '../compiler/syntax/tree/positions.ts';
 import { handlerOf } from '../foundation/structures/kind-table.ts';
 import { memo } from '../foundation/structures/memo.ts';
+import { lastIndexAtMost } from '../foundation/structures/sorted.ts';
 import { unreachable } from '../foundation/structures/unreachable.ts';
 import { createSourceText, type SourceText } from '../foundation/text/source-text.ts';
 import { encloses, type Span, textOf } from '../foundation/text/span.ts';
-import { placeComments } from './comments/comment-placement.ts';
+import { bannerEnd, placeComments } from './comments/comment-placement.ts';
 import {
   type CommentsOf,
   danglingDocs,
@@ -86,6 +87,8 @@ const noComments: CommentsOf = { leading: [], trailing: [], dangling: [] };
 class TreePrinter implements Printer {
   readonly tree: SyntaxTree;
   readonly #placement: ReadonlyMap<SyntaxNode, CommentsOf>;
+  /** Every placed comment in text order, which `commentsIn` bisects: comments never overlap. */
+  readonly #ordered: readonly PlacedComment[];
   readonly #inBrackets: ReadonlySet<SyntaxNode>;
   readonly #printed = new Set<PlacedComment>();
   readonly #docs = new Map<SyntaxNode, builders.Doc>();
@@ -93,6 +96,9 @@ class TreePrinter implements Printer {
   constructor(tree: SyntaxTree, placement: ReadonlyMap<SyntaxNode, CommentsOf>) {
     this.tree = tree;
     this.#placement = placement;
+    this.#ordered = [...placement.values()]
+      .flatMap(({ leading, trailing, dangling }) => [...leading, ...trailing, ...dangling])
+      .toSorted((first, second) => first.span.start - second.span.start);
     this.#inBrackets = nodesInBrackets(tree);
   }
 
@@ -137,6 +143,12 @@ class TreePrinter implements Printer {
     return this.#commentsOf(node).dangling.length > 0;
   }
 
+  commentsIn({ start, end }: Span): readonly PlacedComment[] {
+    const first = lastIndexAtMost(this.#ordered, (comment) => comment.span.start, start - 1) + 1;
+    const last = lastIndexAtMost(this.#ordered, (comment) => comment.span.end, end);
+    return this.#ordered.slice(first, last + 1);
+  }
+
   extentOf(node: SyntaxNode): Span {
     const { leading, trailing } = this.#commentsOf(node);
     const extent = extentIn(this.tree, node);
@@ -152,9 +164,7 @@ class TreePrinter implements Printer {
 
   /** Every placed comment no printer has printed: none, unless a printer misses one. */
   unprinted(): readonly PlacedComment[] {
-    return [...this.#placement.values()]
-      .flatMap(({ leading, trailing, dangling }) => [...leading, ...trailing, ...dangling])
-      .filter((comment) => !this.#printed.has(comment));
+    return this.#ordered.filter((comment) => !this.#printed.has(comment));
   }
 
   #commentsOf(node: SyntaxNode): CommentsOf {
@@ -179,8 +189,7 @@ const disablingComment = '# disable-ista-formatter';
 
 /** Whether `tree`'s banner, the comments before its first item, keeps it as written (banner). */
 function isFormattingDisabled(tree: SyntaxTree): boolean {
-  const [first] = childrenOf(tree, tree.root);
-  const end = first === undefined ? tree.source.text.length : extentIn(tree, first).start;
+  const end = bannerEnd(tree);
   return tree.comments.some(
     ({ span }) => span.end <= end && textOf(tree.source, span).trim() === disablingComment,
   );

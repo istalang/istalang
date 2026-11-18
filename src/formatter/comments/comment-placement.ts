@@ -148,7 +148,7 @@ function ownLinePlace(context: Source, around: Surroundings, comment: PlacedComm
   const { tree } = context;
   const { source } = tree;
   const { path, enclosing, preceding, following } = around;
-  if (headsModule(tree, around)) {
+  if (comment.span.end <= bannerEnd(tree)) {
     return [tree.root, 'leading'];
   }
   const column = columnOf(source, comment.span.start);
@@ -171,10 +171,14 @@ function ownLinePlace(context: Source, around: Surroundings, comment: PlacedComm
   return leadingConstruct(context, path);
 }
 
-/** Whether `comment` stands in the module's header: before its first item. */
-function headsModule(tree: SyntaxTree, around: Surroundings): boolean {
-  const { enclosing, preceding, following } = around;
-  return enclosing === tree.root && preceding === undefined && following !== undefined;
+/**
+ * Where `tree`'s banner ends: the comments before its first item, or every comment of a module of
+ * none. They lead the module (banner), and `# disable-ista-formatter` among them keeps the module
+ * as written (../format.ts).
+ */
+export function bannerEnd(tree: SyntaxTree): number {
+  const [first] = childrenOf(tree, tree.root);
+  return first === undefined ? tree.source.text.length : extentIn(tree, first).start;
 }
 
 /** The innermost construct of `path` that a line may start before, which the comment then leads. */

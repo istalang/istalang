@@ -11,6 +11,7 @@ import type { builders } from 'prettier/doc';
 import type { SyntaxNode, SyntaxTree } from '../compiler/syntax/tree/index.ts';
 import type { Handlers } from '../foundation/structures/kind-table.ts';
 import type { Span } from '../foundation/text/span.ts';
+import type { PlacedComment } from './comments/comments.ts';
 
 export interface Printer {
   /** The tree printed, which holds its text and its functions' bodies. */
@@ -34,6 +35,11 @@ export interface Printer {
   readonly danglingAbove: (node: SyntaxNode) => builders.Doc;
   /** Whether `node` has comments left to its own printer, asked without printing them. */
   readonly hasDangling: (node: SyntaxNode) => boolean;
+  /**
+   * The comments the formatter places on nodes whose text `span` holds, in text order: where a
+   * comment stands, as opposed to which node it was placed on.
+   */
+  readonly commentsIn: (span: Span) => readonly PlacedComment[];
   /** `node`'s span widened to the comments printed before and after it. */
   readonly extentOf: (node: SyntaxNode) => Span;
   /**

@@ -12,8 +12,8 @@
  *   then one with `* as m`, then the rest, each alphabetically by path.
  * - In a statement, `*` comes first, then each `* as m` by `m`, then the names alphabetically.
  *   The items stand bare on the import's line while they fit; else in parentheses, each star on a
- *   line of its own and the names packed into the lines after them, each within a compressed
- *   form's width (layout/compact.ts), since several names share one. A `*` first on a line starts
+ *   line of its own and the names filling the lines after them, each within a compressed form's
+ *   width (layout/compact.ts `compactFill`), since several names share one. A `*` first on a line starts
  *   an item (§2), so the broken list reads back as printed. An import holding a comment takes the
  *   parentheses and puts each item on a line of its own, so each comment stays beside its item.
  * - Alphabetical is by letter regardless of case, then by code unit, so the order never depends on
@@ -25,11 +25,13 @@ import type { ImportDeclaration, ImportItem } from '../compiler/syntax/declarati
 import { compareOrdered } from '../foundation/language/order.ts';
 import { unreachable } from '../foundation/structures/unreachable.ts';
 import { annotated } from './layout/bodies.ts';
+import { compactFill } from './layout/compact.ts';
 import { hasComments } from './layout/lists.ts';
-import { compactWidth, oneLine, printsOnOneLine, tabWidth } from './layout/widths.ts';
+import { printsOnOneLine } from './layout/widths.ts';
 import type { Printer, Printers } from './printer.ts';
 
-const { group, hardline, hardlineWithoutBreakParent, ifBreak, indent, join, softline } = builders;
+const { group, hardline, hardlineWithoutBreakParent, ifBreak, indent, join, line, softline } =
+  builders;
 
 /** `imports`, the module's, merged by path and sorted, one statement per line. */
 export function importBlock(printer: Printer, imports: readonly ImportDeclaration[]): builders.Doc {
@@ -185,32 +187,18 @@ function listed(placed: readonly Placed[], { commented, inside }: Commenting): b
   return ['(', indent([inside, lines]), hardline, ')'];
 }
 
-/** The lines of a broken import: each star on its own, then the names packed. */
+/** The lines of a broken import: each star on its own, then the names filling lines (`filledNames`). */
 function brokenLines(placed: readonly Placed[]): builders.Doc[] {
   const stars = placed.filter((each) => each.item.kind !== 'ImportedName');
   const names = placed.filter((each) => each.item.kind === 'ImportedName');
-  return [...stars.map((each) => each.doc), ...packedNames(names)];
+  return [...stars.map((each) => each.doc), ...(names.length === 0 ? [] : [filledNames(names)])];
 }
 
-/**
- * `names` packed into the lines of a broken import, one doc per line, `, ` between two on a line,
- * each line within a compressed form's width. A broken import's items stand one level in from its
- * line's start.
- */
-function packedNames(names: readonly Placed[]): builders.Doc[] {
-  const budget = compactWidth - tabWidth;
-  const lines: { docs: builders.Doc[]; width: number }[] = [];
-  for (const { doc } of names) {
-    const width = oneLine(doc).length;
-    const last = lines.at(-1);
-    if (last !== undefined && last.width + ', '.length + width <= budget) {
-      last.docs.push(doc);
-      last.width += ', '.length + width;
-    } else {
-      lines.push({ docs: [doc], width });
-    }
-  }
-  return lines.map((each) => join(', ', each.docs));
+/** `names` filling the lines of a broken import, `, ` between two on a line: a compressed form. */
+function filledNames(names: readonly Placed[]): builders.Doc {
+  return compactFill(
+    names.flatMap(({ doc }, index) => (index === 0 ? [doc] : [[ifBreak('', ','), line], doc])),
+  );
 }
 
 function pathOf(declaration: ImportDeclaration): string {

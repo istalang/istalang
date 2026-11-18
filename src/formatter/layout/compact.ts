@@ -18,7 +18,7 @@
 
 import { builders } from 'prettier/doc';
 
-const { group, hardlineWithoutBreakParent, ifBreak, indent } = builders;
+const { fill, group, hardlineWithoutBreakParent, ifBreak, indent } = builders;
 
 type Doc = builders.Doc;
 
@@ -28,6 +28,18 @@ const compactGroups = new WeakSet<builders.Group>();
 export function compactGroup(contents: Doc): Doc {
   const made = group(contents);
   compactGroups.add(made);
+  return made;
+}
+
+const compactFills = new WeakSet<builders.Fill>();
+
+/**
+ * `parts`, contents and separators in turn, filling lines that each keep within the compact width:
+ * what shares a line through a fill is a compressed form too, as a broken import's names are.
+ */
+export function compactFill(parts: readonly Doc[]): Doc {
+  const made = fill([...parts]);
+  compactFills.add(made);
   return made;
 }
 
@@ -121,8 +133,13 @@ function mapNode(node: Doc, enclosing: symbol | undefined, walk: Walk, reserve: 
       return compactGroups.has(node)
         ? reserving(node, enclosing, walk, reserve)
         : { ...node, contents: walk(node.contents, enclosing), ...statesOf(node, enclosing, walk) };
-    case 'fill':
-      return { ...node, parts: node.parts.map((part) => walk(part, enclosing)) };
+    case 'fill': {
+      const parts = node.parts.map((part) => walk(part, enclosing));
+      return {
+        ...node,
+        parts: compactFills.has(node) ? lineReserves(parts, enclosing, reserve) : parts,
+      };
+    }
     case 'if-break':
       return {
         ...node,
@@ -164,6 +181,26 @@ function reserving(
   const whileOuterBroken =
     enclosing === undefined ? reserve : ifBreak(reserve, '', { groupId: enclosing });
   return { ...node, id, contents: [walk(node.contents, id), ifBreak('', whileOuterBroken)] };
+}
+
+/**
+ * A compact fill's `parts` with each line it fills reserving: its first, unless a compressed form
+ * around it stands flat, as `reserving` decides, and each one a separator opens by breaking.
+ */
+function lineReserves(
+  parts: readonly Doc[],
+  enclosing: symbol | undefined,
+  reserve: string,
+): Doc[] {
+  const first = enclosing === undefined ? reserve : ifBreak(reserve, '', { groupId: enclosing });
+  return parts.map((part, index) => {
+    if (index === 0) {
+      return [first, part];
+    }
+    // A fill's parts are its contents and its separators in turn; a separator printed broken
+    // starts a line, so it reserves.
+    return index % 2 === 1 ? [part, ifBreak(reserve, '')] : part;
+  });
 }
 
 function isGroup(node: Doc): node is builders.Group {

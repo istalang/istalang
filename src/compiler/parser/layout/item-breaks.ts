@@ -8,12 +8,13 @@
  *   postfix operators, a type's and a pattern's), and in the list itself. After an operator, a
  *   `.`, a `:` or an opening bracket nothing asks, so the break is read past;
  * - the next line's first token can start an item. That is derived from the expression grammar's
- *   tables (grammar/expressions/expression.ts, `startsItemOnNewLine`) and the item parsers' openers
- *   (a spread's, a struct comprehension's, an annotated entry's, an import's `*`), never listed here. A token both
- *   starting and continuing an operand starts an item when it would apply to the operand only on
- *   the operand's line (a postfix bracket), when it is a word not spelling an operator with the
- *   token after it (`not`, against `not in`), or when it is a symbol no space parts from the rest
- *   of its line: glued to what follows (`-1`, against `- 1`), or alone at its line's end (a lone
+ *   tables (grammar/expressions/expression.ts, `startsItemOnNewLine`), with a spread's and a struct
+ *   comprehension's openers, and from the openers a list's own items start with, which its parser
+ *   passes in (`itemOpeners`): an annotated entry's `@`, an import's `*`. None is listed here. A
+ *   token both starting and continuing an operand starts an item when it would apply to the
+ *   operand only on the operand's line (a postfix bracket), when it is a word not spelling an
+ *   operator with the token after it (`not`, against `not in`), or when it is a symbol no space
+ *   parts from the rest of its line: glued to what follows (`-1`, against `- 1`), or alone at its line's end (a lone
  *   `..`, the range open at both ends). So every line a broken list puts one item on reads back as
  *   that item.
  * Comments and blank lines change nothing: the decision reads the break's two tokens.
@@ -33,7 +34,6 @@
 import type { Token, TokenKind } from '../../syntax/tokens/index.ts';
 import type { CursorKind } from '../cursor/index.ts';
 import type { Parser } from '../parser.ts';
-import { annotationOpener } from './annotations.ts';
 
 /** The item openers of a list whose items start with nothing of their own. */
 export const noItemOpeners: ReadonlySet<CursorKind> = new Set();
@@ -55,11 +55,7 @@ export function breakSeparatesItems(
   const token = cursor.peek(ahead);
   const next = cursor.peek(ahead + 1);
   const spaced = next.kind !== 'lineBreak' && !next.firstOnLine && next.span.start > token.span.end;
-  return (
-    token.kind === annotationOpener ||
-    itemOpeners.has(token.kind) ||
-    parser.startsItemOnNewLine(token.kind, next.kind, spaced)
-  );
+  return itemOpeners.has(token.kind) || parser.startsItemOnNewLine(token.kind, next.kind, spaced);
 }
 
 /**

@@ -24,6 +24,8 @@ import type {
   QuotedEntry,
 } from '../../compiler/syntax/expressions/index.ts';
 import { extentIn, parentOf, type SyntaxNode } from '../../compiler/syntax/tree/index.ts';
+import { lineStartAt } from '../../foundation/text/line-map.ts';
+import { whitespaceStart } from '../comments/comments.ts';
 import { bracedOrIndented } from '../layout/compact.ts';
 import { hasComments, keepsItsLines } from '../layout/lists.ts';
 import type { Printer } from '../printer.ts';
@@ -123,11 +125,11 @@ function movesForm(printer: Printer, value: StructValue): boolean {
  * as `= # note` or a key's `:` above its block, where the braces would part them.
  */
 function commentedBefore(printer: Printer, value: StructValue): boolean {
-  const { tree } = printer;
-  const { start } = extentIn(tree, value);
-  return tree.comments.some(
-    ({ span }) => span.end <= start && tree.source.text.slice(span.end, start).trim() === '',
-  );
+  const { text } = printer.tree.source;
+  const before = whitespaceStart(text, extentIn(printer.tree, value).start);
+  // A comment runs to its line's end, so one ending there starts on that line.
+  const onItsLine = printer.commentsIn({ start: lineStartAt(text, before), end: before });
+  return onItsLine.at(-1)?.span.end === before;
 }
 
 /** Whether an indented value may open where `value` stands (banner). */
