@@ -12,7 +12,7 @@ tags: [language, spec]
 
 A struct is a named record with typed fields, one per line. Structs are ordinary types: use them for variables, parameters, return values and inbox messages alike.
 
-```python
+```ista
 struct ReviewRequest:
     purchaseId: String
     amount: Int
@@ -25,7 +25,7 @@ Construction lists the fields in braces after the type's name: `ReviewRequest{pu
 
 **Associated types.** A struct or enum declares a type computed from its type arguments among its fields or variants, in any order: `type Data = T`.
 
-```python
+```ista
 struct Field<T>:
     value: T?
     type Data = T
@@ -39,7 +39,7 @@ struct Cell<T> { value: T, type Data = Array<T> }
 
 **Anonymous structs.** `struct { … }` is a struct type without a name, usable anywhere a type is. In a type position the keyword may be left out, since a `{` there can only be a field list: `Array<struct { sku: String, qty: Int }>` and `Array<{ sku: String, qty: Int }>` are the same type, and a formatter can pick one style. An indented block under a field is sugar for one, and any struct declaration may use braces on a single line, as in `struct Req { id: Int, value: String }`. An anonymous struct type is its *shape*: its field names and their types. Two with the same fields, written anywhere and in any order, are one type, so `{ a: Int, b: Int }` is `{ b: Int, a: Int }`, while struct declarations stay nominal: two declarations are two types even with identical fields.
 
-```python
+```ista
 struct Response:
     id: String
     data:                          # sugar for  data: { value: Int, result: String }
@@ -65,7 +65,7 @@ A `struct{…}` literal takes its type from context: the expected type where the
 
 **Key types.** `keyof S` is the union of `S`'s field names as String literal types: `keyof Req` is `"id" | "value"`, and `keyof {}` is `Never`. Over a type parameter with a struct constraint it is opaque, holding the literals of the fields the constraint names. `S[K]` is the type of the field the key `K` names, and, for a union of keys, the union of their types: `Req[keyof Req]` is `Int | String`. For a key standing for one of several fields not known yet, a member type parameter `K in keyof S`, `S[K]` is that one field's type, opaque, unless the constraint gives every field `K` may name the same exact type: under `S is struct { a: Int, [_]: Int }` it is `Int`. `.Name`, `[K]` and `?` bind tightest, then `keyof`, then `|`, so `keyof S[K]` is `keyof (S[K])`. A key is a value like any String literal: compared, matched by literal patterns, passed where a `String` is expected, sent. `s[k]` reads the field `k` names (§10.2). `keyof` also heads a loop over a type's keys, `for K in keyof S` (§11.2). A struct with a member type parameter pairs a key with its field's type, and a mapped type indexed by its own keys gives the union of one such entry per key:
 
-```python
+```ista
 struct Settings { retries: Int, region: String }
 struct Entry<S is struct, K in keyof S> { key: K, value: S[K] }
 type AnyEntry<S is struct> = { [K in keyof S]: Entry<S, K> }[keyof S]
@@ -92,7 +92,7 @@ fn moved() -> Settings:
 
 **Getters.** A value computed from fields may read as a field: a method declared `fn get name`, a getter, is read with `.`, and `x.g` is the call `g(x)`, made on every read.
 
-```python
+```ista
 struct Person:
     first: String
     last: String

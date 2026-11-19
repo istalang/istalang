@@ -16,7 +16,7 @@ tags: [language, spec]
 - **Fitting.** A value of a literal type, or of a union of literals of one base, fits that base type: for `s: Status`, `s + "!"` and `s.toUpperCase()` are `String`s. A value of the base never fits a literal type: `const s: Status = name` is an error, while `case "draft" as d` gives `d` the type `"draft"` (§11.3). A lone literal type meets a trait through its base's functions that take the value itself, and through `&`, only through functions declared on the literal type (§7.3). At run time a lone literal type's value is its base's.
 - **Agreeing values.** Where several values take one type and none is expected (§10.1), values of literal types of one base agree on that base: `[k1, k2]` is an `Array<String>`, and `if c: k1 else: k2` a `String`, for `k1: "a"` and `k2: "b"`. A literal type held inside another type widens only where a type expects it (§8.1), so values holding different ones agree only when each is a literal of items, a tuple, a struct literal or a collection literal: they agree on the type with every literal type inside it widened, and each converts into it as its items do (§8.1), so `[(k1, 1), (k2, 2)]` is an `Array<(String, Int)>`.
 
-```python
+```ista
 type Status = "draft" | "sent" | "failed"
 
 struct NotFound { id: String }

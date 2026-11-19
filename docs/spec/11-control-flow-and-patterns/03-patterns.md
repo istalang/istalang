@@ -33,7 +33,7 @@ A pattern can also be a literal (`case 0:`, `case "cfo":`), a tuple of patterns 
 - **Type patterns.** A bare type name tests a value's type, and `as` binds the value with that type: `case Int as n`, `x is String as s`. Against an `any` value it matches the values of that type inside (§8.3), so, giving no type arguments, it names no generic one, and a type not meeting the `any` type's traits is never inside: the pattern is ruled out (below). Against a union it selects members (below). Against any other value it names that value's own type, a generic one by its bare name whatever its type arguments (`case Box` against a `Box<Int>`), and matches every value of it, as `_` does, so it covers the type for exhaustiveness; another type, or a variant of another enum, is ruled out. A struct without fields is such a pattern, its one value matched by its name. An alias names the type it stands for, before braces too (`case Mail{to}`); a generic alias stands for no one type, and `Never`, which no value has, names none. An `any` value's own type is never an `any` type, so an alias of one names only the subject's own type. A variant isn't a type, so one with fields is still written with its fields.
 - **Ruled-out cases.** A pattern its subject's type can't hold never matches: a literal outside the subject's literal types or base (`case "c"` against `"a" | "b"` or an `Int`), `none` where no value of the type is `none`, a type or struct pattern naming another type, or a variant of another enum, against a value whose type is known where the pattern is checked (not a type parameter's, §8.1), a type an `any` value never holds (§8.3), a field compared by `==` or `!=` with what its type fixes to fail, and, on a union, a pattern selecting no member (below). Such a case is warned of once, its guard and body are neither checked nor run, and it covers nothing for exhaustiveness; an or-pattern leaves out an alternative so ruled out, and `x is` such a pattern is always false (§11.1). A field loop's pass gives its value one field's type (§11.2), so `match v: case Int as n: … case String as s: …` runs each field's own case, and a case is warned of only when every pass rules it out.
 
-```python
+```ista
 import toUpperCase from 'strings'
 
 struct Email { to: String }
@@ -54,7 +54,7 @@ fn shout(x: any Stringable) -> String:
 - **On a union,** a pattern selects the members it can match, then matches the rest of itself against the selected member's value: a type pattern its type's member, a union's alias every member of it, a generic type's by its bare name the members instantiating it, and a literal's base type every literal member of that base, so against `Status | Int`, both `case Status as s` and `case String as s` bind `s: Status`; a literal its own literal member, else its base type's; `none` the `None` member; a type pattern, a struct pattern naming a type, or a literal, whose type or base no member is but an `any` member may hold, one that took it whole or one a value of it converts into through its traits' variance (§8.3), that `any` member, matching the values of that type inside it as against an `any` value, so `case Int as n` against `Plain | any Stringable` binds `n: Int`; a variant, bare or qualified (§5.3), the enum member declaring it; a struct pattern the member of the type it names, and `struct{…}` the shape member having its fields; a tuple, array or range pattern the member of its kind. A pattern selecting no member is ruled out (above); one selecting several that takes the value apart is a compile error, such as `case Box{value}` against `Box<Int> | Box<String>`: it names its member through an alias, `case Point as p`, or with type arguments, `case Box<Int>{value}`, which only a pattern on a union may give; a variant takes its enum's, `case Some<Int>(n)` against `Opt<Int> | Opt<String>`.
 - **Remaining type.** On a union, a case's binder, `case v:` or `as`, has the subject's type without the members that earlier cases without a guard covered: after `case None:`, `case v:` binds the `T` of a `T?`. The subject itself keeps its type.
 
-```python
+```ista
 type Status = "draft" | "sent" | "failed"
 
 fn describe(x: Int | String | None) -> String:
@@ -71,7 +71,7 @@ fn label(s: Status) -> String:
 
 **`is` outside `match`.** `x is Pattern` is a boolean expression. Its bindings exist only where the match is known to have succeeded: in the body of an `if` or `while`, and on the right-hand side of an `and`. `or` can't introduce bindings, because afterwards it isn't known which side matched.
 
-```python statements
+```ista statements
 if r is Ok(y) and y > 0:
     use(y)            # y exists only here
 ```

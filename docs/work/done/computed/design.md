@@ -24,7 +24,7 @@ code on it, driven by two live functions. Nothing in it is async.
 
 ## The module
 
-```python
+```ista
 shared struct Graph:                   # nodes that read one another, on one clock
     now: Int = 0                       # monotonic: ticks at every view and every change
 
@@ -90,7 +90,7 @@ fn read<T is Inert>(self: Computed<T>) -> T            # and the same on a Sourc
 **Expressions are simple.** An expression reads a group through its scope, field by field, so its
 reads are tracked as it runs, and each expression is a closure over its scope:
 
-```python
+```ista
 fn index<S is struct { [_] is FormNode }, K in keyof S>(self: GroupScope<S>, key: K) -> S[K].Scope:
     self._m[key].scope()
 when: fn(): data.company.legalForm != "sole"

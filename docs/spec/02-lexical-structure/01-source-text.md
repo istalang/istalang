@@ -22,7 +22,7 @@ Blocks are defined by indentation, as in Python. Comments start with `#` and run
   - **A postfix bracket stands on its operand's line:** a call's `(`, an index's `[`, a struct literal's `{` and type arguments' `<`, as a tagged template's tag does. On the next line each starts an item, or for `<`, continues as the operator.
   - `,` and line breaks mix: a `,` ending or starting a line separates once, and items sharing a line still need `,`. Blank lines and comments between two items change nothing.
 
-  ```python statements
+  ```ista statements
   const pairs = [
       (1, "a")                     # two items, not a call
       (2, "b")

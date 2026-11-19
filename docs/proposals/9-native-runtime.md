@@ -27,7 +27,7 @@ Compiled to a native binary, a program is its own host. The developer writes eve
 
 The developer provides a key-value store, and nothing else:
 
-```python
+```ista
 trait Kv:
     live async fn get(self: Self, key: String) -> Bytes?
     live async fn put(self: Self, key: String, value: Bytes)    # atomic for one key
@@ -66,7 +66,7 @@ A context is an instance (§17.1), named by its key. Its memory, executions, pan
 
 ## Context constants
 
-```python
+```ista
 ista const verdicts = Inbox.create<Verdict>()
 ```
 
@@ -81,7 +81,7 @@ ista const verdicts = Inbox.create<Verdict>()
 
 ## Example
 
-```python
+```ista
 # workflow.ista
 import Inbox from 'inbox'
 import * as rpc from 'rpc'
@@ -130,7 +130,7 @@ ista fn status() -> Outcome?: outcome->value                                    
 ista async fn amend(amount: Int) -> Result<Int>: await amendments.call(amount)     # update
 ```
 
-```python
+```ista
 # main.ista
 import * as http from 'http'
 import * as futures from 'futures'

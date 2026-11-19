@@ -17,7 +17,7 @@ A function type is written `fn(Int, String) -> Bool` or `ista async fn(String) -
 - **Two orders, of their own.** `Mark` is ordered `"simple"` below `"live"` and `"ista"`, which are apart, and `Sendability` `"sendable"` below `"inert"` below `"plain"`. They are orders on these two types alone, not subtyping between their members: a function fits where one of a mark and sendability at or above its own is expected, so an unmarked function fits where a `live fn` is expected and a `sendable fn` where a `fn` is.
 - **Keeping an argument's.** A higher-order function keeps its argument's mark and sendability through written parameters, `M in Mark` and `S in Sendability`: `logged<...A, R, M in Mark, S in Sendability>(f: Fn<A, R, M, S>) -> Fn<A, R, M, S>` gives a sendable function exactly when `f` is one. A closure's `Send` is the least its captures allow: `"sendable"` when everything it captures is sendable, `"inert"` when everything is inert, the `S` of the only function values keeping it from being sendable, and `"plain"` otherwise. Function values of `S` beside inert captures would make it the greater of `S` and `"inert"`, which no member names, so that closure is `"plain"`.
 
-```python
+```ista
 fn twice(f: fn(Int) -> Int, x: Int) -> Int:
     f(f(x))
 
@@ -44,7 +44,7 @@ fn makeCounter(start: Int) -> fn() -> Int:
 - **Several statements** go in a block expression (§10.1): `fn(msg): { log(msg); save(msg); msg.id }`, or the same block spread over several indented lines. There is no brace-less form with `;`.
 - **Overloaded names** passed as values, like `xs.map(add)`, need an expected function type to choose the overload; otherwise they are a compile error.
 
-```python statements
+```ista statements
 bus.subscribe(fn(msg): {
     if msg.urgent:
         alert(msg)
@@ -54,7 +54,7 @@ bus.subscribe(fn(msg): {
 
 **Functions are values.** A local `fn` declaration is the same as binding a lambda to a `const` at that point. There is no hoisting inside a function, so a local function can only be used after its declaration. These two are equivalent:
 
-```python
+```ista
 fn main():
     const result = fn(): 5
 

@@ -25,7 +25,7 @@ Lets a type be computed from another, such as a form schema's data type from the
 
 ## Example
 
-```python
+```ista
 trait FormNode:
     type Data
     fn validate(self: Self, data: Self.Data) -> Array<String>
@@ -66,7 +66,7 @@ type Order = Group<OrderForm>.Data
 
 The same data type through a type `match`, without a trait:
 
-```python
+```ista
 type DataOf<D> = match D:
     case Field<infer T>: T
     case Repeat<infer R>: Array<DataOf<R>>
@@ -80,7 +80,7 @@ type Order = DataOf<OrderForm>
 
 In a struct or enum declaration:
 
-```python
+```ista
 struct Field<T>:
     value: T?
     type Data = T
@@ -102,7 +102,7 @@ struct Cell<T> { value: T; type Data = T }
 
 In a trait:
 
-```python
+```ista
 trait Keyed:
     type Key is Stringable & Encodable
     fn key(self: Self) -> Self.Key
@@ -117,7 +117,7 @@ trait Keyed:
 
 A struct constraint is a constraint on a struct's fields, written after `is`:
 
-```python
+```ista
 fn fieldNames<S is struct { title: String; [_] is FormNode }>(form: S) -> Array<String>:
     const struct{title, ...rest} = form
     [for field, _ in ...rest: `${title}.${field}`]
@@ -150,7 +150,7 @@ fn fieldNames<S is struct { title: String; [_] is FormNode }>(form: S) -> Array<
 
 ## 3. Mapped struct types
 
-```python
+```ista
 { [F in keyof S]: T }
 { id: String; [F in keyof S]: S[F].Data }
 { [K in "retries" | "region"]: Int }       # { region: Int; retries: Int }
@@ -170,7 +170,7 @@ fn fieldNames<S is struct { title: String; [_] is FormNode }>(form: S) -> Array<
 
 ## 4. Type `match`
 
-```python
+```ista
 type DataOf<D> = match D:
     case Field<infer T>: T
     case Repeat<infer R>: Array<DataOf<R>>
@@ -203,7 +203,7 @@ DataOf<Field<Int> | Field<String>>          # Int | String: a union distributes
 
 ## 5. Field loops
 
-```python
+```ista
 for field, node in ...form:
     log.info(`${field} is filled`)
 ```
@@ -225,7 +225,7 @@ for field, node in ...form:
 
 ## 6. Struct comprehensions
 
-```python
+```ista
 struct SettingsForm:
     retries: Field<Int>
     region: Field<String>
@@ -245,7 +245,7 @@ fn current(s: SettingsForm) -> { [F in keyof SettingsForm]: SettingsForm[F].Data
 
 ## 7. Rest in struct patterns
 
-```python
+```ista
 const struct{title, ...rest} = form
 match page:
     case Page{title == "", ...rest}: ...
@@ -259,7 +259,7 @@ match page:
 
 ## 8. Key types
 
-```python
+```ista
 struct Settings { retries: Int; region: String }
 
 fn read(s: Settings, k: keyof Settings) -> Int | String:
@@ -289,7 +289,7 @@ type RetryType = Settings["retries"]        # Int
 
 **Entries.** A key and a value whose type follows from it are a struct with a member type parameter, and a key chosen at runtime is the union of one entry per key. No rule beyond those above:
 
-```python
+```ista
 struct Entry<S is struct, K in keyof S> { key: K; value: S[K] }
 type AnyEntry<S is struct> = { [K in keyof S]: Entry<S, K> }[keyof S]
 # AnyEntry<Settings> is Entry<Settings, "retries"> | Entry<Settings, "region">

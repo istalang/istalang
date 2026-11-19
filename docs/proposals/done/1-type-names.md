@@ -23,7 +23,7 @@ Every type name becomes PascalCase, primitives included. A PascalCase bare name 
 - **Freed names.** `int`, `float`, `bool`, `string`, `unit` and `never` become ordinary camelCase names, for variables, fields and functions alike.
 - **Type patterns.** A PascalCase bare name in a pattern refers, as today (§3.11): to a variant, a struct without fields, or now any type, matching every value of it.
 
-```python
+```ista
 fn describe(x: any Stringable) -> String:
     match x:
         case Int as n: `a number, ${n}`

@@ -12,7 +12,7 @@ tags: [language, spec]
 
 A method is an ordinary function whose first parameter is named `self`, or is a pattern named so, `Point{x, y} as self` (§6.1). Methods live in the program's definition, not inside values, so data stays plain and serializable. Dispatch is static, by the receiver's type.
 
-```python
+```ista
 struct Stack<T>:
     items: Array<T>
 
@@ -29,7 +29,7 @@ A method can also be called as a plain function: `push(&s, 3)` is the same call 
 
 **Static functions.** A function without `self` can be declared on a type, and is called through it:
 
-```python
+```ista
 fn Duration.zero() -> Duration:
     Duration{value: 0}
 

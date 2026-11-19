@@ -27,7 +27,7 @@ Proposal 5 (`docs/proposals/5-indented-values.md`, Rule 2) shipped recursive ali
 
 Run on the built CLI at `cd7d4af0`:
 
-```python
+```ista
 type FormOrder = { note: String?, qty: Int }
 type CrmOrder = { note: String?, qty: Int }
 fn save(o: CrmOrder) -> Int: o.qty

@@ -19,7 +19,7 @@ no disposable at all.
 - **An observer.** A listener that captures its owner closes a cycle with no disposable in it, and
   the call is rejected (5721):
 
-  ```python
+  ```ista
   shared struct Emitter:
       listeners: Array<fn(Int) -> Unit> = []
 
@@ -72,7 +72,7 @@ A recursive type is inert unless something in its cycle isn't. Every sendable ty
 
 ## Inert function types
 
-```python
+```ista
 shared struct Emitter:
     listeners: Array<inert fn(Int) -> Unit> = []
 

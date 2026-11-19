@@ -12,7 +12,7 @@ tags: [proposal, language, patterns, flow, annotations, stdlib, literals]
 
 Changes taken from forms that people and agents write from other languages and that Istalang refuses or reads otherwise today (`docs/review/guessed-forms.md`, and the traps of the 2026-11-18 spec audit; those still open are in `docs/review/spec-audit-2026-11-18.md`). The human decided every rule below; **Decisions** lists the choices that settled its open points. Section numbers refer to the spec (`docs/spec/`).
 
-```python
+```ista
 fn label(x: Int?) -> String:
     if x is not None: `n = ${x + 1}`          # x reads as an Int here
     else: "none"
@@ -42,7 +42,7 @@ hold onExit { log(order) }                     # runs when the block ends, howev
   - Where it fails: the `else`, the later `elif`s, and the right-hand side of an `or`.
   - After an `if` whose body always leaves (`return`, `break`, `continue`, `panic`, anything of type `Never`), the rest of the block reads what the failing test leaves:
 
-  ```python
+  ```ista
   fn first(xs: Array<Int>) -> Int:
       const x = xs.at(0)
       if x is None: return 0

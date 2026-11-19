@@ -12,7 +12,7 @@ tags: [language, spec]
 
 `extern` marks a top-level declaration whose implementation lives in the host, outside any workflow instance. It applies to functions, which have no body, to constants, written `extern name: Type` with no initializer, and to struct types the host implements, such as `extern sendable struct Queue<T>`. Their values cross as JSON (§17.4), so the parameters of extern functions must be `Encodable`, and their results and extern constants `Decodable` (§8.4), which makes all of them sendable (§7.4). The one exception is sendability: what crosses to the host crosses as JSON, so a disposable host type, below, which isn't sendable, still crosses to its own host, alone or inside other values. An `extern live async fn` gives a live future, which its host resolves (below). A host object with operations of its own is an extern type with extern functions taking it, and one whose release the host must learn of is a disposable host type, below: a queue the host provides gives a revertible send as one, which the `inbox` module's `Revertible.holding` keeps until its holder is released (§15.3, §20.1).
 
-```python
+```ista
 extern fn chargeCard(purchaseId: String, amount: Int) -> Result<String>
 extern approvalDeadline: Duration
 extern purchaseRequests: Queue<PurchaseRequest>     # a queue the host provides

@@ -20,7 +20,7 @@ All three work only on such types; using one on any other value is an error. A `
 
 `??` can't be mixed with `and` or `or` without parentheses, as in JavaScript. Neither operator is related to the postfix `?` on `Result`, which propagates errors (§12).
 
-```python fragment
+```ista fragment
 const limit: Int = m.get("limit") ?? 50_000
 const role: String? = verdict?.role
 ```

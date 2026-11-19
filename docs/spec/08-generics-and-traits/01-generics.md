@@ -22,7 +22,7 @@ A parameter left with none, or given types that disagree, which inference never 
 
 **One expression, one inference.** A generic call, a literal naming its type, or a collection literal passed straight to a call doesn't settle alone: its type parameters are inferred together with the call's, the outermost expression's settling them all, as Kotlin does. So what the outermost call is expected to be, and what its other arguments give, reach what is nested in it: `items([Item{value: "s"}])` expected as an `Options<"s" | "m">` builds an `Array<Item<"s" | "m">>`, `boxed(Ok(5))` expected as a `Box<Result<Int?, String>>` gives `Ok` its `Int?` and `String`, and `pair(id(1), id(none))` is an `Array<Int?>`. A variant's call is such a call (§5.3). One whose result is computed from its own type parameters, an associated type or a field's type, has those settled first by what it is given, a lambda passed to it checked first, since nothing it is passed to can tell them through a computed type: `text(scopeOf(f))` for `fn scopeOf<N is Node>(n: N) -> N.Scope` gives `text`'s `T` what `N.Scope` reduces to. A call choosing among functions reads what only a default decides of what it is given as that default, as it will settle: `pickArr(empty())` for `fn empty<T = Int>() -> Array<T>` takes the `pickArr` of an `Array<Int>`, where with no default it is ambiguous. A lambda's body is checked once what its parameters are given is settled, guided by what is expected of its result; where that is still open, its value joins the call too: `f(fn x: Good(x + 1))` for `fn f<U>(g: fn(Int) -> Outcome<U, String>)` gives `Good` its enum and `String`.
 
-```python
+```ista
 struct Pair<A, B>:
     first: A
     second: B
@@ -48,7 +48,7 @@ fn swap<A, B>(p: Pair<A, B>) -> Pair<B, A>:
   - A handle's are invariant (§7.2, §5.4): a value put in through one copy is read through every other, so a `Slot<Int>` is no `Slot<Int?>`, and neither word is written on one. A function's, a trait's and an alias's type parameters take neither: each call infers a function's, a trait's are derived where it is used through `any`, and an alias is the type it names. A one-element tuple converts into its element, and back, only as a whole value (§4.5).
 - **Compiled per instantiation.** A generic function or type is compiled once for each set of concrete type arguments it is used with, so every call has a fixed target and the runtime never needs types to make one (§8.2). A generic function or type that would need endlessly many instantiations, such as `f<T>` calling `f<Array<T>>`, or `struct W<T>` with a field of type `W<(T,)>?`, is therefore a compile error, and so is a type `match` reducing to itself that way, `W<T>` to `W<Array<T>>` (§4.6).
 
-```python
+```ista
 fn logged<...A, R>(f: fn(...A) -> R) -> fn(...A) -> R:
     fn(...args: A) -> R: f(...args)          # wraps a function of any parameters
 
@@ -59,7 +59,7 @@ fn measured() -> Int:
     measure(3, 4)
 ```
 
-```python
+```ista
 type Status = "draft" | "sent" | "failed"
 
 fn describe<S in Status>(s: S) -> String:    # one instantiation per member used

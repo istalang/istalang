@@ -12,7 +12,7 @@ tags: [language, spec]
 
 **Inboxes.** The standard library's `Inbox<T>` is a FIFO message queue built on slots, the way Haskell builds its channels on `MVar`s, and written in the language. It is a shared struct (§5.4), which the `inbox` module makes disposable by declaring its `dispose` (§16), so an inbox is a handle that a `WeakRef` can watch. It is created with `Inbox.create<T>()`, and `box.pending()` gives the messages waiting in it, oldest first, without receiving them:
 
-```python statements
+```ista statements
 const box = Inbox.create<Verdict>()
 box.send(v)                            # durable
 _ = box.sendRevertible(v)              # revertible: held until this block ends
@@ -32,7 +32,7 @@ const next: Verdict = await box.receive()
 
 **Death signal.** Any code holding an inbox may send to it and receive from it, and every such handle keeps the inbox alive (§16). To notice that the other side of a conversation is gone *without* keeping it alive, hold a `WeakRef` to its inbox and watch `disposed()`:
 
-```python
+```ista
 ista async fn child(parent: WeakRef<Inbox<Status>>, mine: Inbox<Command>):
     while true:
         await select:

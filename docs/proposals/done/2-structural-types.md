@@ -12,7 +12,7 @@ tags: [proposal, language, types, checker, lowering]
 
 `struct` declarations stay nominal. Anonymous struct types, `{ … }` and `struct { … }`, compare by shape: their field names and the fields' types, in any order. An alias names a shape, and a nominal struct's value fits an equal shape. No new syntax; one new conversion. Section numbers refer to `docs/spec.md`. Written against today's spec: with `1-type-names.md` in, read `int`, `string` and the other primitives as `Int`, `String` and so on.
 
-```python
+```ista
 struct Order:                        # nominal, as today
     id: string
     total: int

@@ -23,7 +23,7 @@ const listed = [
   '',
   '1. Defer it:',
   '',
-  '   ```python statements',
+  '   ```ista statements',
   '   defer fn(): log("exited")',
   '',
   '   x = 1',

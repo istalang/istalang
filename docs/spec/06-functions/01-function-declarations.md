@@ -10,7 +10,7 @@ tags: [language, spec]
 
 # 6.1 Function declarations
 
-```python
+```ista
 fn total(items: Array<Int>) -> Int:                        # may not await
     ...
 
@@ -30,7 +30,7 @@ extern fn chargeCard(id: String, amount: Int) -> Result<String>  # implemented b
 
 **Parameter patterns.** A parameter may be a declaration target (§4.5) in place of its name: a pattern that can't fail, which takes its argument apart when the body is entered.
 
-```python
+```ista
 import * as math from 'math'
 
 type Point = { x: Float, y: Float }
@@ -47,7 +47,7 @@ fn moved({x, y} as start: Point, dx: Float = x) -> Point: Point{x: start.x + dx,
 - **Its name.** A destructured parameter has no name, so a call gives it by position only. `Pattern as name` names the whole as well, bound beside the parts; that name is the parameter's, for named arguments, and `as self` makes the function a method (§6.2).
 - **Where not.** A pattern binds values, while a reference passes a place, so a `&` parameter is a name; so is a rest parameter or a pack. An extern function and a trait's requirement have no body of their own to bind a pattern's names in, so theirs are names too. Clashes and overloads compare parameter types only (§6.3): `fn f(Point{x, y})` and `fn f(p: Point)` clash.
 
-```python statements
+```ista statements
 fn retry(times: Int = 3, backoff: Duration = 1s): ...
 retry()                      # retry(3, 1s)
 retry(5)                     # retry(5, 1s)

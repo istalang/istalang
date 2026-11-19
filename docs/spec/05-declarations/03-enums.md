@@ -12,7 +12,7 @@ tags: [language, spec]
 
 An enum is a type whose value is exactly one of several named variants, each with its own fields. Enums are values like structs: they are copied, they are sendable when all their fields are, and `match` handles them exhaustively.
 
-```python fragment
+```ista fragment
 enum Decision:
     Approved(by: String)
     Rejected(by: String, reason: String)

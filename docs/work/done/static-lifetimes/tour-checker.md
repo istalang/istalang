@@ -351,7 +351,7 @@ The node kinds are in `src/compiler/syntax/expressions/index.ts` and `syntax/sta
 
 **Accepted with no annotation:** fanout's `_publish` (`src/stdlib/fanout/fanout.ista`):
 
-```python
+```ista
 ista fn _publish<M>(bus: Bus<M>, message: M) -> Shared<Bool>:
   const retracted = new Shared<Bool>{value: false}
   const next = Slot.create<_Link<M>>()

@@ -14,7 +14,7 @@ Pending futures, slots and inboxes, and revertible messages are **disposable**: 
 
 A program's `dispose` is found the way an operator's function is (§13.1), beside the type it disposes: in the module declaring that type. It is plain code: it takes the value as its one parameter, returns unit, and can't be `async`. The value can't outlive its disposal, so inside `dispose` it is used only as `*self` (or `self->field`) or passed to an extern function, or to a std function whose `@Keeps` stands for it (§5.5); storing it, copying it into a variable, capturing it or passing it to any other function is a compile error.
 
-```python
+```ista
 trait Disposable:
     fn dispose(self: Self)
 ```
@@ -69,7 +69,7 @@ In every case, each `disposed()` future watching the value resolves afterwards.
 
 **Disposing early.** To dispose something you hold before its block ends, `drop` it. A value is disposed only when its last holder releases it, so a disposed value is never observable. To stop something that other code may also need to reach, keep the only holder in a `Shared` and share that. Setting its value to `none` releases the holder, and everyone else then sees `none` rather than a disposed value:
 
-```python statements
+```ista statements
 const sub = new Shared<Future<Unit, "ista">?>{value: bus.subscribe(fn msg: show(msg))}
 ...
 sub->value = none         # the subscription is disposed here
@@ -79,7 +79,7 @@ Code that copies the future out (`const f = sub->value`) becomes a holder itself
 
 **Graceful disposal.** Inside an `async fn`, the function's own name gives the current call's context. `worker.disposing()` returns a `Future<Unit, K>`, `K` the kind of the code asking, that resolves when the call is disposed, which gives the call a chance to clean up:
 
-```python
+```ista
 ista async fn worker(jobs: Inbox<Job>):
     while true:
         await select:
@@ -98,7 +98,7 @@ ista async fn worker(jobs: Inbox<Job>):
 
 **Defer.** `defer` is a prelude function, `M fn defer<M in Mark>(f: Fn<(), Unit, M>) -> Deferred<M>`, whose `Deferred<M>` is a disposable calling `f` when released, so it needs no machinery of its own. Called as a deferred call (§6.5), `_ = defer log(x)` computes `x` now and logs when the current block ends, whether it finishes, is left through `return`, `break` or `continue`, or is disposed at an `await`; `hold _ = defer log(x)` logs when the function ends, as Go's `defer` does. A `Deferred` is must-use, so a bare `defer log(x)` is a compile error. `f` isn't async, so it can't await; its mark is a lambda's (§6.4), the deferring code's where it calls or handles anything of a kind, else simple, and its release runs in the deferring code. Several run as any values released together are disposed, last first, and one kept by `_` in a loop body runs at the end of each iteration, as in Swift. The bracket form passes a function as it is, a lambda reading variables when it runs. Unlike `disposing()`, it also runs on a normal exit; to act only on disposal, check a flag:
 
-```python
+```ista
 ista async fn reserveAndShip(item: Item):
     const hold = reserve(item)
     let shipped = false
@@ -112,7 +112,7 @@ ista async fn reserveAndShip(item: Item):
 
 **Example.** `processAll` keeps every job it starts with `hold _`, and disposes its inbox, and any job still running, as soon as it returns:
 
-```python
+```ista
 ista async fn processAll(jobs: Array<Job>) -> Array<Outcome>:
     const results = Inbox.create<Outcome>()
     for job in jobs:

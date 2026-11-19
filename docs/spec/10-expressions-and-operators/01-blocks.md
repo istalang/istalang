@@ -14,7 +14,7 @@ Every block is an expression whose value is its last expression. A block that en
 
 **Block expressions.** A bare `{ … }` in an expression position is always a block expression: its statements run in order, its variables are scoped to it, and its value is its last expression. Indentation still applies inside the braces. Written on one line, a block must contain at least one `;`, since braces around a single expression add nothing: write `if urgent: alert(msg)` rather than `if urgent: { alert(msg) }`.
 
-```python statements
+```ista statements
 const total = { const base = price * qty; base + shipping(base) }
 
 if urgent: { alert(msg); save(msg) }     # a one-line body
@@ -22,7 +22,7 @@ if urgent: { alert(msg); save(msg) }     # a one-line body
 
 **One-line bodies.** Any `:` that introduces a body (after `if`, `elif`, `else`, `while`, `for`, `case` or `fn`) may instead be followed by exactly one statement on the same line, with no braces, as in `for x in xs: total += x`. Chained on one line, `if`, `elif` and `else` form an `if` expression like any other, so every branch must have the same type:
 
-```python statements
+```ista statements
 const size = if n < 10: "small" elif n < 100: "medium" else: "large"
 const fact = fn f(n: Int) -> Int: if n < 2: 1 else: n * f(n - 1)
 if urgent: alert(msg)

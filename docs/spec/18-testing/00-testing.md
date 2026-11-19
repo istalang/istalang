@@ -14,7 +14,7 @@ Tests are ordinary code. The runtime adds a few primitives, in the `testing` mod
 
 **Suites.** `@Suite{"title"}` marks a function that returns the suite's tests as an `Array<Test>`. Tests are values, built by library functions:
 
-```python
+```ista
 @Suite{"purchase approval"}
 ista fn approvalSuite() -> Array<Test>: [
     test("expires after 5 days", withPurchaseEnv, async fn(env): {
@@ -38,7 +38,7 @@ ista fn approvalSuite() -> Array<Test>: [
 
 **Environments.** A setup is an "around" function of type `Setup<E> = ista async fn(ista async fn(E) -> Unit) -> Unit`: it prepares an environment, runs the test inside it, and tears it down afterwards. Teardown is ordinary code, so it may `await`, and holdings such as mocks are released when the function ends, even if the test fails:
 
-```python
+```ista
 ista async fn withPurchaseEnv(test: ista async fn(PurchaseEnv)):
     const clock = FakeClock{start: Time{value: 0}}
     hold _ = mock(time.now, clock.now)
@@ -57,7 +57,7 @@ ista async fn withPurchaseEnv(test: ista async fn(PurchaseEnv)):
 
 **Host types.** `testing.handle<T>()` creates a unique, opaque value of any extern type `T`, for mocks that must return one: each call gives a value equal to no other, and a `T` that isn't an extern type is a compile error. The library's `FakeQueue<Q, T, K = String>` fakes a host's queues of type `Q` carrying `T`, with an ordinary inbox behind each: `FakeQueue<Queue<Verdict>, Verdict>{make: handle}`. Its fields are replacements for the program's functions: `open`, for a queue factory such as `verdicts`, gives the queue of a key of type `K`, made with `make` the first time; `send` and `receive` use that queue's inbox. `receive` is ista code, so it replaces the program's own ista read of a queue, such as §20.1's `next`, never the host's live `receive`, which ista code reaches only through a job (§14); a test runs no job, so one waiting on a job's result fails, naming where it waits, while a job whose future it lets go of first is withdrawn (§16) and needs none. A mock's target must name a function, so the test mocks the program's functions with them itself:
 
-```python statements
+```ista statements
 const verdictQueues = FakeQueue<Queue<Verdict>, Verdict>{make: handle}
 hold _ = mock(verdicts, verdictQueues.open)
 hold _ = mock(next, verdictQueues.receive)

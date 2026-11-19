@@ -12,7 +12,7 @@ tags: [language, spec]
 
 A program is made of modules, one per file; source files use the `.ista` extension. The compiler merges the entry module and everything it imports, directly or transitively, into a single definition. A program's code therefore never changes partially: a deploy always replaces the whole set. Code from other projects comes in as packages (§13.2).
 
-```python
+```ista
 import approve, Verdict from 'purchase/approve'
 import (
     approvePurchaseRequest

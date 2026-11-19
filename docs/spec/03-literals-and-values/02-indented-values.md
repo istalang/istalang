@@ -12,7 +12,7 @@ tags: [language, spec]
 
 **Indented values.** A struct, map or array value may be written as an indented block, as a struct declaration's fields are (§5.2): `name: value` lines build a struct, `"key": value` lines a map, and `- item` lines an array. Its lines alone say what a block builds; the type it is built as only types it, as it types the matching brace or bracket literal.
 
-```python
+```ista
 struct Service:
     name: String
     replicas: Int = 1

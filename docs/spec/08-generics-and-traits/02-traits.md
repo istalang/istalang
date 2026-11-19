@@ -12,7 +12,7 @@ tags: [language, spec]
 
 A trait is a named set of functions, and optionally fields, that a type must have. A trait constrains a type parameter (`T is Addable`), and after `any` it types a value of any type meeting it (`any Notifier`, §8.3).
 
-```python
+```ista
 trait Addable<T = Self>:
     fn add(left: T, right: T) -> T
 

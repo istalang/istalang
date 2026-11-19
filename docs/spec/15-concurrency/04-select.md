@@ -12,7 +12,7 @@ tags: [language, spec]
 
 `await select` waits until one of several awaitables resolves its case (§15.2), then runs that case. It is an expression: its value is the value of the winning case's body.
 
-```python statements
+```ista statements
 const got: Verdict? = await select:
     case verdicts.receive() as v:
         v
@@ -37,7 +37,7 @@ The rules:
 
 **Future reuse.** A future resolves once and stays resolved. Create a deadline once, outside a loop, and every iteration races against the same deadline:
 
-```python statements
+```ista statements
 const deadline: Future<Unit, "ista"> = time.delay(5d)    # created once
 while not done:
     await select:
@@ -49,7 +49,7 @@ while not done:
 
 **Non-blocking form.** A `select` without `await` must have an `else:` case. If no future has resolved at evaluation time, `else` runs. It never waits, so it may stand in a function that isn't async too, and it awaits nothing: a case it finds unresolved is left as it was, a slot operation keeping its place in its slot's queue. It replaces a separate "try receive" operation:
 
-```python statements
+```ista statements
 const cancelled: Bool = select:
     case cancels(id).receive():
         true

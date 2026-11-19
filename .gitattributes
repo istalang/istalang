@@ -1,5 +1,8 @@
+ista linguist-language=python
 *.ista linguist-language=python
+*.ista text eol=lf
 *.ista diff=python
+test/golden/*.json linguist-generated
 .claude/** linguist-generated
 .vscode/** linguist-generated
 docs/** linguist-documentation

@@ -10,7 +10,7 @@ tags: [language, spec]
 
 # 7.1 Variables
 
-```python statements
+```ista statements
 const limit: Int = 50_000          # immutable
 let count = 0                      # mutable; inferred: Int
 count = count + 1
@@ -25,14 +25,14 @@ Variables are block scoped: a variable is visible only inside the block that dec
 
 **Lifetimes follow blocks too.** When a block ends, whether it finishes or is left through `return`, `break`, `continue` or disposal, it releases everything its variables hold (§16). A loop body is a block, so each iteration releases its own holdings. `hold let` and `hold const` declare a variable whose *name* is still block scoped but whose holdings last longer, which is how a loop keeps what it starts: until the enclosing function ends, or, written `hold(name)`, until the loop or block labelled `name` (§11.1) ends, however it ends; `continue` of that loop keeps them. `hold(f)` naming the enclosing function is plain `hold`. What the variable holds when its block ends is kept, while a value it held before and lost to an assignment was released then, as any overwritten value is. The common unnamed case has a short form: `hold _ = expr` means `hold const _ = expr`.
 
-```python statements
+```ista statements
 for role in roles:
     hold _ = reviewQueue(role).sendRevertible(request) # revertible until the function returns
 ```
 
 A block takes a label only so that a `hold` can name it: the label ends its line, and the block is indented below it. It is a statement of type `Unit`, and `break` and `continue` never name it: a loop takes its label on the loop's line, `outer: for x in xs:` (§11.1).
 
-```python statements
+```ista statements
 batch:
     for job in jobs:
         hold(batch) _ = start(job)                      # runs until the batch ends
@@ -41,7 +41,7 @@ batch:
 
 **Transient variables.** `transient let` declares a variable the outermost call of its function makes and every call nested in it shares, directly or through other functions: a memo table, a depth counter, the reader a nested read reports to, kept neither global nor threaded through parameters.
 
-```python
+```ista
 fn paths(n: Int) -> Int:            # ways up n stairs, one or two at a time
     transient let memo: Map<Int, Int> = [:]
     if n <= 1: return 1
@@ -59,7 +59,7 @@ fn paths(n: Int) -> Int:            # ways up n stairs, one or two at a time
 
 **Context constants.** A top-level `ista const` holds one value per context (§17.1), of any type: a slot, an inbox, a `Shared<T>`. Its value is made the first time code in that context reads it, inside the reading segment, so a segment that is discarded made none, and is kept in the context's memory from then on. It is named as every declaration is, by its module and name, with one type, its written one or its initializer's. It is immutable as every `const` is, up to its handles. Its initializer runs as `ista` code that can't await, and reading one is an `ista` call (§9.1): a function that reads one is `ista`, so no live code reaches one. An instance that finishes or ends lets go of its context constants last, once everything else it held is disposed, the last made first (§16), so a disposal still reads them, but not one let go of before it.
 
-```python
+```ista
 import Inbox from 'inbox'
 struct Verdict { role: String, ok: Bool }
 ista const verdicts = Inbox.create<Verdict>()

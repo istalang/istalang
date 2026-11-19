@@ -14,7 +14,7 @@ tags: [proposal, language, members, index, operators, keys, generics, forms]
 by hand. A function generic over a key already reads any field with the right type, `index`
 included (§3.9):
 
-```python
+```ista
 fn index<S is struct { [_] is FormNode }, K in keyof S>(self: GroupScope<S>, key: K) -> S[K].Scope:
     self._m[key].scope()
 ```
@@ -27,7 +27,7 @@ fn index<S is struct { [_] is FormNode }, K in keyof S>(self: GroupScope<S>, key
   struct with a struct of forwarding getters. The supplier form has 13 such structs with 51
   getters, all restating its model's shape:
 
-  ```python
+  ```ista
   struct SupplierSeen:
       m: SupplierModel
 
@@ -48,7 +48,7 @@ fn index<S is struct { [_] is FormNode }, K in keyof S>(self: GroupScope<S>, key
 Member syntax reads through `index` when the name is no member. The forms engine then declares its
 scope once, for every model:
 
-```python
+```ista
 struct GroupScope<S is struct { [_] is FormNode }>:
     _m: S
 

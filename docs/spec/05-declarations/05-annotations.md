@@ -12,7 +12,7 @@ tags: [language, spec]
 
 An annotation attaches a compile-time value to a declaration. It is a struct value written with `@` before it, a struct's name, given its type arguments or not, bare or followed by its fields in braces (`@JsonName{"user_id"}`, `@Holds<T>`), and it applies to the declaration on the same line or, standing on its own line, to the next declaration:
 
-```python
+```ista
 import JsonName, JsonSkip from 'json'
 
 struct Deprecated:

@@ -19,7 +19,7 @@ The spec, `docs/spec/`, is the source of truth; `§` numbers point into it.
 
 Istalang is a Python-shaped, statically typed language for **durable workflows**: programs that wait for days on a person, a timer or another system, and survive restarts while they wait. At every `await` the runtime saves the program's whole state, so it can resume from that line later, even on another machine. The program reaches the outside world only through host functions declared `extern`.
 
-```python
+```ista
 ista async fn remindLater(role: String):
     await time.delay(1d)              # saved here; resumes a day later, even after a restart
     notifications(role).send(Notice{text: "Reminder"})
@@ -45,7 +45,7 @@ ista async fn remindLater(role: String):
 
 ### 2.1 A whole program
 
-```python
+```ista
 import * as time from 'time'
 import * as runtime from 'runtime'
 
@@ -78,7 +78,7 @@ A file holds only declarations: imports, `struct`, `shared struct`, `enum`, `tra
 
 ### 2.2 Syntax, types, variables (§2.1, §4.1, §7.1)
 
-```python statements
+```ista statements
 const limit: Int = 50_000      # immutable, deeply
 let count = 0                  # mutable, inferred Int
 count += 1
@@ -103,7 +103,7 @@ const a, b = (1, "x")          # destructuring
 
 ### 2.3 Data: structs, enums, optionals (§5.2, §5.3, §5.4)
 
-```python
+```ista
 struct Order:
     id: String
     items: Array<{ sku: String, qty: Int }>     # anonymous struct type
@@ -135,7 +135,7 @@ enum Decision:
 
 **Shared structs** give mutable identity in instance memory: built with `new`, read and written with `->`, dereferenced as a whole copy with `*`:
 
-```python statements
+```ista statements
 shared struct Lease:
     name: String
     renewals: Int = 0
@@ -153,7 +153,7 @@ const snapshot = *lease          # a plain copy of the fields
 
 ### 2.4 Functions (§6.1, §6.2, §6.4)
 
-```python
+```ista
 fn add(a: Int, b = 1): a + b                      # default parameter; return type inferred
 fn log(level: String, ...parts: Array<String>): … # rest parameter
 fn area(self: Circle) -> Float: …                 # a method: first parameter is self
@@ -166,7 +166,7 @@ ista async fn fetch(id: String) -> User: …     # may await; inside it, return 
 - **Overloading.** Functions overload by parameter types and arity, never by return type.
 - **References (`&T`).** `&` is implicit only on a method's receiver (`s.push(x)`). Every other `&T` argument must be written `&x` at the call site, including when forwarding a `&T` parameter (`helper(&out)`). References cannot be stored in variables or fields, captured by closures, or returned.
 
-  ```python statements
+  ```ista statements
   fn bump(n: &Int): n += 1
   let x = 1
   bump(&x)                 # x is 2
@@ -178,7 +178,7 @@ ista async fn fetch(id: String) -> User: …     # may await; inside it, return 
 
 ### 2.5 Generics, traits, operators (§8.1, §10.2, §8.2)
 
-```python
+```ista
 fn swap<A, B>(p: Pair<A, B>) -> Pair<B, A>: Pair{first: p.second, second: p.first}
 
 trait Monoid:
@@ -203,7 +203,7 @@ fn sum<T is Monoid>(xs: Array<T>) -> T:
 - **Field loops & comprehensions:** `for f, node in ...s:` (or `...*s` on a shared struct) checks and runs once per field in name order; `[for f, v in ...s: …]` builds an array; `struct{id, for f, v in ...s: [f]: g(v)}` builds a struct field by field. Over a type with no value, `for K in keyof S:`: `K` is each key, a type and its value, and `S[K].make()` calls the field type's static function, so `struct{for K in keyof S: [K]: S[K].make()}` builds an `S` from its type alone.
 - **`keyof S`, `s[k]`, and `type match`:** `keyof S` is the union of `S`'s field names as string literal types; `S[K]` is the field type (or union of field types), and `s[k]` reads/writes it. `type Out<D> = match D:` computes a type by pattern matching, its cases one per line below it (`case Field<infer T>: T`, then `case _: D`).
 
-```python
+```ista
 trait FormNode:
     type Data
     fn check(self: Self, data: Self.Data) -> Bool
@@ -226,7 +226,7 @@ fn check<S is struct { [_] is FormNode }>(self: Group<S>, data: Group<S>.Data) -
 
 ### 2.6 Control flow and patterns (§11.1, §11.3)
 
-```python statements
+```ista statements
 const size = if n < 10: "small" elif n < 100: "medium" else: "large"
 for i in 0..10: total += i
 for key, value in m: …
@@ -249,7 +249,7 @@ Patterns: a variant's fields as a call gives them, `case Rejected("legal", reaso
 
 ### 2.7 Errors (§12)
 
-```python
+```ista
 ista async fn pay(req: Req) -> Result<String>:
     const receipt = chargeCard(req.id, req.amount)?   # on Err, return the Err from pay
     Ok(receipt)
@@ -266,7 +266,7 @@ ista async fn pay(req: Req) -> Result<String>:
 
 ### 2.9 Concurrency (§15.1, §15.4, §17.1)
 
-```python
+```ista
 const a = fetchA()          # started already; runs alongside
 const b = fetchB()
 const both = (await a, await b)
@@ -274,7 +274,7 @@ const both = (await a, await b)
 
 - **`select`** waits for the first ready future (`await select:`) or polls synchronously (`select:` with `else:`). Losing cases release and dispose what their case expressions created (aborting losing calls and dropping losing `receive`s without consuming).
 
-  ```python statements
+  ```ista statements
   const deadline = time.delay(5d)           # create once, reuse in every iteration
   while true:
       await select:
@@ -290,7 +290,7 @@ const both = (await a, await b)
 
 Resources (pending futures, slots, inboxes, revertible sends, and shared/extern structs with `fn dispose(self: T)`) are disposed synchronously when their last holder ends.
 
-```python statements
+```ista statements
 _ = startJob()              # held until this block ends
 hold _ = startJob()         # held until the function ends, even when written in a loop
 hold(rows) _ = startJob()   # held until the loop or block labelled rows ends
@@ -299,7 +299,7 @@ _ = defer log("exited")     # runs when the block ends, however it ends
 hold _ = defer log("done")  # runs when the function ends
 ```
 
-```python
+```ista
 ista async fn approve(req: Req, roles: Array<String>) -> String:
     for role in roles:
         hold _ = reviewQueue(role).sendRevertible(req) # kept until approve returns
@@ -312,7 +312,7 @@ ista async fn approve(req: Req, roles: Array<String>) -> String:
 
 ### 2.11 Modules, host, JSON, tools (§13, §17)
 
-```python
+```ista
 import approve, Verdict from 'purchase/approve'   # a project file: purchase/approve.ista
 import * as time from 'time'                      # a standard-library module
 import helper from './helper'                     # relative to this file
@@ -332,7 +332,7 @@ import helper from './helper'                     # relative to this file
 
 ### 2.12 Testing (§18)
 
-```python
+```ista
 @Suite{"purchase"}
 ista fn suite() -> Array<Test>: [
     test("expires after 5 days", withPurchaseEnv, async fn(env): {

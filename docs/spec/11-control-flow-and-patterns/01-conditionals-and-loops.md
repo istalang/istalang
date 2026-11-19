@@ -10,7 +10,7 @@ tags: [language, spec]
 
 # 11.1 Conditionals and loops
 
-```python fragment
+```ista fragment
 const label: String = if amount > 50_000:
     "large"
 else:

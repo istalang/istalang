@@ -20,7 +20,7 @@ Every program has exactly one `live async fn main()`, taking nothing. A host sta
 - **Waiting for an instance.** `inst.result()` resolves with the instance's first end: `Ok` of its outcome when it finishes, or `Err(Error{message, code: "panic", trace})` with its panic when it panics, or was terminated after one. The outcome is copied out of the instance's last commit, so `T` must be sendable. A retry after the panic changes nothing for a wait already resolved. `Instance<T>` is sendable and compares by identity, so it may be passed to another instance; it isn't `Encodable`, so it never crosses to the host.
 - **Isolating a call.** `runtime.isolate(f)` spawns `f` and waits for its `result()`, so a panic in `f` becomes an `Err` instead of freezing the caller. Its panic also terminates that instance at once, disposing what it holds (§16), so it needs no operator.
 
-```python
+```ista
 import * as runtime from 'runtime'
 live async fn main(): await runtime.run(runtime.id()) _main()
 ista async fn _main():
@@ -35,7 +35,7 @@ ista async fn _main():
 - **Calling into a context.** `rt.call(key) f(args)` runs `f`, an ista function, in the context named `key`, made with the options the live run started with (`crashEveryAwait`, §18) when the store has none by that key. A key holds no `/`, which only a spawned instance's name does (`<parent>/<n>`), so no key names one: a call with one panics. Every call starts a new invocation, alongside any already running there, and gives a `Call<R>`, a live awaitable (§19.1): awaiting it gives `Ok` of what `f` gave, or `Err(Error{message, code: "panic", trace})` once the context panics, or when it had panicked or ended already. Releasing a `Call` cancels nothing. What crosses, `args` and the result, must be sendable (§7.4). The context commits at every `await`, as any instance does, while the live code waiting on it waits in memory; an invocation an earlier process started runs to its end once resumed, its answer reaching nobody.
 - **Running in a context.** `runtime.run(key) f(args)` opens a runtime and calls `f` in the context named `key`, giving what `f` gave, or panicking with the context's panic, its message and trace. The usual `main` runs its program this way, in the context named after the live run (`runtime.id()`):
 
-```python
+```ista
 import * as runtime from 'runtime'
 live async fn main() -> Int: await runtime.run(runtime.id()) _main()
 ista async fn _main() -> Int:

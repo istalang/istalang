@@ -12,7 +12,7 @@ tags: [language, spec]
 
 A `shared struct` is a struct whose values are handles to a cell of the instance's own memory, holding its fields. A module declares one when it needs values with an identity, such as a queue or a resource, where a struct, copied whenever it is passed, has none.
 
-```python
+```ista
 shared struct Lease:
     name: String
     renewals: Int = 0

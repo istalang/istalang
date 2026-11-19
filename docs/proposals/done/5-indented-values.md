@@ -12,7 +12,7 @@ tags: [proposal, language, syntax, types, stdlib, json]
 
 A struct, map or array value may be written as an indented block, as a struct declaration's fields already are (§3.1): `key: value` lines build a struct or a map, and `- item` lines build an array. The block parses the same everywhere; the type it is built as decides what it means. With it come two more changes. Aliases may refer to themselves. `json.Json` becomes such an alias, a union, so JSON of any shape is written as plain literals. Three more changes stand on their own. `,` becomes the one separator in every list, and `;` stays only between statements. A parameter may be a pattern that can't fail, which takes its argument apart. Inside any bracketed list, a line break separates items as `,` does. An import's names may stand in parentheses, as such a list, and any imported name may be renamed. Section numbers refer to `docs/spec.md`.
 
-```python
+```ista
 import Json from 'json'
 
 struct Service:
@@ -96,7 +96,7 @@ const tree: Json = ["name": "api", "tags": ["web", 1, none]]   # no wrapping, at
 
 ### 2. Recursive aliases
 
-```python
+```ista
 type Tree<T> = T | Array<Tree<T>>
 type List = { head: Int, tail: List? }
 ```
@@ -121,7 +121,7 @@ type List = { head: Int, tail: List? }
 
 ### 3. `json.Json` as a recursive union
 
-```python
+```ista
 type Json = None | Bool | Int | Float | String | Array<Json> | Map<String, Json>
 ```
 
@@ -167,7 +167,7 @@ type Json = None | Bool | Int | Float | String | Array<Json> | Map<String, Json>
 
 ### 5. Parameter patterns
 
-```python
+```ista
 type Point = { x: Float, y: Float }
 
 fn norm(Point{x, y}) -> Float: math.sqrt(x * x + y * y)
@@ -201,7 +201,7 @@ pairs.map(fn((k, v)): `${k}=${v}`)
 
 ### 6. Line breaks between items
 
-```python
+```ista
 new FieldView<OrderScope, String>{
     key: "n12"
     parent: none
@@ -256,7 +256,7 @@ retry(
 
 ### 7. Parenthesized import lists
 
-```python
+```ista
 import (
     approve
     Verdict

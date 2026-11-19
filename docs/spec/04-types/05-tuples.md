@@ -12,7 +12,7 @@ tags: [language, spec]
 
 A tuple groups a fixed number of values by position. Its type is written `(Int, String)`, and a tuple is built with parentheses: `(5, "x")`.
 
-```python statements
+```ista statements
 fn minMax(xs: Array<Int>) -> (Int, Int):
     (xs.min(), xs.max())
 

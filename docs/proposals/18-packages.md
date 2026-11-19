@@ -48,7 +48,7 @@ A package's root is the directory holding `package.ista`; it is `/app`. Without 
 uses its working directory, with no links (resolves tracker F1). The manifest is an ordinary module
 that exports `const package`, and may import only from `/std`:
 
-```python
+```ista
 import Package, Source from '/std/package'
 
 const package = Package:
@@ -77,7 +77,7 @@ The toolchain reads it by compiling it as a module and taking the constant's com
 
 ## The schema: `/std/package`
 
-```python
+```ista
 struct Package:
     name: String                         # the canonical Git address: "host/owner/repo[/subdir]"
     version: String                      # semver; the one source of the package's version

@@ -15,7 +15,7 @@ at every crossing. A React host renders a tree the program sends after every eve
 work by reference equality (`memo`, `useMemo`). Today it gets new objects every time, so it
 re-renders everything or deep-compares everything:
 
-```python
+```ista
 extern live fn show(tree: Tree)
 
 live async fn main():

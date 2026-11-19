@@ -12,7 +12,7 @@ tags: [language, spec]
 
 There is no `try`/`catch`. A function that can fail returns a `Result`, from the prelude:
 
-```python fragment
+```ista fragment
 enum Result<T, E = Error>:
     Ok(value: T)
     Err(error: E)
@@ -23,7 +23,7 @@ struct Error:
     trace: String = _trace()   # the frames where the Error is built
 ```
 
-```python statements
+```ista statements
 ista async fn pay(req: PurchaseRequest) -> Result<String>:
     const receipt = chargeCard(req.id, req.amount)?    # returns early on Err
     Ok(receipt)

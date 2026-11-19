@@ -12,7 +12,7 @@ tags: [proposal, language, enums, patterns, functions]
 
 A way to build a value that people and agents write from other languages and Istalang refused (`docs/review/guessed-forms.md`): an enum variant declared and called like a function. A variant with fields is a function of its enum: it is called, and named as a value, as any function is, and only so: braces neither build nor take apart a variant. The human decided every rule below, including that a variant is declared in parentheses, never braces; **Decisions** lists the choices that settled its open points. Section numbers refer to `docs/spec.md`.
 
-```python
+```ista
 enum Node:
     Text(value: String)
     Group(title: String, collapsed: Bool = false, ...children: Array<Node>)

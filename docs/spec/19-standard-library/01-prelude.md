@@ -12,7 +12,7 @@ tags: [language, spec]
 
 The **prelude** declares the built-in types the runtime implements, using the same `extern` mechanism programs use (§17.2):
 
-```python fragment
+```ista fragment
 extern struct Array<gives T>                # an Array<Int> is an Array<Int?> (§8.1)
 extern struct Map<K, gives V>               # keys invariant: widening them would rehash
 extern shared struct Slot<T>                # a handle, not sendable

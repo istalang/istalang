@@ -421,7 +421,7 @@ may.
 
 The annotations live in a new std module, `lifetimes`, not the prelude:
 
-```python
+```ista
 struct Holds<T>                        # a value of the annotated type holds what a value of T holds
 
 struct Keeps:
@@ -435,7 +435,7 @@ struct Keeps:
 
 ### 6.3 `@Holds<X>` on an extern handle
 
-```python
+```ista
 @Holds<T>
 extern shared struct Slot<T>
 @Holds<()>
@@ -478,7 +478,7 @@ extern shared struct Resolver<T, K in Persistence>
 
 ### 6.4 `@Keeps{…}` on an extern function
 
-```python
+```ista
 @Keeps{["self": ["value"]]}
 extern ista fn put<T>(self: Slot<T>, value: T) -> Future<Unit, "ista">
 @Keeps{["self": ["done"]]}

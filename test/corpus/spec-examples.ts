@@ -15,8 +15,8 @@
  * `isPlaceholder` recognizes the text such a placeholder leaves in a diagnostic.
  *
  * Most examples are whole modules. The rest say what they are in their fence's info string, after
- * the language: ` ```python statements` for statements shown outside any function, which a module
- * can't hold at its top level, and ` ```python fragment` for samples that are neither, such as the
+ * the language: ` ```ista statements` for statements shown outside any function, which a module
+ * can't hold at its top level, and ` ```ista fragment` for samples that are neither, such as the
  * cheat sheet's. An unknown word there fails every test at load, so a typo can't hide an example.
  */
 

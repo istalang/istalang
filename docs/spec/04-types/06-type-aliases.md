@@ -14,7 +14,7 @@ tags: [language, spec]
 
 **Recursive aliases.** An alias may refer to itself, directly or through other aliases, where each reference stands inside a type built from others: a nominal type's argument, a trait's argument in an `any` type (`kids: any Iterable<Tree>`), a field of a shape, a tuple element, or a function type's parameter or result. An alias's argument stands where the alias's body puts its parameter, guarded only where every use of it there is: `Id<A>` for `type Id<T> = T` stands as `A` does, and `OrInt<A>` for `type OrInt<T> = T | Int` as a union's member. A type `match` alias's argument stands as every case's type uses it, or what a case infers from it whole, and must be known first where a case's pattern inspects it, so `type A = Flip<A>` names no type whatever `Flip`'s cases give.
 
-```python
+```ista
 type Tree<T> = T | Array<Tree<T>>
 type List = { head: Int, tail: List? }
 type Machine = fn(Int) -> Machine
@@ -29,7 +29,7 @@ type Machine = fn(Int) -> Machine
 
 **Type `match`.** The whole body of an alias or an associated type may be a type `match`, whose type is that of its first case matching its subject:
 
-```python
+```ista
 struct Field<T> { value: T? }
 struct Repeat<Row> { row: Row }
 

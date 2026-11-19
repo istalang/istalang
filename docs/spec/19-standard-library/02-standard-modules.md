@@ -33,7 +33,7 @@ The **standard library** is a set of modules, imported explicitly, for example `
 | `fanout` | `create<M>()` makes a `Bus<M>`, disposable like an inbox. `bus.subscribe(handler)`, for a plain or `async` handler of `M`, returns a `Future<Unit, "ista">` that runs the handler for each message sent after the call, in the order they were sent, one at a time, until it is disposed, or until the bus is disposed and it has handled every message sent before; a subscription doesn't keep the bus alive. `bus.send(msg)` delivers a message to every subscriber, and `bus.sendRevertible(msg)` returns a `Revertible<M>` (§15.3) whose release retracts the message from every subscriber that hasn't read it yet. Messages form one stream of slots that every subscriber reads. |
 | `testing` | Test modules only (§18): the `Suite` annotation and `Test`; `mock` and `Mock<F>`; `spawnCrashingEveryAwait`, an `Instance`'s inspection (`idle`, `reaches`, `waitingAt`, `state`) and `InstanceState`; `handle<T>()`; and the test library: `test`, `group`, `skip`, `only`, `Setup`, `setups`, `FakeClock`, `FakeQueue`, `assert`, `assertEq` and `expectPanic` |
 
-```python
+```ista
 # from the time module
 struct Duration:
     value: Int              # milliseconds

@@ -17,7 +17,7 @@ tags: [language, spec]
 - **Tagged templates:** `` tag`a ${x} b` `` is the call `tag(["a ", " b"], x)`: the texts, one more than the values, then each value. It is an ordinary call, so `tag` is any function, method or function value, and its parameters decide what the values must be, as `fn sql(parts: Array<String>, ...values: Array<any Stringable>)` takes any text-writable ones. A tag stands on the template's line, as a call's `(` does.
 - **Multi-line text:** a template, and a docstring (§2.3), may span lines. A line break in it is `\n`, whichever the source uses. If the opening delimiter ends its line, that line break goes, and so does the one before a closing delimiter alone on its line, with the spaces before it. Then every line after the first loses the leading spaces they all share; blank lines don't count. Indentation is read before escapes are, so an escaped `\n` or `\t` is never a line break or indentation. A template, a `${…}` or a docstring left open runs to the end of the file, as in JavaScript; the error points at its opening delimiter:
 
-```python statements
+```ista statements
 const message = `
     Dear ${name},
       your order ${id} has shipped.

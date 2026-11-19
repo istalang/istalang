@@ -71,7 +71,7 @@ Validation of `examples/FormBuilder` (`forms.ista`, `order.ista`, `supplier.ista
   2. While `{ [K in keyof C]: … }[keyof C]` is a valid indexed mapped type (§5.2), inside generic `Variant.read<C>` it remains an unreduced `FieldType` (`of[keyof C]`), and Istalang's fitting rules (`fit/index.ts`) do not convert a struct `{ tag: k, value: … }` built with a field-loop key `k: K in keyof C` into that unreduced `FieldType`.
   3. In Istalang v0.1, general unions of structs do not derive `Encodable` or `Decodable` (§17.4, §21), which would prevent any form result containing a `Variant` from crossing the host/JSON boundary.
 - **Alternative used:** Renamed `case` to `tag` (matching `Variant.tag` and the schema's `tag` property), simplified `Variant<C is struct { [_] is FormNode }>` so `cases: C` holds each case's `Group<…>` directly, and used `form-builder-spec.md` §8 #2's fallback struct:
-  ```python
+  ```ista
   struct Variant<C is struct { [_] is FormNode }>:
       tag: Field<keyof C>
       cases: C
@@ -85,7 +85,7 @@ Validation of `examples/FormBuilder` (`forms.ista`, `order.ista`, `supplier.ista
 - **Assumption:** `self.cases[k].read()?` where `k: keyof C`.
 - **Spec (`docs/spec.md` §5.2, §8.2, §11.2):** Because each field of `C` has its own `Group` type with a distinct `Data` associated type, `self.cases[k]` for an unnarrowed `k: keyof C` is a union of distinct `Group` types, and a union has no associated types (§5.2, §8.2).
 - **Alternative used:** Built `Variant.read()` with a struct comprehension over `...self.cases`, where each pass types `g` at its own key `k` and only the active case calls `g.read()?`:
-  ```python
+  ```ista
   fn read<C is struct { [_] is FormNode }>(self: Variant<C>) -> Result<Variant<C>.Data>:
       const active = self.tag.read()?
       const activeStr: String = active
@@ -121,7 +121,7 @@ Validation of `examples/FormBuilder` (`forms.ista`, `order.ista`, `supplier.ista
 - **Assumption:** `fn({data, ctx, item}): item.qty > 0` destructures the scope parameter in the parameter list.
 - **Spec (`docs/spec.md` §6.1, §6.4, §4.5):** A parameter may be any pattern that can't fail; in a parameter, `{…}` is short for `struct{…}`, and a lambda's pattern takes its type from the expected function type or an annotation.
 - **Change:** `generate.ts` (`lam`) emits:
-  ```python
+  ```ista
   fn({data, ctx}: OrderScope): <expr>
   ```
 
@@ -141,7 +141,7 @@ Validation of `examples/FormBuilder` (`forms.ista`, `order.ista`, `supplier.ista
 - **Assumption:** `const ctx = { ...sc.ctx, search }` widens `sc.ctx` with a new `search` field.
 - **Spec (`docs/spec.md` §5.2, §10.5):** A leading spread `struct{...req, field: v}` constructs an updated copy of `req` of the **same** type, overriding existing fields; it cannot add new fields. A struct comprehension `struct{search, for k, v in ...sc.ctx: [k]: v}` (§10.5) builds a shape with named fields plus every field of `sc.ctx`.
 - **Alternative used:** Updated `generate.ts` (`options` for `search` widgets) to emit:
-  ```python
+  ```ista
   const ctx = struct{search, for k, v in ...sc.ctx: [k]: v}
   ```
 

@@ -21,7 +21,7 @@ tags: [language, spec]
 - **Extern effects aren't transactional.** The runtime doesn't make `extern fn` calls atomic with the segment. If a segment is discarded, the effects of extern calls it made remain, and a re-run calls them again. Idempotency is the developer's responsibility; an extern can, for example, return its own commit and abort handles for the workflow to call once it decides. Slot operations are exactly-once; anything the host provides is the host's responsibility.
 - **Effects through `delegate`.** Ista code acts on the world through jobs: `runtime.delegate`, `ista fn delegate<R is Encodable & Decodable>(job: sendable live async fn() -> R) -> Future<R, "ista">`, called as a deferred call, `await runtime.delegate charge(card, total)` (§6.5). The job is queued when its segment commits, so a discarded segment queues none, and the runtime serving the instance (§17.1) runs it as live code, and again, after a restart, until its result commits into the future: it runs at least once, and only for committed history. Letting go of its future withdraws it (§16): a job not yet run never runs, and a running one is cancelled, so a job whose future loses a `select` stops as a losing call does (§15.4). Its result crosses back as JSON, so `R` needs its codecs (§17.4) rather than sendability; the job itself crosses as a sendable function. A job that panics panics the live code serving it, so it runs again once that code runs again.
 
-```python
+```ista
 ista async fn remindLater(role: String):
     await time.delay(1d)              # persisted; resumes after a day
     notifications(role).send(Notice{text: "Reminder"})

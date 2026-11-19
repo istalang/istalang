@@ -17,7 +17,7 @@ to loop over: the fields of `S` are known, but not reachable without an `S`.
 - **FormBuilder's models** (`examples/FormBuilder/`): every form's generated factory restates its
   model type, field by field. The supplier form makes 47 such calls:
 
-  ```python
+  ```ista
   fn orderModel(graph: Graph) -> Group<OrderModel>: Group{
     fields: OrderModel{
       country: Field.make<String>(graph)
@@ -37,7 +37,7 @@ to loop over: the fields of `S` are known, but not reachable without an `S`.
 A field loop may run over a type's keys instead of a value's fields. The forms engine then builds
 any model from its type:
 
-```python
+```ista
 trait FormNode:
     type Seen
     fn Self.make(graph: Graph, data: Self.Seen?) -> Self

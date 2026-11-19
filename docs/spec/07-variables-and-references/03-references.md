@@ -12,7 +12,7 @@ tags: [language, spec]
 
 **References.** A parameter of type `&T` refers to the caller's variable instead of a copy. Changes made through it are visible to the caller, including to other concurrent executions of the same instance:
 
-```python
+```ista
 ista async fn collectSignature(sigs: &Array<Signature>, signer: String):
     _ = signQueue(signer).sendRevertible(SignRequest{signer: signer})
     sigs.push(await runtime.delegate signatures(signer).receive())

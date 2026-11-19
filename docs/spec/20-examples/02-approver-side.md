@@ -12,7 +12,7 @@ tags: [language, spec]
 
 The task-list UI shows the reviews waiting in `reviewQueue(role)`; how the host reads and claims them is up to the host. On submit, the host starts this function on the purchase's version. The verdict goes into the host-provided `verdicts` queue, because a run the host starts is separate from the purchase (§15.1).
 
-```python
+```ista
 fn submitReview(task: ReviewRequest, role: String, ok: Bool, comment: String):
     verdicts(task.purchaseId).send(Verdict{role: role, ok: ok, comment: comment})
 ```

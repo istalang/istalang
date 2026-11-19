@@ -14,7 +14,7 @@ One program covers a full approval flow. A purchase is reviewed in parallel by t
 
 **Declarations:**
 
-```python
+```ista
 import * as time from 'time'
 import Inbox, Revertible from 'inbox'
 import Encodable, Decodable from 'json'
@@ -72,7 +72,7 @@ extern fn chargeCard(purchaseId: String, amount: Int) -> Result<String>
 
 **Entry point.** Each purchase is spawned as its own instance, so it finishes on the version it started with:
 
-```python
+```ista
 import * as runtime from 'runtime'
 live async fn main(): await runtime.run(runtime.id()) _main()
 ista async fn _main():
@@ -83,7 +83,7 @@ ista async fn _main():
 
 **One purchase instance.** This shows a non-blocking `select` before the irreversible step:
 
-```python
+```ista
 ista async fn purchase(req: PurchaseRequest) -> String:
     let roles: Array<String> = ["legal", "finance"]
     if req.amount > 50_000:
@@ -121,7 +121,7 @@ fn charge(req: PurchaseRequest) -> ChargeResult:
 
 **Parallel approval.** Fan-out uses revertible sends into the reviewers' queues, kept with `hold _` so they stay revertible until `approve` returns, although they are sent inside loops. Verdicts come back through the host-provided `verdicts` queue, because the reviewers' side runs in separate instances (§15.1). The join is a `select` loop that reuses the cancel, deadline and reminder futures.
 
-```python
+```ista
 ista async fn approve(req: PurchaseRequest, roles: Array<String>, cancel: Future<Cancel, "ista">) -> String:
     for role in roles:
         hold _ = reviewQueue(role).sendRevertible(

@@ -16,7 +16,7 @@ is keyed by name, so proposal 4's computed types serve both.
 
 ## Example
 
-```python
+```ista
 # Mixed-type futures: Future<(Int, String)> from a Future<Int> and a Future<String>
 async fn all<A is tuple>(...fs: ( [I in keyof A]: Future<A[I]> )) -> A:
     (for _, f in ...fs: await f)
@@ -162,7 +162,7 @@ call, in the product their type names:
   `and`. It comes before the body's `:` or an alias's `=`, or ends a declaration that has
   neither, such as an extern function or a trait's requirement:
 
-  ```python
+  ```ista
   fn pairs<A is tuple, B is tuple>(...a: A, ...b: B) -> ( [I in keyof A]: (A[I], B[I]) )
       where keyof A == keyof B:
   struct Zip<A is tuple, B is tuple> where keyof A == keyof B:
@@ -230,7 +230,7 @@ prepared, while the caller goes on with its value. That is **entering a bracket*
 `managed` and Python's `ExitStack.enter_context` do. `enter` is a std function beside a general
 `Bracket<E>`, which `Setup<E>` names:
 
-```python
+```ista
 type Bracket<E> = async fn(async fn(E) -> Unit) -> Unit
 struct Entered<E> { value: E, leave: async fn() -> Unit }
 
@@ -280,7 +280,7 @@ A second stage, built after §1–6. A pattern that succeeds teaches facts about
 so a body can recurse over a product and still be checked once. `setups` keeps `enter` (§6); its
 fold, written by recursion, shows what this checks:
 
-```python
+```ista
 fn nested<A is tuple>(...each: ( [I in keyof A]: Setup<A[I]> )) -> Setup<A>:
     match each:
         case (): async fn(test): await test(())                # A is () here

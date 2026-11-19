@@ -12,7 +12,7 @@ tags: [language, spec]
 
 **Trait objects.** `any A & B` is the type of a value of any type meeting each of its traits; `any T?` is `(any T)?`. It is how values of different types share a collection, a field or a parameter:
 
-```python fragment
+```ista fragment
 trait Notifier:
     fn send(self: Self, text: String)
 

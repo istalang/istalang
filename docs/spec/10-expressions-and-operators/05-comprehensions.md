@@ -12,7 +12,7 @@ tags: [language, spec]
 
 **Array comprehensions.** `[for x in xs: expr]` builds an array by evaluating `expr` for each element, and an `if` clause between the iterable and `:` keeps only the elements that pass:
 
-```python fragment
+```ista fragment
 const doubled = [for i in 1..10: 5 * i]
 const small = [for x in doubled if x < 20: x]
 const values = [for r in results if r is Ok(value): value]   # filter and destructure
@@ -25,7 +25,7 @@ const values = [for r in results if r is Ok(value): value]   # filter and destru
 
 **Struct comprehensions.** A struct literal, `struct{…}` or `Name{…}`, may end with a field loop's header and `[key]: expr`, after any named fields: `struct{id, for k, v in ...rest: [k]: expr}`. It gives each field of `rest` a field named by the key, of `expr`'s value in that field's pass. The brackets hold the loop's key, a name, so the entry never reads as a field's declaration; there is no `if` clause and no spread, since the literal gives every field itself:
 
-```python
+```ista
 struct Field<T> { value: T?, type Data = T }
 struct SettingsForm { retries: Field<Int>, region: Field<String> }
 

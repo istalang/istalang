@@ -12,7 +12,7 @@ tags: [language, spec]
 
 Each subscriber gets its own copy. The revertible sends give the announcement a natural expiry: when `announce` returns, every unread copy is retracted.
 
-```python
+```ista
 import * as time from 'time'
 
 struct Announcement:

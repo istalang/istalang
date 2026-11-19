@@ -26,7 +26,7 @@ The plan is `docs/work/done/transients-getters/plan.md`.
 
 ## Transient variables
 
-```python
+```ista
 fn paths(n: Int) -> Int:            # ways up n stairs, one or two at a time
     transient let memo: Map<Int, Int> = [:]
     if n <= 1: return 1
@@ -54,7 +54,7 @@ global state, and nothing is threaded through parameters.
 - **One per generic instance.** `f<Int>` and `f<String>` are separate functions (§3.5), each with
   its own. Code that must share one across instances routes through a non-generic function:
 
-  ```python
+  ```ista
   fn nested(callback: fn(Int) -> Unit):   # not generic, so every caller shares one depth
       transient let depth = 0
       depth += 1
@@ -80,7 +80,7 @@ global state, and nothing is threaded through parameters.
 
 ## Getters
 
-```python
+```ista
 struct Person:
     first: String
     last: String

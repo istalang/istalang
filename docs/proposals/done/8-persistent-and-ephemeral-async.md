@@ -21,7 +21,7 @@ The language stays separate from its runtime. The compiler fixes each `await`'s 
 
 It replaces the earlier proposal 8 and keeps its rule that a function type is the type of what its call gives, written two equal ways. The human decided every rule below. Section numbers refer to `docs/spec.md`.
 
-```python
+```ista
 extern live async fn charge(card: Card, amount: Int) -> Receipt   # the host's: live
 
 ista async fn settle(order: Order) -> String:                    # every await commits
@@ -41,7 +41,7 @@ K async fn twice<K in Persistence, T>(f: Fn<(), Future<T, K>, K>) -> T:   # gene
 
 ### 1. Two kinds of future
 
-```python
+```ista
 type Mark = "simple" | "live" | "ista"          # prelude: data kinds and code marks
 type Persistence = "live" | "ista"                  # Mark's kinded members
 type Sendability = "sendable" | "plain"
@@ -93,7 +93,7 @@ An unmarked `async fn` is an error: its future would be `Future<T, "simple">`.
 - **`DataKind<K>` is derived,** never declared: a type meets it when its kind is among `K`'s marks, `"simple"` where its values hold no kind. Sendable implies `DataKind<"simple">`, and `DataKind<K1>` implies `DataKind<K2>` when `K1`'s marks are `K2`'s; a type parameter meets it by its bounds. A type argument meets its trait's associated type bounds where it is used, so `createAndDrop<Box>()`, `Box.Data` live and the trait's `type Data` bounded by nothing, is an error naming that call and the bound to widen.
 - **A mark may be a type parameter,** `M in Mark`, or `K in Persistence` on an `async` head, whose future takes it. The body handles that kind's data and calls functions of it:
 
-  ```python
+  ```ista
   M fn dispose<M in Mark>(self: Deferred<M>)
   K async fn retry<K in Persistence, T>(f: Fn<(), Future<T, K>, K>, times: Int) -> T
   M fn map<T, U, M in Mark, S in Sendability>(self: Array<T>, f: Fn<(T,), U, M, S>) -> Array<U>
@@ -127,7 +127,7 @@ An unmarked `async fn` is an error: its future would be `Future<T, "simple">`.
 
 ### 5. `await`, `Awaitable` and `Resolver`
 
-```python
+```ista
 trait Awaitable<T>:
     type Mode in Persistence
     Self.Mode fn onAwait(self: Self, done: Resolver<T, Self.Mode>)
@@ -158,7 +158,7 @@ trait Awaitable<T>:
 - **A `select`'s cases wait in its function's kind,** as every `await` does, so the kinds never race. An `await select` commits in ista code.
 - **Combinators are written once,** generic over the kind (Rule 3):
 
-  ```python
+  ```ista
   K fn first<T, K in Persistence>(...fs: Array<Future<T, K>>) -> First<T, K>    # First's Mode is K
   ```
 
@@ -177,7 +177,7 @@ trait Awaitable<T>:
 
 Ista code acts on the world through `delegate`, proposal 9's jobs:
 
-```python
+```ista
 ista async fn purchase(order: Order) -> Receipt:
     await delegate charge(order.card, order.total)
 ```
@@ -203,7 +203,7 @@ ista async fn purchase(order: Order) -> Receipt:
 
 `g f(args)` gives `g` a function that makes the call `f(args)` later, with everything written computed now, as Go's `go` and `defer` do:
 
-```python
+```ista
 retry fetchUser(id)
 # is
 retry((fn(x): fn(): fetchUser(x))(id))

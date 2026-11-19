@@ -24,7 +24,7 @@ It builds on proposals 8 and 9. The human chose the design and the decisions at 
 
 Release `r1`:
 
-```python
+```ista
 ista async fn openBusiness(app: Application) -> Business:
     const name = await reserveName(app)
     const license = await getLicense(app, name)
@@ -33,7 +33,7 @@ ista async fn openBusiness(app: Application) -> Business:
 
 Release `r2` adds a tax id. Instances of `r1` wait inside `getLicense`, which can take weeks, and must get a tax id without applying for a license again. `migrations/r1..r2.ista-migration`:
 
-```python
+```ista
   ista async fn openBusiness(app: Application) -> Business:
       const name = await reserveName(app)
 +     const taxId = await getTaxId(app)
@@ -165,7 +165,7 @@ Release `r2` adds a tax id. Instances of `r1` wait inside `getLicense`, which ca
   - What `to`'s code needs and the block doesn't give is unassigned there (rule 6).
 - **`>` lines outside any function** declare helpers for the file's blocks, such as `fn convert(o: from.Order) -> Order`.
 
-```python
+```ista
 > restart
 - ista async fn review(req: Request) -> Verdict:
 + ista async fn review(req: Request, level: Int = 1) -> Verdict:

@@ -13,7 +13,7 @@ tags: [proposal, language, checker, inference, variance, conversions, f25]
 Generic code infers what users from TypeScript, Kotlin, Swift, C# and Rust expect it to, and a
 value converts inside the types that hold it. Each of these failed before:
 
-```python
+```ista
 const xs: Array<Result<Int, String>> = [1].map(Result.Ok)   # 5001: E fixed as Error
 const ys: Array<Result<Int, String>> = [1].map(fn x: Ok(x))  # 5107
 
@@ -69,7 +69,7 @@ with no change in behaviour; what it left is P38.
 A value has no identity: copies share it immutably and `==` is structural. A handle has one:
 copies share one object, and `==` compares it. An extern says which it is:
 
-```python
+```ista
 extern struct Array<gives T>            # a value
 extern shared struct Slot<T>            # a handle in its instance
 extern sendable struct Instance         # a handle with a global id

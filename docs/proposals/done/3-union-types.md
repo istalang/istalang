@@ -12,7 +12,7 @@ tags: [proposal, language, types, patterns, lowering]
 
 A value of `A | B` is a value of one of its member types. `T?` becomes `T | None`, and `String`, `Int` and `Bool` literals become types. Section numbers refer to `docs/spec.md`. Assumes proposals 1 and 2: PascalCase primitives with type patterns, and anonymous structs compared by shape.
 
-```python
+```ista
 type Status = "draft" | "sent" | "failed"
 type Contact = Email | Sms
 
@@ -91,7 +91,7 @@ const r: Result<Receipt, NotFound | Timeout> = await charge(id)
 
 ## 7. Member type parameters
 
-```python
+```ista
 fn describe<S in Status>(s: S) -> String: …      # instantiated once per member of Status
 
 const status: Status = load()

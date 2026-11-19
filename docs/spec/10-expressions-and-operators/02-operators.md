@@ -34,7 +34,7 @@ An operator is sugar for a named function: `a + b` calls `add(a, b)`. On concret
 
 **Shared structs.** `*x` is the value behind the shared struct `x` (§5.4), the shape of its fields (§5.2), so it fits wherever that shape is expected, and `*x = v` writes it, for every copy of the handle, from any value of the shape. `x->f` is `(*x).f`: a field of that value, read or written, as in C. Writing a part (`x->name = "Y"`, `x->count += 1`) changes it in the value as it is when the write happens: the value is read, the part stored into it and the value written back, all at once. So whatever changed another part meanwhile stays changed, such as a call on the right of `x->count += f()` writing `x->label`, and `x->count += v` writes exactly what `x->count = x->count + v` writes. An element written through its container works the same way (§7.3). `x?->f` reads through an optional shared struct, as `?.` does (§10.4). Both are built in and work only on shared structs, so they call no function and can't be overloaded. A `const` shared struct stays writable, since writing through it changes what is behind the handle, not the handle.
 
-```python statements
+```ista statements
 const u = new Account{name: "Ares", email: "a@x"}   # a shared struct (§5.4)
 u->name = "Ares K"          # writes through: every alias sees it
 const snapshot = *u         # a plain copy of the fields
@@ -49,7 +49,7 @@ All four comparisons go through a single `compare(left, right) -> Int` (negative
 
 **Membership.** `x in c` calls `includes(c, x)`, and `x not in c` is `not (x in c)`. An `Array` includes its elements, compared by `==`; a `Map` its keys, as `has` says; a `String` its substrings; and a `Range` the ints it reaches (§19.3).
 
-```python
+```ista
 fn add(left: Duration, right: Duration) -> Duration:
     Duration{value: left.value + right.value}
 

@@ -12,7 +12,7 @@ tags: [language, spec]
 
 **Deferred calls.** `g f(args)` gives `g` a function that makes the call `f(args)` later, with everything written computed now:
 
-```python statements
+```ista statements
 retry fetchUser(id)                    # retry({ const x = id; fn(): fetchUser(x) })
 retry(times: 5) fetchUser(id)          # g's own arguments in parentheses
 pool.submit encode(file)               # a method takes it, its receiver as self

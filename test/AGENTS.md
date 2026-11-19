@@ -2,7 +2,7 @@
 
 Inputs that tests across phases share. Unit tests live beside their code (`src/**/*.test.ts`).
 
-- `corpus/spec-examples.ts`: the spec's fenced examples, read from the chapters of `docs/spec/` when tests load. An example is `elided` when it contains `…` placeholders; its fence's info string says when it isn't a whole module (` ```python statements`, ` ```python fragment`).
+- `corpus/spec-examples.ts`: the spec's fenced examples, read from the chapters of `docs/spec/` when tests load. An example is `elided` when it contains `…` placeholders; its fence's info string says when it isn't a whole module (` ```ista statements`, ` ```ista fragment`).
 - `soup.ts`: random sequences of given fragments, for totality properties.
 - `broken.ts`: valid texts with lines or tokens deleted, duplicated or swapped, for totality properties.
 - `cyclic-programs.ts`: programs closing a cycle through a disposable at run time, each across one language construct, which static lifetimes must reject (`lifetimes-soups.sweep.test.ts`).

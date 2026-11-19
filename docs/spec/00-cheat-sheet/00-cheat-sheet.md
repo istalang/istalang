@@ -14,7 +14,7 @@ The whole language at a glance; each line is explained in the sections below.
 
 **Values, variables and types**
 
-```python fragment
+```ista fragment
 const limit: Int = 50_000          # immutable, deeply
 let count = 0                      # mutable; type inferred
 let a, b = (1, "x")                # tuple destructuring
@@ -46,7 +46,7 @@ fn(A) -> R    live async fn(A) -> R    sendable fn(A) -> R    { sku: String, qty
 
 **Structs, enums and annotations**
 
-```python fragment
+```ista fragment
 struct Pair<A, B>:
     first: A
     second: B
@@ -77,7 +77,7 @@ userId: Int @JsonName{"user_id"}   # annotation on a field
 
 **Functions, traits and generics**
 
-```python fragment
+```ista fragment
 fn add(a: Int, b = 1):             # default parameter, types inferred
     a + b                          # the last expression is the value
 fn log(level: String, ...parts: Array<String>): ...    # rest parameter
@@ -104,7 +104,7 @@ fn notifyAll(notifiers: Array<any Notifier>): ...     # values of any type meeti
 
 **Control flow and patterns**
 
-```python fragment
+```ista fragment
 if amount > 100:
     escalate()
 elif amount > 10:
@@ -154,7 +154,7 @@ shared struct Counter { n: Int }                  # a struct whose values are ha
 
 **Concurrency, persistence and the host**
 
-```python fragment
+```ista fragment
 const v = await fetch()            # an ista await commits, then waits; a live one waits in memory
 const f = fetch()                  # already running; runs alongside while held
 
