@@ -30,7 +30,7 @@ for role in roles:
     hold _ = reviewQueue(role).sendRevertible(request) # revertible until the function returns
 ```
 
-A block takes a label only so that a `hold` can name it: the label ends its line, and the block is indented below it. It is a statement of type `Unit`, and `break` and `continue` never name it: a loop takes its label on its own line (§11.1).
+A block takes a label only so that a `hold` can name it: the label ends its line, and the block is indented below it. It is a statement of type `Unit`, and `break` and `continue` never name it: a loop takes its label on the loop's line, `outer: for x in xs:` (§11.1).
 
 ```python statements
 batch:

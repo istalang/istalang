@@ -1,0 +1,51 @@
+# error: 5721 at 25:3
+# error: 5721 at 29:3
+# error: 5720 at 39:3
+# error: 5720 at 45:3
+# error: 5721 at 51:3
+# error: 5721 at 51:3
+# Static lifetimes rejects a holder that would come to keep itself (§16, §19.2): through a call it
+# keeps whose argument is the holder, a closure capturing it, a cell or a Shared written with it
+# after it keeps what reads them, and an inbox it waits on.
+
+import Holder, holder from 'lifetimes'
+import Inbox from 'inbox'
+import * as time from 'time'
+
+ista async fn child(h: Holder<"ista">) -> Int:
+  await time.delay(1s)
+  1
+
+ista async fn later(box: Shared<Holder<"ista">?>) -> Int:
+  await time.delay(1s)
+  1
+
+ista async fn viaArgument():
+  const hold = holder<"ista">()
+  hold.it child(hold)
+
+ista async fn viaCapture():
+  const hold = holder<"ista">()
+  hold.it(fn(): hold)
+
+ista async fn viaCellAssignedAfter():
+  let box: Holder<"ista">? = none
+  const f = ista async fn() -> Int: {
+    await time.delay(1s)
+    if box is None: 1 else: 2
+  }
+  const hold = holder<"ista">()
+  hold.it f()
+  box = hold
+
+ista async fn viaSharedAssignedAfter():
+  const box = new Shared<Holder<"ista">?>{value: none}
+  const hold = holder<"ista">()
+  hold.it later(box)
+  box->value = hold
+
+ista async fn viaInbox():
+  const box = Inbox.create<Holder<"ista">>()
+  const hold = holder<"ista">()
+  hold.it box.receive()
+  box.send(hold)

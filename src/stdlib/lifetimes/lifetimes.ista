@@ -1,6 +1,11 @@
-# The lifetimes module (spec §19.2, §5.5): what the std's natives hold and keep, which no code shows
-# the analysis of lifetimes (§16). Both annotations stand only on the std's declarations, since a host
-# keeps no language values (§17.3).
+# The lifetimes module (spec §19.2, §5.5, §16): what the std's natives hold and keep, which no code
+# shows the analysis of lifetimes, and `Holder`, which keeps values for as long as it lives. The two
+# annotations stand only on the std's declarations, since a host keeps no language values (§17.3).
+#
+# A `Holder` keeps each value inside a closure capturing it, so one holder keeps values of any type
+# with no `any` type, and the analysis of lifetimes sees what it keeps through its closures: a value
+# reaching its own holder is the cycle error (§16), as with any container. It is generic over the mark
+# of what it keeps (§9.2), as `Deferred` is, since a closure keeping an ista future is ista code.
 
 # On an extern struct: a value of it holds what a value of `T` holds, a tuple listing several types
 # and `()` none. Without it, a value holds its type arguments.
@@ -11,3 +16,18 @@ struct Holds<T>
 # body, it stands for the body, which calls code the analysis can't follow (the prelude's resolvers,
 # deciding through the closures they hold): callers read the function as a native.
 struct Keeps { into: Map<String, Array<String>> }
+
+# Keeps what `it` is given until the holder is released, then releases it all, last first (§16):
+# a disposable kept is disposed then, a future cancelled.
+shared struct Holder<M in Mark>:
+  kept: Array<Fn<(), Unit, M>>
+
+# A holder keeping nothing yet; where it is declared decides how long what it keeps lives.
+M fn holder<M in Mark>() -> Holder<M>: new Holder<M>{kept: []}
+
+# Calls `make` now and keeps its value, of any type, as long as the holder lives: `hold.it start(job)`.
+M fn it<T, M in Mark>(self: Holder<M>, make: Fn<(), T, M>):
+  const value = make()
+  self->kept.push(fn(): {
+    const kept = value
+  })

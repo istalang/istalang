@@ -20,3 +20,4 @@
 - [Expert for tasks](feedback_expert-for-tasks.md) — cold agents doing work are `--agent expert`; `dev` only plans big tasks
 - [Reuse examiners](feedback_reuse-examiners.md) — re-review/QA to the same examiners; findings back to the fixer of that area
 - [Spec renumbered](project_spec-renumbered.md) — docs/spec/ since 2026-11-19; § in done/audit/review docs are old numbers; headings are test keys
+- [Unbiased review briefs](feedback_unbiased-review-briefs.md) — reviewer briefs name only what to review and the output; never decisions, known issues or exclusions

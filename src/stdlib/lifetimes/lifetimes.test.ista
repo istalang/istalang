@@ -1,0 +1,54 @@
+# The lifetimes module's Holder (spec §19.2, §16): what it keeps lives as long as it does, and is
+# released with it, last first, a disposable disposed and a future cancelled.
+
+import holder from 'lifetimes'
+import assertEq, Suite, Test, test from 'testing'
+
+type Events = Shared<Array<String>>
+
+fn events() -> Events: new Shared<Array<String>>{value: []}
+
+# Keeps two deferred records in a holder that ends with this call.
+fn keepTwo(log: Events):
+  const hold = holder()
+  hold.it defer(fn(): log->value.push("first released"))
+  hold.it defer(fn(): log->value.push("second released"))
+  log->value.push("kept")
+
+# Keeps values of several types in one holder.
+fn keepAnything(log: Events):
+  const hold = holder()
+  hold.it(fn(): 42)
+  hold.it(fn(): Result.Ok<Int, String>(1))
+  hold.it defer(fn(): log->value.push("released"))
+
+# Waits on a slot nothing fills, recording its cancellation.
+ista async fn watched(log: Events, never: Slot<Unit>):
+  await select:
+    case never.take(): ()
+    case watched.disposing(): log->value.push("cancelled")
+
+# Keeps a running call in a holder that ends with this call.
+ista fn keepRunning(log: Events, never: Slot<Unit>):
+  const hold = holder<"ista">()
+  hold.it watched(log, never)
+  log->value.push("started")
+
+@Suite{"lifetimes › Holder"}
+fn suite() -> Array<Test>: [
+  test("keeps what it is given until it is released, then releases it last first", fn(): {
+    const log = events()
+    keepTwo(log)
+    assertEq(log->value, ["kept", "second released", "first released"])
+  })
+  test("takes values of any type", fn(): {
+    const log = events()
+    keepAnything(log)
+    assertEq(log->value, ["released"])
+  })
+  test("cancels a kept call when it is released", async fn(): {
+    const log = events()
+    keepRunning(log, Slot.create<Unit>())
+    assertEq(log->value, ["started", "cancelled"])
+  })
+]
