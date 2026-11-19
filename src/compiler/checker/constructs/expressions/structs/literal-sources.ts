@@ -1,9 +1,9 @@
 /**
- * Where each field of a struct literal gets its value (§3.1), recorded per literal for lowering and
+ * Where each field of a struct literal gets its value (§5.2), recorded per literal for lowering and
  * compile time (literal-fields/index.ts checks the items): an item's value, the leading spread, or
  * the field's default, each naming its field. The sources follow declaration order, which
  * evaluation follows; a field is read from the spread by its name, wherever the spread's type lays
- * it out (§3.1 "Field order").
+ * it out (§5.2 "Field order").
  */
 
 import type {

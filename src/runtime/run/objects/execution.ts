@@ -1,6 +1,6 @@
 /**
  * An execution runs one async call on its frame record (docs/arch/codegen.md, executions.ts): its
- * handle is the call's (`_Call`, §7), and its future what the call gives.
+ * handle is the call's (`_Call`, §16), and its future what the call gives.
  */
 
 import type { Label } from '../../../definition/operands.ts';
@@ -19,16 +19,16 @@ export class Execution extends RunObject {
   ended: boolean;
   /** Whether it waits at a `park`, its frame saved. */
   parked: boolean;
-  /** What its `disposing()` gives (§7), made the first time it is asked for. */
+  /** What its `disposing()` gives (§16), made the first time it is asked for. */
   disposing: Future | undefined;
   /** What it was called with, its closure among them, which it holds until it ends. */
   given: readonly Value[] = [];
   /**
    * What holds the futures its wait's cases are registered on through their chains, which it holds
-   * until that wait is let go of (§7, prelude.ista `_awaiting`).
+   * until that wait is let go of (§16, prelude.ista `_awaiting`).
    */
   awaiting: Value[] = [];
-  /** The transients' cells its code sees (§3.4): those visible where it started, then its calls'. */
+  /** The transients' cells its code sees (§7.1): those visible where it started, then its calls'. */
   transients = new TransientScope();
   /** The position its wait was decided for as its call is disposed: its `disposing()` case's. */
   decidedDisposing: Value | undefined;

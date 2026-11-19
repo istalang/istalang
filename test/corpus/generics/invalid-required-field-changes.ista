@@ -3,7 +3,7 @@
 # error: 5152 at 25:46
 # error: 5152 at 27:49
 # A field a type parameter's trait requires is read through it but can't change: the parameter may
-# be an `any` type, through which only the value's own type has the field (§3.14).
+# be an `any` type, through which only the value's own type has the field (§8.3).
 
 trait Sized { size: Int }
 

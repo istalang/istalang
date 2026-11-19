@@ -1,6 +1,6 @@
 /**
  * A start of a program (program.ts): every instance it makes draws from a source of its own
- * (§3.8 `random`), though the host gives one seed.
+ * (§19.2 `random`), though the host gives one seed.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -32,7 +32,7 @@ describe('a start', () => {
     expect(new Set(drawn).size).toBe(3);
   });
 
-  it('has its live run and the context named after it, as the usual `main` runs, draw apart (§9)', async () => {
+  it('has its live run and the context named after it, as the usual `main` runs, draw apart (§17.1)', async () => {
     const program = compiledEncoded(
       lines(
         "import * as random from 'random'",

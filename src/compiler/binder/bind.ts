@@ -1,5 +1,5 @@
 /**
- * The binder's entry: the names of a whole program, bound (§3.4, §3.11, §3.13).
+ * The binder's entry: the names of a whole program, bound (§7.1, §11.3, §13.1).
  *
  * Binding runs in two steps with different lifetimes:
  * - Each module is bound on its own and memoized on its tree (module/bind-module.ts), so an edit

@@ -3,7 +3,7 @@
  * several names reads the place converts into whichever field the key names, also when an
  * instantiation leaves the key one name (test/AGENTS.md, commutation); field steps past such a key
  * reach the part of whichever field it names; and an element written past it is refused, since
- * `setIndex` takes its container by `&` (§3.7).
+ * `setIndex` takes its container by `&` (§7.3).
  */
 
 import fc from 'fast-check';

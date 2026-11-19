@@ -1,5 +1,5 @@
 # outcome: "\"sent\"|draft|err|-1|42|0|null|7|{\"flag\":true,\"mode\":\"draft\",\"tag\":null}"
-# JSON codecs for T | None, collapsed T??, and literal unions (§6, §9): T | None crosses as null or
+# JSON codecs for T | None, collapsed T??, and literal unions (§4.2, §17.4): T | None crosses as null or
 # T, T?? collapses to T? and crosses cleanly, and literal unions derive Encodable and Decodable.
 
 import * as json from 'json'

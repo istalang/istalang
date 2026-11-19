@@ -7,7 +7,7 @@
  *
  * A trait is no type of its own, so a trait is offered only where one is asked for: after `is` (`T
  * is ‸`, `type Key is ‸`, `[_] is ‸`) and after `any`. After `new`, only a shared struct is built
- * (§3.18).
+ * (§5.4).
  */
 
 import { type Entity, namesType } from '../../../../compiler/binder/entities.ts';

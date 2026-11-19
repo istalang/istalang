@@ -1,5 +1,5 @@
 /**
- * Lambdas, local functions and function values (§3.14) through the checker. What each nested
+ * Lambdas, local functions and function values (§6.4) through the checker. What each nested
  * function captures is a property over nesting: a variable is captured by exactly the functions
  * between its declaration and its use. Errors are corpus programs (`test/corpus/closures/`),
  * which state their positions.

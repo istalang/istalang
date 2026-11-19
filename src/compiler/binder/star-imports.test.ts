@@ -1,5 +1,5 @@
 /**
- * `import *` and namespaces among an import's items (§3.13): `*` binds every export under its own
+ * `import *` and namespaces among an import's items (§13.1): `*` binds every export under its own
  * name, as if each were listed, so a body's free name finds it. A name it brings that something
  * else gives too, another `*`, the module's own declaration or import, or the prelude, is
  * ambiguous only where it is used, and reported there; two ways to the same entity are one.

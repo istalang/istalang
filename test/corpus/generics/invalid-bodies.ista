@@ -2,8 +2,8 @@
 # error: 5016 at 18:32
 # error: 5101 at 27:13
 # error: 5101 at 28:13
-# A generic body is checked once, against its constraints only (§3.5): `T` has no `cents`, and no
-# `<`. A type meets its constraints' fields and generic requirements exactly (§3.10).
+# A generic body is checked once, against its constraints only (§8.1): `T` has no `cents`, and no
+# `<`. A type meets its constraints' fields and generic requirements exactly (§8.2).
 
 import * as runtime from 'runtime'
 

@@ -1,5 +1,5 @@
 /**
- * Driving a host's world until what its driver waits for is done (§5, §6), the one loop every
+ * Driving a host's world until what its driver waits for is done (§14, §15.2), the one loop every
  * driver runs: a host's start (programs.ts) and a test's world (testing/test-world.ts).
  *
  * - What is ready runs first; then whatever else the driver makes progress with (`progressed`, a

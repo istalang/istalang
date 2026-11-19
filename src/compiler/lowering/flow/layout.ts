@@ -1,6 +1,6 @@
 /**
  * Where a flow's blocks go in the code (checker surface/flow-ir.ts): their order, and the passes of
- * the field loops each is written in (§4).
+ * the field loops each is written in (§11.2).
  *
  * - A field loop's top goes to its passes, one per field of the struct an instantiation made known,
  *   in field order (checker instantiation.ts), each run once. A block is written in the pass whose

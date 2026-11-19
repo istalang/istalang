@@ -1,5 +1,5 @@
 /**
- * Annotations (§3.16): parsing `@…`, and attaching annotations to the item they apply to.
+ * Annotations (§5.5): parsing `@…`, and attaching annotations to the item they apply to.
  *
  * An annotation's value is parsed as a postfix expression, the same grammar as a struct literal,
  * and then held to the shape the spec allows: a possibly qualified struct name, with type arguments

@@ -1,5 +1,5 @@
 /**
- * Parametricity (§3.5): the type parameters a generic function's code uses only opaquely, passing
+ * Parametricity (§8.1): the type parameters a generic function's code uses only opaquely, passing
  * their values on and never asking which type they are of, so one instance per representation of
  * their arguments runs every instantiation alike (lowering/tables/stencils.ts). Lowering writes a
  * body from its flows alone (surface/flow-ir.ts), and closes the calls its code reaches
@@ -9,7 +9,7 @@
  * - A parameter is concrete when it is constrained, a mark's (`in`) or a pack, or another
  *   parameter's constraint names it: witnesses and kinds are per type.
  * - An extern's are concrete unless it is `@_Parametric`: its native reads none of them.
- * - A function a test mocks keeps every parameter concrete: a mock replaces one entry (§10).
+ * - A function a test mocks keeps every parameter concrete: a mock replaces one entry (§18).
  * - What its flows do with it (its own, its defaults', its closures'): flow-uses.ts. Every type
  *   there names it only where layout ignores it (opaque-types.ts).
  * - Every call its code reaches (surface/reach.ts: written, made by the language, a wait's, a

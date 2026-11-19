@@ -2,10 +2,10 @@
  * A body's calls as lowering reads them (CheckedBody), through the passes of the field loops
  * around them: every call a clean program writes resolves to a function or is recorded as a call
  * of a function value, so lowering never reads a missing record as either; but for `Expired()`,
- * which names a variant without fields, its value (§3.11), and is neither. A deferred call's taker
- * written as a call is made by the deferred call (§3.14), which is recorded in its place.
+ * which names a variant without fields, its value (§5.3), and is neither. A deferred call's taker
+ * written as a call is made by the deferred call (§6.5), which is recorded in its place.
  *
- * The calls code making a call makes (§3.10, proposal 8 Rule 3): a generic callee calls its
+ * The calls code making a call makes (§8.2, proposal 8 Rule 3): a generic callee calls its
  * constraints' witnesses for its caller, a requirement the caller forwards from its own constraints
  * among them, and a requirement call calls the witnesses of its own type arguments' constraints.
  */

@@ -1,8 +1,8 @@
 /**
- * Lowering trait objects (§3.10): an `any` type is an enum closed over the program, one variant
+ * Lowering trait objects (§8.2): an `any` type is an enum closed over the program, one variant
  * per type converted into it, however late lowering reaches the conversion, and its values are
  * data, so they cross a snapshot like any other value. A call on a union through a trait its
- * members meet (§6) dispatches over the union's own variants, and a union converted into an `any`
+ * members meet (§8.2) dispatches over the union's own variants, and a union converted into an `any`
  * type adds its members, not itself. A member meeting another instantiation of the trait, which
  * the trait's variance lets stand for the `any` type's, is called through that one's functions,
  * what each takes and gives converted.
@@ -83,7 +83,7 @@ async function outcomeOf(lines: readonly string[]): Promise<unknown> {
   return ended.kind === 'finished' ? ended.outcome : ended;
 }
 
-describe('lowering a call through an instantiation standing for another (§3.10)', () => {
+describe('lowering a call through an instantiation standing for another (§8.2)', () => {
   it('converts what it gives into what the call through `any` gives, a tagged optional', async () => {
     expect(
       await outcomeOf([

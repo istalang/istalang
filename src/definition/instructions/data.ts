@@ -8,7 +8,7 @@
  * - **One instruction per meaning.** A tuple's element, a struct's field and a variant's field are
  *   read apart; a variant's field is read where its variant is known (after a `switch`).
  * - Only what can't be an ordinary call is an instruction: construction of the built-in shapes, the
- *   operators the spec makes non-overloadable (§3.9: structural `==`, `not`), the primitive
+ *   operators the spec makes non-overloadable (§10.2: structural `==`, `not`), the primitive
  *   operations (./primitive-ops.ts) and turning a comparison's result into a `Bool`. Everything
  *   else is a call of a resolved function.
  */
@@ -40,7 +40,7 @@ const variant = defineInstruction('variant', {
 });
 
 /**
- * An array of `elements` in order; a spread's every item, each copied, its register kept (§3.3).
+ * An array of `elements` in order; a spread's every item, each copied, its register kept (§3.1).
  */
 const array = defineInstruction('array', {
   dst: register,
@@ -57,7 +57,7 @@ const map = defineInstruction('map', { dst: register, entries: z.array(mapEntry)
 
 /**
  * `collection`, an array being built, with `item` appended, both moved in: changed in place where
- * nothing else holds it, so a comprehension builds its array in linear time (§4).
+ * nothing else holds it, so a comprehension builds its array in linear time (§10.5).
  */
 const append = defineInstruction('append', {
   dst: register,
@@ -73,14 +73,14 @@ const appendEntry = defineInstruction('appendEntry', {
   value: register,
 });
 
-/** A closure of `function` carrying `captures` (§3.14). */
+/** A closure of `function` carrying `captures` (§6.4). */
 const closure = defineInstruction('closure', {
   dst: register,
   function: functionId,
   captures: z.array(register),
 });
 
-/** The closure the running code entry runs as, borrowed: a local `fn`'s own name (§3.14). */
+/** The closure the running code entry runs as, borrowed: a local `fn`'s own name (§6.4). */
 const currentClosure = defineInstruction('currentClosure', { dst: register });
 
 const tupleItem = defineInstruction('tupleItem', {
@@ -103,7 +103,7 @@ const variantField = defineInstruction('variantField', {
   field: fieldIndex,
 });
 
-/** The built-in structural `==` (§3.9). */
+/** The built-in structural `==` (§10.2). */
 const equal = defineInstruction('equal', { dst: register, left: register, right: register });
 
 const not = defineInstruction('not', { dst: register, src: register });

@@ -1,5 +1,5 @@
 /**
- * The operators the language computes itself on values in registers (§3.9): the built-in `==` and
+ * The operators the language computes itself on values in registers (§10.2): the built-in `==` and
  * `!=`, `not`, and whether a `compare`'s result is in a relation, as an ordering and a pattern's
  * comparison give it.
  */
@@ -29,7 +29,7 @@ export function negated(context: CodeContext, src: Register, span: AnchoredSpan)
 
 /**
  * Whether `compare`'s int, in `comparison`, is in `relation`: what an ordering gives, whether an
- * operator or a pattern's field test (§3.11) compared.
+ * operator or a pattern's field test (§11.3) compared.
  */
 export function ordered(
   context: CodeContext,

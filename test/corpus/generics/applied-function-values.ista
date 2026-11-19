@@ -1,5 +1,5 @@
 # outcome: "3|4 5|ok 6|ok 7|err x|ok 8|one|true|sent 9|10 11|err y|1 a|13"
-# Type arguments written after a function named as a value are a call's (§3.5, §3.14): a top-level
+# Type arguments written after a function named as a value are a call's (§8.1, §6.4): a top-level
 # function's, a static function's and a variant's, qualified or bare where the expected type
 # gives its enum. They fix what they give, the expected type inferring a defaulted one they leave
 # out, as a parameter it is passed for does, and choose among overloads as a call's do. So `map`

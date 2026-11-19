@@ -1,5 +1,5 @@
 /**
- * The program's transients (§3.4) as static lifetimes sees them: each the global its cell is. An
+ * The program's transients (§7.1) as static lifetimes sees them: each the global its cell is. An
  * execution keeps the transients visible where it started, so every async call's future holds
  * every one of them (analysis/given.ts), a constant over-approximation that needs no mapping
  * between callers and callees. Binding lists each module's, whatever body the function they lead

@@ -1,5 +1,5 @@
 /**
- * Statements (§3.4, §4, §7), dispatched on their first token: a word of `statementWords`
+ * Statements (§7.1, §11.1, §16), dispatched on their first token: a word of `statementWords`
  * (syntax/tokens/grammar-words.ts), or else a name or an expression.
  *
  * Two kinds of first token need a look further ahead:
@@ -14,7 +14,7 @@
  * Anything else is an expression, which becomes an assignment if an assignment operator follows.
  * Several targets (`a, b = (b, a)`) are recognized speculatively: inside a one-line body within a
  * call, a comma belongs to the call, not to a list of targets. A target is parsed as the
- * expression it looks like: a tuple or struct literal of targets destructures (§3.15), which only
+ * expression it looks like: a tuple or struct literal of targets destructures (§4.5), which only
  * `=` can do.
  */
 

@@ -5,12 +5,12 @@
  *   and counts holders from the code alone; generics are compiled once per concrete set of type
  *   arguments, so no reference names a type parameter.
  * - **Reach facts on every entry.** `disposable` says a value of the entry may reach a disposable
- *   (the checker's `reachesDisposable`): only such values are counted to dispose them (§7), and no
+ *   (the checker's `reachesDisposable`): only such values are counted to dispose them (§16), and no
  *   cycle passes through one. `heap` says a value is an allocation a backend counts to free it
  *   (LLVM) or to change it in place when unique: anything but a scalar.
  * - **One kind per meaning.** A struct, an enum, a shared struct (a handle to a cell holding its
- *   struct, §3.18), an extern type the runtime or a host implements, and a recursive alias that
- *   unfolds to a structural type (§3.17, `type Step = fn(Int) -> Step`), which a reference holding
+ *   struct, §5.4), an extern type the runtime or a host implements, and a recursive alias that
+ *   unfolds to a structural type (§4.6, `type Step = fn(Int) -> Step`), which a reference holding
  *   it would otherwise never end.
  * - **Labels, not identity.** An entry is its index; `name` and `arguments` serve traces and
  *   messages. A role marks what the runtime must know of an entry beyond its natives, set by
@@ -44,7 +44,7 @@ const functionType = z.strictObject({
   },
 });
 
-/** A `&` parameter's register: a reference to a place of type `to` (§3.7). */
+/** A `&` parameter's register: a reference to a place of type `to` (§7.3). */
 const referenceType = z.strictObject({
   kind: z.literal('reference'),
   get to() {
@@ -90,7 +90,7 @@ const struct = z.strictObject({ kind: z.literal('struct'), ...common, fields: z.
 
 /**
  * What the runtime makes of an enum's values: a `json` enum is the json module's `Json`, JSON held
- * as a value, which the host boundary moves across (§9).
+ * as a value, which the host boundary moves across (§17.4).
  */
 const enumRole = z.enum(['json']);
 
@@ -103,20 +103,20 @@ const enumeration = z.strictObject({
   role: enumRole.optional(),
 });
 
-/** A shared struct's handle (§3.18): a cell holding a value of the struct entry `value`. */
+/** A shared struct's handle (§5.4): a cell holding a value of the struct entry `value`. */
 const shared = z.strictObject({
   kind: z.literal('shared'),
   ...common,
   value: typeId,
-  /** The declared `dispose`, run when the handle loses its last holder (§7). */
+  /** The declared `dispose`, run when the handle loses its last holder (§16). */
   dispose: functionId.optional(),
 });
 
 /**
  * What the runtime makes of an extern type's values: every `Array<T>`, every `Map<K, V>`, every
- * `_Cell<T>` (a variable passed by `&` or captured, §3.7, §3.14, or a transient, §3.4), every
- * weak reference (§7), every `Instance<T>` `spawn` gives, holding the instance's name (§9), and
- * the handle of an async call, the execution running it (§7).
+ * `_Cell<T>` (a variable passed by `&` or captured, §7.3, §6.4, or a transient, §7.1), every
+ * weak reference (§16), every `Instance<T>` `spawn` gives, holding the instance's name (§17.1), and
+ * the handle of an async call, the execution running it (§16).
  */
 const externRole = z.enum(['array', 'map', 'cell', 'weakRef', 'instance', 'call']);
 
@@ -124,7 +124,7 @@ export type ExternRole = z.output<typeof externRole>;
 
 /**
  * A type the runtime or a host implements: a role's, or a host's, whose values are its JSON, or
- * resource objects when it declares a `dispose` (§7, §9).
+ * resource objects when it declares a `dispose` (§16, §17.2).
  */
 const external = z.strictObject({
   kind: z.literal('extern'),
@@ -133,7 +133,7 @@ const external = z.strictObject({
   dispose: functionId.optional(),
   /**
    * An `Instance<T>` entry's, when a codec writes `T`: the entry encoding the outcome of every
-   * instance spawned as one (§9), whichever native spawns it.
+   * instance spawned as one (§17.1), whichever native spawns it.
    */
   encoder: functionId.optional(),
 });
@@ -176,7 +176,7 @@ export function typesIn(reference: TypeReference): readonly number[] {
 
 /**
  * Whether a value of `reference` may reach a disposable: a function value may, its type not saying
- * what it captured (§7), and a reference reaches what its place holds.
+ * what it captured (§16), and a reference reaches what its place holds.
  */
 function reachesDisposable(types: readonly TypeDefinition[], reference: TypeReference): boolean {
   switch (reference.kind) {
@@ -293,7 +293,7 @@ export function hasRole(
 
 /**
  * The entry encoding the outcome of an instance spawned as the `Instance<T>` type entry `type` of
- * `types` (§9); undefined when no codec writes `T`.
+ * `types` (§17.4); undefined when no codec writes `T`.
  */
 export function outcomeEncoderOf(
   types: readonly TypeDefinition[],
@@ -305,7 +305,7 @@ export function outcomeEncoderOf(
 
 /**
  * Whether a value of the extern type entry `type` of `types` is a resource object behind a handle
- * (§7): a host's type declaring a `dispose`, so its values have an identity of their own. Any other
+ * (§16): a host's type declaring a `dispose`, so its values have an identity of their own. Any other
  * host type's values are its host's JSON, as plain as an int.
  */
 export function isResourceType(types: readonly TypeDefinition[], type: number): boolean {

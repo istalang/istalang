@@ -1,5 +1,5 @@
 /**
- * The operators on optionals (§4): `a?.b`, `a?.m()`, `a?->b` and `a ?? b`; `a!` is `a ??` a panic
+ * The operators on optionals (§10.4): `a?.b`, `a?.m()`, `a?->b` and `a ?? b`; `a!` is `a ??` a panic
  * (checker/desugaring/unwrap.ts), so a chain before it is unwrapped whole: `a?.b!` is `(a?.b)!`.
  *
  * - `?.` and `?->` (with `?.[` and `?.(`) start an optional chain. Every link after one (`.c`,
@@ -7,7 +7,7 @@
  *   soon as one of them meets `none`; parentheses end a chain, and so does a prefix `*`. The
  *   chain's value is wrapped into `T?` once, at its last link, unless it already is optional, so
  *   results never nest.
- * - A value read through `?.` or `?->` is a copy (§3.1), so a chain is never a place: it isn't
+ * - A value read through `?.` or `?->` is a copy (§7.2), so a chain is never a place: it isn't
  *   assigned to, and a method taking `&self` isn't called through it.
  * - `a ?? b` is the value inside `a`, else `b`, evaluated only then. `b` may be a `T`, giving a
  *   `T`, or a `T?`, giving a `T?`, so `a ?? b ?? c` reads left to right.

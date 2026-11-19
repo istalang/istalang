@@ -1,5 +1,5 @@
 # outcome: "Int|Int|0|eu"
-# A value built from the expected type takes it through the optionals around it (§2), as a bare
+# A value built from the expected type takes it through the optionals around it (§4.2), as a bare
 # variant does: a fieldless generic struct named bare, its default type arguments filled when
 # nothing is expected, and a generic struct literal whose items alone couldn't give its type.
 

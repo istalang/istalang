@@ -1,6 +1,6 @@
 /**
- * Pattern nodes (spec §3.11), used by `match` cases, `x is Pattern`, and the targets of a
- * declaration or loop (§3.15).
+ * Pattern nodes (spec §11.3), used by `match` cases, `x is Pattern`, and the targets of a
+ * declaration or loop (§4.5).
  *
  * A bare name (`Expired`, `Decision.Expired`, or `a` inside `(a, _)`) is a NamePattern whatever it
  * turns out to be. Whether it names a variant, a constant or a new binding is resolved by name
@@ -21,7 +21,7 @@ export type WildcardPattern = NodeOf<'WildcardPattern'>;
 
 /**
  * `Expired`, `Decision.Expired`, `n`, or a generic type with its type arguments, which only a
- * pattern on a union may give (§3.11): `Entry<Settings, "region">`.
+ * pattern on a union may give (§11.3): `Entry<Settings, "region">`.
  */
 export interface NamePattern extends NodeOf<'NamePattern'> {
   readonly path: QualifiedName;
@@ -43,13 +43,13 @@ interface ParenthesizedPattern extends NodeOf<'ParenthesizedPattern'> {
 
 /**
  * `Point{x}`, `m.Verdict{ok == false}`, or `struct{…}` when `type` is undefined; `...rest`, its
- * last item, binds a struct of the fields no item names (§3.11), so it is held apart from them. A
+ * last item, binds a struct of the fields no item names (§11.3), so it is held apart from them. A
  * variant is taken apart by a call pattern; braces after a variant's name are refused by checking.
  */
 export interface StructPattern extends NodeOf<'StructPattern'> {
   readonly type: NamedType | undefined;
   /**
-   * Whether it was written `{…}`, a parameter's short form of `struct{…}` (§3.3): the same
+   * Whether it was written `{…}`, a parameter's short form of `struct{…}` (§6.1): the same
    * pattern, its spelling kept for the formatter, as an import's parentheses are.
    */
   readonly isShort: boolean;
@@ -64,7 +64,7 @@ export interface StructPattern extends NodeOf<'StructPattern'> {
 
 /**
  * `Ok(v)`, `Rejected(by: "legal")`, `Group(title, ...children)`, `Group(title, ...)`: a variant
- * taken apart as a call builds it (§3.11), each argument matching the field it binds to.
+ * taken apart as a call builds it (§5.3), each argument matching the field it binds to.
  */
 export interface VariantCallPattern extends NodeOf<'VariantCallPattern'> {
   readonly callee: NamedType;
@@ -80,7 +80,7 @@ export interface NamedPatternArgument extends NodeOf<'NamedPatternArgument'> {
   readonly pattern: Pattern;
 }
 
-/** `...`, last in a call pattern: the fields no argument gives, matching anything (§3.11). */
+/** `...`, last in a call pattern: the fields no argument gives, matching anything (§11.3). */
 export type OtherFieldsPattern = NodeOf<'OtherFieldsPattern'>;
 
 /** `by` binds the field to a variable of the same name; `reason as why` renames it. */
@@ -102,12 +102,12 @@ interface NestedFieldPattern extends NodeOf<'NestedFieldPattern'> {
   readonly pattern: Pattern;
 }
 
-/** `A | B`: matches what any alternative matches (§3.11). */
+/** `A | B`: matches what any alternative matches (§11.3). */
 export interface OrPattern extends NodeOf<'OrPattern'> {
   readonly alternatives: readonly Pattern[];
 }
 
-/** `[first, ...rest, last]`: an array of a length, its elements matched in order (§3.11). */
+/** `[first, ...rest, last]`: an array of a length, its elements matched in order (§11.3). */
 export interface ArrayPattern extends NodeOf<'ArrayPattern'> {
   readonly elements: readonly (Pattern | RestPattern)[];
 }
@@ -115,13 +115,13 @@ export interface ArrayPattern extends NodeOf<'ArrayPattern'> {
 /**
  * `...rest`: in an array pattern, the elements between those matched before and after it; last in
  * a struct pattern, a struct of the fields the pattern doesn't name; in a call pattern, a spread
- * into the variant's rest field, as a call's is (§3.11).
+ * into the variant's rest field, as a call's is (§5.3).
  */
 export interface RestPattern extends NodeOf<'RestPattern'> {
   readonly target: Identifier | WildcardPattern;
 }
 
-/** `1..=5`, `..5`, `5..`: a value in a range of literals (§3.11). */
+/** `1..=5`, `..5`, `5..`: a value in a range of literals (§11.3). */
 export interface RangePattern extends NodeOf<'RangePattern'> {
   readonly start: LiteralPattern | undefined;
   readonly isInclusive: boolean;
@@ -174,7 +174,7 @@ const targetLeafHandlers: Handlers<undefined, Pattern | PatternPart, [], readonl
   VariantCallPattern: (_, node) => node.arguments.flatMap(targetLeaves),
   NamedPatternArgument: (_, node) => targetLeaves(node.pattern),
   OtherFieldsPattern: () => [],
-  // Every alternative binds the first's names (§3.11).
+  // Every alternative binds the first's names (§11.3).
   OrPattern: (_, node) =>
     node.alternatives[0] === undefined ? [] : targetLeaves(node.alternatives[0]),
   ArrayPattern: (_, node) => node.elements.flatMap(targetLeaves),

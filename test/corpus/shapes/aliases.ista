@@ -1,5 +1,5 @@
 # outcome: "3 7 | 10 20 | 2 | red 0 | green 4"
-# An alias of a shape names it (§3.17): it builds the shape before `{`, takes static functions for
+# An alias of a shape names it (§4.6): it builds the shape before `{`, takes static functions for
 # it, whichever alias of the shape they are declared through, and a generic one names a family. An
 # alias of an enum qualifies its variants.
 

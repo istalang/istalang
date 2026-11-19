@@ -1,5 +1,5 @@
 /**
- * Top-level constants (§3) and duration literals as Definition constants: the checker computed
+ * Top-level constants (§5.1) and duration literals as Definition constants: the checker computed
  * their values (`ConstantForm`, checker/constructs/declarations/constants.ts), and lowering only
  * turns each form into a persisted value, a struct's type into its table index, and a lambda into a
  * closure of no captures of its own entry, which the constant owns. Reading one is a `constant`
@@ -80,7 +80,7 @@ export function constantValue(tables: DefinitionTables, form: ConstantForm): Val
   }
 }
 
-/** The values of `annotations`, as an entry carries them for tools to read (§3.16). */
+/** The values of `annotations`, as an entry carries them for tools to read (§5.5). */
 export function annotationValues(
   tables: DefinitionTables,
   annotations: readonly CheckedAnnotation[],

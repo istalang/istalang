@@ -3,7 +3,7 @@
 # error: 5116 at 15:16
 # error: 5117 at 16:13
 # error: 5115 at 17:12
-# A variant's fields are its parameters (§3.11): a call gives them in order, so every field after
+# A variant's fields are its parameters (§5.3): a call gives them in order, so every field after
 # one with a default has one too; a rest is the last, one at most, an Array<T> with no default.
 
 import * as runtime from 'runtime'

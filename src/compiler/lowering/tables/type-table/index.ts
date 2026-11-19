@@ -5,19 +5,19 @@
  * table key, which names nothing by an alias.
  *
  * - An entry is numbered before its layout is computed, so a recursive type refers to itself
- *   through the table (§3.1).
+ *   through the table (§5.2).
  * - What an entry holds is its layout (layouts.ts); a shape is one entry per shape, so every place
- *   writing equal fields shares it (§3.1).
- * - A recursive type (§3.17) is the entry of what it unfolds to, the same key, whose layout refers
+ *   writing equal fields shares it (§5.2).
+ * - A recursive type (§4.6) is the entry of what it unfolds to, the same key, whose layout refers
  *   back to it; one unfolding to a tuple or a function type, which have no entry of their own, has
  *   an alias entry, numbered first for the same reason, as has the type written out (`folded`).
- * - A union (§2) is an enum, one variant per member, ordered and named by their table keys, which
+ * - A union (§4.2) is an enum, one variant per member, ordered and named by their table keys, which
  *   tell every two members apart and spell a type by its key alone, never by the alias it was
  *   written through, so every union of one key orders its variants alike, as its entry was laid
  *   out, and the runtime finds a member's variant by its name: a member's value is the variant's
  *   one field, and a member with one value only, a literal type or `None`, is a variant without
  *   fields, its tag. A literal type on its own is its base: its one value needs no tag.
- * - An `any` type (§3.10) is an enum the program closes: one variant per type a value of it is
+ * - An `any` type (§8.3) is an enum the program closes: one variant per type a value of it is
  *   converted from, each holding that value as its one field, ordered and named by their table
  *   keys as a union's are, so a Definition never shows which conversion lowering met first. A
  *   variant is added the first time lowering asks for it, which can move the ones after it: an

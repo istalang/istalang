@@ -1,5 +1,5 @@
 /**
- * Lexical scopes while one module is bound (§3.4): what each scope defines so far, and why a name
+ * Lexical scopes while one module is bound (§7.1): what each scope defines so far, and why a name
  * may be missing from it.
  *
  * Scopes nest from the universe (the primitive types) through the module to functions, blocks and
@@ -10,8 +10,8 @@
  * for afterwards:
  * - `pending`: a later statement of an enclosing block declares the name (used before declaration)
  * - `ended`: a nested block that has ended declared it
- * - `underOr`: one side of an `or` bound it, so it isn't known to have matched (§3.11)
- * - `fenced`: it is a variable of the function a transient's initializer stands in (§3.4)
+ * - `underOr`: one side of an `or` bound it, so it isn't known to have matched (§11.3)
+ * - `fenced`: it is a variable of the function a transient's initializer stands in (§7.1)
  *
  * A fenced scope, a transient's initializer's, sees past itself the types of the functions around
  * it but none of their variables: the initializer runs at the outermost call alone, so a name its
@@ -21,7 +21,7 @@
  * the program is linked.
  *
  * A function's scope knows its function, so a name before a `.` can find the enclosing function it
- * names, whose call it denotes (§7).
+ * names, whose call it denotes (§16).
  *
  * Scopes outlive binding, for tools that ask what is visible where (visibility.ts). Every
  * definition in one tree's scopes is numbered in the order binding made it, so a snapshot (a scope
@@ -73,7 +73,7 @@ type ScopedFunction = FunctionDeclaration | Lambda;
 
 /**
  * The innermost function around a scope that is one of a set, and whether a transient's
- * initializer stands between, which sees none of its variables (§3.4).
+ * initializer stands between, which sees none of its variables (§7.1).
  */
 export interface Enclosing {
   readonly function: ScopedFunction;
@@ -140,13 +140,13 @@ export class Scope {
 
   /**
    * A scope for a function's body, inside its parameters'. A parameter's default isn't in it: it
-   * runs before the body starts (§3.3).
+   * runs before the body starts (§6.1).
    */
   static ofBody(parent: Scope, node: ScopedFunction): Scope {
     return new Scope(parent, false, { node });
   }
 
-  /** A scope for a transient's initializer (§3.4), fenced from its function's variables. */
+  /** A scope for a transient's initializer (§7.1), fenced from its function's variables. */
   static fenced(parent: Scope): Scope {
     return new Scope(parent, false, { fenced: true });
   }
@@ -309,7 +309,7 @@ const primitives: readonly PrimitiveEntity[] = primitiveNames.map((name) => ({
   name,
 }));
 
-/** The outermost scope: the primitive types (§2). */
+/** The outermost scope: the primitive types (§4.1). */
 export function universe(): Scope {
   const scope = Scope.root();
   for (const primitive of primitives) {

@@ -1,5 +1,5 @@
 # error: 5111 at 12:8
-# A value's type counts towards endless instantiation wherever code holds it (§3.5, §7), though
+# A value's type counts towards endless instantiation wherever code holds it (§8.1, §16), though
 # nothing but its declaration writes it: a generic `dispose` declaring a variable of a type that
 # grows its own argument, given `none`, is reported where the value is.
 

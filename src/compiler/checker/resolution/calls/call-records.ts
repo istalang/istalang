@@ -1,7 +1,7 @@
 /**
  * The calls a body makes, recorded per pass as every record of a node is (passes.ts): the function
  * each call site calls, and the functions it chose among, in the order considered, which tools
- * read; and apart from them, the function each naming of one as a value names (§3.14), which calls
+ * read; and apart from them, the function each naming of one as a value names (§6.4), which calls
  * nothing where it stands.
  */
 

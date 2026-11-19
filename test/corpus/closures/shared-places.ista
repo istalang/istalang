@@ -1,5 +1,5 @@
 # outcome: "24 a,b | 12 | 8 1"
-# The value behind a handle, `*x`, and any part of it, such as `x->f`, is a place (§3.7, §3.9):
+# The value behind a handle, `*x`, and any part of it, such as `x->f`, is a place (§7.3, §10.2):
 # passed by `&`, or changed by a method taking `&self`, it is copied in and written back when the
 # call returns. A whole `*x` is written alone, assigned on its own or among other targets.
 

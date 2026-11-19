@@ -1,4 +1,4 @@
-# The regex module (spec §3.8). Positions count code points, so the groups that give one check a
+# The regex module (spec §19.2). Positions count code points, so the groups that give one check a
 # string holding a code point beyond UTF-16's first plane ("😀" is one code point, two UTF-16 units).
 
 import * as json from 'json'

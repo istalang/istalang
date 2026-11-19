@@ -1,10 +1,10 @@
 /**
  * What a run gives every native besides its own call (runtime/natives.ts `NativeCapabilities`),
  * built once per run: futures, the weak side, resources, random draws, logs, instances, contexts
- * (§9) and the run's own primitives (run-primitives.ts).
+ * (§17.1) and the run's own primitives (run-primitives.ts).
  *
  * - Random draws are the instance's, numbered from its seed, so a segment run again draws the same
- *   (§3.8); a log record is stamped with the instance and the time its segment started.
+ *   (§19.2); a log record is stamped with the instance and the time its segment started.
  * - A spawn carries the entry encoding the instance's outcome, where its type's codec has one.
  * - A call into a context settles a live future with how it ended (`instanceEnding`), which the
  *   std's Istalang makes the `Result` code reads. A runtime opened is a resource holding its number,
@@ -12,7 +12,7 @@
  * - The test world (inspection, watches) is the world's, in a test only; function slots are the
  *   run's own.
  * - What `json.encode` wrote values as is the run's (lifetimes.ts `written`), but a test world's,
- *   which keeps none (§10).
+ *   which keeps none (§18).
  */
 
 import { outcomeEncoderOf } from '../../definition/tables/types.ts';
@@ -76,7 +76,7 @@ export function capabilitiesOf(run: Run, seams: CapabilitySeams): NativeCapabili
 /** The encodings of a run in a test world, which keeps none, so a mock sees every codec call. */
 const keepingNone: NativeEncodings = { of: () => undefined, remember: () => undefined };
 
-/** What a test's code asks of its world (§10); a native asking outside a test is a bug. */
+/** What a test's code asks of its world (§18); a native asking outside a test is a bug. */
 function testingOf(run: Run): WithTesting['testing'] {
   const testWorld = (): TestingWorld =>
     run.world.testing ?? unreachable('A native asked for the test world, which only a test has.');

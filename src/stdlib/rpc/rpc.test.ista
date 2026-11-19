@@ -1,4 +1,4 @@
-# The rpc module (spec §3.8): calls, their servers, calls let go without a reply and calls their
+# The rpc module (spec §19.2): calls, their servers, calls let go without a reply and calls their
 # callers let go of.
 
 import * as rpc from 'rpc'

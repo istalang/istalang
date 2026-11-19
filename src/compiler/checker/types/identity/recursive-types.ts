@@ -1,5 +1,5 @@
 /**
- * Building recursive types (§3.17): `closeRecursive` is the one constructor of a recursive type's
+ * Building recursive types (§4.6): `closeRecursive` is the one constructor of a recursive type's
  * graph, so every graph is minimized and every equal pair of recursive types is one type by key,
  * however the aliases writing them are named or nested (equi-recursive identity).
  *

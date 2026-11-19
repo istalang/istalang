@@ -1,5 +1,5 @@
 # outcome: "Berlin|Berlin|5|Berlin|5|ACME|hi Ada|none|7"
-# Keyed members (§3.9): `x["k"]` chooses an `index` keyed by a member parameter as its call
+# Keyed members (§10.2): `x["k"]` chooses an `index` keyed by a member parameter as its call
 # `index(x, "k")` does, the key its literal type, and `x.k`, where `x`'s type has no member `k`,
 # is `x["k"]`. Each key is its own instantiation, so each read has its own type; a chain chooses
 # each read once its receiver is known, and `x.k(…)` calls the function a read gives.

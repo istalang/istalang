@@ -1,5 +1,5 @@
 /**
- * What a struct pattern's braces offer (§3.11): the fields of the struct it names that its items
+ * What a struct pattern's braces offer (§11.3): the fields of the struct it names that its items
  * don't name yet, a downcast's against an `any` value, and none where its name is a variant's or
  * names what the matched value can't be.
  */

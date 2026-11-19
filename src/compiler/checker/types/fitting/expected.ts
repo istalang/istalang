@@ -1,5 +1,5 @@
 /**
- * What a value built from the expected type takes from it (§2, §3.1, §3.5, §3.11): the one home for
+ * What a value built from the expected type takes from it (§4.2, §5.2, §8.1, §11.3): the one home for
  * taking an expected type apart, which every construct with no type of its own reads, as does
  * judging a postponed lambda (constructs/expressions/postponed.ts).
  *
@@ -10,7 +10,7 @@
  *   type only checking tells, before its items are checked, so each is checked against the
  *   member's item: `[1 + 1, "a"]` builds an `Array<Json>` too, an item with no type known yet
  *   taking any member's item, unless an `any` member might take the literal's own type whole. A
- *   value of a type of its own goes in as fitting puts it, converted where its parts need (§3.5):
+ *   value of a type of its own goes in as fitting puts it, converted where its parts need (§8.1):
  *   `[1, 2]`, an `Array<Int>`, converts where a `Json` is expected. Where an
  *   array and a map member both take an empty literal, `[]` is the array and `[:]` the map. A
  *   construct reading the expected type itself sees past `None` (`builtFrom`).
@@ -46,7 +46,7 @@ import { constrainArguments, typeArgumentsFor } from '../written/type-arguments.
 
 /**
  * What taking an expected type apart needs of the program: its well-known types, and its rules,
- * by which a recursive type is taken apart as what it unfolds to (§3.17).
+ * by which a recursive type is taken apart as what it unfolds to (§4.6).
  */
 type Expecting = Pick<CheckerContext, 'wellKnownType' | 'typeRules'>;
 
@@ -55,7 +55,7 @@ type Expecting = Pick<CheckerContext, 'wellKnownType' | 'typeRules'>;
  * what a recursive type unfolds to, and a union of whose members it takes one, at any depth, as the
  * value is then built as that member: `[1, [2]]` takes `Json`, and `((1, none), 2)` takes `((Int,
  * Int?) | String, Int)`. Unfolding ends, since a guarded alias reaches itself only inside another
- * type (§3.17).
+ * type (§4.6).
  */
 export function takingUnfolded(accepts: Admits): Admits {
   const taking: Admits = (expected, isOpen) => {
@@ -71,8 +71,8 @@ export function takingUnfolded(accepts: Admits): Admits {
 }
 
 /**
- * The type a value built where `expected` is expected takes its type from (§2): past `None`, and
- * a recursive type as what it unfolds to (§3.17).
+ * The type a value built where `expected` is expected takes its type from (§4.2): past `None`, and
+ * a recursive type as what it unfolds to (§4.6).
  */
 export function builtFrom(expected: Type | undefined): Type | undefined {
   return expected === undefined ? undefined : unfolded(optionalInner(expected) ?? expected);
@@ -96,9 +96,9 @@ export function expectedFunction(expected: Type | undefined): FunctionType | und
 }
 
 /**
- * What a function giving no future, a variant's (§3.11), is expected to give where `expected` asks
+ * What a function giving no future, a variant's (§5.3), is expected to give where `expected` asks
  * for a function value: its result, or the value of the future it is, which the function's value
- * is made (§3.14).
+ * is made (§6.4).
  */
 export function plainResultExpected(
   expected: Type | undefined,
@@ -109,7 +109,7 @@ export function plainResultExpected(
 }
 
 /**
- * What an array or map literal builds where `expected` is expected (§2): an `Array`'s items, a
+ * What an array or map literal builds where `expected` is expected (§4.2): an `Array`'s items, a
  * `Map`'s entries, or another declared type, built through its `default()`; undefined when it
  * doesn't guide the literal.
  */
@@ -165,7 +165,7 @@ function candidatesOf(expected: Type | undefined): readonly Type[] {
 }
 
 /**
- * The type a value of `entity`'s type named at `at` without type arguments has (§3.1, §3.11): the
+ * The type a value of `entity`'s type named at `at` without type arguments has (§5.2, §11.3): the
  * one `expected` asks for, else its declaration's defaults; the error type after reporting a type
  * parameter with neither.
  */
@@ -196,7 +196,7 @@ export function expectedNominal(
 /**
  * The type of `entity` given `written` type arguments at `at`, the defaults of those left out
  * completing them, noted for their constraints and the type `match`es they reach as a written
- * type's are (§3.5); the error type after reporting too few or too many.
+ * type's are (§8.1); the error type after reporting too few or too many.
  */
 export function writtenNominal(
   context: Pick<CheckedModule, 'checker' | 'module'>,

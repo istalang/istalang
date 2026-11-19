@@ -178,7 +178,7 @@ describe('type `match` (§4 and pre-P4 debt #1)', () => {
   });
 
   it('supports finite recursive type `match` (`DataOf<Tree>`) and reports endless reductions (`W<T> -> W<Array<T>>`) (pre-P4 debt #1)', async () => {
-    // `Tree` is finite (§3.1): its children sit in a collection, which a `Repeat`'s single row
+    // `Tree` is finite (§5.2): its children sit in a collection, which a `Repeat`'s single row
     // isn't, so the recursive schema maps a `Many` of rows.
     const recursiveDecls = [
       'struct Field<T> { value: T? }',

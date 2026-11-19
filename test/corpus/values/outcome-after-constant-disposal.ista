@@ -1,5 +1,5 @@
 # outcome: [10,20,30]
-# An instance's outcome is the value its root returned (§9): the disposal of a context constant
+# An instance's outcome is the value its root returned (§17.1): the disposal of a context constant
 # changing that value as the instance exits changes nothing of it.
 
 import * as runtime from 'runtime'

@@ -1,6 +1,6 @@
 /**
  * The fields a declaration or a `{…}` type writes, resolved where written (`declaredFields`), and
- * the field a field's declaring node declares (§3.1, §3.10, §3.11), as its owner's layout has it:
+ * the field a field's declaring node declares (§5.2, §8.2, §5.3), as its owner's layout has it:
  * a struct's, an enum variant's, a shape's `{…}` type's, or a trait's required field, typed where
  * it is written. Annotations, which read a field's declared type, and the tools' denotations, which
  * show it, read fields here, each finding the owner its own way: one from the module's items, the
@@ -61,7 +61,7 @@ export function declaredFieldOf(
  * The fields of a struct declaration, an enum variant or an anonymous struct type, their types
  * resolved in `module`, where they are written, but not substituted. A field whose default gives
  * its type has its parameter's in `defaults`, the function its declaration's fields read as
- * (syntax/declarations/field-defaults.ts), whose defaults are checked to infer it (§3.1, §3.3).
+ * (syntax/declarations/field-defaults.ts), whose defaults are checked to infer it (§5.2, §6.1).
  * Each written type resolves through `resolve`, the checker's resolution unless a recursive group
  * is closing.
  */

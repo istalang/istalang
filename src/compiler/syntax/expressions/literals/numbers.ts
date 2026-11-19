@@ -1,5 +1,5 @@
 /**
- * A number written in place (§2): a literal, or one negated. No literal is negative, so `-5` is
+ * A number written in place (§3.1): a literal, or one negated. No literal is negative, so `-5` is
  * `-` applied to `5`; compile time still reads it as one value: a range pattern's bound, a
  * literal pattern's key for exhaustiveness, a constant's form. Each reads it here, so `-0` is `0`
  * to all of them. Parentheses around the negated literal are seen through, as `-(5)` is still a

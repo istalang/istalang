@@ -1,5 +1,5 @@
 /**
- * Heads (§2): the modifiers before a function's or a struct's keyword, read in any order
+ * Heads (§2.2): the modifiers before a function's or a struct's keyword, read in any order
  * (syntax/tokens/modifiers.ts). Every construct with a head reads it here, so each modifier is
  * checked once, wherever it stands.
  *

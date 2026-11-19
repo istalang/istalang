@@ -1,5 +1,5 @@
 /**
- * Packs in lowering (§3.5): a function is compiled per instantiation, where a pack is a concrete
+ * Packs in lowering (§8.1): a function is compiled per instantiation, where a pack is a concrete
  * tuple, so its rest parameter is flattened into single parameters, one per element. A function
  * value of a pack's function then takes its arguments as its type says, `fn(Int, String)` for a
  * pack of `(Int, String)`, which keeps one calling convention for every call.

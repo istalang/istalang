@@ -4,7 +4,7 @@
 # error: 5001 at 12:12
 # error: 5001 at 13:4
 # A prefix directly before `**`'s left operand reads either way, so it needs parentheses; bitwise
-# operators and shifts take ints only (§3.9).
+# operators and shifts take ints only (§10.2).
 
 fn f(x: Float, n: Int) -> Int:
   _ = -n ** 2

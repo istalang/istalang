@@ -1,6 +1,6 @@
 /**
  * Reading a snapshot (format.ts) back into a fresh run of its instance, so it resumes where it
- * committed (§5).
+ * committed (§14).
  *
  * - Objects are made first, each under its id, then filled, so a value may name any of them.
  * - A snapshot that doesn't fit its Definition is refused before anything of it resumes: one naming
@@ -102,7 +102,7 @@ export function restore(
     }),
     invocations: snapshot.invocations.flatMap(({ future: id, root }) => {
       // A call into the instance holds its future while it runs, as the run starting it does, so
-      // its work goes on to its end even with no caller left to answer (§9).
+      // its work goes on to its end even with no caller left to answer (§17.3).
       const future = object(id) as Future;
       lifetimes.adoptRestored(future as unknown as Value);
       const invocation = root ? rootInvocation(run, snapshot.encoder) : answers.get(id);
@@ -113,7 +113,7 @@ export function restore(
 
 /**
  * The objects `snapshot` names, by id, made empty, a disposed one marked before anything holding it
- * is filled, so it counts no holder (§7).
+ * is filled, so it counts no holder (§16).
  */
 function madeObjects(run: Run, snapshot: Snapshot): Map<number, RunObject> {
   const objects = new Map<number, RunObject>();
@@ -180,7 +180,7 @@ interface Filling extends Reading {
 
 /**
  * Fills the object `persisted` describes, counting what it holds: nothing, once disposed, since
- * its disposal let go of what it held, which a value of it read later still names (§7).
+ * its disposal let go of what it held, which a value of it read later still names (§16).
  */
 function filled(run: Run, persisted: PersistedObject, reading: Reading): void {
   const holds =
@@ -344,7 +344,7 @@ function registerOf(register: PersistedRegister, { object, restored }: Reading):
   return restored(register.value);
 }
 
-/** The invocation of an instance's spawned call: its return finishes the instance (§9). */
+/** The invocation of an instance's spawned call: its return finishes the instance (§17.1). */
 export function rootInvocation(run: Run, encoder: number | undefined): Invocation {
   return {
     answer: (end) => {
@@ -362,8 +362,8 @@ export function rootInvocation(run: Run, encoder: number | undefined): Invocatio
 
 /**
  * How `run`'s instance ends, its root call having returned `outcome`, which `holder` holds: its
- * outcome encoded by `encoder` in the instance (§9), as a mock replacing it answers, then the run
- * finished, letting go of `holder` and of all else the instance holds (§7); panicked if encoding
+ * outcome encoded by `encoder` in the instance (§17.1), as a mock replacing it answers, then the run
+ * finished, letting go of `holder` and of all else the instance holds (§16); panicked if encoding
  * or a disposal panics.
  */
 function finished(

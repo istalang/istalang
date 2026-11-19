@@ -6,7 +6,7 @@
 # error: 5170 at 31:54
 # A type match no case matches is refused where an instantiation reaching it is written, however
 # it is reached: a call's type arguments, a generic struct's field, an alias's body, a type match's
-# case, a generic body's own written type, and a generic function calling another (§3.5, §3.17).
+# case, a generic body's own written type, and a generic function calling another (§8.1, §4.6).
 
 struct Field<T> { value: T }
 struct Repeat<R> { row: R }

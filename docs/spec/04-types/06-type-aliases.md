@@ -1,0 +1,53 @@
+---
+description: type aliases, recursive (equi-recursive) aliases and type match; read before changing aliases or computed types
+owner: tech-lead
+status: active
+applies_to: istalang
+last_verified: 2026-11-19
+last_updated: 2026-11-19
+tags: [language, spec]
+---
+
+# 4.6 Type aliases
+
+`type` gives an existing type another name: `type UserId = String`. The alias and the original are the same type and mix freely. Aliases may be generic, as in `type Entries<T> = Array<(String, T)>`. A static function declared on an alias is the aliased type's, so `fn Entries.empty<T>() -> Entries<T>` gives `Array<(String, T)>` an `empty`, and one declared on an alias of `T | None`, such as the prelude's `Optional<T>`, is every optional's: `Optional.default()` and the `json` module's `Optional.fromJson` serve each `T?`. An alias of a shape names it (§5.2), `type Point = { x: Int, y: Int }`, so the alias is only the shape's spelling, shown in messages: it may stand before `{` to build the shape, `Point{x: 1, y: 2}`, and a static function declared on it is the shape's, whichever alias of the shape it is called through; a generic one names a family, `type Pair<A, B> = { first: A, second: B }`, whose static functions are called through it. An alias naming an enum plainly, with no type parameters of its own and no type arguments given, qualifies its variants as the enum does: with `type Hue = Color`, `Hue.Red` is `Color.Red`, in an expression, a literal or a pattern; any other alias would lose what its arguments say. An alias of a struct declaration names it only as a type: its literal names the struct. A *distinct* type with the same contents is a single-field struct instead, such as `struct UserId { value: String }`, which the type checker keeps apart from `String`, and a type with an identity of its own is a shared struct (§5.4).
+
+**Recursive aliases.** An alias may refer to itself, directly or through other aliases, where each reference stands inside a type built from others: a nominal type's argument, a trait's argument in an `any` type (`kids: any Iterable<Tree>`), a field of a shape, a tuple element, or a function type's parameter or result. An alias's argument stands where the alias's body puts its parameter, guarded only where every use of it there is: `Id<A>` for `type Id<T> = T` stands as `A` does, and `OrInt<A>` for `type OrInt<T> = T | Int` as a union's member. A type `match` alias's argument stands as every case's type uses it, or what a case infers from it whole, and must be known first where a case's pattern inspects it, so `type A = Flip<A>` names no type whatever `Flip`'s cases give.
+
+```python
+type Tree<T> = T | Array<Tree<T>>
+type List = { head: Int, tail: List? }
+type Machine = fn(Int) -> Machine
+```
+
+- **Guarded.** A reference standing as the whole body, as a member of the body's union, or where what it names must be known first (`A.Data`, `A[K]`, `keyof A`) names no type: `type A = A | Int`, `type A = A?` and `type A = { k: keyof A }` are compile errors at the alias. An alias whose body is a type `match` keeps its own rules (below).
+- **Finite.** Its values are finite as a struct's are (§5.2).
+- **Regular.** Each reference to an alias of its cycle passes the alias's own type parameters, in order: `type W<T> = T | Array<W<Array<T>>>` would need endlessly many types, a compile error at the alias.
+- **Identity is structural** (equi-recursive), as a shape's is (§5.2): a use stands for its body with itself substituted, and two recursive types whose unfoldings are equal are one type, whatever aliases wrote them. `type FormCategory = { name: String, children: Array<FormCategory> }` and `type CrmCategory = { name: String, children: Array<CrmCategory> }` are one type, so a value of either goes where the other is expected, inside containers too; `Int | Array<Tree>` written out is `Tree`. Its members, fields, patterns, conversions and exhaustiveness are its body's. No fold or unfold is ever written: `1` converts into a `Tree<Int>`, and `case Array<Tree<Int>> as xs` selects a member.
+- **In a union** its members join the union (§4.2): `Tree<Int> | Int` is `Tree<Int>`, and with `type Forest = Tree | Array<Forest>`, `Forest` is `Tree`, so `const b: Forest = [1]` builds the one array member. A pattern naming it selects its members: `x is Tree` on a `Tree | String` tests for `Tree`'s. A generic one named without type arguments names no type, as any generic alias (§11.3); with them, it names the type they give.
+- **Spelled** as the alias it was written through in messages, hovers and extern keys; a compiled program names the type by its preferred alias, a std module's first, then by module name, then by name, which identifies nothing. A static function declared on it belongs to the type, whichever alias it is called through: `fn Tree.leaf<T>(value: T) -> Tree<T>`.
+
+**Type `match`.** The whole body of an alias or an associated type may be a type `match`, whose type is that of its first case matching its subject:
+
+```python
+struct Field<T> { value: T? }
+struct Repeat<Row> { row: Row }
+
+type DataOf<D> = match D:
+    case Field<infer T>: T
+    case Repeat<infer R>: Array<DataOf<R>>
+    case struct: { [F in keyof D]: DataOf<D[F]> }
+
+type IdOf<T> = match T:
+    case struct { id: infer K }: K
+    case _: None
+```
+
+- **Cases** stand one per line and are tried in order, and a case's type stands after its `:`, on the same line or indented below. `case P:` matches a type of `P`'s form. In `P`, `infer T` binds a new type variable to the part standing there, visible in the case's type, and a later bare `T` in `P` must be that same part: `case Pair<infer T, T>:`. `infer T is C` matches only a part meeting `C`, and a variable standing beside other members of a union, `infer T | None`, binds what the type has beyond them; a member holding variables inside it, `List<infer T>` in `List<infer T>?`, takes the first of the type's members it matches, and two variables standing beside each other match no known type. A case given a known type matches or fails, so a use with known arguments always reduces. Without `infer`, `P` is matched as the type itself, after aliases. Matching is exact, with no conversion into a union and no one-element tuple (§4.2), except that a literal type matched whole, as the subject or the member a union distributes, matches a case naming its base type: `true` meets `case Bool:`. Inside another type it is a part of a different type: `Box<"a">` doesn't meet `case Box<String>:`. A recursive type is matched as what it unfolds to, as subject or pattern: `case struct { n: infer K }:` matches `type Tree = { n: Int, kids: Array<Tree> }`, binding `Int`. A pattern is a type, so its type arguments meet their parameters' constraints, and a variable standing at a constrained parameter meets that parameter's constraints in the case's type, beside any it is written with: with `struct Field<T is Encodable>`, `case Field<infer T>:` knows `T is Encodable`.
+- **`case struct …:`** matches a struct type meeting the struct constraint (§8.1), binding its entries' variables, `case struct { id: infer K }:`; a type not meeting it just doesn't match. In the case's type, the subject written as a type parameter meets the constraint, so its keys and fields are known there (§5.2). **`case _:`** matches any type. **`match (A, B):`** matches two types at once, as a tuple.
+- **Unions distribute.** A union subject is matched member by member, the subject written as a type parameter standing for the member inside its case, and the cases' types join into a union: `DataOf<Field<Int> | Field<String>>` is `Int | String`. `Never`, no member, gives `Never`; a tuple is no union, so `match (D,):` matches a union whole.
+- **A use no case matches** is a compile error where it is written: no case of `DataOf<Int>` matches `Int`. A use an instantiation reaches is written where the instantiation is: `f<Int>(…)` for `fn f<D>(x: DataOf<D>)`, `Holds<Int>` for `struct Holds<D> { data: DataOf<D> }`, and so for a type `match` a generic function's code writes, or one a call it makes reaches.
+- **Reduction.** A use is the type of its first matching case. In a generic body (§8.1) it reduces only when the first case that could match matches whatever its type parameters become, unions included; otherwise it stays unreduced, opaque and equal only to the same alias with the same arguments, until an instantiation reduces it. So a use whose subject is a type parameter that may stand for `Never` or a union, as an unconstrained one may, stays unreduced even when every case could match it, `case _:` included: `Never` gives `Never`, and a union distributes. A member parameter (§8.1) or one with a struct constraint stands for neither. Inside a type `match`, a use of a type `match` alias stays as written until a use of its own alias gives its arguments.
+- **Kinds.** An unreduced use may be any of its cases' types, as its arguments instantiate them, so its kind (§9.1) is theirs: `type Pick<T> = match T: case Int: Socket; case _: Int` makes `Pick<T>` live in a generic body, which only live code holds. What a case takes from its subject, `case _: T` or an `infer` variable, passes through as a type parameter does (§8.1).
+- **Recursion.** An alias whose body is a type `match` may refer to itself, directly or through others. `DataOf<Tree>`, for a recursive `struct Tree`, is one type: a reduction reaching it again refers to it, as a recursive struct refers to itself, so it is a recursive struct type whose fields hold it, identified by its structure as a recursive alias is (above), and read as written wherever it is reached, `Group<Category>.Data` inside its own fields too. A type `match` a case gives the recursive use itself, `Wrap<A<D>>` in `case Node: { w: Array<Wrap<A<D>>> }`, reduces once that use is the recursive type, so it is what `Wrap`'s first case matching it gives, and a reduction reaching it again refers to it too. All this is under the finiteness rule of §5.2: a use whose values would hold another by value, such as `R<Int>` for `case _: { a: R<T> }`, is a compile error where it is written. A reduction reaching the same use again before any struct type holds it, `case _: A<T>` or `case _: A<T> | Int`, would make the use itself, which no type is, as an alias's unguarded reference to itself names none: a compile error where the use is written. One reducing to itself with a type built from its own type parameter, `W<T>` to `W<Array<T>>`, would need endlessly many reductions, the compile error of §8.1, reported at the alias by the uses its cases' types write, whichever case a subject picks.
+- **`infer`** stands only in a case's pattern, and a type `match` only as the whole body of an alias or an associated type.

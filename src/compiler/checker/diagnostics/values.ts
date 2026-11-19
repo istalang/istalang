@@ -1,18 +1,18 @@
 /**
- * The checker's diagnostics of values, codes 5060–5079 and 5200–5299 (§2, §3.1, §3.7, §3.15): a
+ * The checker's diagnostics of values, codes 5060–5079 and 5200–5299 (§4.2, §5.2, §6.2, §4.5): a
  * part of the checker's one catalog (index.ts), a block of codes per family below.
  */
 
 export const valueTemplates = {
-  // Templates, 5060–5079 (§2): what a template's values need.
+  // Templates, 5060–5079 (§3.1): what a template's values need.
   notStringable: {
     code: 5060,
     message: (type: string) =>
-      `A template writes each value as text with its toString, and no 'toString' takes ${type} and gives a String (§2).`,
+      `A template writes each value as text with its toString, and no 'toString' takes ${type} and gives a String (§3.1).`,
   },
 
   // Struct literals, indented values, tuples, destructuring, methods and references, 5200–5299
-  // (§2, §3.1, §3.7, §3.15).
+  // (§3.2, §5.2, §7.3, §4.5).
   notTuple: {
     code: 5200,
     message: (found: string) => `${found} is not a tuple.`,
@@ -70,7 +70,7 @@ export const valueTemplates = {
   severalConversions: {
     code: 5222,
     message: (found: string, expected: string) =>
-      `${found} converts into more than one member of ${expected}; convert it explicitly into the one meant (§2).`,
+      `${found} converts into more than one member of ${expected}; convert it explicitly into the one meant (§4.2).`,
   },
   noMember: {
     code: 5214,
@@ -86,47 +86,47 @@ export const valueTemplates = {
   sharedNeedsNew: {
     code: 5218,
     message: (type: string) =>
-      `${type} is a shared struct, so a new one is built with 'new': new ${type}{…} (§3.18).`,
+      `${type} is a shared struct, so a new one is built with 'new': new ${type}{…} (§5.4).`,
   },
   newNotShared: {
     code: 5219,
     message: (type: string) =>
-      `Only a shared struct is built with 'new', and ${type} isn't one: drop the 'new' (§3.18).`,
+      `Only a shared struct is built with 'new', and ${type} isn't one: drop the 'new' (§5.4).`,
   },
   notShared: {
     code: 5220,
     message: (found: string) =>
-      `'*' and '->' read the value behind a shared struct, and a ${found} isn't one (§3.9).`,
+      `'*' and '->' read the value behind a shared struct, and a ${found} isn't one (§10.2).`,
   },
   fieldBehindShared: {
     code: 5221,
     message: (type: string, name: string, operator: string) =>
-      `'${name}' is a field of the value behind the shared struct ${type}, not of its handle: read it as x${operator}${name} (§3.9).`,
+      `'${name}' is a field of the value behind the shared struct ${type}, not of its handle: read it as x${operator}${name} (§10.2).`,
   },
   getterShape: {
     code: 5223,
     message: (name: string) =>
-      `Getter '${name}' must take exactly one parameter, 'self', by value, and not be async: reading it as a field gives it nothing else (§3.1).`,
+      `Getter '${name}' must take exactly one parameter, 'self', by value, and not be async: reading it as a field gives it nothing else (§5.2).`,
   },
   fieldOrGetter: {
     code: 5224,
     message: (type: string, name: string) =>
-      `${type} has both a field and a getter named '${name}': a name on a type is a field, a getter or a method, never two (§3.1).`,
+      `${type} has both a field and a getter named '${name}': a name on a type is a field, a getter or a method, never two (§5.2).`,
   },
   getterNotPlace: {
     code: 5225,
     message: (name: string) =>
-      `'${name}' is a getter, computed on every read: it can't be assigned or passed by '&' (§3.1).`,
+      `'${name}' is a getter, computed on every read: it can't be assigned or passed by '&' (§5.2).`,
   },
   keyedNotPlace: {
     code: 5228,
     message: (name: string) =>
-      `'${name}' is a key read through an index, not a field: it can't be assigned or passed by '&' (§3.9).`,
+      `'${name}' is a key read through an index, not a field: it can't be assigned or passed by '&' (§10.2).`,
   },
   keyedOrMember: {
     code: 5226,
     message: (type: string, name: string, member: 'field' | 'getter' | 'method') =>
-      `${type} has a ${member} named '${name}', and its index takes '${name}' as a key: a name on a type means one thing (§3.1); write x["${name}"] to read the key.`,
+      `${type} has a ${member} named '${name}', and its index takes '${name}' as a key: a name on a type means one thing (§5.2); write x["${name}"] to read the key.`,
   },
   unknownKey: {
     code: 5227,

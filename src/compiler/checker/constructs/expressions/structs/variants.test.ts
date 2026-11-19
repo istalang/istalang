@@ -1,8 +1,8 @@
 /**
- * Variant calls (§3.11): a call binds its arguments to the fields as a call binds parameters
- * (§3.3), so over generated variants and calls, positional and named in any order, defaults left
+ * Variant calls (§5.3): a call binds its arguments to the fields as a call binds parameters
+ * (§6.1), so over generated variants and calls, positional and named in any order, defaults left
  * out and a rest collecting the extra positional arguments, the value a call builds is the one the
- * call naming every field builds, its defaults written out. A variant named as a value (§3.14), as
+ * call naming every field builds, its defaults written out. A variant named as a value (§5.3), as
  * any function type its fields fit, builds what calling it does, and is a function value capturing
  * nothing: sendable, and equal to another naming it. A variant without fields called with `()` is
  * warned of, its name alone saying as much; one whose fields all default or are a rest, or given
@@ -190,7 +190,7 @@ describe('a variant without fields called with `()`', () => {
 live async fn main(): await runtime.run(runtime.id()) _main()
 ista async fn _main(): 0\n`);
 
-  it('is warned of, bare or qualified, its name alone saying as much (§3.11)', () => {
+  it('is warned of, bare or qualified, its name alone saying as much (§5.3)', () => {
     expect(warnedOf('[Approved(), Verdict.Approved()]')).toEqual({
       codes: [fieldlessCalled, fieldlessCalled],
       spanTexts: ['Approved()', 'Verdict.Approved()'],
@@ -212,7 +212,7 @@ describe("a variant call's arguments", () => {
     '',
   ].join('\n');
 
-  it("take their fields' types once its type arguments are known, as its fields always did (§3.11)", () => {
+  it("take their fields' types once its type arguments are known, as its fields always did (§5.3)", () => {
     const functions = [
       'fn expected() -> Options<"s" | "m">: Options.Items([Item{value: "s"}])',
       'fn inOptional() -> View<"s" | "m">: View<"s" | "m">{options: Options.One(Item{value: "m"})}',

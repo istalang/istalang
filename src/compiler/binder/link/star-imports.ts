@@ -1,5 +1,5 @@
 /**
- * `import * from 'path'` (§3.13): every export of the module the path loaded, bound under its own
+ * `import * from 'path'` (§13.1): every export of the module the path loaded, bound under its own
  * name, as if the import listed each. Its names are known only once the program is, so linking
  * binds them, and a free name finds them before the prelude's (index.ts).
  *
@@ -11,7 +11,7 @@
  * (top-level-rules.ts).
  *
  * Only exports are brought, never a private name, even into a test module, which names a private
- * declaration only by importing it by name (§10).
+ * declaration only by importing it by name (§18).
  */
 
 import type { ModuleId } from '../../program/program.ts';

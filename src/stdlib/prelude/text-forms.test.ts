@@ -1,5 +1,5 @@
 /**
- * The numbers' text forms (§3.10): `parse` reads back every text `toString` writes, for any
+ * The numbers' text forms (§8.4): `parse` reads back every text `toString` writes, for any
  * value, and refuses text that isn't one, whatever it is, without throwing.
  */
 

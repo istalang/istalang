@@ -1,15 +1,15 @@
 /**
  * What a `callArgument` place offers: where a call's argument starts, which a name may label.
  *
- * - The parameters the call gives no argument yet, each as the name labelling one (§3.3), read
+ * - The parameters the call gives no argument yet, each as the name labelling one (§6.1), read
  *   against every function the call may call, as signature help reads them (call-at.ts), so a call
  *   still being written, which resolves to none, offers them too. A method's `self` is given
  *   before the dot, never by name.
  * - A value, unless an argument up to the cursor is named: named arguments follow the positional
- *   ones (§3.3), so only names may follow one. A value is what an expression starts with, and `...`
+ *   ones (§6.1), so only names may follow one. A value is what an expression starts with, and `...`
  *   where the argument lands in a rest parameter collecting an array, of the function signature
  *   help marks.
- * - A function value's parameters have no names (§3.14), nor does a callee no function was found
+ * - A function value's parameters have no names (§6.4), nor does a callee no function was found
  *   for, so such a call offers values alone.
  */
 
@@ -56,7 +56,7 @@ function isNamedOnward({ call, argument }: CallAt): boolean {
 
 /**
  * The names of the parameters `callees` leave to give, each once, in the order declared; a pattern
- * with no `as` name is given only by position (§3.3), so it offers none.
+ * with no `as` name is given only by position (§6.1), so it offers none.
  */
 function argumentNames(
   checker: Checker,

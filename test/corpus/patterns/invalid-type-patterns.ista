@@ -7,7 +7,7 @@
 # error: 4000 at 42:15
 # error: 5155 at 48:39
 # error: 5416 at 54:10
-# A type pattern names a type to test (§3.10, §3.11): never a generic one against an `any` value,
+# A type pattern names a type to test (§8.3, §11.3): never a generic one against an `any` value,
 # which a pattern can't give type arguments. Never, holding no value, and an alias of an `any`
 # type, whose values have their own types, name no type to test; a generic alias stands for no one
 # type; and braces take a struct's fields only. A type the value can't hold is only warned of.

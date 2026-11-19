@@ -1,5 +1,5 @@
 /**
- * Disposal ends what it disposes for good (§7), but for the handles the run gives out again: a
+ * Disposal ends what it disposes for good (§16), but for the handles the run gives out again: a
  * call's (`_Call`) and a weak reference, whose last holder letting go ends nothing.
  */
 

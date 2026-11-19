@@ -1,5 +1,5 @@
 # outcome: 500500
-# Calls nest as deep as the implementation allows, at least 1,000 calls (§5), so this recursion
+# Calls nest as deep as the implementation allows, at least 1,000 calls (§14), so this recursion
 # runs everywhere.
 
 import * as runtime from 'runtime'

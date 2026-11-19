@@ -1,5 +1,5 @@
 # outcome: "1 3 1 true 4 5 5 2 7 [[1],[2,3]] 3 1 0 3"
-# Conversions inside value types (§3.5): an array's items, a map's values, a struct's, a variant's
+# Conversions inside value types (§8.1): an array's items, a map's values, a struct's, a variant's
 # and a tuple's fields, a shape's, and a function's parameters and result, each as the variance of
 # what holds them allows, rebuilt where the layout changes. Converted values live across a commit
 # and round-trip through JSON; a generic body converts as each instantiation makes it.

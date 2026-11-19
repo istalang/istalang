@@ -1,5 +1,5 @@
 /**
- * Iterating (§3.10): `for` runs the cursor `iterate` gives, item by item, so a range never holds
+ * Iterating (§8.4): `for` runs the cursor `iterate` gives, item by item, so a range never holds
  * its ints, a string steps over code points, a map gives its entries in order, and changing the
  * original meanwhile changes nothing. A spread takes the same items, except that an array into an
  * array literal and a map into a map literal are copied whole.

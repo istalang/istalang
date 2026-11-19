@@ -1,5 +1,5 @@
 /**
- * Collection literals (§2, §3.8, §3.10): what array and map literals (literals.ts) share, and
+ * Collection literals (§3.3, §19.2, §8.2): what array and map literals (literals.ts) share, and
  * literals of other declared types.
  *
  * - An array literal's elements, and a map literal's keys and values, each agree on one type as
@@ -16,13 +16,13 @@
  *   is an array of `m`'s entries. Where a `Map` is expected, `[]` is an empty map.
  * - Where another declared type `C` is expected, a map literal, and an empty `[]`, starts from
  *   `C`'s default, Default's witness, and assigns each entry with `setIndex`, as `c[k] = v` would
- *   (§2). Those are calls the language makes (resolution/applying/implicit.ts), which must run at
+ *   (§3.3). Those are calls the language makes (resolution/applying/implicit.ts), which must run at
  *   once (resolution/calls/collection-functions.ts): Default's `default` gives its type, never a
  *   future. Keys and values are checked on their own there, since `setIndex` is chosen by their
  *   types.
- * - An expected `T?` guides a literal like an expected `T`; fitting it then wraps the value (§2).
+ * - An expected `T?` guides a literal like an expected `T`; fitting it then wraps the value (§4.2).
  * - Passed to a call, a literal whose own items don't decide its type, or an empty one, has the
- *   type the call decides (§3.5), a generic one of the constraint scope it joins
+ *   type the call decides (§8.1), a generic one of the constraint scope it joins
  *   (joining-literals.ts, empty-collections.ts).
  */
 
@@ -84,7 +84,7 @@ export function expectedArrayItem(
 
 /**
  * A map literal, or an empty `[]`, of the declared type `type`: its `default()`, then a
- * `setIndex` for each entry and for each item of each spread (§2).
+ * `setIndex` for each entry and for each item of each spread (§3.3).
  */
 export function checkDeclaredLiteral(
   context: BodyContext,
@@ -138,7 +138,7 @@ function insertEntry(
 }
 
 /**
- * What a call's spread passes (§3.3, §3.5): a pack's value is the pack, which fills a rest of
+ * What a call's spread passes (§6.1, §8.1): a pack's value is the pack, which fills a rest of
  * that pack; anything else gives its items, which a rest parameter collects.
  */
 export function spreadArgumentType(

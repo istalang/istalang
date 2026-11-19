@@ -1,5 +1,5 @@
 # outcome: "p3p3 45 12"
-# A struct's value converts into the shape `*x` is (§3.1, §3.18): spread into `new`, or written to
+# A struct's value converts into the shape `*x` is (§5.2, §5.4): spread into `new`, or written to
 # `*x`; a function value takes it as a declared function does, and so does a literal's spread.
 
 import * as runtime from 'runtime'

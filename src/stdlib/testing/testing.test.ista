@@ -1,4 +1,4 @@
-# The test library (spec §10): building tests, setups, assertions, expectPanic and the fakes.
+# The test library (spec §18): building tests, setups, assertions, expectPanic and the fakes.
 #
 # `only` would skip every other test of the run, the whole standard library's, so the focus the
 # constructors give is read from the tests they build; the runner's own tests run focused tests.
@@ -16,7 +16,7 @@ import (
 extern sendable struct Queue<T is Sendable>
 extern shared struct Sent
 extern fn send<T is Encodable>(self: Queue<T>, msg: T)
-# The program's own ista read of a queue, which a test mocks; the host's is live (§10).
+# The program's own ista read of a queue, which a test mocks; the host's is live (§18).
 ista async fn receive<T is Sendable>(self: Queue<T>) -> T:
   panic("reached the host")
 

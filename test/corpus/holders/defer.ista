@@ -1,5 +1,5 @@
 # outcome: "7: body, inner, ran 0, iteration 0, iteration 1, ran 2, iteration 2, returning, last 5, held 3, outer"
-# `defer f(x)` gives a disposable calling `f(x)` when released, `x` computed now (§7): kept by `_`,
+# `defer f(x)` gives a disposable calling `f(x)` when released, `x` computed now (§16): kept by `_`,
 # when its block ends, however it ends, a loop body's at the end of each iteration, `continue`
 # included; kept by `hold _`, when its function ends. Several released together run in reverse,
 # last first, and what the function returns is computed before they run.

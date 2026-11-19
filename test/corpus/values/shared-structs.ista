@@ -1,9 +1,9 @@
 # outcome: "3 true false 8 counted 1 2 0 2 2 2"
-# A shared struct (§3.18) is a type of its own whose values are handles to a cell holding its
+# A shared struct (§5.4) is a type of its own whose values are handles to a cell holding its
 # fields: `new Counter{…}` makes one, `x->f` reads and writes a field and `*x` the whole value, for
 # every copy, while `==` tells handles apart by identity. A field may hold the shared struct itself,
 # since what it holds is a handle, read through when there is one with `?->`, which chains as `?.`
-# does (§4). A spread of a value behind one decides a generic shared struct's type arguments, as a
+# does (§10.4). A spread of a value behind one decides a generic shared struct's type arguments, as a
 # struct's own spread does.
 
 import * as runtime from 'runtime'

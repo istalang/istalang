@@ -1,7 +1,7 @@
 # outcome: "6 6 a 2"
-# Generic code iterates and indexes a value through its constraints (§3.10): `for` calls the
+# Generic code iterates and indexes a value through its constraints (§8.4): `for` calls the
 # `iterate` that `Iterable` requires, and indexing the `index` that `Indexable` requires. Map keys
-# that are equal (§3.9) find each other whatever order their maps were built in.
+# that are equal (§10.2) find each other whatever order their maps were built in.
 
 import * as runtime from 'runtime'
 

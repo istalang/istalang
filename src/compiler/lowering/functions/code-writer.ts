@@ -142,7 +142,7 @@ export class CodeWriter {
     return src;
   }
 
-  /** Whether `register` holds a transient's cell, which the runtime keeps for its call (§3.4). */
+  /** Whether `register` holds a transient's cell, which the runtime keeps for its call (§7.1). */
   isTransient(register: Register): boolean {
     return this.#transients.has(register);
   }
@@ -238,14 +238,14 @@ export class CodeWriter {
     });
   }
 
-  /** Jumps to `target` when the call gave parameter `parameter`, skipping its default (§3.3). */
+  /** Jumps to `target` when the call gave parameter `parameter`, skipping its default (§6.1). */
   given(parameter: Register, target: Label, span: AnchoredSpan): void {
     this.#emitJumping({ kind: 'given', span, parameter, target: 0 }, target);
   }
 
   /**
    * Another holder of the instance's value of the context constant `name` into `dst`, and a jump to
-   * `target` once it has made one; while it hasn't, on to make it (§3.4).
+   * `target` once it has made one; while it hasn't, on to make it (§7.1).
    */
   contextConstant(dst: Register, name: string, target: Label, span: AnchoredSpan): void {
     this.#emitJumping({ kind: 'contextConstant', span, dst, name, target: 0 }, target);
@@ -253,7 +253,7 @@ export class CodeWriter {
 
   /**
    * Borrows into `dst`, a transient's cell register, the cell of a call this one is nested in, of
-   * the same function, and jumps to `target`; where none has one, on to make it (§3.4).
+   * the same function, and jumps to `target`; where none has one, on to make it (§7.1).
    */
   transient(dst: Register, target: Label, span: AnchoredSpan): void {
     this.#transients.add(dst);
@@ -261,7 +261,7 @@ export class CodeWriter {
   }
 
   /**
-   * Where a function is bound to the entry's slot (§10): what it gives for the parameters, of
+   * Where a function is bound to the entry's slot (§18): what it gives for the parameters, of
    * `given`, in a fresh register, which `answered` makes the entry's result, returned through the
    * epilogue; else on to the body.
    */
@@ -290,7 +290,7 @@ export class CodeWriter {
     this.place(body);
   }
 
-  /** Jumps by the variant of the enum value in `value`: `targets[i]` for variant i (§3.15). */
+  /** Jumps by the variant of the enum value in `value`: `targets[i]` for variant i (§4.5). */
   switch(value: Register, targets: readonly Label[], span: AnchoredSpan, otherwise?: Label): void {
     const instruction: Extract<WrittenInstruction, { kind: 'switch' }> = {
       kind: 'switch',
@@ -312,7 +312,7 @@ export class CodeWriter {
   }
 
   /**
-   * Parks the running execution (§5); the position the wait was decided for, once unparked. A stop
+   * Parks the running execution (§14); the position the wait was decided for, once unparked. A stop
    * lands on the stop epilogue.
    */
   park(waypoint: string | undefined, span: AnchoredSpan): Register {

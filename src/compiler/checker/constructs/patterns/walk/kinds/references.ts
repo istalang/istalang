@@ -1,5 +1,5 @@
 /**
- * A name that refers (§3.11): a variant, tested whatever its fields hold, and warned of where it has
+ * A name that refers (§11.3): a variant, tested whatever its fields hold, and warned of where it has
  * any but `Unit` ones at the part's type arguments, which `V(...)` says it leaves; a type, a struct
  * without fields among them, which matches every value of the part's own type with no test, as `_`
  * does (types/written/pattern-types.ts); or a top-level constant (named qualified, since a bare
@@ -57,7 +57,7 @@ export function reference(context: BodyContext, node: NamePattern, part: ValuePa
 
 /**
  * A type pattern, the type `entity` named at `node`: it matches every value of its part, which
- * must be of that type, so nothing is tested and it covers the type (§3.11). A generic type takes
+ * must be of that type, so nothing is tested and it covers the type (§11.4). A generic type takes
  * its type arguments from the part; a generic alias stands for no one type, so it names none.
  */
 function typeLeaf(context: BodyContext, node: NamePattern, entity: Entity, part: ValuePart): Leaf {

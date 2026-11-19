@@ -1,6 +1,6 @@
 # outcome: "worker started, dropping it, cleaned up, deferred ran, dropped"
 # A live call disposed while it waits on its own `disposing()` runs its cleanup inside the disposal
-# (§7): it resumes at that case before the code that dropped it goes on, and stops at its next
+# (§16): it resumes at that case before the code that dropped it goes on, and stops at its next
 # await, still inside the disposal, its variables released, so its defer runs then too.
 
 import * as time from 'time'

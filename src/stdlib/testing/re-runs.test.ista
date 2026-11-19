@@ -1,5 +1,5 @@
 # Tests that run a scenario twice: as it is, and in an instance that discards and re-runs every
-# segment before committing it (§10), so a std module's tests check both with one expectation.
+# segment before committing it (§18), so a std module's tests check both with one expectation.
 
 import Encodable from 'json'
 import assertEq, spawnCrashingEveryAwait, Test, test from 'testing'

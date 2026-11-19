@@ -1,5 +1,5 @@
 /**
- * How the numbers are written as text and read back (§3.10, `Stringable` and `Parsable`): what
+ * How the numbers are written as text and read back (§8.4, `Stringable` and `Parsable`): what
  * `toString`, `String(x)` and appending to a string spell, and what `parse` accepts. A Bool's are
  * the prelude's code.
  *
@@ -7,7 +7,7 @@
  *   are spelled as JavaScript spells them, so `parse` reads every text `toString` writes.
  * - `parse` is strict, since its text comes from outside: decimal digits for an int, at any size,
  *   and JavaScript's number syntax for a float. What it refuses is a `Result` of an `Error` with
- *   code `parse`, never a panic (§3.12).
+ *   code `parse`, never a panic (§12).
  */
 
 import type { NativeKeys } from '../../definition/extern-key.ts';
@@ -34,12 +34,12 @@ export function primitiveText(value: Value | undefined): string {
   return String(value);
 }
 
-// biome-ignore-start lint/style/useNamingConvention: the keys are the primitive types' names (§2).
+// biome-ignore-start lint/style/useNamingConvention: the keys are the primitive types' names (§4.1).
 const readers = {
   Int: (source: string) => (intSyntax.test(source) ? BigInt(source) : undefined),
   Float: (source: string) => (floatSyntax.test(source) ? Number(source) : floatWords.get(source)),
 } as const satisfies Partial<Record<PrimitiveName, (source: string) => Value | undefined>>;
-// biome-ignore-end lint/style/useNamingConvention: the keys are the primitive types' names (§2).
+// biome-ignore-end lint/style/useNamingConvention: the keys are the primitive types' names (§4.1).
 
 /** A primitive type `parse` reads. */
 type ParsedPrimitive = keyof typeof readers;

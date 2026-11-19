@@ -1,5 +1,5 @@
 /**
- * Number and duration literals (spec §2).
+ * Number and duration literals (spec §3.1).
  *
  * Values are checked by round trip over generated literals in every base, with random separator
  * placement and digit case, so the tests cover the encodings rather than a few hand-picked values.

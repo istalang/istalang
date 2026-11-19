@@ -1,8 +1,8 @@
 /**
- * A struct's field reached by a key's value (§3.1, §3.9): `s[k]` where `k` may name several fields.
+ * A struct's field reached by a key's value (§5.2, §10.2): `s[k]` where `k` may name several fields.
  * A key of several names is a value of the union of their literals, a tag (members/index.ts), so reaching
  * its field switches on the tag, and each member reaches the field its name names at that field's
- * position in the struct's layout, which is name order (§3.1). Nothing is looked up by name when
+ * position in the struct's layout, which is name order (§5.2). Nothing is looked up by name when
  * the program runs.
  *
  * - Reading puts each field's value, or the part of it a place reaches past the field, into the

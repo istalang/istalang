@@ -2,7 +2,7 @@
 # error: 5912 at 16:37
 # error: 5912 at 19:22
 # Annotations apply to the fields of struct declarations and enum variants, never to a shape's,
-# which no declaration carries (§3.16): a field needing `@JsonName` lives in a struct. One is
+# which no declaration carries (§5.5): a field needing `@JsonName` lives in a struct. One is
 # refused before its value is checked, which may build the very struct its shape belongs to.
 
 import JsonName from 'json'

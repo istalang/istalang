@@ -1,5 +1,5 @@
 /**
- * Layout (§2, §4): indented and one-line bodies, `;` between statements, `{…}`
+ * Layout (§2.1, §10.1): indented and one-line bodies, `;` between statements, `{…}`
  * blocks with layout inside them even within parentheses, and annotations on their own lines.
  * Each layout rule broken once costs one diagnostic at the offending token, and the declarations
  * after it still parse.
@@ -84,7 +84,7 @@ describe('bodies', () => {
   });
 });
 
-describe('if chains (§4)', () => {
+describe('if chains (§10.1)', () => {
   const chain = statement(
     `(If [(ConditionalBranch a ${bodyOf('1')}) (ConditionalBranch b ${bodyOf('2')})] (ElseClause ${bodyOf('3')}))`,
   );

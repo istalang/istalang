@@ -1,5 +1,5 @@
 # outcome: "sent|none|2|$.flag: expected true, found false|$.level: expected 1 or 2, found 3|$.mode: expected \"draft\", \"sent\" or \"failed\", found \"archived\"|{\"flag\":true,\"level\":1,\"mode\":\"failed\",\"tag\":\"draft\"}"
-# A literal type and a union of literals cross as JSON as their literals (§6, §9): written as their
+# A literal type and a union of literals cross as JSON as their literals (§4.2, §17.4): written as their
 # base writes it, read back only as one of the literals, a field of `Status?` missing read as none.
 
 import * as json from 'json'

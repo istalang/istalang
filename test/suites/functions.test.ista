@@ -1,4 +1,4 @@
-# Defaults, constants and function values (spec §3.3, §3.4, §3.14): when a default left out is
+# Defaults, constants and function values (spec §6.1, §7.1, §6.4): when a default left out is
 # computed and what it sees, and constants another module computes. Each rule is its own function,
 # and its test asserts what the old lowering's unit test did.
 

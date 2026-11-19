@@ -81,7 +81,7 @@ export class CallSystem {
   readonly #notes = new MatchNotes();
   /** The variable whose bounds disagreed last inside the match being made. */
   #lastConflict: ParameterKey | undefined;
-  /** The pairs of recursive types being related as they unfold (§3.17). */
+  /** The pairs of recursive types being related as they unfold (§4.6). */
   readonly #unfolding = new UnfoldingPairs();
   #matching: Matching = { kind: 'argument', by: undefined, written: undefined };
   readonly #rules: ConversionRules;

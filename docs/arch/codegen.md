@@ -50,7 +50,7 @@ is emptied (`cleared`), so a register never holds what it gave away. `newCell` p
 as the cell loses its last holder.
 
 An entry with counted registers runs inside a `try` whose `catch` hands them to `unwound` before
-rethrowing: a panic a termination passes over (§3.12) lets go of what every frame it unwinds
+rethrowing: a panic a termination passes over (§12) lets go of what every frame it unwinds
 through held, which emptying given-away registers makes exact; any other panic lets go of nothing,
 the instance frozen as it stood.
 
@@ -75,7 +75,7 @@ the instance frozen as it stood.
 - A transient's cell is shared by function and register in the running execution's scope
   (`run/transients.ts`): a call finding one shares it on (`sharedTransient`), one making it shares
   its own (`shareTransient`), and each call's `return` takes back and lets go of its own share
-  (`unshareTransient`, spec §3.4). An async call keeps the cells visible where it started until it
+  (`unshareTransient`, spec §7.1). An async call keeps the cells visible where it started until it
   ends, its stop included.
 - `emitProgram` takes the order its functions are emitted in: a test's second build of one
   Definition shuffles it, and a snapshot one build commits resumes the same in the other.

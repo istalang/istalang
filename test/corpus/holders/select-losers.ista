@@ -1,5 +1,5 @@
 # outcome: "0 1 2 3 4 | true | true"
-# A select's losing cases are released (§8), and with nothing else holding them disposed: a
+# A select's losing cases are released (§15.4), and with nothing else holding them disposed: a
 # receive that loses to a timer leaves its slot's queue without consuming, so a loop racing an
 # inbox against a timer loses no message. Here every message is sent only after a receive has
 # lost, so each one would be lost if that receive still waited. A future made outside the select,

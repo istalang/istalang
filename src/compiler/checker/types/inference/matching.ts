@@ -25,7 +25,7 @@ export interface Matching {
 /** The expected type's match, which advises whatever construct it bounds. */
 export const expectedMatch: Matching = { kind: 'expected', by: undefined, written: undefined };
 
-/** What a given type was written as, which settling reads it by (§2, §3.1). */
+/** What a given type was written as, which settling reads it by (§4.2, §5.2). */
 export type Written =
   /** A literal, given as its base: its literal type, fresh, for settling to widen. */
   | { readonly kind: 'literal'; readonly literal: LiteralType }

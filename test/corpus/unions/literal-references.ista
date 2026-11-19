@@ -1,5 +1,5 @@
 # outcome: "draft|0"
-# Through `&` a place has its type exactly (§3.7), so a literal member meets a trait taking `&Self`
+# Through `&` a place has its type exactly (§7.3), so a literal member meets a trait taking `&Self`
 # only with a function declared on the literal itself, which gets a place holding its one value.
 
 import * as runtime from 'runtime'

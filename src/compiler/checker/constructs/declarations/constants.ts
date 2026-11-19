@@ -1,5 +1,5 @@
 /**
- * Top-level constants (§3): values computable at compile time, which a Definition stores as
+ * Top-level constants (§5.1): values computable at compile time, which a Definition stores as
  * constants rather than code. ProgramChecker composes this unit and answers `constantOf` and
  * `constantNamed` through it.
  *
@@ -125,7 +125,7 @@ export class ConstantChecks {
   }
 
   /**
-   * The checking of `declaration`'s initializer, which holds its lambdas (§3.14). It is reached
+   * The checking of `declaration`'s initializer, which holds its lambdas (§6.4). It is reached
    * through the constant, so a cycle through it always reaches the constant first.
    */
   bodyOf(declaration: VariableDeclaration): CheckedBody | undefined {

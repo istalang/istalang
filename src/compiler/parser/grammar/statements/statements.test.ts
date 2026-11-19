@@ -1,5 +1,5 @@
 /**
- * Statement grammar (§3.4, §3.15, §4, §7, §9): every statement form, how `fn` and `async` at the
+ * Statement grammar (§7.1, §4.5, §11.1, §16, §17.1): every statement form, how `fn` and `async` at the
  * start of a statement are told apart, assignment targets, and one diagnostic per malformed
  * statement.
  */
@@ -46,7 +46,7 @@ describe('variables', () => {
   });
 });
 
-describe('destructuring declarations (§3.15)', () => {
+describe('destructuring declarations (§4.5)', () => {
   it.each([
     [
       'let (a, b), c = t',

@@ -1,5 +1,5 @@
 /**
- * The prelude's natives for arrays (§3.8, §3.9, §3.10, §3.11): the primitives, reading, `&self`
+ * The prelude's natives for arrays (§19.3, §10.2, §8.4, §11.3): the primitives, reading, `&self`
  * methods, indexing by position and range, and what an array pattern reads, which share their
  * positions' rules with strings (positions.ts). The methods written over them, searching, joining
  * and those taking a function, are the prelude's code (prelude.ista).
@@ -77,7 +77,7 @@ const changingNatives = (keys: NativeKeys): Natives<NativeContext> => ({
   },
 });
 
-/** What an array pattern reads once its length test passed (§3.11). */
+/** What an array pattern reads once its length test passed (§11.3). */
 const patternNatives = (keys: NativeKeys): Natives<NativeContext> => ({
   [keys.of('_patternItem', array, 'Int')]: ([xs, offset]) => {
     const elements = elementsOf(xs);

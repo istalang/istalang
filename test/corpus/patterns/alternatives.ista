@@ -1,6 +1,6 @@
 # outcome: ["small","big","nothing","some",3,4,5,7,2,true]
 # An or-pattern matches what any alternative matches, in a case, nested or under `is`, and every
-# alternative binds the same names, from whichever matched first (§3.11).
+# alternative binds the same names, from whichever matched first (§11.3).
 
 import * as runtime from 'runtime'
 

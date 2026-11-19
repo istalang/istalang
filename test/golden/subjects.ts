@@ -137,8 +137,8 @@ function formBuilderSubjects(): ProgramSubject[] {
 /**
  * Every std module's suites, one subject per module, as `ista test` runs them, since a module's
  * test modules may share helpers that hold no suite; FormBuilder's; the runtime's rules by area
- * (`test/suites`); and spec §10's suite against
- * spec §12.1's purchase approval, written beside it when it runs.
+ * (`test/suites`); and spec §18's suite against
+ * spec §20.1's purchase approval, written beside it when it runs.
  */
 function suiteSubjects(): SuiteSubject[] {
   const stdModules = readdirSync(stdlib, { withFileTypes: true })
@@ -169,7 +169,7 @@ function suiteSubjects(): SuiteSubject[] {
       name: 'test/spec-suites/purchase.test.ista',
       project: {
         files: {
-          'purchase.ista': [...specCode('12.1 Purchase approval'), ''].join('\n'),
+          'purchase.ista': [...specCode('20.1 Purchase approval'), ''].join('\n'),
           'purchase.test.ista': readFileSync(`${root}test/spec-suites/purchase.test.ista`, 'utf8'),
         },
       },

@@ -1,7 +1,7 @@
-# The futures module's combinators (spec §3.8). Each scenario waits across a commit before what it
-# waits on arrives, so the combinator resumes from the snapshot that commit took (§5), and each runs
+# The futures module's combinators (spec §19.2). Each scenario waits across a commit before what it
+# waits on arrives, so the combinator resumes from the snapshot that commit took (§14), and each runs
 # twice: in the test's own instance, and in one that discards and re-runs every segment before
-# committing it (§10).
+# committing it (§18).
 
 import * as futures from 'futures'
 import * as runtime from 'runtime'
@@ -263,7 +263,7 @@ ista async fn quorumKeepingItsPlace() -> (Result<Array<Int>, Array<String>>, Out
   drop s.put(Ok(3))
   (got, await late)
 
-# A take that lost a select is passed over until awaited again (§8): `allSettled` awaits it from
+# A take that lost a select is passed over until awaited again (§15.4): `allSettled` awaits it from
 # the call on, not once the futures before it arrived.
 ista async fn allSettledAwaitingFromTheCall() -> (Array<Int>, Int):
   const (a, s) = (Slot.create<Int>(), Slot.create<Int>())

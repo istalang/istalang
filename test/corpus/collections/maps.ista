@@ -1,5 +1,5 @@
 # outcome: "2 7 true false 3 a,b,c 1,2,30 a=1;b=2;c=30; true 2 true 3 false true"
-# Maps (§2, §3.8): literals, a later equal key winning, spreads of maps and of entry tuples, safe
+# Maps (§3.3, §19.3): literals, a later equal key winning, spreads of maps and of entry tuples, safe
 # `get`, `&self` methods, assignment through an index, iteration in the order keys were first
 # set, and `==` that ignores that order.
 

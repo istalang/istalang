@@ -7,7 +7,7 @@
  *
  * - A keyword is a token kind of its own, so a position's keywords key its table by token kind,
  *   beside the starts that are no words (`StartParselets`).
- * - A contextual word is scanned as a name (§2), so a position's contextual words key a table of
+ * - A contextual word is scanned as a name (§2.2), so a position's contextual words key a table of
  *   their own (`WordParselets`), read where a name stands. Each parselet declines, giving undefined
  *   before it consumes anything, where what follows makes the word a name.
  * - A modifier's lookahead reads the words that may follow it from the same contract

@@ -1,5 +1,5 @@
 /**
- * The members of a union a pattern selects (§3.11): against a union, every pattern that could fail
+ * The members of a union a pattern selects (§11.3): against a union, every pattern that could fail
  * to match tests which member the value is, then matches the rest of itself against that member's
  * value, as a downcast does on an `any` value (walk/kinds/downcasts.ts). What a name, a literal or
  * a pattern's kind selects is types/written/pattern-types.ts's rule, which completion reads too;
@@ -7,7 +7,7 @@
  *
  * - A type pattern, or a literal selecting its own literal member or `None`, says all there is to
  *   match. Any other pattern takes one member's value apart, so it must select exactly one.
- * - A pattern selecting no member never matches, a case its union rules out (§3.11). One selecting
+ * - A pattern selecting no member never matches, a case its union rules out (§11.3). One selecting
  *   several where it must name one is refused: a variant several member enums declare is qualified,
  *   a generic type several members instantiate, or a variant of one, is given its type arguments,
  *   written in full, since the member names them all (`case Box<Int>{value}`,

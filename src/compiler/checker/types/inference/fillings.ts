@@ -1,9 +1,9 @@
 /**
- * What a type given a type parameter bounds it by (§3.5): a pack takes only a tuple, `Unit` or a
+ * What a type given a type parameter bounds it by (§8.1): a pack takes only a tuple, `Unit` or a
  * pack; a member parameter (`T in U`) only a type of one member of `U`, a literal of a member's base
  * as that base, a value of several members being for the caller to narrow. And what its lower
  * bounds join to: a fresh literal taken as its base unless an upper bound holds a literal of that
- * base (§2), and for a member parameter the one member they all are.
+ * base (§4.3), and for a member parameter the one member they all are.
  */
 
 import type { Fitting } from '../fitting/fit/index.ts';

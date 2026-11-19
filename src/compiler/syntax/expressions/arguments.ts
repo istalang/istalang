@@ -1,6 +1,6 @@
 /**
- * How a call's arguments read (§3.3): the value each gives, and where the order named arguments
- * keep is broken, a call pattern's too (§3.11). One home, so the parser, binder, checker and
+ * How a call's arguments read (§6.1): the value each gives, and where the order named arguments
+ * keep is broken, a call pattern's too (§11.3). One home, so the parser, binder, checker and
  * lowering agree on what an argument is.
  */
 
@@ -9,7 +9,7 @@ import type { Expression } from './index.ts';
 
 /**
  * The first argument a call gives by position, or spreads, after a named one: out of the order
- * named arguments keep (§3.3), which the parser reports and the checker leaves alone.
+ * named arguments keep (§6.1), which the parser reports and the checker leaves alone.
  */
 export function misplacedArgument(
   callArguments: readonly CallArgument[],
@@ -21,8 +21,8 @@ export function misplacedArgument(
 
 /**
  * The first of `items` given by position, or spread, after one given by name, as `givenAs` says
- * each is given: out of the order named arguments keep, in a call (§3.3) or a call pattern
- * (§3.11), whose last `...` is given neither way.
+ * each is given: out of the order named arguments keep, in a call (§6.1) or a call pattern
+ * (§11.3), whose last `...` is given neither way.
  */
 export function givenOutOfOrder<Item>(
   items: readonly Item[],

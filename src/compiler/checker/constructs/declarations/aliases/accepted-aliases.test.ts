@@ -1,5 +1,5 @@
 /**
- * A program the checker accepts lowers (§3.1, §3.17): with no error reported, no type it uses is
+ * A program the checker accepts lowers (§5.2, §4.6): with no error reported, no type it uses is
  * the error type or a type `match` use left unreduced, whatever its aliases forward to, recurse
  * through or reduce to, so lowering never meets a type a diagnostic should have explained.
  */

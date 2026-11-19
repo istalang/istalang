@@ -1,10 +1,10 @@
 /**
- * A collection's own functions (§2, §3.9).
+ * A collection's own functions (§3.3, §10.2).
  *
  * - Writing an element is one call, whoever writes it: `setIndex(&container, key, element)`,
  *   found like an operator's function, so any type with a `setIndex` takes element writes. A
  *   place's element written (`xs[i] = v`, `&m[k]`) and a map literal's entry of a declared type
- *   (§2: an entry is `c[k] = v`) both make it here.
+ *   (§3.3: an entry is `c[k] = v`) both make it here.
  * - They run at once: an element is read with `index` and written back with `setIndex` around the
  *   change that the statement or call making it needs done there and then, and a map literal of a
  *   declared type assigns its entries with `setIndex` before the literal has a value. An async one
@@ -56,7 +56,7 @@ export function writeElement(context: BodyContext, write: ElementWrite): boolean
 
 /**
  * Whether `call` runs at once; false after reporting at `at` that it is async, giving a future,
- * whatever its head (§3.14).
+ * whatever its head (§6.4).
  */
 export function runsAtOnce(
   context: BodyContext,

@@ -1,9 +1,9 @@
-# The random module (spec §3.8): values drawn from the instance's random source, which its snapshot
-# keeps, so a segment that runs again draws what it drew before (§5).
+# The random module (spec §19.2): values drawn from the instance's random source, which its snapshot
+# keeps, so a segment that runs again draws what it drew before (§14).
 #
 # `integer` and `uuid` are the runtime's; `fraction` is code over `integer`, so mocking those two
-# fixes every value a test draws (§10). No function is named after a type, which it would hide in
-# this module (§3.13).
+# fixes every value a test draws (§18). No function is named after a type, which it would hide in
+# this module (§13.1).
 
 # A uniform integer among those the range reaches, its step included; panics on an empty range or
 # an open one.

@@ -7,7 +7,7 @@
 # error: 5131 at 23:39
 # error: 5131 at 24:15
 # error: 5131 at 25:17
-# A member parameter stands for exactly one member of its union (§3.5): a type argument written
+# A member parameter stands for exactly one member of its union (§8.1): a type argument written
 # for it, to a call or to a type, is one member, never several nor a type outside the union, nor a
 # type parameter that could be any type.
 

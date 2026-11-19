@@ -1,5 +1,5 @@
 # outcome: 1
-# Writing through a reference lets go of what the place held at that write (§3.7, §7): the lease
+# Writing through a reference lets go of what the place held at that write (§7.3, §16): the lease
 # overwritten through `&` is disposed before the next statement runs, while the step still reads 1.
 
 shared struct Lease { step: Shared<Int>, disposedAt: Shared<Int> }

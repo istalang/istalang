@@ -8,10 +8,10 @@
 # error: 5951 at 63:56
 # error: 5950 at 69:9
 #
-# A suite function only builds its list (§10), in an instance: an fn or ista fn, not async, taking
+# A suite function only builds its list (§18), in an instance: an fn or ista fn, not async, taking
 # nothing and returning Array<Test>, whose own body calls no extern and makes no shared struct or
 # slot. What the tests it builds do runs later, so a test's body may do any of it, and so may a
-# deferred call's call, though not what that call computes now (§3.14).
+# deferred call's call, though not what that call computes now (§6.5).
 
 import Suite, Test, test from 'testing'
 

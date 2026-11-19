@@ -13,7 +13,7 @@
 # error: 5214 at 58:5
 # error: 5001 at 59:9
 # error: 2018 at 60:3
-# Places (§3.7, §3.9): a const is never changed, through a field, an element, `&` or a method
+# Places (§7.3, §10.2): a const is never changed, through a field, an element, `&` or a method
 # taking `&self`; only a place is changed or passed by `&`; `&` is written exactly where the
 # callee takes a reference, of exactly its type (a receiver `&self` takes too), and only as an
 # argument.

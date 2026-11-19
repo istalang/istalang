@@ -1,19 +1,19 @@
 /**
  * What a function declaration promises before its body is checked: its parameters and declared
- * result (§3.3).
+ * result (§6.1).
  *
  * - A declared function's parameter carries its type: its annotation, or the type its pattern
  *   names (`Point{x, y}`), never both, since one type would be written twice; else its default
- *   gives one, and a parameter with none of these is reported. `&T` takes a reference (§3.7), which
+ *   gives one, and a parameter with none of these is reported. `&T` takes a reference (§7.3), which
  *   a pattern can't take apart, since it passes a place.
- * - An async function declares its real result, `Future<T>`; its body produces the `T` (§3.3).
- * - A parameter's default (§3.3) is checked as part of one body per function, in which each default
+ * - An async function declares its real result, `Future<T>`; its body produces the `T` (§6.1).
+ * - A parameter's default (§6.1) is checked as part of one body per function, in which each default
  *   sees the parameters before it (`DefaultValues`). A parameter with a default may omit its type,
  *   which is then the default's. Every parameter after one with a default has one too, since a call
  *   gives its arguments in order, as it does a variant's fields; a struct's fields, read as
  *   parameters (syntax/declarations/field-defaults.ts), are named in a literal, so any of them may
  *   have one.
- * - A rest parameter is the last, an `Array<T>` with no default (§3.3): a call it collects nothing
+ * - A rest parameter is the last, an `Array<T>` with no default (§6.1): a call it collects nothing
  *   into gives it an empty array.
  */
 
@@ -97,7 +97,7 @@ export function declaredParameters(
 
 /**
  * Reports a parameter a call could leave without a value, after one with a default, and one with
- * no type: neither written nor taken from a default (§3.3).
+ * no type: neither written nor taken from a default (§6.1).
  */
 function checkGiven(
   checker: CheckerContext,
@@ -139,7 +139,7 @@ export function writtenParameters(
 
 /**
  * The type `node` is written with: its annotation, or the type its pattern names when that names a
- * type, not a variant, which a pattern can fail on (§3.11).
+ * type, not a variant, which a pattern can fail on (§11.3).
  */
 export function writtenTypeOf(
   checker: CheckerContext,
@@ -200,7 +200,7 @@ interface ParameterSite {
 
 /**
  * Reports a type written twice, as an annotation beside a pattern naming it, and a pattern taking
- * apart what `&` passes, a place (§3.3, §3.7), whether the parameter is `byReference` as written or
+ * apart what `&` passes, a place (§6.1, §7.3), whether the parameter is `byReference` as written or
  * as the function type a lambda is expected as gives it. A declared function's and a nested one's
  * parameters are held to both alike.
  */
@@ -239,7 +239,7 @@ function restSlotOf(checker: CheckerContext, node: Parameter, type: Type): RestS
 }
 
 /**
- * Reports what a rest parameter breaks of its rules: last, an array or a pack, no default (§3.3).
+ * Reports what a rest parameter breaks of its rules: last, an array or a pack, no default (§6.1).
  */
 function checkRest(
   checker: CheckerContext,
@@ -269,7 +269,7 @@ function checkRest(
 /**
  * What `declaration` declares its body produces: what `declaredBodyResult` reads of it, or, for
  * the function a declaration's fields read as, the value they make, which is never written: its
- * struct, or its variant's enum, over the declaration's own type parameters (§3.1, §3.11).
+ * struct, or its variant's enum, over the declaration's own type parameters (§5.2, §5.3).
  */
 export function declaredResultOf(
   checker: CheckerContext,

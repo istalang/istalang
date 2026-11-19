@@ -1,5 +1,5 @@
 /**
- * Substitution (§3.5) and respelling keep a type they change nothing in: the very object, never a
+ * Substitution (§8.1) and respelling keep a type they change nothing in: the very object, never a
  * copy, so what is memoized per type object (identity/type-keys.ts, parts/type-children.ts) stays
  * found however often a type is substituted. Checked over generated groups of recursive bodies
  * (identity/recursive-types.test-kit.ts), open and closed, their open slot given a type mentioning

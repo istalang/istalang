@@ -1,6 +1,6 @@
 # outcome: 3
-# An annotation is a struct value of any struct (§3.16): a generic one without fields is given
-# its type arguments as its value is (§3.1). A struct declaration takes any annotation, kept for
+# An annotation is a struct value of any struct (§5.5): a generic one without fields is given
+# its type arguments as its value is (§5.2). A struct declaration takes any annotation, kept for
 # tools, and sees its type parameters; a field's and a function's name the types they mean, on
 # their own line or before their item on its line.
 

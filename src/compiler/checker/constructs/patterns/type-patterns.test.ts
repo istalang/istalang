@@ -1,5 +1,5 @@
 /**
- * Type patterns (§3.11) as properties: a bare PascalCase name in a pattern refers, never binds, and
+ * Type patterns (§11.3) as properties: a bare PascalCase name in a pattern refers, never binds, and
  * a type pattern on an `any` value matches exactly the values converted from that type. The
  * corpus (test/corpus/patterns/type-patterns.ista) runs the rules one case at a time.
  */

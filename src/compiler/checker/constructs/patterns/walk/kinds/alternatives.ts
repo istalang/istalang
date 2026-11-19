@@ -1,5 +1,5 @@
 /**
- * What an or-pattern's alternatives agree on (§3.11): the names they bind, each with one type, and
+ * What an or-pattern's alternatives agree on (§11.3): the names they bind, each with one type, and
  * what of the part they select between them, which a name bound to the whole (`A | B as x`) has.
  * The walk takes each alternative (../index.ts); these rules read what it found.
  *

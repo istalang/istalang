@@ -4,7 +4,7 @@
  *
  * A regex is its pattern's text, so its compiled program derives from that text alone: it is
  * memoized by it, in a bounded cache every instance shares. An invalid pattern is an `Err` from
- * `parse`, and a panic everywhere else, since one written into the program is its bug (§3.12).
+ * `parse`, and a panic everywhere else, since one written into the program is its bug (§12).
  *
  * re2js counts UTF-16 units and steps over code points, so positions convert to code points at
  * the edge (foundation/text/code-points.ts).

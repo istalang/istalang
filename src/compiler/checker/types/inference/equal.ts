@@ -1,5 +1,5 @@
 /**
- * Equality while inferring (§3.5): where a value must have a type exactly (invariant, `&`, a
+ * Equality while inferring (§8.1): where a value must have a type exactly (invariant, `&`, a
  * spread's items, a pack, a witness), a declared type and a given one must be the very same, and
  * each variable the declared one holds is bound to what stands in its place (infer.ts).
  *
@@ -143,7 +143,7 @@ function equalUnion(declared: UnionType, given: Type, equating: Equating): boole
   );
 }
 
-/** Each of `declared`'s constraints matched by one of `given`'s, a set like it (§3.10). */
+/** Each of `declared`'s constraints matched by one of `given`'s, a set like it (§8.2). */
 function equalConstraints(
   declared: AnyType,
   given: AnyType,
@@ -169,7 +169,7 @@ function sameFieldNames(first: AnonymousStructType, second: AnonymousStructType)
 
 /**
  * Whether inference learns nothing from `declared`: a type written as an associated type
- * (`Field<T>.Data`), which inference never looks through (§3.5); a value is still fitted to it.
+ * (`Field<T>.Data`), which inference never looks through (§8.1); a value is still fitted to it.
  */
 export function givesNothing(declared: Type): boolean {
   return declared.alias?.kind === 'associated';

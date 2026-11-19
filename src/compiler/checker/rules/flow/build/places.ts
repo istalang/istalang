@@ -1,5 +1,5 @@
 /**
- * Places (§3.7, §3.9, §3.15): what `&` passes and an assignment writes, located once, in source
+ * Places (§7.3, §10.2, §4.5): what `&` passes and an assignment writes, located once, in source
  * order.
  *
  * - A place is a variable or the value behind a handle (`*x`, `x->`), with fields, tuple elements

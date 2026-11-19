@@ -1,5 +1,5 @@
 # outcome: "1 2 | 3 4 | 5 | false false | 7"
-# A value is wrapped wherever an optional is expected (§2), also one with no expression of its
+# A value is wrapped wherever an optional is expected (§4.2), also one with no expression of its
 # own: a part a destructuring assignment writes, a compound assignment's result, the unit of a
 # bare `return`, and the unit of a block ending in a statement.
 

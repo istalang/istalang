@@ -1,5 +1,5 @@
 /**
- * What a host's start refuses (§9, starts.ts): an outcome JSON can't hold, such as one nesting past
+ * What a host's start refuses (§17.3, starts.ts): an outcome JSON can't hold, such as one nesting past
  * the limit, rejects the start once its run finished, as the old pipeline's start did.
  */
 

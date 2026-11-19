@@ -1,13 +1,13 @@
 /**
- * The runtime as a host uses it (§9): give it the host binding (binding.ts), deploy a Definition, start what it may
+ * The runtime as a host uses it (§17.3): give it the host binding (binding.ts), deploy a Definition, start what it may
  * start, and wake, inspect, retry and terminate the instances its code reaches.
  *
  * - A Definition arrives encoded, with the bytes the store keeps (definition/definition.ts);
  *   deploying emits its code once per hash and writes its bytes to the store once. One the store
  *   gives back is read and validated, coming from outside the toolchain. Each deploy holds the
- *   host's externs to the types the store recorded (§3.6, boundary/extern-signatures.ts).
+ *   host's externs to the types the store recorded (§17.2, boundary/extern-signatures.ts).
  * - Instances are the world's (durable-world.ts): each committed to the store at every segment's
- *   end, so a runtime opened over the same store goes on where an earlier one committed (§5). One
+ *   end, so a runtime opened over the same store goes on where an earlier one committed (§14). One
  *   the world doesn't hold is read from the store with the Definition its snapshot names.
  * - What a host asks of one instance is instance-calls.ts's.
  */

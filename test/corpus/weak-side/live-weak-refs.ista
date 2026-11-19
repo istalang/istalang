@@ -1,5 +1,5 @@
 # outcome: "same, held, closed a, gone, closed b"
-# A weak reference holds nothing (§7): there is one per referent, `deref()` gives it while
+# A weak reference holds nothing (§16): there is one per referent, `deref()` gives it while
 # something holds it and none once its last holder let go of it, which disposed it at once.
 
 shared struct Lease { name: String, log: Shared<Array<String>> }

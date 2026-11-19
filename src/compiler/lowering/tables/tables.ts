@@ -3,7 +3,7 @@
  *
  * - Function instances (instances.ts) are numbered when first referenced and lowered afterwards
  *   (function-table.ts). Only what `main` reaches is lowered: generics are compiled per
- *   instantiation (§3.5), which only reachability can enumerate.
+ *   instantiation (§8.1), which only reachability can enumerate.
  * - An entry is keyed by its kind and its identity within it, which the kind table gives
  *   (entries.ts), so one asked for twice is one entry.
  * - Types and constants are interned: one entry per distinct type (type-table/) or value, a
@@ -83,7 +83,7 @@ export class DefinitionTables {
   /** Entries taken over from programs over the same std, and offered to them (std-reuse.ts). */
   readonly #std: StdReuse;
 
-  /** Whether the Definition runs tests, whose functions' slots may be rebound (§10). */
+  /** Whether the Definition runs tests, whose functions' slots may be rebound (§18). */
   readonly rebindable: boolean;
 
   /**
@@ -171,7 +171,7 @@ export class DefinitionTables {
 
   /**
    * What every function-table entry for `instance` starts with: its name, where it is, and the
-   * annotations its declaration carries (§3.16).
+   * annotations its declaration carries (§5.5).
    */
   entryHeader(instance: FunctionInstance): EntryHeader {
     const { declaration } = instance;
@@ -230,7 +230,7 @@ export class DefinitionTables {
   /**
    * The index of the entry taking a closed call's arguments as it passes them, for a caller that
    * gets an entry to call later, a function value's or the runtime's: its function's, which
-   * computes what the call leaves out (`leavingOutIndex`), or its dispatch's (§3.10).
+   * computes what the call leaves out (`leavingOutIndex`), or its dispatch's (§8.2).
    */
   callIndex(call: ClosedCall): FunctionId {
     if (call.kind === 'function') {
@@ -301,7 +301,7 @@ export class DefinitionTables {
   }
 
   /**
-   * The index a call leaving parameters of `instance` out calls (§3.3): its own entry, which
+   * The index a call leaving parameters of `instance` out calls (§6.1): its own entry, which
    * computes them; for an extern bound to its native, which computes nothing, an entry computing
    * them, then calling it (own-entries.ts).
    */
@@ -310,7 +310,7 @@ export class DefinitionTables {
     return this.index({ kind: native ? 'externDefaults' : 'instance', instance });
   }
 
-  /** The index of the entry a host starts `target` through, listed under `key` (§9). */
+  /** The index of the entry a host starts `target` through, listed under `key` (§17.3). */
   startIndex(target: StartTarget, key: string): FunctionId {
     const index = this.index({ kind: 'start', target });
     const encode = this.index({ kind: 'startEncode', target });

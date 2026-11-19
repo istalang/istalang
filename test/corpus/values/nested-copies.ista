@@ -1,5 +1,5 @@
 # outcome: [1,2,3,1,2,1,2,3,1,2,3,5,90,2,3,4,90,2,3,4,99]
-# Every copy is a value of its own (§2): `const` and `let` copies, a closure's capture and a struct
+# Every copy is a value of its own (§7.2): `const` and `let` copies, a closure's capture and a struct
 # passed beside a reference to its own part keep what they had through later changes in place at
 # nested paths.
 

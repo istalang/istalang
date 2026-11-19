@@ -1,6 +1,6 @@
 /**
  * Renaming a declaration: every name denoting it, in every module, spelled anew, a key naming a
- * field among them (§3.1 Key types).
+ * field among them (§5.2 Key types).
  *
  * A shorthand names a field and a variable at once (`Pair{first}`, `case Pair{first}:`), so
  * renaming either spells the shorthand out (`first: renamed`, `first as renamed`). What renaming at
@@ -13,16 +13,16 @@
  *   overload of a function: renaming one alone would part them;
  * - a function, field or associated type named like a member of a trait, a field named like an
  *   entry of a struct constraint, or like a function the language calls by name (`main`, the JSON
- *   codecs): a type meets a trait or a struct constraint through such names (§3.5, §3.10), so
+ *   codecs): a type meets a trait or a struct constraint through such names (§8.1, §8.2), so
  *   renaming one could change which it meets; and a parameter named
- *   `self`, which makes its function a method (§3.7). A new name of that kind is refused for the
+ *   `self`, which makes its function a method (§6.2). A new name of that kind is refused for the
  *   same reason;
- * - a field of a shape, which is one type with every shape of its fields wherever written (§3.1),
+ * - a field of a shape, which is one type with every shape of its fields wherever written (§5.2),
  *   and a field of a struct or shared struct whose field names another writer of that shape has,
- *   which its value or `*x` may fit (§3.18): renaming one place would part it from the others;
- * - a new name that isn't one, is the unnamed `_` or a built-in type's (§2), or changes the old
- *   name's privacy (§3.13) or case (§2), which also decides what a bare name in a pattern does
- *   (§3.11).
+ *   which its value or `*x` may fit (§5.4): renaming one place would part it from the others;
+ * - a new name that isn't one, is the unnamed `_` or a built-in type's (§2.2), or changes the old
+ *   name's privacy (§13.1) or case (§4.1), which also decides what a bare name in a pattern does
+ *   (§11.3).
  */
 
 import {
@@ -164,7 +164,7 @@ function targetRefusal(program: Program, { declared, at }: DeclaredAt): string |
     return meaningRefusal(text);
   }
   if (declared.kind === 'field' && sharesShape(program, at)) {
-    return `\`${text}\` names a field of a shape, which is one type wherever its fields are written (§3.1); renaming it here would part this place from the others.`;
+    return `\`${text}\` names a field of a shape, which is one type wherever its fields are written (§5.2); renaming it here would part this place from the others.`;
   }
   const isNamedWithOthers = namesDenoting(program, at).some(
     (use) => (nameAt(program, use.module, spanOfUse(program, use).start)?.targets.length ?? 0) > 1,
@@ -186,24 +186,24 @@ function newNameRefusal(
     return `\`${newName}\` is not a name a declaration can have.`;
   }
   if (isBuiltInTypeName(newName)) {
-    return `\`${newName}\` names a built-in type, which no declaration can take (§2).`;
+    return `\`${newName}\` names a built-in type, which no declaration can take (§2.2).`;
   }
   if (meansMore(program, declared, newName)) {
     return meaningRefusal(newName);
   }
   if (isPrivate(old) !== isPrivate(newName)) {
-    return `A leading \`_\` makes a name private (§3.13); \`${newName}\` would change whether \`${old}\` is.`;
+    return `A leading \`_\` makes a name private (§13.1); \`${newName}\` would change whether \`${old}\` is.`;
   }
   const keepsCase =
     bindsInPattern(old) === bindsInPattern(newName) &&
     conventions.every((each) => !followsConvention(old, each) || followsConvention(newName, each));
   return keepsCase
     ? undefined
-    : `\`${newName}\` is cased unlike \`${old}\`, and case decides what a name is (§2, §3.11).`;
+    : `\`${newName}\` is cased unlike \`${old}\`, and case decides what a name is (§4.1, §11.3).`;
 }
 
 function meaningRefusal(name: string): string {
-  return `The language reads \`${name}\` by name: a type may meet a trait or a struct constraint through it (§3.5, §3.10), a function be a method by it (§3.7), or the language call it; renaming could change what the program does.`;
+  return `The language reads \`${name}\` by name: a type may meet a trait or a struct constraint through it (§8.1, §8.2), a function be a method by it (§6.2), or the language call it; renaming could change what the program does.`;
 }
 
 /** A name a declaration may have, in the program that has it. */
@@ -228,7 +228,7 @@ const meansMoreAs: Handlers<Naming, DeclaredAt['declared'], [], boolean> = {
 };
 
 /**
- * Whether `entity` is an associated type (§3.1), by whose name a type meets a trait's requirement.
+ * Whether `entity` is an associated type (§5.2), by whose name a type meets a trait's requirement.
  */
 function isAssociated(
   entity: Extract<DeclaredAt['declared'], { kind: 'type' }>['entity'],
@@ -247,7 +247,7 @@ function meansMore(program: Program, declared: DeclaredAt['declared'], name: str
 const calledByName = new WeakMap<Program, ReadonlySet<string>>();
 
 /**
- * What any trait of `program` requires, the fields any struct constraint names (§3.5: a struct
+ * What any trait of `program` requires, the fields any struct constraint names (§8.1: a struct
  * meets one by its fields' names, in a type `match` case too), and the functions the language
  * calls by name.
  */
@@ -283,7 +283,7 @@ function namesCalledByName(program: Program): ReadonlySet<string> {
 
 /**
  * Whether the field declared at `at` belongs to a shape, or to a declaration whose fields' names
- * another writer of a shape also has (§3.1, §3.18): a struct, whose value converts into its shape,
+ * another writer of a shape also has (§5.2, §5.4): a struct, whose value converts into its shape,
  * against a `{…}` type, a `struct{…}` literal or a shared struct, whose `*x` is one; a shared
  * struct against any of those, or against a struct, whose value may write its `*x`.
  */
@@ -313,7 +313,7 @@ const writersByProgram = new WeakMap<Program, ReadonlyMap<string, Writers>>();
 
 /**
  * The writers of each set of field names in a program, by its key: `{…}` types, `struct{…}`
- * literals and indented values of names naming no type (§2), and shared structs as shapes, struct
+ * literals and indented values of names naming no type (§3.2), and shared structs as shapes, struct
  * declarations apart.
  */
 function shapeWriters(program: Program): ReadonlyMap<string, Writers> {
@@ -378,7 +378,7 @@ function namesKey(names: readonly string[]): string {
 
 /**
  * How `use` is spelled once its target is renamed to `newName`: a shorthand spelled out, a key
- * naming a field as the String literal of the new name (§3.1 Key types).
+ * naming a field as the String literal of the new name (§5.2 Key types).
  */
 function spelledAnew(
   program: Program,

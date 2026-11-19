@@ -1,5 +1,5 @@
 /**
- * Which names a module's scopes make visible at each offset (§3.4), kept from binding for tools: an
+ * Which names a module's scopes make visible at each offset (§7.1), kept from binding for tools: an
  * editor offers the names visible where the cursor is, and only those.
  *
  * Binding notes, for each node it binds, the scope it binds that node in, as defined at that
@@ -21,7 +21,7 @@
  * statement among them. Code written after such a node, or after a block's last statement or a
  * trait's last member, with nothing but blanks and comments between, still goes there: on the same
  * line, or on a later line indented deeper than the line its construct starts on, as a body's lines
- * stand below their header (§2). So a cursor there sees what that node or that body's end was
+ * stand below their header (§2.1). So a cursor there sees what that node or that body's end was
  * bound in. Of those standing together, the code goes into the first noted: the innermost block,
  * or a `for`'s iterable before its body.
  */

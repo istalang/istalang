@@ -3,7 +3,7 @@
  * keeps every commit it was asked to write, and a fixed seed, so a run repeats.
  *
  * - A test starts a program's live `main` from its encoded Definition, as a host does, and reads how
- *   it ended: an outcome as the JSON text its start encoded (§9), as a host reads it.
+ *   it ended: an outcome as the JSON text its start encoded (§17.4), as a host reads it.
  * - A run, or an instance the store keeps, that waits on nothing that can wake it fails the test:
  *   no host is left to wake it.
  */
@@ -43,7 +43,7 @@ export function recordingStore(inner: InstanceStore = memoryStore()): RecordingS
   };
 }
 
-/** The seed of a test runtime's host, so the random values of the instances it makes repeat (§3.8). */
+/** The seed of a test runtime's host, so the random values of the instances it makes repeat (§19.2). */
 export const testSeed = new Uint8Array(seedBytes);
 
 /** A test runtime's host binding, every part of it defaulted, its store recording, its clock manual. */

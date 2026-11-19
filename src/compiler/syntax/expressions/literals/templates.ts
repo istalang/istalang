@@ -1,5 +1,5 @@
 /**
- * What a template stands for (§2), read off the syntax: a template without values or a tag is its
+ * What a template stands for (§3.1), read off the syntax: a template without values or a tag is its
  * text, as a string literal is, so compile time computes it. Every template is sugar for the core
  * expression it means (checker/desugaring/templates.ts), so no other phase reads one.
  */

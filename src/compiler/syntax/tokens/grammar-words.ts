@@ -1,5 +1,5 @@
 /**
- * The words each grammar position dispatches on, among the reserved and contextual words (§2): the
+ * The words each grammar position dispatches on, among the reserved and contextual words (§2.2): the
  * one home of what starts a module's declaration, a statement, an operand, a type and a pattern,
  * what goes on after an operand, and what follows a modifier. The parser keys its parselet tables
  * by these lists, typed so a table and its list agree both ways (parser/grammar/word-parselets.ts),
@@ -42,7 +42,7 @@ const functionStarts = [
 ] as const satisfies readonly Word[];
 
 /**
- * What starts a declaration only a module holds (§3); a function and `const` start statements too.
+ * What starts a declaration only a module holds (§5.1); a function and `const` start statements too.
  * An extern's and a shared struct's head start with the word a printed head does (`extern`,
  * `shared`). The parser takes a head's modifiers in any order
  * (parser/grammar/declarations/declaration.ts), but completion offers what a printed head starts with.
@@ -60,7 +60,7 @@ export const declarationWords = [
 export type DeclarationWord = (typeof declarationWords)[number];
 
 /**
- * What starts a statement (§3.4, §4, §7) other than an expression; where the item each starts may
+ * What starts a statement (§7.1, §11.1, §16) other than an expression; where the item each starts may
  * stand is ../items.ts's.
  */
 export const statementWords = [
@@ -85,9 +85,9 @@ const unaryWords = (Object.keys(unaryOperators) as UnaryOperator[]).filter(
 );
 
 /**
- * What starts an operand (§4): the prefix operators spelled as words, the literals spelled as
- * words, lambdas, anonymous structs, branches, and what waits or builds a shared struct (§3.18,
- * §8).
+ * What starts an operand (§10.2): the prefix operators spelled as words, the literals spelled as
+ * words, lambdas, anonymous structs, branches, and what waits or builds a shared struct (§5.4,
+ * §15.4).
  */
 export const operandWords = [
   ...unaryWords,
@@ -119,20 +119,20 @@ function firstWordOf<Spelling extends string>(spelling: Spelling): FirstWord<Spe
   return spelling.split(' ')[0] as FirstWord<Spelling>;
 }
 
-/** What goes on after an operand, spelled as a word: a binary operator, and `is` (§3.11, §4). */
+/** What goes on after an operand, spelled as a word: a binary operator, and `is` (§11.3, §11.1). */
 export const infixWords = [...binaryWords, 'is'] as const satisfies readonly Word[];
 
 export type InfixWord = (typeof infixWords)[number];
 
 /**
  * The contextual words a construct reads after an operand on its line, each a clause of that
- * construct's: a range's `by` (§4). A name there would otherwise start a deferred call's call
- * (§3.14), so the parser leaves the word to its construct.
+ * construct's: a range's `by` (§3.1). A name there would otherwise start a deferred call's call
+ * (§6.5), so the parser leaves the word to its construct.
  */
 export const clauseWordsAfterOperand = ['by'] as const satisfies readonly ContextualWord[];
 
 /**
- * What starts a type (§2, §3.1, §3.10, §3.14): function types, anonymous structs, `any`'s values,
+ * What starts a type (§4.2, §5.2, §8.3, §6.4): function types, anonymous structs, `any`'s values,
  * a struct's keys, a type `match` case's type variables, and the literal types spelled as words.
  */
 export const typeWords = [
@@ -147,7 +147,7 @@ export const typeWords = [
 
 export type TypeWord = (typeof typeWords)[number];
 
-/** What starts a pattern (§3.11): an anonymous struct's, and the literals spelled as words. */
+/** What starts a pattern (§11.3): an anonymous struct's, and the literals spelled as words. */
 const patternWords = ['struct', 'true', 'false', 'none'] as const satisfies readonly Word[];
 
 export type PatternWord = (typeof patternWords)[number];
@@ -172,7 +172,7 @@ export const followers = {
 
 export type Modifier = keyof typeof followers;
 
-/** What may follow a modifier besides `followers`' only where a top-level item starts: `ista const` (§3.4). */
+/** What may follow a modifier besides `followers`' only where a top-level item starts: `ista const` (§7.1). */
 export const topLevelFollowers: Readonly<Partial<Record<Modifier, readonly Keyword[]>>> = {
   ista: followersIn(headForms.contextConstant, 'ista').filter(isKeyword),
 };
@@ -183,7 +183,7 @@ export type KeywordModifier = {
 }[Modifier];
 
 /**
- * What may prefix a type parameter of a struct, an enum or an extern struct (§3.5), saying how its
+ * What may prefix a type parameter of a struct, an enum or an extern struct (§8.1), saying how its
  * instantiations relate: `gives` covariant, `takes` contravariant. A pack's stands before its
  * `...`, the slot `each` will share (tracker F26).
  */

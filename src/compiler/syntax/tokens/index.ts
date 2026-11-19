@@ -6,9 +6,9 @@
  * the grammar it implements. Other kinds are named. The word lists below are the single source of
  * truth: the kind types and the scanner's lookup tables are derived from them.
  *
- * The contextual words are not keywords (§2). They are keywords only in one position each, and
- * ordinary names elsewhere: `type` as a field name (§9), `from` as a function name (`T.from`,
- * §3.10), `any` as `futures.any`. The scanner emits them as identifiers, and the parser
+ * The contextual words are not keywords (§2.2). They are keywords only in one position each, and
+ * ordinary names elsewhere: `type` as a field name (§17.3), `from` as a function name (`T.from`,
+ * §8.2), `any` as `futures.any`. The scanner emits them as identifiers, and the parser
  * recognizes them by text where the grammar expects them.
  *
  * Layout is not tokenized: there are no INDENT/DEDENT/NEWLINE tokens. Whether a line break matters
@@ -116,7 +116,7 @@ export const punctuators = [
   '@',
 ] as const;
 
-/** Words that are keywords only where the grammar expects them (§2). */
+/** Words that are keywords only where the grammar expects them (§2.2). */
 const contextualWords = [
   'type',
   'from',
@@ -141,7 +141,7 @@ export type ContextualWord = (typeof contextualWords)[number];
 
 const contextualWordSet: ReadonlySet<string> = new Set(contextualWords);
 
-/** Whether `word` is one of the words a grammar position may give meaning (§2). */
+/** Whether `word` is one of the words a grammar position may give meaning (§2.2). */
 export function isContextualWord(word: string): word is ContextualWord {
   return contextualWordSet.has(word);
 }
@@ -166,7 +166,7 @@ export type Token =
   /** `integer` holds its value; `duration` holds milliseconds (`5d` is 432_000_000n). */
   | (TokenOf<'integer' | 'duration'> & { readonly value: bigint })
   | (TokenOf<'float'> & { readonly value: number })
-  /** The decoded text: a string's escapes resolved, a docstring's lines laid out (§2). */
+  /** The decoded text: a string's escapes resolved, a docstring's lines laid out (§2.3). */
   | (TokenOf<'string' | 'docstring'> & { readonly value: string })
   /** `texts` has one more item than `values`: the text before each value, and the text after. */
   | (TokenOf<'template'> & {

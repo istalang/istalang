@@ -1,5 +1,5 @@
 # outcome: "signal"
-# A revertible message's holder doesn't keep its inbox alive (§6): the holder outlives the block
+# A revertible message's holder doesn't keep its inbox alive (§15.3): the holder outlives the block
 # that held the inbox, yet the inbox is disposed there (unread messages with it) and the weak
 # watcher's `disposed()` resolves.
 

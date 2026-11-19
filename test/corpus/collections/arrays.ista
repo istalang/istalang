@@ -1,5 +1,5 @@
 # outcome: "6 [9, 1, 2, 3, 4] 3 true true none 2 true -1 a-b-c [2, 3] [1, 2]"
-# Arrays (§2, §3.8): literals with spreads, indexing, `at` from the end, methods taking `&self`,
+# Arrays (§3.1, §19.3): literals with spreads, indexing, `at` from the end, methods taking `&self`,
 # clamping `slice`, and `==`-based search. Spreading an array copies it (§3.1).
 
 import * as runtime from 'runtime'

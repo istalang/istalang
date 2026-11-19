@@ -1,5 +1,5 @@
 # error: 5105 at 6:4
-# Overloads compare shapes (§3.7): two functions over equal shapes written apart clash.
+# Overloads compare shapes (§6.3): two functions over equal shapes written apart clash.
 
 type Point = { x: Int, y: Int }
 fn f(p: Point) -> Int: p.x

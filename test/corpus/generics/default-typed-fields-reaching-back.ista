@@ -1,7 +1,7 @@
 # outcome: 2
 # A field typed by its default may build a generic struct whose written fields name its own type
 # again with its parameter whole, beside fields of its own typed by defaults, generic or not:
-# instantiation ends (§3.5), and no default depends on itself (§3.1).
+# instantiation ends (§8.1), and no default depends on itself (§5.2).
 
 import * as runtime from 'runtime'
 

@@ -1,4 +1,4 @@
-# Values stay values under changes in place (spec §2): copies, messages, call arguments, spawned
+# Values stay values under changes in place (spec §7.2): copies, messages, call arguments, spawned
 # instances' arguments and the JSON written of a value never see a later change to another holder.
 # Each rule is its own function, and its test asserts what the old runtime's unit test did.
 

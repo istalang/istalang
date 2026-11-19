@@ -1,5 +1,5 @@
 # outcome: 3
-# spawn (§9) starts a call as a new instance and goes on at once, from any function: a top-level
+# spawn (§17.1) starts a call as a new instance and goes on at once, from any function: a top-level
 # function, async or not, a method, an instance of a generic function, or a value of a sendable
 # function type, such as a lambda or local function capturing only sendable values. Its sendable
 # arguments are copied into the new instance, which runs to its own outcome.

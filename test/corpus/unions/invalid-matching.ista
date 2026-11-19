@@ -5,7 +5,7 @@
 # error: 5418 at 38:10
 # error: 5418 at 43:10
 # error: 5418 at 48:10
-# Pattern matching on unions (§3, §5): matches must cover every union member or literal,
+# Pattern matching on unions (§5.1, §14): matches must cover every union member or literal,
 # Some is no longer a variant of T?, a guarded
 # case leaves its member in the remaining type, and ambiguous variant/generic/shape patterns fail.
 type Status = "draft" | "sent" | "failed"

@@ -1,5 +1,5 @@
 # outcome: "6 8 10 12 done"
-# A spawned instance ends with the value of the future its function gives (§9): an async callee's,
+# A spawned instance ends with the value of the future its function gives (§17.1): an async callee's,
 # awaited across commits, a plain callee's value, a lambda forwarding a call's future, an isolated
 # one's, and a future no call gives, a timer's.
 

@@ -1,4 +1,4 @@
-# The strings module (spec §3.8). Positions and lengths count code points, so every group checks
+# The strings module (spec §19.2). Positions and lengths count code points, so every group checks
 # a string holding one beyond UTF-16's first plane ("😀" is one code point and two UTF-16 units).
 
 import * as strings, padStart, trim from 'strings'

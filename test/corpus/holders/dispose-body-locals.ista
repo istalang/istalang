@@ -1,5 +1,5 @@
 # outcome: "outer body, disposed local, disposed child"
-# A `dispose` is plain code (§7): its own locals are released when its body ends, and only then
+# A `dispose` is plain code (§16): its own locals are released when its body ends, and only then
 # does the disposed value let go of what it holds, so a holder is disposed before what it holds.
 
 import * as runtime from 'runtime'

@@ -1,5 +1,5 @@
 /**
- * Context constants (spec §3.4): an initializer is ista code that can't await, of the written type
+ * Context constants (spec §7.1): an initializer is ista code that can't await, of the written type
  * if any; a read is an ista call, which the call rule judges where it is read; a constant computed
  * while compiling refuses one once; and one inferred from itself is a cycle.
  */

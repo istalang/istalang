@@ -1,8 +1,8 @@
 /**
- * What follows `is` (§3.5, §3.10): a trait, as a type names it, or a struct constraint, several
+ * What follows `is` (§8.1, §8.2): a trait, as a type names it, or a struct constraint, several
  * joined by `&`. Type parameters, a trait's associated types and a struct constraint's entries
  * all take constraints this way. A struct constraint is read only here, so it never stands where a
- * type does; `struct { … }` in a type is the shape it spells (§3.1), and an entry only a constraint
+ * type does; `struct { … }` in a type is the shape it spells (§5.2), and an entry only a constraint
  * has (`[_]`, `name is C`) met there is read with `parseConstraintEntry`, then reported.
  */
 
@@ -17,7 +17,7 @@ import { type ItemRules, parseItemEntries } from '../../layout/index.ts';
 import { atPostfix, eatContinuing } from '../../layout/item-breaks.ts';
 import type { Parser } from '../../parser.ts';
 
-/** What follows `is` (§3.5): a struct constraint at `struct`, a trait's type otherwise. */
+/** What follows `is` (§8.1): a struct constraint at `struct`, a trait's type otherwise. */
 function parseConstraint(parser: Parser): ConstraintNode {
   return parser.cursor.at('struct') ? parseStructConstraint(parser) : parser.type();
 }

@@ -1,6 +1,6 @@
 /**
  * A program: the modules reachable from its roots, each parsed and with its imports resolved
- * (§3.13). This is the loading core's entry, and it declares the one seam loading depends on.
+ * (§13.1). This is the loading core's entry, and it declares the one seam loading depends on.
  *
  * - A `ModuleLoader` turns the string in an import into that module: its identity, its canonical
  *   name, its label, and a way to read its text. Whoever runs the compiler passes in its loaders (files on disk, the std
@@ -47,7 +47,7 @@ export function moduleIdOf(url: URL): ModuleId {
   return url.href as ModuleId;
 }
 
-/** The id of the std module `name` (§3.8), `std:<name>`. */
+/** The id of the std module `name` (§19.2), `std:<name>`. */
 export function stdModuleIdOf(name: string): ModuleId {
   return moduleIdOf(new URL(`${stdScheme}:${name}`));
 }
@@ -57,16 +57,16 @@ export interface LocatedModule {
   readonly id: ModuleId;
   /**
    * The module's canonical name, which compiled code qualifies its declarations with: the import
-   * path that names it from anywhere (§3.13), such as `purchase/approve` or `time`; empty for one
+   * path that names it from anywhere (§13.1), such as `purchase/approve` or `time`; empty for one
    * no path names, as an editor's unsaved buffer. Unlike the label it never depends on where the
    * toolchain runs, so a compiled program's identity doesn't.
    */
   readonly name: string;
   /** How diagnostics name the module, such as its path from the working directory. */
   readonly label: string;
-  /** Whether the toolchain ships the module (§3.8): its externs are the runtime's, not a host's. */
+  /** Whether the toolchain ships the module (§19.2): its externs are the runtime's, not a host's. */
   readonly isStd?: boolean;
-  /** Whether the module is a test module (§10): a file ending in `.test.ista`. */
+  /** Whether the module is a test module (§18): a file ending in `.test.ista`. */
   readonly isTest?: boolean;
   /** The module's text. The core calls it once, when it loads the module; if it throws, so does the build. */
   readonly read: () => string;
@@ -125,7 +125,7 @@ export interface ProgramOptions {
   readonly roots: readonly LocatedModule[];
   /**
    * Every loader is asked for every path; a path two of them answer with different modules is
-   * ambiguous (§3.13). When two answer with the same module, the first answer is used, so a loader
+   * ambiguous (§13.1). When two answer with the same module, the first answer is used, so a loader
    * that should win, such as an editor's open documents, goes first.
    */
   readonly loaders: readonly ModuleLoader[];

@@ -1,6 +1,6 @@
 # outcome: [3,3]
 # A spread's items take part in choosing the overload an array literal is passed to, as its
-# elements do (§3.5): `Int` items with `none` fit only `Array<Int?>`.
+# elements do (§8.1): `Int` items with `none` fit only `Array<Int?>`.
 
 import * as runtime from 'runtime'
 

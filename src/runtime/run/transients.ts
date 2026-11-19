@@ -1,5 +1,5 @@
 /**
- * Transients (§3.4): the cell the outermost call of a function makes for each of its transients,
+ * Transients (§7.1): the cell the outermost call of a function makes for each of its transients,
  * which every call nested in it shares, by function and register.
  *
  * - **Scopes.** Code sees its execution's scope, or the run's own outside every execution. A scope
@@ -7,7 +7,7 @@
  *   shares it on, innermost last, its `return` taking back only its own. So an async call nested in
  *   the outermost one finds its cell however late it runs, and another instance, whose executions
  *   are its own, starts afresh.
- * - **Holders** (§7): each share holds the cell, the making call's by the hold the cell is made
+ * - **Holders** (§16): each share holds the cell, the making call's by the hold the cell is made
  *   with, and an execution holds what it kept until it ends, so the cell is let go of as the last
  *   of them ends. A cell of uncounted type is never counted.
  * - **Snapshots** keep each execution's `kept`; its frame's own shares are its transient registers,

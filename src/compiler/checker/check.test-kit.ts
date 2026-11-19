@@ -29,7 +29,7 @@ export function reportedAt(key: string, files: Readonly<Record<string, string>>)
 
 /**
  * `body` as the body of a function taking `c: Bool`, `n: Int` and `s: String`, after `Point`: one of
- * `kind` where given, else unmarked (§3.3).
+ * `kind` where given, else unmarked (§9.1).
  */
 export function inFunction(body: string, kind?: Persistence): string {
   const head = kind === undefined ? 'fn' : `${kind} fn`;

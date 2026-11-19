@@ -1,5 +1,5 @@
 /**
- * Keyed indexes (§3.9): an `index` taking a receiver as `self`, its constraints met, whose key is a
+ * Keyed indexes (§10.2): an `index` taking a receiver as `self`, its constraints met, whose key is a
  * member parameter of String literals (`K in keyof S`, `K in "click" | "hover"`). Member syntax
  * reads through one: `x.k`, where `x`'s type has no member `k`, is `x["k"]` (member-meaning.ts).
  *
@@ -60,7 +60,7 @@ export function keyNamesOf(keyed: KeyedIndex): readonly string[] {
   return membersOf(keyed.keys).flatMap((member) => keyName(member) ?? []);
 }
 
-/** What `keyed` gives read by the key `name`, each key its own instantiation (§3.5). */
+/** What `keyed` gives read by the key `name`, each key its own instantiation (§8.1). */
 export function keyedReadType(checker: CheckerContext, keyed: KeyedIndex, name: string): Type {
   const { result } = signatureOf(
     checker,
@@ -101,7 +101,7 @@ function keyedIndexOf(
 }
 
 /**
- * Whether `candidate` can serve `x[k]` (§3.9): it takes the container and the key, both by value,
+ * Whether `candidate` can serve `x[k]` (§10.2): it takes the container and the key, both by value,
  * as the brackets pass them.
  */
 export function readsByIndex(checker: CheckerContext, candidate: Candidate): boolean {
@@ -131,7 +131,7 @@ function takesReceiverAndKey(parameters: readonly SignatureSlot[]): boolean {
 
 /**
  * Whether every member of `keys` is a String literal, or a receiver's opaque other keys; `Never`,
- * an empty struct's keys, is none (§3.1).
+ * an empty struct's keys, is none (§5.2).
  */
 function isStringKeys(keys: Type): boolean {
   return membersOf(keys).every(

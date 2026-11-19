@@ -1,5 +1,5 @@
 # outcome: "sent|3|d|sent|other"
-# A pattern naming a union through its alias (§3.11) selects the alias's members: against a wider
+# A pattern naming a union through its alias (§11.3) selects the alias's members: against a wider
 # union holding them all, and against the alias's own union once earlier cases narrowed it.
 
 import * as runtime from 'runtime'

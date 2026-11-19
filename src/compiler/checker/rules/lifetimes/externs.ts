@@ -1,14 +1,14 @@
 /**
- * What the std's externs hold and keep (§3.16), which no code shows: `lifetimes`' `@Holds` on an
+ * What the std's externs hold and keep (§5.5), which no code shows: `lifetimes`' `@Holds` on an
  * extern struct and `@Keeps` on an extern function, read here for every reader, what a value holds
  * (types/properties/held.ts) among them. Where either may stand is rules/annotations/'s.
  *
  * - `@Holds<X>` lists what a value holds as a tuple lists its elements: `X`'s elements, `()` none,
  *   or `X` alone where it is no tuple. Without it, a value holds its type arguments. Like a field's
- *   type, it names no instance of its own type that grows (§3.5), so every walk over what values
+ *   type, it names no instance of its own type that grows (§8.1), so every walk over what values
  *   hold meets finitely many types.
  * - `@Keeps` names parameters, each reported where it names none of the function's. Without it, a
- *   parameter taken by `&` keeps every other: writing through it may store any of them (§3.7).
+ *   parameter taken by `&` keeps every other: writing through it may store any of them (§7.3).
  *   On a std function with a body it stands for the body, which calls code the analysis can't
  *   follow: the prelude's resolvers decide through the closures they hold, the case chain an
  *   `await` models (design.md §3), so their callers read them as natives.

@@ -1,5 +1,5 @@
 /**
- * Where a type names a type parameter only where layout ignores it (§3.5): what lets an instance
+ * Where a type names a type parameter only where layout ignores it (§8.1): what lets an instance
  * take a stand-in for it and lay out every value alike (opaque-parameters.ts).
  *
  * - The parameter itself, a tuple's element, a function type's parameter or result, an anonymous

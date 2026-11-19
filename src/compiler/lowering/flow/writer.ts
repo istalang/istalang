@@ -15,7 +15,7 @@
  *   what its operation allocated beside it (`extras`), which nothing else took.
  * - **A flow returns** from the entry; a default's or an initializer's written inline gives its
  *   value instead, where its root returns it, then goes on past it (flow-end.ts).
- * - **Each block is written inside the passes of the field loops it is in** (§4), so its calls
+ * - **Each block is written inside the passes of the field loops it is in** (§11.2), so its calls
  *   close and its nested functions are keyed there: through a context of its own, derived from the
  *   flow's for those passes (`FunctionContext.inFieldPasses`), never one swapped in and back.
  */
@@ -69,7 +69,7 @@ export function writeFlow(
 export class FlowWriter {
   /** The flow's own context, outside every field pass. */
   readonly #context: FunctionContext;
-  /** Each block's context: the flow's, inside the field passes the block runs in (§4). */
+  /** Each block's context: the flow's, inside the field passes the block runs in (§11.2). */
   readonly #contexts = new Map<BlockId, FunctionContext>();
   readonly flow: FlowFunction;
   readonly end: FlowEnd;
@@ -81,7 +81,7 @@ export class FlowWriter {
   readonly #labels = new Map<BlockId, Label>();
   /** How many registers the entry had where each block written so far began. */
   readonly #started = new Map<BlockId, number>();
-  /** Where what each held variable holds is kept until (§7). */
+  /** Where what each held variable holds is kept until (§16). */
   readonly #uses: FlowUses;
   readonly waits: FlowWaits;
   readonly holdLists = new HoldLists();
@@ -177,7 +177,7 @@ export class FlowWriter {
 
   /**
    * `value`'s type as the pass being written reads it: a variable's as its body declares it there,
-   * as one name holds each pass's field in a field loop (§4).
+   * as one name holds each pass's field in a field loop (§11.2).
    */
   typeOf(value: ValueId): Type {
     const flowValue = this.valueOf(value);

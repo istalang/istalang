@@ -2,7 +2,7 @@
 # error: 5308 at 29:23
 # error: 5308 at 30:18
 # error: 5308 at 31:23
-# An element passed by `&` is a copy for its call (§3.7), so no call may take two places of one
+# An element passed by `&` is a copy for its call (§7.3), so no call may take two places of one
 # variable by `&` when either reaches through an element: two elements, two parts of one element,
 # a container and its element, or an element and its own container as `&self`. Places of different
 # variables, and one variable twice without elements, are fine.

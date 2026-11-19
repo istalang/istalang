@@ -6,7 +6,7 @@
  *
  * - the value an expression computes, where it is computed: one of a kind put into an `any` value,
  *   whose type hides it, is judged there, so such a value is made only in code of its kind, and no
- *   call or crossing takes it to the other's (§3.10);
+ *   call or crossing takes it to the other's (§8.2);
  * - the type a value is fitted to where it is used, a union it is put into among them, and the
  *   type of each name a declaration, a pattern or a loop binds;
  * - the types each call it makes instantiates, written or implicit, its witnesses' included: its
@@ -14,7 +14,7 @@
  *   type parameters' values as simple data (Rule 3), so the code instantiating it handles them;
  * - for a lambda or a local `fn`, its signature and what it captures, judged by its own mark, and
  *   its body, a local `fn`'s held apart from the tree's nodes;
- * - for a field loop, each pass its body was checked in (§4).
+ * - for a field loop, each pass its body was checked in (§11.2).
  *
  * It reads a body once it is checked, as solved; what a nested function infers its mark from while
  * it is, it reads at the same sites (resolution/applying/call-kinds.ts `handledBy`).
@@ -25,7 +25,7 @@
  * for mends them all, or none does.
  *
  * A type's kinds are read off its fields' written types (properties/value-kinds.ts), so a field
- * whose type its default gives holds no part whose kind the type arguments decide (§3.3).
+ * whose type its default gives holds no part whose kind the type arguments decide (§6.1).
  */
 
 import type { ModuleId } from '../../../program/program.ts';
@@ -127,7 +127,7 @@ export function checkDataKinds(
  * Reports each field `fields`, a fields function, reads whose type its default gives and holds a
  * part whose kind the type arguments decide: a type parameter that may be of a kind, or a type
  * they compute. A type's kinds are read off its written fields' types alone
- * (properties/value-kinds.ts), so such a field writes its type (§3.3).
+ * (properties/value-kinds.ts), so such a field writes its type (§9.1).
  */
 function checkDefaultTypedFields(
   checker: CheckerContext,
@@ -158,7 +158,7 @@ function checkDefaultTypedFields(
 
 /**
  * Reports the first value of a kind a top-level constant's initializer handles: a `const`'s is
- * simple code, a context constant's ista code (§3.4).
+ * simple code, a context constant's ista code (§7.1).
  */
 export function checkConstantKinds(
   checker: CheckerContext,

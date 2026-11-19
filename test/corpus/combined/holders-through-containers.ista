@@ -1,5 +1,5 @@
 # outcome: ["end of block","after block","cleared","a gone","w1 none: false"]
-# QA M3 (§6, §7): an inbox held through an array element outlives its block and is disposed only when the array drops it, signalling the `disposed()` watcher then; the block-local watcher and revertible holder die at block end without signalling.
+# QA M3 (§15.3, §16): an inbox held through an array element outlives its block and is disposed only when the array drops it, signalling the `disposed()` watcher then; the block-local watcher and revertible holder die at block end without signalling.
 import * as runtime from 'runtime'
 import * as time from 'time'
 import Inbox, Revertible from 'inbox'

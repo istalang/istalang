@@ -7,7 +7,7 @@
 # error: 5102 at 36:18
 # error: 5150 at 38:22
 # A trait an `any` type takes is object safe: its functions take Self first and nowhere else, none
-# is static, and no field is built from Self (§3.10). Its traits are a set of traits.
+# is static, and no field is built from Self (§8.3). Its traits are a set of traits.
 
 trait Same { fn same(self: Self, other: Self) -> Bool }
 

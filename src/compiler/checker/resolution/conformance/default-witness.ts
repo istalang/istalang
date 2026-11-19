@@ -1,5 +1,5 @@
 /**
- * A type's `default()` (§2, §3.10): the function meeting `Default` for it, found as every witness
+ * A type's `default()` (§19.3, §8.4): the function meeting `Default` for it, found as every witness
  * is, beside the type or the trait, so every construct that starts from a type's default finds
  * the same one wherever it is used.
  */

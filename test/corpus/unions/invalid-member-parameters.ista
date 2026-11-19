@@ -7,8 +7,8 @@
 # error: 5135 at 37:20
 # error: 5135 at 39:23
 # error: 5135 at 39:31
-# Member parameters (§3.5) take one member of their union, and type arguments in a pattern pick a
-# member of a union only (§3.11).
+# Member parameters (§8.1) take one member of their union, and type arguments in a pattern pick a
+# member of a union only (§11.3).
 
 type Status = "draft" | "sent" | "failed"
 struct Box<T> { value: T }

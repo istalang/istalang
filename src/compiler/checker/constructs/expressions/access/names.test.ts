@@ -1,7 +1,7 @@
 /**
- * A struct without fields named bare (§3.1): its one value, a generic one's of the instance its
+ * A struct without fields named bare (§5.2): its one value, a generic one's of the instance its
  * type arguments give, written after its name or taken from what is expected of it, a call's
- * parameter among it, as a variant without fields takes its enum's (§3.11).
+ * parameter among it, as a variant without fields takes its enum's (§5.3).
  */
 
 import { describe, expect, it } from 'vitest';

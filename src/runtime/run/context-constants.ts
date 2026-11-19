@@ -1,5 +1,5 @@
 /**
- * An instance's context constants (§3.4): one value each, by the constant's qualified name, made
+ * An instance's context constants (§7.1): one value each, by the constant's qualified name, made
  * the first time code in the instance reads it and kept from then on, in the order they were made,
  * which a snapshot keeps.
  *

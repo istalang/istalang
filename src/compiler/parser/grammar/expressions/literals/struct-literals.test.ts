@@ -1,7 +1,7 @@
 /**
- * Struct literals (§3.1): every item form, `struct{…}`, qualified and generic types (§3.5), the
- * brace rule after any name (§2), the positional-value rule, and `new` before a shared struct's
- * (§3.18).
+ * Struct literals (§5.2): every item form, `struct{…}`, qualified and generic types (§8.1), the
+ * brace rule after any name (§3.1), the positional-value rule, and `new` before a shared struct's
+ * (§5.4).
  */
 
 import { describe, expect, it } from 'vitest';
@@ -78,12 +78,12 @@ describe('the type before the braces', () => {
       ),
     ],
     ['pair{a: 1}', literal(named('pair'), '(FieldInitializer a 1)')],
-  ])('parses %s (§3.5, §2)', (text, tree) => {
+  ])('parses %s (§3.1, §3.1)', (text, tree) => {
     expect(dumpClean('expression', text)).toBe(tree);
   });
 
   it.each(['f(){a: 1}', 'xs[0]{a: 1}', 'a?.b{c: 1}', '1{a: 1}'])(
-    'leaves the braces after %s, which is not a name (§2)',
+    'leaves the braces after %s, which is not a name (§3.3)',
     (text) => {
       const parsed = parseAs('expression', text);
       expect(dumpOf(parsed)).not.toContain('StructLiteral');
@@ -98,7 +98,7 @@ describe('the type before the braces', () => {
   });
 });
 
-describe('new (§3.18)', () => {
+describe('new (§5.4)', () => {
   const created = (type: string, items: string) => `(NewStructLiteral ${type} [${items}])`;
 
   it.each([

@@ -1,4 +1,4 @@
-# A value crosses to its host through the codecs its type declares, both ways (§9): the one
+# A value crosses to its host through the codecs its type declares, both ways (§17.4): the one
 # declared beside the type, not one the calling module declares for it, also through a generic
 # extern; and a disposable host type keeps its host's JSON, inside an array and an optional too.
 import * as runtime from 'runtime'

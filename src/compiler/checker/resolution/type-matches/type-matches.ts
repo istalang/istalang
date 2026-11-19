@@ -1,5 +1,5 @@
 /**
- * Reducing a use of a type `match` (§3.17): the type of the first case matching its subject.
+ * Reducing a use of a type `match` (§4.6): the type of the first case matching its subject.
  *
  * - A union subject distributes: each member is matched on its own, the subject's parameter
  *   standing for it inside the case, and the cases' types join into a union; `Never`, no member,
@@ -12,19 +12,19 @@
  * - A use matching no case is the error type, carrying the use: the check of the instantiation
  *   reaching it reports it there (reduction-requirements.ts), so nothing else reports it again. So
  *   is one whose reduction reaches the use itself with no struct type holding it on the way
- *   (`case _: A<T>`, `case _: A<T> | Int`): it would be itself, as an alias can't be (§3.17).
- * - An alias reducing to itself with a type built from its own parameter never ends (§3.5); its
+ *   (`case _: A<T>`, `case _: A<T> | Int`): it would be itself, as an alias can't be (§4.6).
+ * - An alias reducing to itself with a type built from its own parameter never ends (§8.1); its
  *   declaration reports it (rules/expansion/type-matches.ts), and its uses are the error type.
  * - Each reduction is an entry of the checker's, by the use's spelled key
  *   (types/identity/type-keys.ts): what it gives is spelled with the use's own arguments, so
  *   another spelling of the same type is another entry, and no use is answered with a type spelled
  *   at another's nodes. Which uses are under way or recursive is a matter of type identity, so
  *   those are kept by type key. One reaching a use whose reduction is under way repeats it: a
- *   recursive type, which a struct holds (§3.1). The uses on that cycle whose case gives a struct
+ *   recursive type, which a struct holds (§5.2). The uses on that cycle whose case gives a struct
  *   type are recursive: each closes, with every recursive use its finding reached, through the one
  *   constructor of recursive types (types/identity/recursive-types.ts), their bodies reduced with
  *   each such use an unreduced placeholder, so a recursive type `match` use and a recursive alias
- *   with its structure are one type (§3.17). One whose values would hold themselves names no type:
+ *   with its structure are one type (§4.6). One whose values would hold themselves names no type:
  *   the error type, carrying why (types/properties/finiteness.ts).
  * - Whether a use is recursive, or would be itself with no struct type on its cycle, is an entry
  *   too, found before it is reduced by reducing it once in a scope of its own and keeping nothing
@@ -234,7 +234,7 @@ export class TypeMatchReductions {
    * A use reached while its own reduction is under way, which only finding a use's recursion meets
    * (normal reductions read each use's verdict first, so they never come back to one): each use on
    * that cycle whose case writes a struct type is recursive from now on; when none does, no struct
-   * type holds any of them on its way back, so each would be itself, no type (§3.17). Each verdict
+   * type holds any of them on its way back, so each would be itself, no type (§4.6). Each verdict
    * depends on its use alone, so whichever use was entered first, every one is found alike.
    */
   #reachedAgain(scope: Reducing, key: string, use: MatchUse): Type {
@@ -423,7 +423,7 @@ function instantiated(checker: CheckerContext, type: Type, substitution: Substit
 }
 
 /**
- * Whether `type`, not known yet, may become a union, which would distribute (§3.17): any type
+ * Whether `type`, not known yet, may become a union, which would distribute (§4.6): any type
  * parameter or computed type may, but one member of a union (`K in U`, a mapped key), and a type
  * a struct constraint makes a struct.
  */

@@ -1,7 +1,7 @@
 # error: 5101 at 16:24
 # error: 5101 at 19:38
-# A type argument must meet its parameter's constraints (§3.5, §3.10): a call's, here a string
-# with no `zero`, and a type's, here a slot, which isn't Sendable (§3.1).
+# A type argument must meet its parameter's constraints (§8.1, §8.2): a call's, here a string
+# with no `zero`, and a type's, here a slot, which isn't Sendable (§7.4).
 
 import * as runtime from 'runtime'
 

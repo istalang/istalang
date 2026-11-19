@@ -8,7 +8,7 @@
  *   renaming and hovering, so they never disagree about what a name means.
  * - A query about a module answers as that module checked whole, so an answer never depends on
  *   what was asked before it.
- * - A body is read at a node as one (`JoinedBody`, §4): the passes of the field loops around the
+ * - A body is read at a node as one (`JoinedBody`, §11.2): the passes of the field loops around the
  *   node, each fact joined as its entry says (wiring/body/facts/). A call can't join another into
  *   one, as types join into a union, so where passes resolve one text differently, tools read every
  *   pass's call: `show(v)` over a struct's `Int` and `String` fields calls both overloads. Lowering
@@ -63,8 +63,8 @@ export interface Denotation {
 }
 
 /**
- * A member a value is read through by calling a function, as a field is read: a getter (§3.1), or a
- * key of a keyed index (§3.9). Its name, the function, and the type it gives read on that value.
+ * A member a value is read through by calling a function, as a field is read: a getter (§5.2), or a
+ * key of a keyed index (§10.2). Its name, the function, and the type it gives read on that value.
  */
 export interface ReadMember {
   readonly name: string;
@@ -72,21 +72,21 @@ export interface ReadMember {
   readonly type: Type;
 }
 
-/** What a value of a type has, by name (§3.1, §3.7, §3.10, §3.11). */
+/** What a value of a type has, by name (§5.2, §6.2, §8.2, §11.3). */
 export interface TypeMembers {
   readonly fields: readonly FieldMember[];
   readonly variants: readonly VariantMember[];
   /**
-   * Functions taking it as `self`, among those its module sees and those beside the type (§3.13).
+   * Functions taking it as `self`, among those its module sees and those beside the type (§13.1).
    */
   readonly methods: readonly FunctionDeclaration[];
-  /** Getters taking it as `self`, read as fields are, found as its methods are (§3.1). */
+  /** Getters taking it as `self`, read as fields are, found as its methods are (§5.2). */
   readonly getters: readonly ReadMember[];
-  /** The keys its keyed indexes take, read as fields are (§3.9). */
+  /** The keys its keyed indexes take, read as fields are (§10.2). */
   readonly keys: readonly ReadMember[];
-  /** Functions declared on the type, `fn Type.name`, that its module sees (§3.7). */
+  /** Functions declared on the type, `fn Type.name`, that its module sees (§6.2). */
   readonly statics: readonly FunctionDeclaration[];
-  /** What declares each associated type it has (§3.1): its own, or its traits' requirements. */
+  /** What declares each associated type it has (§5.2): its own, or its traits' requirements. */
   readonly associatedTypes: readonly (AssociatedType | RequiredAssociatedType)[];
 }
 
@@ -98,7 +98,7 @@ export interface LookupQueries {
    */
   readonly denotationsOf: (module: ModuleId, name: Identifier) => readonly Denotation[];
   /**
-   * What `literal`, a String literal of `module`, denotes as a key (§3.1 Key types): the field of
+   * What `literal`, a String literal of `module`, denotes as a key (§5.2 Key types): the field of
    * the struct it is a key of; nothing for a literal that is no key.
    */
   readonly keyDenotationsOf: (module: ModuleId, literal: StringLiteral) => readonly Denotation[];
@@ -114,12 +114,12 @@ export interface LookupQueries {
   readonly typeOfNode: (module: ModuleId, node: TypeNode) => Type | undefined;
   /**
    * What a value of `type` has, as `module` sees it; read through `access`, only the methods a
-   * call through it may choose (a method taking `&self` needs a place, §3.7).
+   * call through it may choose (a method taking `&self` needs a place, §7.3).
    */
   readonly membersOf: (module: ModuleId, type: Type, access?: MemberAccess) => TypeMembers;
   /**
    * The traits a value of `type` is known to meet by what it is: a type parameter's constraints,
-   * an associated type's bounds (§3.10), a field's `[_] is` or named `is` entry (§3.5); none for
+   * an associated type's bounds (§8.2), a field's `[_] is` or named `is` entry (§8.1); none for
    * any other type.
    */
   readonly constraintsOf: (type: Type) => readonly Constraint[];
@@ -172,6 +172,6 @@ export interface ListedFacts {
 
 /**
  * A body as tools read it at a node: the passes of the field loops around the node read as one
- * (§4), each fact joined as its entry says (wiring/body/facts/), calls and functions listed.
+ * (§11.2), each fact joined as its entry says (wiring/body/facts/), calls and functions listed.
  */
 export type JoinedBody = Pick<BodyFacts, (typeof joinedFacts)[number]> & ListedFacts;

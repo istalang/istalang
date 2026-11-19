@@ -5,9 +5,9 @@
  * - The full printer parenthesizes every operator.
  * - The minimal printer parenthesizes only where the grammar requires it: levels, the operands an
  *   operator refuses without parentheses, `**`'s right-associativity and its refusal of a prefix
- *   before it (§3.9), comparisons in a row chaining so a comparison under another is wrapped, and
- *   `name < name > (…)` reading as a generic call (§3.5) so its comparison is wrapped.
- * A deferred call, `g f(…)` (§3.14), is an operator at the prefix level whose operand is a call, or
+ *   before it (§10.3), comparisons in a row chaining so a comparison under another is wrapped, and
+ *   `name < name > (…)` reading as a generic call (§8.1) so its comparison is wrapped.
+ * A deferred call, `g f(…)` (§6.5), is an operator at the prefix level whose operand is a call, or
  * another deferred call, read from the right; the operator tree stands in the call's argument.
  * `shapeOf` turns a parsed expression back into a tree, ignoring parentheses, so the printed text
  * can be compared with the tree it came from.
@@ -157,7 +157,7 @@ function printBinary(tree: Extract<OperatorTree, { binary: BinaryOperator }>): s
     'binary' in child && isChainingOperator(tree.binary) && isChainingOperator(child.binary);
   const isRightAssociative = tree.binary === '**';
   const leftLevel = isRightAssociative ? tighterLevel(entry.level) : entry.level;
-  // `**` groups to the right and accepts a prefix on its right (`2 ** -1`, §3.9).
+  // `**` groups to the right and accepts a prefix on its right (`2 ** -1`, §10.3).
   const rightLevel = isRightAssociative ? 'prefix' : tighterLevel(entry.level);
   let left = operand(tree.left, leftLevel, refused(tree.left) || chains(tree.left));
   const right = operand(tree.right, rightLevel, refused(tree.right));
@@ -169,7 +169,7 @@ function printBinary(tree: Extract<OperatorTree, { binary: BinaryOperator }>): s
 
 /**
  * Whether `child`, the operand of a prefix at `level`, is `**`, which refuses a prefix before it
- * (§3.9).
+ * (§10.3).
  */
 function refusesPrefix(child: OperatorTree, level: PrecedenceLevel): boolean {
   return 'binary' in child && child.binary === '**' && level === 'prefix';

@@ -1,5 +1,5 @@
 /**
- * Where a body's flow releases its values (§3.4, §7), as lowering releases them: a block's
+ * Where a body's flow releases its values (§7.1, §16), as lowering releases them: a block's
  * variables at its end and where an exit leaves it, a `hold(name)`'s kept there and released once,
  * where the scope it names ends, however it ends; a statement's temporaries at its end, a
  * condition's on each of its paths.

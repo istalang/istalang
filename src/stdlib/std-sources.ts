@@ -1,5 +1,5 @@
 /**
- * The one list of std modules (§3.8), as their sources: adding a module is adding its source here.
+ * The one list of std modules (§19.2), as their sources: adding a module is adding its source here.
  * The loader (stdlib-loader.ts) reads this list, and the modules with their natives
  * (std-modules.ts) attach to it by name. A module the language refers to by role is named by its
  * role (foundation/language/well-known/index.ts); every other module's name is spelled here, and

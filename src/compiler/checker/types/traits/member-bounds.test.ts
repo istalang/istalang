@@ -1,5 +1,5 @@
 /**
- * Member bounds on associated types (§3.10): `type Mode in Persistence` makes `T.Mode` one member
+ * Member bounds on associated types (§8.2): `type Mode in Persistence` makes `T.Mode` one member
  * of the union, as a member parameter is, so it is a member argument and a requirement's mark; a
  * type meets the bound with an associated type of its own that is one member, an extern struct's
  * included.

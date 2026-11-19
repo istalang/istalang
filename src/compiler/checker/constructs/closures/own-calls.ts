@@ -1,5 +1,5 @@
 /**
- * An async function's own call (§7): the function's name before a `.` denotes the handle of the
+ * An async function's own call (§16): the function's name before a `.` denotes the handle of the
  * enclosing call of that function, a `_Call`, whose members are the prelude's like any type's, so
  * `worker.disposing()` is an ordinary method call on it.
  *

@@ -1,5 +1,5 @@
 # outcome: "int:7|first:77|fallback|second|Aa:other|A:I:O|both:5:other"
-# A pattern on a union an instantiation collapses (§3.5, §3.11): the first case that matches wins,
+# A pattern on a union an instantiation collapses (§8.1, §11.3): the first case that matches wins,
 # a member that is the one type left takes every value, a literal merged into its base compares,
 # and a union collapsing partly keeps the members left apart.
 

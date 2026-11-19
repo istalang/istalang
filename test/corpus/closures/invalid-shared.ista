@@ -5,9 +5,9 @@
 # error: 5307 at 27:16
 # error: 5309 at 28:22
 # error: 5309 at 29:22
-# A Shared value's field is written with values of its type (§3.8, §3.9), whole or in part, and is
+# A Shared value's field is written with values of its type (§19.1, §10.2), whole or in part, and is
 # read through `->`, never `.`; only a shared struct has a value behind it. A shared struct's value
-# passed by `&` is a copy for the call (§3.7): never to an async function, and never beside
+# passed by `&` is a copy for the call (§7.3): never to an async function, and never beside
 # another place reached through a shared struct, since two handles may be one.
 
 struct Counter { n: Int }

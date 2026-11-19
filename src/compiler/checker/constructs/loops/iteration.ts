@@ -1,5 +1,5 @@
 /**
- * Iteration (§3.10, §4): what a `for`, a comprehension and a spread run over.
+ * Iteration (§8.4, §11.1): what a `for`, a comprehension and a spread run over.
  *
  * - Every iterable goes through `iterate`, which gives a cursor, `fn() -> Step<T>`: each call gives
  *   `Next` of the next item, and `Done` once there are no more. A `Step`, never `T?`, since `T??`
@@ -12,7 +12,7 @@
  * - How each iteration runs is recorded (`IterationForm`): through its cursor, of its items' type,
  *   or, for a spread of the collection its literal builds, copied whole
  *   (constructs/expressions/collections/collections.ts).
- * - A loop's targets take each item apart as a declaration's do (§3.15): a map's items are
+ * - A loop's targets take each item apart as a declaration's do (§4.5): a map's items are
  *   `(key, value)`, so `for key, value in m:` works directly.
  */
 

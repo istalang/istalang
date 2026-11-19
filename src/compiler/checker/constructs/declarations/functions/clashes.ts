@@ -1,5 +1,5 @@
 /**
- * Overload clashes (§3.3, §3.7): two functions of one name, or two static functions of one name
+ * Overload clashes (§6.1, §6.3): two functions of one name, or two static functions of one name
  * on one type, are an error when some call by position fits both and choosing
  * (resolution/choosing/choice.ts) prefers neither, since no such call could be resolved. So
  * whatever tells two functions apart at a call tells them apart here too: each argument passed by
@@ -10,7 +10,7 @@
  * coexist; one without a rest parameter beating one with.
  *
  * Generic functions with different numbers of type parameters never clash: written type arguments
- * tell them apart (§3.7). Otherwise each function's type parameters are its own, as at a call, so
+ * tell them apart (§6.3). Otherwise each function's type parameters are its own, as at a call, so
  * `f<T>(x: T)` clashes with `f<T>(x: T?)` (a call giving an `Int?`), with `f<T>(x: Array<T>)` (one
  * giving an `Array<Int>`), and `f<T>(a: T, b: Int)` with `f<T>(a: Int, b: T)` (one giving two
  * `Int`s).
@@ -19,14 +19,14 @@
  * and a rest's items (resolution/choosing/binding.ts): both functions' type parameters are first
  * given what makes each position's two parameter types alike where type arguments can, the same
  * type, else one taking the other's values; then one call per way of taking each argument's type
- * from one function's parameter or the other's. A pack's items take any type by value (§3.5). One
+ * from one function's parameter or the other's. A pack's items take any type by value (§8.1). One
  * function preferred by a short call may still clash with another at a longer one, a default's or a
  * rest's.
  *
  * A module's functions are compared with each other and with the prelude's of the same name, which
- * they join (§3.13): what the prelude exports, never a private function or an import of its own; a
+ * they join (§13.1): what the prelude exports, never a private function or an import of its own; a
  * static function with the others declared on what its owner names, as
- * types/written/named-types.ts keys it, so an alias's are its type's (§3.17). A clash is reported
+ * types/written/named-types.ts keys it, so an alias's are its type's (§4.6). A clash is reported
  * at the later declaration.
  */
 import { addToGroup } from '../../../../../foundation/structures/groups.ts';
@@ -103,7 +103,7 @@ function preludeOverloads(
 
 /**
  * A parameter position as a call by position meets it: a pack's items, taking any type by value
- * (§3.5), or a parameter's type with how an argument is passed to it.
+ * (§8.1), or a parameter's type with how an argument is passed to it.
  */
 type Slot =
   | { readonly kind: 'pack' }

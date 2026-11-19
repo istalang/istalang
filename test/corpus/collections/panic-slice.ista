@@ -1,5 +1,5 @@
 # panic: The range 2..5 is out of range for an array of length 3.
-# A slice outside the bounds panics (§3.9); `slice` clamps instead.
+# A slice outside the bounds panics (§10.2); `slice` clamps instead.
 
 import * as runtime from 'runtime'
 

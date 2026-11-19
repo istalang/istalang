@@ -1,10 +1,10 @@
 /**
- * The parts of a value a pattern takes apart (§3.11, §3.15): each part's type, and the steps
+ * The parts of a value a pattern takes apart (§11.3, §4.5): each part's type, and the steps
  * leading to it from the whole value, which lowering reads along: a struct's field by its name, a
  * tuple's element or a variant's field by position.
  *
  * - A tuple pattern takes a tuple of exactly its size; a struct pattern a struct value, its own
- *   type named or taken with `struct{…}`, as a `struct{…}` literal takes the expected type (§3.1).
+ *   type named or taken with `struct{…}`, as a `struct{…}` literal takes the expected type (§5.2).
  *   A name names the value's type as a type pattern's does (types/written/pattern-types.ts):
  *   through an alias, and a generic struct without its arguments, which the value has.
  * - A part of a value already in error has the error type, so each mistake is reported once.
@@ -35,7 +35,7 @@ export interface ValuePart<Step extends PartStep = PartStep> {
   readonly path: readonly Step[];
   /**
    * The union the value at `path` is of, when `type` is only some of its members, which earlier
-   * cases or a pattern left (§3.11), or the `any` type it is of, when `type` is only some of the
+   * cases or a pattern left (§11.3), or the `any` type it is of, when `type` is only some of the
    * types it holds, which a pattern selected through it: what tests a member and what a name binds
    * read it.
    */
@@ -44,7 +44,7 @@ export interface ValuePart<Step extends PartStep = PartStep> {
 
 /**
  * The `count` elements of `part`, a tuple of that many or a recursive type unfolding to one
- * (§3.17), at `span`; each of the error type, after a report, when it is anything else.
+ * (§4.6), at `span`; each of the error type, after a report, when it is anything else.
  */
 export function elementParts<Step extends PartStep>(
   context: Pick<BodyContext, 'report' | 'checker'>,

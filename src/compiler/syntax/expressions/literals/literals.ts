@@ -1,5 +1,5 @@
 /**
- * Literal nodes (spec §2): a value written as itself. A literal's value is decoded once, here, as
+ * Literal nodes (spec §3.1): a value written as itself. A literal's value is decoded once, here, as
  * the parser reads it: a number's, a duration's in milliseconds, a string's with its escapes
  * resolved, so no later phase reads its source text again.
  */

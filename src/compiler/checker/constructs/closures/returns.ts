@@ -1,8 +1,8 @@
 /**
- * What a body produces (§2, §4): its tail's value, or the value of a `return`.
+ * What a body produces (§4.2, §10.1): its tail's value, or the value of a `return`.
  *
  * - With a declared result, the tail and every `return` must fit it, or, where a future of it may
- *   be produced instead, as a plain lambda forwarding a call where a future is expected may (§3.14),
+ *   be produced instead, as a plain lambda forwarding a call where a future is expected may (§6.4),
  *   each fit that future.
  * - Without one, the body produces the type its tail and its `return`s agree on, as every set of
  *   producers of one value does (rules/agreement.ts); `Never` (a `return`, `break` or `continue`)
@@ -10,7 +10,7 @@
  *   what is known of it (`guide`), its `return`s too, each checked in the constraint scope the
  *   lambda stands in however deep in statements it sits, so what it gives joins the call's; while
  *   one is open there, they agree once the scope settles (../../rules/open-agreement.ts).
- * - `e?` returns an `Err` early (§3.12), so the function must produce a `Result` whose error type
+ * - `e?` returns an `Err` early (§12), so the function must produce a `Result` whose error type
  *   is the same type as `e`'s. Its `Ok` type is the function's own business, so a `?` doesn't
  *   decide the result: it is checked against the declared result at once, or against the agreed
  *   one at the end. Only a function returns, so a `return` or a `?` in any other value, such as
@@ -67,7 +67,7 @@ export class ReturnScope implements Returns {
   /**
    * A function's body returns; a value of its own, such as a constant's, doesn't. One declared to
    * produce a value may produce a future of it instead (`orFuture`), as a plain lambda forwarding a
-   * call may where a future is expected (§3.14).
+   * call may where a future is expected (§6.4).
    */
   constructor(
     declared: Type | undefined,
@@ -134,7 +134,7 @@ export class ReturnScope implements Returns {
     const produced = [...this.#returned, tail];
     const mismatch = (span: AnchoredSpan, agreed: Type, found: Type) =>
       misfitOf(context.checker.fitting, span, found, agreed);
-    // A lambda guided while its result is open agrees where its call infers that result (§2).
+    // A lambda guided while its result is open agrees where its call infers that result (§4.2).
     const isOpen =
       this.#guided !== undefined || produced.some(({ type }) => context.scopes.holds(type));
     if (isOpen) {
@@ -167,7 +167,7 @@ export class ReturnScope implements Returns {
   /**
    * What a body declared to produce `declared` produces, `tail` its last producer: `declared`, or
    * the future of it it may produce instead where every producer gives that future and not every
-   * one a value (§3.14). Each producer is fitted to it, so one that fits neither is reported
+   * one a value (§6.4). Each producer is fitted to it, so one that fits neither is reported
    * against `declared`.
    */
   #settled(context: BodyContext, tail: Produced, declared: Type): Type {
@@ -180,7 +180,7 @@ export class ReturnScope implements Returns {
   }
 
   /**
-   * The future of `declared` that `produced` give instead (§3.14), where every one fits it and not
+   * The future of `declared` that `produced` give instead (§6.4), where every one fits it and not
    * every one fits `declared`, what that fit binds kept; undefined where they give `declared`.
    */
   #futureProduced(
@@ -222,7 +222,7 @@ function fitOfEach(
 
 /**
  * Reports a `?` whose `Err`'s error doesn't convert into the error of the `result` produced
- * (§3.12).
+ * (§12).
  */
 function checkPropagation(context: BodyContext, result: Type, { error, span }: Propagation): void {
   if (result.kind === 'error') {

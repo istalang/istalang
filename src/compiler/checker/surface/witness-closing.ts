@@ -1,5 +1,5 @@
 /**
- * Witness closing (§3.5, §3.10): a call the checker resolved inside a generic body, as one
+ * Witness closing (§8.1, §8.2): a call the checker resolved inside a generic body, as one
  * instantiation of that body makes it. Lowering closes every call of an instance it compiles
  * (lowering/calls/closed-calls.ts), and an analysis summing a generic callee up at a call site
  * closes the callee's requirement calls with the witnesses that site gives: one algorithm, so the
@@ -9,10 +9,10 @@
  *   requirement becomes the witness the instance was given for it, closed inside the requirement's
  *   own instance, its binding composed with the call's; a requirement on a computed type an
  *   instantiation made known takes that type's witness, which the program gives (`Closer`).
- * - A requirement on an `any` value, on a union's trait (§6), or on another function's type
+ * - A requirement on an `any` value, on a union's trait (§8.2), or on another function's type
  *   parameters stays open: the value's own type, or that function's call, decides it later.
  * - Instances are keyed by their types alone: witnesses are coherent, the same for the same types
- *   wherever they are found (§3.10).
+ *   wherever they are found (§8.2).
  */
 
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
@@ -158,7 +158,7 @@ export function closedInside(
 
 /**
  * A witness's `binding`, over its own parameters, taking the required function's in their order,
- * composed with the `required` binding the call through the requirement made (§3.10): each of the
+ * composed with the `required` binding the call through the requirement made (§8.2): each of the
  * witness's parameters takes what the call gave the required parameter it takes, or its own
  * default, and its pack each such parameter's in turn.
  */

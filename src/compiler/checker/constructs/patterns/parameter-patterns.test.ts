@@ -310,7 +310,7 @@ describe('equivalence property: parameter pattern vs body destructuring (§5, no
       const paramPattern = useWhole
         ? `${basePattern} as whole: (Int, { x: Int, y: Int, z: Int })`
         : `${basePattern}: (Int, { x: Int, y: Int, z: Int })`;
-      // `{…}` is short for `struct{…}` in a parameter only (§3.3); a declaration writes it out.
+      // `{…}` is short for `struct{…}` in a parameter only (§6.1); a declaration writes it out.
       const constBase = '(first, struct{x as px, ...rest})';
       const constPattern = useWhole ? `${constBase} as whole` : constBase;
       const expr = useWhole

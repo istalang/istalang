@@ -1,7 +1,7 @@
 # outcome: "3|1|14|6|3"
 # disable-ista-formatter
 # A closure's shared `let` and a collection changed through a closure keep their values across
-# awaits and `runtime.commit` (§3.14, §5), with `?` and `match` over a Result in between.
+# awaits and `runtime.commit` (§6.4, §14), with `?` and `match` over a Result in between.
 import * as time from 'time'
 import * as runtime from 'runtime'
 

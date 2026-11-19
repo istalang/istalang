@@ -1,5 +1,5 @@
 /**
- * Places (§3.5) as compiled code reads and writes them: a root, a register's value, a cell or a
+ * Places (§7.3) as compiled code reads and writes them: a root, a register's value, a cell or a
  * reference, and a path of steps below it. Codegen knows each place's root kind, so it calls the
  * helper of that kind and nothing branches on it here.
  *

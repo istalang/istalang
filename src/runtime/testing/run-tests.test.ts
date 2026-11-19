@@ -1,5 +1,5 @@
 /**
- * Running a program's tests (§10): the runner's reports, spawned instances and the waits on them,
+ * Running a program's tests (§18): the runner's reports, spawned instances and the waits on them,
  * handles, and how a test fails. Mocks have their own file (mocks.test.ts).
  */
 
@@ -102,7 +102,7 @@ fn suite() -> Array<Test>: broken()
     expect(outcomesOf(await reportsOf(source))).toEqual(['broken: failed: no tests']);
   });
 
-  it('allows a suite to build a test with a deferred call, running the call only when the test runs (§3.14, §10)', async () => {
+  it('allows a suite to build a test with a deferred call, running the call only when the test runs (§6.5, §18)', async () => {
     const source = testModule(`
 ista async fn checkSum(a: Int, b: Int, expected: Int):
   assertEq(a + b, expected)

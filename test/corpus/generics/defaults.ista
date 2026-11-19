@@ -1,5 +1,5 @@
 # outcome: "13 15 retry 3 1000 retry 5 1000 retry 5 2000"
-# Default parameters are overloads that fill what a call leaves out (§3.3); a default may use the
+# Default parameters are overloads that fill what a call leaves out (§6.1); a default may use the
 # parameters before it, and a parameter with a default may take its type from it.
 import * as runtime from 'runtime'
 import Duration from 'time'

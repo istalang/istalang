@@ -1,5 +1,5 @@
 /**
- * Testing which member a union or `any` value holds (§2, §3.5), where holdings.ts says each sits:
+ * Testing which member a union or `any` value holds (§4.2, §8.1), where holdings.ts says each sits:
  * a `switch` on the union's variants, then on the variants of an `any` type that took a member
  * whole. An instantiation may have collapsed the union into one type, which a member of that type
  * passes and no other, or merged a literal member into its base, whose value is then compared

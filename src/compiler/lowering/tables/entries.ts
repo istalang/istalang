@@ -5,12 +5,12 @@
  * kind lowers to is the kind table's (../entry-kinds.ts), which lowering composes above these.
  *
  * - A **pending** entry is lowered once, from the worklist, after it is first referenced.
- * - A **closing** entry switches over every variant of an `any` type's enum (§3.10): a dispatch on
+ * - A **closing** entry switches over every variant of an `any` type's enum (§8.3): a dispatch on
  *   a value's own type, a conversion into another `any` type, or the read of a field a trait
  *   requires. It is first written once the worklist is empty, when lowering has reached every
  *   type converted into its `any` type so far (`closing`); like every entry reading an `any`
  *   type's variants, it is written again whenever a later entry converts another
- *   (function-table.ts). A dispatch on a union's members (§6) switches over a union's enum, whose
+ *   (function-table.ts). A dispatch on a union's members (§4.2) switches over a union's enum, whose
  *   variants are known, so it is written once.
  */
 
@@ -30,15 +30,15 @@ import type { ConversionEntry, NestedInstance } from './instances.ts';
 /** An extern a host implements: a function, or a constant. */
 export type HostExternDeclaration = FunctionDeclaration | ExternConstantDeclaration;
 
-/** What a host may start (§9): a top-level function, or a constant holding a sendable lambda. */
+/** What a host may start (§17.3): a top-level function, or a constant holding a sendable lambda. */
 export type StartTarget = FunctionDeclaration | ConstantDeclaration;
 
 /**
  * A function-table entry: a top-level function's instance, the entry of a native extern's
- * instance computing the defaults a call leaves out before calling it (§3.3), a nested instance, an
+ * instance computing the defaults a call leaves out before calling it (§6.1), a nested instance, an
  * extern a host implements as its native sees it (synthesized/boundary/host-externs.ts), the read
  * of an extern constant, the wrapper a host starts a function through and the one encoding what it
- * gives (synthesized/boundary/starts.ts), a context constant's accessor (§3.4), a conversion of
+ * gives (synthesized/boundary/starts.ts), a context constant's accessor (§7.1), a conversion of
  * parts (functions/fits/), or a closing entry.
  */
 export type LoweredEntry =
@@ -80,7 +80,7 @@ export interface EntryIdentity<Kind extends EntryKind> {
   /** What tells the entry apart within its kind: equal for two entries that are one. */
   readonly identity: (keys: EntryKeys, entry: EntryOf<Kind>) => string;
   /**
-   * The source function the entry runs, as `==` reads its closures (§3.14): equal for two entries
+   * The source function the entry runs, as `==` reads its closures (§6.4): equal for two entries
    * lowered from one declaration, lambda or local function; none for an entry that is a body of
    * its own.
    */

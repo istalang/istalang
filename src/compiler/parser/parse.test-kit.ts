@@ -126,7 +126,7 @@ export function declaredField(name: string, type: string, defaultValue = '_'): s
   return `(DeclaredField ${name} ${type} ${defaultValue})`;
 }
 
-/** The dump of a variant's rest field, `...name: type` (§3.11). */
+/** The dump of a variant's rest field, `...name: type` (§5.3). */
 export function restField(name: string, type: string): string {
   return `(DeclaredField isRest ${name} ${type} _)`;
 }
@@ -211,6 +211,6 @@ export const tokenSoup = soupOf(tokenFragments, separators, 30);
 
 /**
  * A token soup with no `(` or `)`, so a surrounding call's parentheses are the only ones, and no
- * backtick: a template left open runs to the end of the text, past any closer (§2).
+ * backtick: a template left open runs to the end of the text, past any closer (§3.1).
  */
 export const parenFreeSoup = tokenSoup.map((text) => text.replaceAll(/[()`]/gu, ' '));

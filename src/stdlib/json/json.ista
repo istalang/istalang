@@ -1,26 +1,26 @@
-# The json module (spec §3.8, §9): JSON held in values, and the traits of every type that crosses
+# The json module (spec §19.2, §17.4): JSON held in values, and the traits of every type that crosses
 # as JSON, with the codecs of the types the language itself has.
 #
-# A type crosses through its `toJson` and `fromJson` (§3.10): those this module declares for
+# A type crosses through its `toJson` and `fromJson` (§8.4): those this module declares for
 # primitives, `Json` and the prelude's containers, those a module declares beside its own type, or,
 # for a struct, an enum, a tuple or a host type that declares neither, the two the compiler derives
 # (`_toJson`, `_fromJson`, docs/arch/boundary.md), since a derived form reads a type's fields and
 # annotations. What reads or writes JSON text is natives.
 #
-# `Json` is a recursive union (§3.17), so JSON of any nesting is written as plain values, which go
+# `Json` is a recursive union (§4.6), so JSON of any nesting is written as plain values, which go
 # into it by the conversion every union has, and taken apart by type patterns (`case Int as n`).
 # A JSON number is an `Int` where it is whole, else a `Float`; `null` is `none`, so `Json?` is
 # `Json`, and only `has(k)` tells a missing key from a stored `null`.
 
 type Json = None | Bool | Int | Float | String | Array<Json> | Map<String, Json>
 
-# Each implies Sendable (§3.10): a value read from JSON is a copy, so it may go anywhere.
+# Each implies Sendable (§8.4): a value read from JSON is a copy, so it may go anywhere.
 trait Encodable { fn toJson(self: Self) -> Json }
 
 trait Decodable:
   fn Self.fromJson(json: Json, path: String) -> Result<Self>
 
-# Annotations on fields (§3.16): the name a field has in JSON, a field left out of it, and an int
+# Annotations on fields (§5.5): the name a field has in JSON, a field left out of it, and an int
 # written as a string of its digits, for readers that would round a large number.
 struct JsonName { name: String }
 
@@ -30,7 +30,7 @@ struct JsonBigInt
 
 # Every value written to JSON goes through `encode`, the codecs below and those the compiler
 # writes included, so a value written before, unchanged, gives the JSON it gave then, and a host
-# gets the same object for it again (docs/arch/boundary.md). Codecs are pure (§9), so running one
+# gets the same object for it again (docs/arch/boundary.md). Codecs are pure (§17.4), so running one
 # again would give equal JSON anyway.
 fn encode<T is Encodable>(value: T) -> Json:
   const written = _written(value)
@@ -71,7 +71,7 @@ extern fn _toJson<T>(value: T) -> Json
 
 extern fn _fromJson<T>(json: Json, path: String) -> Result<T>
 
-# What crosses from the host (§9). A result, what its future gives, or an extern constant's value
+# What crosses from the host (§17.4). A result, what its future gives, or an extern constant's value
 # that doesn't fit is a bug in the host, so it panics the code reading it; JSON a host starts an
 # instance with fails the host's call instead, and nothing that call ran commits.
 fn _hostResult<T>(read: Result<T>) -> T:
@@ -105,7 +105,7 @@ fn toJson(self: String) -> Json: self
 
 fn toJson(self: Unit) -> Json: none
 
-# A `none` given for a `T?` leaves `T` unknown (§3.5), so `None` writes its own `null`.
+# A `none` given for a `T?` leaves `T` unknown (§8.1), so `None` writes its own `null`.
 fn toJson(self: None) -> Json: self
 
 fn toJson(self: Json) -> Json: self

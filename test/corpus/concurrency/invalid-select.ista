@@ -4,7 +4,7 @@
 # error: 5022 at 24:7
 # error: 5025 at 29:10
 # error: 5005 at 34:20
-# select (§8): each case waits on a future. Without `await` it never waits, so it needs `else`;
+# select (§15.4): each case waits on a future. Without `await` it never waits, so it needs `else`;
 # with `await` it waits, so it has none, and only an async function may wait. A case without
 # `as` discards its value, so a value that must be used, such as a `Result`, is reported. The
 # case bodies agree on one type.

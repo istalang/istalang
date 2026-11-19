@@ -1,4 +1,4 @@
-# The crypto module (spec §3.8): hashes, HMACs, constant-time comparison and text encodings.
+# The crypto module (spec §19.2): hashes, HMACs, constant-time comparison and text encodings.
 #
 # There is no bytes type, so text goes in as its UTF-8, keys included, and every digest comes out as
 # text in the encoding asked for; `decode` gives text too, so it fails on bytes that aren't UTF-8.

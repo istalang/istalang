@@ -1,5 +1,5 @@
 /**
- * What a runtime refuses as it reads an instance back from its store (§5), before anything of it
+ * What a runtime refuses as it reads an instance back from its store (§14), before anything of it
  * resumes: a snapshot of a format version it doesn't know or of a shape no snapshot has, one naming
  * a Definition the store lacks or an object it doesn't hold, one whose execution's frame doesn't fit
  * its Definition, and an instance the store lacks.

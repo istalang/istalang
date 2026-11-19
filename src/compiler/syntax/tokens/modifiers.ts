@@ -1,5 +1,5 @@
 /**
- * The modifiers a head stacks before its keyword, `fn` or `struct` (§2): a function's, a function
+ * The modifiers a head stacks before its keyword, `fn` or `struct` (§2.2): a function's, a function
  * type's, a lambda's, an extern's or a struct's. They stack in any order, each at most once
  * and one word of each group, and print in one order, the groups': `extern`; what a value may
  * capture or which handle it is; the function's mark; whether it awaits. Parsing, completion and
@@ -7,14 +7,14 @@
  *
  * - A group's words exclude each other: a head is `sendable`, `inert` or neither, `live`, `ista` or
  *   neither, `async` or not, one handle. A word implying another of its group is the exception
- *   (`implied`): `sendable` implies `inert` (§3.14), so a head writing both is `sendable`, and
+ *   (`implied`): `sendable` implies `inert` (§6.4), so a head writing both is `sendable`, and
  *   prints so.
  * - `sendable` before `fn` is the function's sendability and before `struct` an extern struct's
  *   handle, `live` a function's mark or an extern struct's handle, and `shared` a handle or a
  *   shared struct's own word. The form tells them apart, so a word may stand in two groups no form
  *   holds together.
  * - A form is a head where it stands, with the groups it takes: a function type takes its
- *   sendability, while a lambda's follows from its captures (§3.14).
+ *   sendability, while a lambda's follows from its captures (§6.4).
  * - A function's qualifiers, its sendability, mark and `async`, are what its type keeps of its
  *   head; a declaration's `extern` and an extern struct's handle stay on the declaration.
  */
@@ -57,7 +57,7 @@ export const unqualified: FunctionQualifiers = {
 
 /**
  * Whether a function of `qualifiers` is async: its body may await, and its call gives a future
- * (§3.14). The one reading of `async` outside the parser and the printers.
+ * (§6.4). The one reading of `async` outside the parser and the printers.
  */
 export function awaits(qualifiers: FunctionQualifiers): boolean {
   return qualifiers.async !== undefined;
@@ -98,7 +98,7 @@ export const headForms = {
   externStruct: { keyword: 'struct', groups: ['extern', 'handle'], name: 'an extern struct' },
   sharedStruct: { keyword: 'struct', groups: ['shared'], name: 'a shared struct' },
   struct: { keyword: 'struct', groups: [], name: 'a struct' },
-  /** A top-level `ista const` (§3.4), whose one word is its kind, `ista` alone. */
+  /** A top-level `ista const` (§7.1), whose one word is its kind, `ista` alone. */
   contextConstant: { keyword: 'const', groups: ['kind'], name: 'a context constant' },
 } as const satisfies Record<string, HeadForm>;
 

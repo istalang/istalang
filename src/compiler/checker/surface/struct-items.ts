@@ -1,9 +1,9 @@
 /**
- * Which field a struct item gives (§3.1): a named item, and the shorthand `first` for `first:
+ * Which field a struct item gives (§5.2): a named item, and the shorthand `first` for `first:
  * first`, give the field of their name; a positional item gives a struct's one field. A literal
  * builds a value by this rule, a struct target takes one apart by it
  * (constructs/patterns/walk/parts.ts), and completion offers the fields a literal's items leave by
- * it, so none reads items differently. A variant is built and taken apart only by its call (§3.11).
+ * it, so none reads items differently. A variant is built and taken apart only by its call (§5.3).
  *
  * Which of a call pattern's arguments bind (`callPatternArguments`), and where each reaches among
  * its variant's fields, as a call's arguments bind (resolution/choosing/binding.ts), are here too
@@ -35,7 +35,7 @@ interface ReachedField {
 export type BoundPatternArgument = Exclude<PatternArgument, OtherFieldsPattern>;
 
 /**
- * A call pattern's arguments as binding takes them (§3.11): those it binds, and those the parser
+ * A call pattern's arguments as binding takes them (§11.3): those it binds, and those the parser
  * refused (one it recovered, one by position after one by name, a second spread), which bind
  * nothing, so nothing more is reported of them; a last `...` is neither.
  */
@@ -61,7 +61,7 @@ export function callPatternArguments(written: readonly PatternArgument[]): {
 
 /**
  * By argument written, where each of a call pattern's arguments reaches among `fields` though they
- * may not all bind (§3.11), as a call's would (resolution/choosing/binding.ts): a fixed field its
+ * may not all bind (§11.3), as a call's would (resolution/choosing/binding.ts): a fixed field its
  * position gives, before any spread, and past those, or past the spread, an item of the rest field;
  * the rest field whole for the spread; the field a name names, unless an earlier argument took it.
  * A last `...`, an argument the parser refused (`callPatternArguments`) and any other reach none.

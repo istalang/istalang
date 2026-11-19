@@ -1,9 +1,9 @@
 /**
- * What a name in value position names, where the binder alone can't tell (§3.1, §3.10, §3.11): a
+ * What a name in value position names, where the binder alone can't tell (§5.2, §8.2, §5.3): a
  * type, as a static function's owner or a conversion's target, and as what a pattern names
  * (pattern-types.ts reads it here); a variant, which a bare name picks by the enum expected, in a
  * pattern alike; or a struct without fields, the one type a bare name makes a value of. And what
- * static functions on a type are declared on (§3.7, §3.17). Its static functions
+ * static functions on a type are declared on (§6.2, §4.6). Its static functions
  * (constructs/declarations/functions/statics.ts, constructs/declarations/functions/clashes.ts,
  * resolution/choosing/candidates.ts) and the editor's completion read the same rules here, so what
  * a name may name and what it then means can't drift apart.
@@ -11,7 +11,7 @@
  * - A name in a value's place gives no type arguments, so it names a generic type only as a whole,
  *   with its own parameters where they are written.
  * - Static functions are declared on a nominal type's declaration, a primitive, a shape or a
- *   recursive type (§3.17), whichever alias names it; a generic alias of a shape names the family
+ *   recursive type (§4.6), whichever alias names it; a generic alias of a shape names the family
  *   its parameters make, keyed by them, so its static functions are reached through it.
  */
 
@@ -72,13 +72,13 @@ export function entityType(checker: Aliases, entity: Entity | undefined): Type |
 }
 
 /**
- * What `T?`'s static functions are declared on (§3.8, §3.17): every optional, whatever its `T`, as
+ * What `T?`'s static functions are declared on (§19.1, §4.6): every optional, whatever its `T`, as
  * an alias of `T | None` declares them, such as the prelude's `Optional`.
  */
 const optionalOwner = 'T?';
 
 /**
- * What static functions are declared on (§3.7, §3.17): a nominal type's declaration, a primitive's
+ * What static functions are declared on (§6.2, §4.6): a nominal type's declaration, a primitive's
  * name, a shape's or a recursive type's key, which no primitive's name is, or every optional.
  */
 export type StaticOwner = NominalDeclaration | PrimitiveName | ShapeKey | typeof optionalOwner;
@@ -117,7 +117,7 @@ export function declaredOwnerOf(
 
 /**
  * What naming a type in value position reads: the checker, what the binder says a name is, and a
- * type as the pass being checked reads it, each loop's key over a type's keys bound (§4).
+ * type as the pass being checked reads it, each loop's key over a type's keys bound (§11.2).
  */
 interface Naming {
   readonly checker: CheckerContext;
@@ -150,7 +150,7 @@ export function namedType(context: Naming, node: Expression): Type | undefined {
 }
 
 /**
- * The type of the field a type indexed by a key names, `S[K]` (§3.10): written before `.`, a type
+ * The type of the field a type indexed by a key names, `S[K]` (§5.2): written before `.`, a type
  * indexed by a type names a type, never an index into a value, the error type for a key naming no
  * field of it; undefined for any other index.
  */
@@ -167,7 +167,7 @@ function indexedNamed(context: Naming, node: Index): Type | undefined {
 }
 
 /**
- * The associated type `access` names, `R.Data` (§3.1): its member on the type its target names,
+ * The associated type `access` names, `R.Data` (§5.2): its member on the type its target names,
  * through which a static function is called (`R.Data.default()`); undefined for any other member.
  */
 function associatedNamed(context: Naming, access: MemberAccess): Type | undefined {
@@ -193,7 +193,7 @@ export function nameNodeOf(node: Expression): Identifier | undefined {
 
 /**
  * The variant a name written at `at` means: the one its qualification names, or the one the
- * expected enum has (§3.11), recorded for the bare name. A pattern names a variant the same way,
+ * expected enum has (§5.3), recorded for the bare name. A pattern names a variant the same way,
  * its value's type expected.
  */
 export function chooseVariant(
@@ -228,7 +228,7 @@ function qualifiedHere(context: CheckedModule, naming: VariantsEntity): readonly
     .map((candidate) => staticName(candidate.enum.name.text, candidate.variant.name.text));
 }
 
-/** The struct without fields `entity` names, the one type a bare name makes a value of (§3.1). */
+/** The struct without fields `entity` names, the one type a bare name makes a value of (§5.2). */
 export function fieldlessStructOf(
   checker: Pick<CheckerContext, 'declaredFieldsOf'>,
   entity: Entity,

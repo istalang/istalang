@@ -3,7 +3,7 @@
  * line starts, tabs, unknown characters, and every example in the spec.
  *
  * Totality and losslessness are checked as properties, because the inputs that break a scanner are
- * the ones nobody writes by hand. Spec examples are read from docs/spec.md at test time. Examples
+ * the ones nobody writes by hand. Spec examples are read from docs/spec/ at test time. Examples
  * that use `…` as a placeholder are checked to fail only on the placeholder.
  */
 
@@ -62,7 +62,7 @@ describe('words', () => {
   });
 
   it.each(['type', 'from', 'sendable', 'self', 'Self', '_', 'int', 'userId', 'Pair2', '_private'])(
-    'scans %s as an identifier (§2)',
+    'scans %s as an identifier (§2.1)',
     (word) => {
       expect(soleToken(word)?.kind).toBe('identifier');
     },
@@ -115,7 +115,7 @@ describe('line starts', () => {
   });
 });
 
-describe('tabs (§2)', () => {
+describe('tabs (§2.1)', () => {
   it.each([
     ['\tx', '\t'],
     ['  \t  x', '\t'],

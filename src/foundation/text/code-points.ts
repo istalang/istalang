@@ -1,8 +1,8 @@
 /**
  * Code points in UTF-16 text: how wide each is, and positions counted in code points beside the
  * UTF-16 offsets JavaScript counts. The scanner steps over source text by code point; std natives
- * count a string as the language does (spec §3.8), searching its UTF-16 text, which never splits a
- * code point the language holds (a string can't hold a lone surrogate, §2), and converting
+ * count a string as the language does (spec §19.3), searching its UTF-16 text, which never splits a
+ * code point the language holds (a string can't hold a lone surrogate, §4.1), and converting
  * positions only at their edge, here.
  */
 

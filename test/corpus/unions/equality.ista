@@ -1,5 +1,5 @@
 # outcome: "true|true|true|true|true|false|true|true|2|mail|three"
-# `==` on unions (§6): either side fits the other's type, a literal's value compares as its base, and
+# `==` on unions (§4.2): either side fits the other's type, a literal's value compares as its base, and
 # values of a union compare their members' types, then the values, so a union is a map key.
 
 import * as runtime from 'runtime'

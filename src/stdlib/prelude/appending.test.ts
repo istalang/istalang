@@ -1,5 +1,5 @@
 /**
- * Appending to a string (§3.9): any Stringable value appends the text its `toString` writes, on
+ * Appending to a string (§10.2): any Stringable value appends the text its `toString` writes, on
  * either side of a string, a primitive and a program's own type alike.
  */
 

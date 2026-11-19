@@ -3,7 +3,7 @@
  *
  * Layout belongs to the parser (syntax/tokens/index.ts), and this is where it starts. Whether a
  * line break ends what is being parsed depends on the enclosing region:
- * - Inside brackets, line breaks are ignored (§2).
+ * - Inside brackets, line breaks are ignored (§2.1).
  * - In a line-sensitive region, a token that starts a line (other than the region's first token)
  *   reads as the pseudo-token `lineBreak`. A construct being parsed therefore stops there, as a
  *   Python statement does.

@@ -1,5 +1,5 @@
 /**
- * One walk over a declaration's parts (§3.5), noting where each of its type parameters is met: at
+ * One walk over a declaration's parts (§8.1), noting where each of its type parameters is met: at
  * the variance of each position, a function type's parameter flipping it, the future it gives
  * standing for its value and its mark and sendability making it invariant, a declaration's or an
  * `any` type's trait's type arguments composing it with that declaration's, and a computed type
@@ -102,7 +102,7 @@ export class UsageWalk {
       this.walk(type.pack, flipped(at));
     }
     // A function giving a future fits where one giving a future of a wider value is expected, its
-    // future awaited (§3.14), so it varies in what its future gives as in what it gives, and never
+    // future awaited (§6.4), so it varies in what its future gives as in what it gives, and never
     // in the future's kind, which the kinds never leave (proposal 8, Rule 4).
     const awaited = this.#awaitedOf(type.result);
     if (awaited === undefined) {

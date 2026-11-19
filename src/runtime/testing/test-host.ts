@@ -1,5 +1,5 @@
 /**
- * A test's host (§10): a test has no host but its mocks, so every extern of a test's Definition the
+ * A test's host (§18): a test has no host but its mocks, so every extern of a test's Definition the
  * runtime's natives lack gets a native here. One no mock replaces panics the instance calling it,
  * except a host type's `dispose`, which does nothing: a test has nothing of its host's to release.
  */

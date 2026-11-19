@@ -1,7 +1,7 @@
 /**
  * Fitting as unit tests of types/ use it, built without checking a program: no `any` type is met,
  * no struct has a shape and every declaration is invariant, while its futures are the std
- * modules' own, so an async function's type is the one every program has (§3.14).
+ * modules' own, so an async function's type is the one every program has (§6.4).
  */
 
 import { stdProgramOf } from '../../../../binder/bind.test-kit.ts';

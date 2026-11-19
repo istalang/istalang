@@ -162,7 +162,7 @@ function chosenFor(
 
 /**
  * Whether `declared` is what a call of `called` names: the function, or for a variant's
- * constructor, the variant it builds (§3.11).
+ * constructor, the variant it builds (§5.3).
  */
 function namesCalled(declared: Denotation['declared'], called: FunctionDeclaration): boolean {
   if (declared.kind === 'variant') {

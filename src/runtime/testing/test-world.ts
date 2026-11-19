@@ -1,6 +1,6 @@
 /**
- * One test's world (§10): a fresh host world over a store in memory (host/durable-world.ts), running
- * the test as a call into a context of its own, named `test` (§9), with every instance it spawns,
+ * One test's world (§18): a fresh host world over a store in memory (host/durable-world.ts), running
+ * the test as a call into a context of its own, named `test` (§17.1), with every instance it spawns,
  * each committed at every await as any host's are, and answering what the test's code asks of them
  * (`TestingWorld`): their inspection, waits on their idleness or a waypoint, and host handles.
  *
@@ -34,7 +34,7 @@ import type { Run } from '../run/run.ts';
 import type { TestingWorld } from '../run/world.ts';
 import { memoryStore } from '../store.ts';
 
-/** A failed test: why, where, and the log records its instances wrote, in order (§10). */
+/** A failed test: why, where, and the log records its instances wrote, in order (§18). */
 export interface Failed {
   readonly kind: 'failed';
   readonly message: string;
@@ -56,10 +56,10 @@ export interface TestSeams {
   readonly definition: Definition;
   readonly program: EmittedProgram;
   readonly natives: Natives;
-  /** The program's version, its Definition's content hash (§9). */
+  /** The program's version, its Definition's content hash (§17.1). */
   readonly version: string;
   readonly clock: Clock;
-  /** The seed of the test's random source (§3.8 `random`): its full title's hash. */
+  /** The seed of the test's random source (§19.2 `random`): its full title's hash. */
   readonly seed: Uint8Array;
   /** When the test must have ended, in milliseconds since the Unix epoch. */
   readonly deadline: bigint;
@@ -119,7 +119,7 @@ export async function runInWorld(seams: TestSeams, call: WorldCall): Promise<End
   return stuck(world, why, logs);
 }
 
-/** A wait of a test's code on another instance (§10 `idle()`, `reaches(label)`). */
+/** A wait of a test's code on another instance (§18 `idle()`, `reaches(label)`). */
 interface Watch {
   readonly watcher: Run;
   readonly future: Future;
@@ -175,7 +175,7 @@ class TestHost implements TestingWorld {
 
 /**
  * A test stuck for `why`, naming where each instance waits; one waiting on a job is told no runtime
- * serves jobs in a test, so the test mocks the ista function delegating it (§10).
+ * serves jobs in a test, so the test mocks the ista function delegating it (§18).
  */
 function stuck(world: DurableWorld, why: string, logs: readonly LogRecord[]): Failed {
   const waits = [...world.residents.values()].flatMap((resident) =>

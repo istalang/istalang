@@ -1,5 +1,5 @@
 /**
- * A field of a type by what the type is (§3.5, §3.10): a struct's, or, on a type known only per
+ * A field of a type by what the type is (§8.1, §8.2): a struct's, or, on a type known only per
  * instantiation, one a trait of its constraints requires or one its struct constraints name
  * (types/traits/known-constraints.ts). One rule for a field read, a field called and conformance.
  */
@@ -14,7 +14,7 @@ import { knownConstraints, structConstraintsOn } from './known-constraints.ts';
 
 /**
  * The field `name` of `type`: a struct's, or, on a type known only per instantiation, one its
- * struct constraints name, stored, else one a trait of its constraints requires (§3.5, §3.10).
+ * struct constraints name, stored, else one a trait of its constraints requires (§8.1, §8.2).
  */
 export function fieldOf(
   checker: CheckerContext,

@@ -1,22 +1,22 @@
 /**
  * Pieces every struct construct shares: the `struct` keyword, which must open braces, and field
  * declarations. Struct types, struct literals and struct patterns all start with the keyword, and
- * struct types and struct declarations list fields the same way (§3.1); an enum variant declares
- * its fields as they do, but in parentheses, as a function's parameters (§3.11).
+ * struct types and struct declarations list fields the same way (§5.2); an enum variant declares
+ * its fields as they do, but in parentheses, as a function's parameters (§5.3).
  *
  * A field whose type is left for the next lines is the indented sugar for an anonymous struct
- * (§3.1): `data:` over indented fields means `data: { … }`, so it becomes a StructType too.
+ * (§5.2): `data:` over indented fields means `data: { … }`, so it becomes a StructType too.
  *
- * An anonymous struct type's entry may map a union's keys to fields, `[F in keyof S]: T` (§3.1),
+ * An anonymous struct type's entry may map a union's keys to fields, `[F in keyof S]: T` (§5.2),
  * where `F` is a member type parameter of the union, so it is read as one. How many a type holds
  * is the checker's to judge, as a struct's repeated field names are.
  *
- * A variant's fields are a function's parameters (§3.11), so only they may end in a rest, `...`,
+ * A variant's fields are a function's parameters (§5.3), so only they may end in a rest, `...`,
  * and each takes its type on its line, never an indented block of fields.
  *
- * Only a struct's or a variant's declaration gives its fields defaults (§3.1); a default anywhere
+ * Only a struct's or a variant's declaration gives its fields defaults (§5.2); a default anywhere
  * else is read, so recovery goes on past it, then reported and left out of the tree. So is an entry
- * only a struct constraint has (`[_]: T`, `name is C`): a type gives each field a type (§3.5).
+ * only a struct constraint has (`[_]: T`, `name is C`): a type gives each field a type (§8.1).
  */
 
 import { isUnnamed } from '../../../../foundation/language/naming.ts';
@@ -82,17 +82,17 @@ function parseDeclaredField(
   return { ...field, span: parser.spanFrom(start), type, defaultValue };
 }
 
-/** A struct's field's type: on its line, or an indented block of fields below it (§3.1). */
+/** A struct's field's type: on its line, or an indented block of fields below it (§5.2). */
 function structFieldType(parser: Parser, start: number): TypeNode {
   return parser.cursor.at('lineBreak') ? parseFieldBlock(parser, start) : parser.type();
 }
 
-/** A variant's field's type, on its line, as a parameter's is (§3.3). */
+/** A variant's field's type, on its line, as a parameter's is (§6.1). */
 function variantFieldType(parser: Parser): TypeNode {
   return parser.type();
 }
 
-/** `[F in U]: T`, at the `[`: a mapped entry of an anonymous struct type (§3.1). */
+/** `[F in U]: T`, at the `[`: a mapped entry of an anonymous struct type (§5.2). */
 function parseMappedField(parser: Parser): MappedField {
   const { start } = parser.cursor.token.span;
   const parameter = parseEnclosed(parser, '[', () => parseMappedParameter(parser)).value;
@@ -101,7 +101,7 @@ function parseMappedField(parser: Parser): MappedField {
   return { kind: 'MappedField', span: parser.spanFrom(start), parameter, type };
 }
 
-/** `F in U` inside a mapped entry's brackets: a member type parameter of `U` (§3.5). */
+/** `F in U` inside a mapped entry's brackets: a member type parameter of `U` (§8.1). */
 function parseMappedParameter(parser: Parser): TypeParameter {
   const name = parser.identifier('a type parameter');
   parser.expect('in');
@@ -126,7 +126,7 @@ function parseFieldEntry(parser: Parser): FieldDeclaration | MappedField | Inval
   return parser.cursor.at('[') ? parseMappedField(parser) : parseField(parser);
 }
 
-/** Whether the next entry is one only a struct constraint has: `[_] …` or `name is C` (§3.5). */
+/** Whether the next entry is one only a struct constraint has: `[_] …` or `name is C` (§8.1). */
 function startsConstraintEntry(parser: Parser): boolean {
   const { cursor } = parser;
   if (cursor.at('[')) {
@@ -159,7 +159,7 @@ export const declaredFieldRules: ItemRules<DeclaredField> = {
   annotate: attachAnnotations,
 };
 
-/** A variant's field: a declared field, or the rest, `...children: Array<Node>` (§3.11). */
+/** A variant's field: a declared field, or the rest, `...children: Array<Node>` (§5.3). */
 function parseVariantField(parser: Parser): DeclaredField {
   const rest = parser.cursor.eat(spreadOpener);
   const field = parseDeclaredField(parser, variantFieldType);
@@ -168,7 +168,7 @@ function parseVariantField(parser: Parser): DeclaredField {
     : { ...field, isRest: true, span: parser.spanFrom(rest.span.start) };
 }
 
-/** The fields of a variant's declaration, read as a function's parameters are (§3.11). */
+/** The fields of a variant's declaration, read as a function's parameters are (§5.3). */
 export const variantFieldRules: ItemRules<DeclaredField> = {
   parseItem: (parser) => nested(parser, () => parseVariantField(parser)),
   separator: ',',

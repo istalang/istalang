@@ -1,5 +1,5 @@
 /**
- * What names resolve to (§3.3, §3.4, §3.5, §3.7, §3.10, §3.11, §3.13, §3.14): each case names a use
+ * What names resolve to (§6.1, §7.1, §8.1, §6.2, §8.2, §11.3, §13.1, §6.4): each case names a use
  * and the declaration it must reach, both by their text and occurrence, so the case reads as its
  * source.
  */

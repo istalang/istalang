@@ -1,13 +1,13 @@
 /**
  * A call of a function value another instance holds, or the caller's own, run at once in its
  * holder, as a function bound in an instance's slot (slots.ts) answers the calls of the instances
- * spawned from it (§10): one path for both, since the holder plays the host wherever it is.
+ * spawned from it (§18): one path for both, since the holder plays the host wherever it is.
  *
  * - **Host values cross as their host's JSON.** The function takes and gives a host value as JSON
  *   and never disposes it; what it gives arrives as the caller's resource for that
- *   JSON (`Resources.of`), which the caller alone disposes (§7). `testing.handle` makes such JSON.
+ *   JSON (`Resources.of`), which the caller alone disposes (§16). `testing.handle` makes such JSON.
  * - **Other values** pass as they are within one instance; between two, only sendable ones cross,
- *   copied, so neither shares a composite with the other (§9).
+ *   copied, so neither shares a composite with the other (§17.1).
  * - **An async replacement's future** is followed by one of the caller's, settled as it settles
  *   within one instance, else in a turn of its own (`Arrivals.arrive`), in whichever run of the
  *   caller's instance it lands in. The holder lets go of its
@@ -117,7 +117,7 @@ function arrived(caller: Run, value: Value, within: boolean): Value {
 
 /**
  * `value` crossing between a caller and the holder, rebuilt: each host value in it, as its host's
- * JSON, made what `hosted` makes it; any other handle kept `within` one instance, else refused (§10).
+ * JSON, made what `hosted` makes it; any other handle kept `within` one instance, else refused (§18).
  */
 function crossing(value: Value, within: boolean, hosted: (part: ExternValue) => Value): Value {
   return replacingParts(value, (part) => {
@@ -129,7 +129,7 @@ function crossing(value: Value, within: boolean, hosted: (part: ExternValue) => 
         return part as unknown as Value;
       }
       throw new Panic(
-        'A function another instance holds takes and gives only sendable values (§10).',
+        'A function another instance holds takes and gives only sendable values (§18).',
       );
     }
     return part.kind === 'extern' ? hosted(part) : undefined;

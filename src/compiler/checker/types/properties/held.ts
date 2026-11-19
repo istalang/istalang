@@ -1,7 +1,7 @@
 /**
  * What a value of a type holds at any depth, for rules about values held inside others: whether it
- * may leave its instance (traits/sendability.ts), a future that must be awaited (§3.3), a `Result`
- * that must be used (§3.12). A type holds itself and what its parts hold: a tuple's elements, a
+ * may leave its instance (traits/sendability.ts), a future that must be awaited (§6.1), a `Result`
+ * that must be used (§12). A type holds itself and what its parts hold: a tuple's elements, a
  * struct's fields, an enum's variants' fields, the value behind a shared struct, and what an extern
  * type's `@Holds` says, else its type arguments (`heldPartsOf`). A recursive type holds nothing more where it recurs
  * (type-cycle.ts).
@@ -57,7 +57,7 @@ function walkHeld(checker: HeldReader, type: Type, visit: (part: Type) => boolea
 /**
  * What a value of `type` holds one level down: a tuple's elements, a struct's fields, the fields of
  * each of an enum's variants, what a handle's cell holds, and what an extern type's `@Holds` names
- * (§3.16), else its type arguments, which stand for the values the runtime or the host keeps in it.
+ * (§5.5), else its type arguments, which stand for the values the runtime or the host keeps in it.
  */
 export function heldPartsOf(
   checker: Pick<

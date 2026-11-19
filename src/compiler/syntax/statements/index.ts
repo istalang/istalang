@@ -1,5 +1,5 @@
 /**
- * Statement nodes and blocks (§3.4, §4, §7, §9).
+ * Statement nodes and blocks (§7.1, §10.1, §16, §17.1).
  *
  * `if`, `match` and `select` are expressions (expressions/index.ts); written as statements they are
  * ExpressionStatements. A function declaration is both a statement (a local `fn`) and a top-level
@@ -11,7 +11,7 @@
  * is visible in the source text the spans point to.
  *
  * `_ = expr` is an Assignment to `_`, as written. The checker gives `_` its meaning of an unnamed
- * variable that holds the value until the block ends (§3.4).
+ * variable that holds the value until the block ends (§7.1).
  *
  * How these nodes read as the language means them sits beside them: targets in targets.ts, a
  * block's tail and what runs over a struct's fields in readings.ts.
@@ -36,11 +36,11 @@ interface ExpressionStatement extends NodeOf<'ExpressionStatement'>, Annotatable
 /**
  * `let x = 1`, `const a, b = pair`, and with a `hold` the `hold let`, `hold const` and `hold _`
  * forms, whose holdings last until the enclosing function ends, or the loop, block or function
- * `hold` names (§3.4, §7). `hold _` means `hold const _`, so it is stored that way. `transient let`
+ * `hold` names (§7.1, §16). `hold _` means `hold const _`, so it is stored that way. `transient let`
  * declares a variable the outermost call of its function makes and the calls nested in it share
- * (§3.4); the grammar lets it modify a `let` alone, never with a `hold`.
+ * (§7.1); the grammar lets it modify a `let` alone, never with a `hold`.
  *
- * Each target is a pattern (§3.15): a name, `_`, or a tuple or struct pattern destructuring the
+ * Each target is a pattern (§4.5): a name, `_`, or a tuple or struct pattern destructuring the
  * value, nested at will. Several targets destructure a tuple, as if parenthesized. A target must
  * always match, which the checker enforces; the parser reads any pattern.
  */
@@ -54,7 +54,7 @@ export interface VariableDeclaration extends NodeOf<'VariableDeclaration'>, Anno
   readonly initializer: Expression;
 }
 
-/** `hold`, or `hold(name)` naming the loop, block or function the holdings last until (§7). */
+/** `hold`, or `hold(name)` naming the loop, block or function the holdings last until (§16). */
 export interface Hold extends NodeOf<'Hold'> {
   readonly label: Identifier | undefined;
 }
@@ -62,7 +62,7 @@ export interface Hold extends NodeOf<'Hold'> {
 /**
  * `x = v`, `x += v`, and `a, b = (b, a)` when there are several targets. A target is a place (a
  * variable, field, tuple element, index or shared struct's value `*x`), or a tuple or struct
- * literal of targets that destructures the value into them (§3.15).
+ * literal of targets that destructures the value into them (§4.5).
  */
 export interface Assignment extends NodeOf<'Assignment'>, Annotatable {
   readonly targets: readonly Expression[];
@@ -97,7 +97,7 @@ export interface For extends NodeOf<'For'>, Annotatable {
 
 /**
  * `for key, value in ...x: …`, or `outer: for …` labelled: its body once per field of `x`, in name
- * order (§4), as the body written out once per field.
+ * order (§10.1), as the body written out once per field.
  */
 export interface FieldLoop extends NodeOf<'FieldLoop'>, Annotatable {
   readonly label: Identifier | undefined;
@@ -114,20 +114,20 @@ export interface While extends NodeOf<'While'>, Annotatable {
 
 /**
  * `batch:` then an indented block: a block a `hold(batch)` inside it names, holding until it ends
- * (§3.4). A statement of type `Unit`; `break` and `continue` name loops only.
+ * (§7.1). A statement of type `Unit`; `break` and `continue` name loops only.
  */
 export interface LabelledBlock extends NodeOf<'LabelledBlock'>, Annotatable {
   readonly label: Identifier;
   readonly body: Block;
 }
 
-/** A loop (§4), which `break` and `continue` leave. */
+/** A loop (§11.1), which `break` and `continue` leave. */
 export type Loop = For | FieldLoop | While;
 
-/** A scope a label may name (§3.4, §4): a loop, or a block only `hold` names. */
+/** A scope a label may name (§7.1, §11.1): a loop, or a block only `hold` names. */
 export type LabelledScope = Loop | LabelledBlock;
 
-/** `drop expr`: discards a value, disposing it if nothing else holds it (§7). */
+/** `drop expr`: discards a value, disposing it if nothing else holds it (§16). */
 export interface Drop extends NodeOf<'Drop'>, Annotatable {
   readonly value: Expression;
 }

@@ -37,7 +37,7 @@ describe('signature help', () => {
     expect(help(declared, 'fn f() -> Int: g(1, 2, 3, ‸4)')?.parameter).toBe('...rest: Array<Int>');
   });
 
-  it("helps inside a deferred call's taker, with what the deferred call calls (§3.14)", () => {
+  it("helps inside a deferred call's taker, with what the deferred call calls (§6.5)", () => {
     const declared = [
       'fn retry(f: fn() -> Int, times: Int = 3) -> Int: f()',
       'fn count(n: Int) -> Int: n',
@@ -61,7 +61,7 @@ describe('signature help', () => {
     });
   });
 
-  it('marks the argument a line starts, where line breaks separate the arguments (§2)', () => {
+  it('marks the argument a line starts, where line breaks separate the arguments (§2.1)', () => {
     const mix = 'fn mix(a: Int, b: Int, c: Int) -> Int: a + b + c';
     expect(help(mix, 'fn f() -> Int: mix(', '  1', '  ‸2', '  3', ')')?.parameter).toBe('b: Int');
     expect(help(mix, 'fn f() -> Int: mix(', '  a: 1', '  ‸c: 3', '  b: 2', ')')?.parameter).toBe(
@@ -100,7 +100,7 @@ describe('signature help', () => {
     });
   });
 
-  it("lists a variant's fields as its constructor's parameters, its enum qualifying it (§3.11)", () => {
+  it("lists a variant's fields as its constructor's parameters, its enum qualifying it (§5.3)", () => {
     const node = [
       'enum Node:',
       '  Leaf',

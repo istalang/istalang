@@ -2,7 +2,7 @@
 # error: 5001 at 10:29
 # error: 5016 at 11:3
 # A Decimal mixes with ints only: no float operand or conversion from a float, whose rounding is what
-# a Decimal avoids (§3.8, §3.9).
+# a Decimal avoids (§19.2, §10.2).
 import Decimal from 'decimal'
 
 fn mixed(price: Decimal) -> Bool:

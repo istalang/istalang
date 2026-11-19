@@ -1,5 +1,5 @@
 /**
- * Taking a value apart into targets (§3.11, §3.15): one target takes it whole, several a tuple of
+ * Taking a value apart into targets (§11.3, §4.5): one target takes it whole, several a tuple of
  * as many, and a tuple or struct destructuring each of its parts. A pattern's walk (walk/index.ts)
  * and an assignment's (constructs/statements/assignments.ts) take apart the same way; only what
  * stands at their leaves differs, which each says through its own `take`.
@@ -27,7 +27,7 @@ export interface Taking<Target, Step extends PartStep = PartStep> {
 
 /**
  * Takes a value of `part` apart into `targets`, at `span`: one takes it whole, and several a tuple
- * of as many, as if parenthesized (§3.15).
+ * of as many, as if parenthesized (§4.5).
  */
 export function takeTargets<Target, Step extends PartStep>(
   taking: Taking<Target, Step | number | FieldStep>,

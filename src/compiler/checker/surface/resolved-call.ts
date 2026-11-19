@@ -13,29 +13,29 @@ import type { Substitution } from '../types/parts/substitution.ts';
 import type { AnyType, Type } from '../types/type/index.ts';
 
 /**
- * What a call resolved to (§3.5, §3.7, §3.10). Generics are compiled per instantiation, so a call
+ * What a call resolved to (§8.1, §6.2, §8.2). Generics are compiled per instantiation, so a call
  * carries everything its instantiation is made of; types in it may name the calling function's own
  * type parameters, which each of the caller's instantiations substitutes.
  *
  * - `function`: a declared function, with its type arguments, the function each requirement of
  *   its type parameters' constraints calls (`witnesses`), and where each of its parameters takes
- *   its value from at the call (`binding`, §3.3).
+ *   its value from at the call (`binding`, §6.1).
  * - `requirement`: a function a constraint requires, on one of the calling function's own type
  *   parameters, such as `add` under `T is Addable`, on an `any` type, or on a union through a trait
  *   it meets (§6). Which function it is depends, for a type parameter, on the caller's
  *   instantiation: the `witnesses` of the call that made it; for an `any` type, on the type of the
- *   value it is called with (§3.10); for a union, on how the union meets the trait: a function
+ *   value it is called with (§8.3); for a union, on how the union meets the trait: a function
  *   declared for it, or else the function of whichever member the value is.
  */
 export type ResolvedCall = FunctionCall | RequirementCall;
 
 /** What every resolved call may carry about how it was written. */
 interface WrittenAs {
-  /** A method call's receiver (`x` in `x.f()`), passed as the call's first argument (§3.7). */
+  /** A method call's receiver (`x` in `x.f()`), passed as the call's first argument (§6.2). */
   readonly receiver?: Expression;
   /**
    * Which argument each parameter takes; a requirement's, its required function's parameters
-   * (§3.10), which a witness's binding then maps onto its own.
+   * (§8.2), which a witness's binding then maps onto its own.
    */
   readonly binding: Binding;
 }
@@ -48,7 +48,7 @@ export interface FunctionCall extends WrittenAs {
 }
 
 /**
- * Where each parameter of a called function takes its value from, in parameter order (§3.3): an
+ * Where each parameter of a called function takes its value from, in parameter order (§6.1): an
  * argument the call passes, numbered as passed (a method's receiver first, then the others as
  * written); for a rest parameter, the items it collects, into an array or a pack's tuple; or its
  * default, which the call leaves out and the function computes from the parameters before it as
@@ -68,7 +68,7 @@ type ParameterSource =
  */
 export type RestItem = PassedItem | CollectedItem;
 
-/** An argument a rest parameter collects: its number, and whether it spreads its items (§3.3). */
+/** An argument a rest parameter collects: its number, and whether it spreads its items (§6.1). */
 export interface PassedItem {
   readonly kind: 'passed';
   readonly index: number;
@@ -82,8 +82,8 @@ interface CollectedItem {
 }
 
 /**
- * A call of a function value as checked (§3.14): which of the value's parameters each argument
- * fills, its pack one rest parameter (§3.5), once its arguments are judged to fill them; none
+ * A call of a function value as checked (§6.4): which of the value's parameters each argument
+ * fills, its pack one rest parameter (§8.1), once its arguments are judged to fill them; none
  * where they don't, which was reported.
  */
 export interface ValueCallMade {
@@ -146,7 +146,7 @@ export interface RequirementCall extends WrittenAs {
   readonly function: FunctionDeclaration;
   readonly requirement: RequirementOrigin;
   /**
-   * What the trait's `Self` and type parameters stand for where it is called (§3.10), which its
+   * What the trait's `Self` and type parameters stand for where it is called (§8.2), which its
    * signature and mark are read through: `Self.Mode fn` is of `W.Mode` called on a `W`.
    */
   readonly substitution: Substitution;
@@ -188,9 +188,9 @@ export interface MembersRequirement {
 
 /**
  * The `member`-th function of the trait of `through`, called on `on`, a type computed from types
- * not known yet (`T.Data`, §3.1; `S["meta"]`, §3.5), which meets the trait as its bound or its
+ * not known yet (`T.Data`, §5.2; `S["meta"]`, §8.1), which meets the trait as its bound or its
  * struct constraint's entry says. `through` is the trait as `any` takes it. Each instantiation
- * makes `on` known, and the witness is that type's own, chosen then (coherent, §3.10).
+ * makes `on` known, and the witness is that type's own, chosen then (coherent, §8.2).
  */
 interface ComputedRequirement {
   readonly kind: 'computed';
@@ -217,7 +217,7 @@ export type MadeCall =
 /**
  * Per type parameter of a generic callee: for each of its constraints, in order, the call each
  * function of the constraint's trait resolves to, in the trait's order, then the getter meeting
- * each field the trait requires that the type stores none of (§3.10), which code reading the field
+ * each field the trait requires that the type stores none of (§8.2), which code reading the field
  * calls for its caller as it calls the functions.
  */
 export type Witnesses = ReadonlyMap<TypeParameter, readonly (readonly ResolvedCall[])[]>;
@@ -253,10 +253,10 @@ export function instantiatingTypesOf(call: ResolvedCall): readonly Type[] {
 
 /**
  * Nodes the checker resolves to the function they call: the nodes a call can be written as, a
- * call, a deferred call, read as the call to its taker it was checked as (§3.14,
- * `BodyFacts.coreOf`), an operator that calls a function (§3.9), indexing, which calls `index`, an
+ * call, a deferred call, read as the call to its taker it was checked as (§6.5,
+ * `BodyFacts.coreOf`), an operator that calls a function (§10.2), indexing, which calls `index`, an
  * assignment, whose compound operator calls a function, and a member access reading a getter,
- * `x.g`, the call `g(x)` (§3.1). A function named as a value calls nothing where it stands
+ * `x.g`, the call `g(x)` (§5.2). A function named as a value calls nothing where it stands
  * (`FunctionNaming`); a call of a function value resolves to none (`CheckedBody.valueCalls`), and a
  * call the language makes is implicit (`ImplicitRole`).
  */
@@ -270,7 +270,7 @@ export function isCalling(site: NodeOf<string>): site is Call {
 }
 
 /**
- * What names functions as a value (§3.14), where the function it names is recorded: a name, `f`,
+ * What names functions as a value (§6.4), where the function it names is recorded: a name, `f`,
  * plain or qualified, `ns.f` or `T.f`, maybe given type arguments, `f<Int>`.
  */
 export type FunctionNaming = Identifier | MemberAccess | TypeApplication;
@@ -280,7 +280,7 @@ export type FunctionNaming = Identifier | MemberAccess | TypeApplication;
  * (resolution/applying/implicit.ts).
  */
 export type ImplicitRole =
-  /** `iterate`, which an iteration through a cursor calls on what it runs over (§3.10). */
+  /** `iterate`, which an iteration through a cursor calls on what it runs over (§8.4). */
   | 'iterate'
   /**
    * `onAwait`, which an `await` or a `select`'s case calls on what it waits on, with the wait's
@@ -292,15 +292,15 @@ export type ImplicitRole =
    * range pattern's bound's, or an array pattern's length against its fixed count.
    */
   | 'compare'
-  /** The `includes` an `in` or `not in` calls, at its right operand (§3.9). */
+  /** The `includes` an `in` or `not in` calls, at its right operand (§10.2). */
   | 'includes'
-  /** An array pattern's reads of its array (§3.11): its length, an item, and the items between. */
+  /** An array pattern's reads of its array (§11.3): its length, an item, and the items between. */
   | 'length'
   | 'item'
   | 'rest'
-  /** Writing an element of a place back, changed or whole, with `setIndex` (§3.9). */
+  /** Writing an element of a place back, changed or whole, with `setIndex` (§10.2). */
   | 'write'
-  /** The `default()` a map literal of a type other than `Map` starts from (§2). */
+  /** The `default()` a map literal of a type other than `Map` starts from (§3.3). */
   | 'default'
   /** Assigning an entry of such a map literal with `setIndex`. */
   | 'insert';

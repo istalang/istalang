@@ -1,19 +1,19 @@
 /**
- * Enum variants and `none` as values (§3.11), and names of types in value position.
+ * Enum variants and `none` as values (§5.3), and names of types in value position.
  *
  * - A bare variant (`Expired`, `Ok(1)`) needs an enum type to be expected that has it; a qualified
  *   one (`Decision.Expired`) names its enum, whose type arguments come from the expected type when
  *   it is the same enum, else from the arguments and defaults.
- * - A variant with fields is a function of its enum, its constructor (§3.11,
+ * - A variant with fields is a function of its enum, its constructor (§5.3,
  *   syntax/declarations/field-defaults.ts), and is built only by calling it: a call binds its
- *   arguments to the fields as any call's to parameters (§3.3), as any generic call is, its type
- *   arguments inferred. Named without a call, it is that function as a value (§3.14,
+ *   arguments to the fields as any call's to parameters (§6.1), as any generic call is, its type
+ *   arguments inferred. Named without a call, it is that function as a value (§5.3,
  *   closures/function-values.ts) wherever no enum is expected of it: qualified, or bare where an
  *   expected function type's result gives its enum. A variant without fields is a value, so
  *   `Expired()` is `Expired`.
- * - `none` needs no expected type: alone, its type is `None` (§2).
+ * - `none` needs no expected type: alone, its type is `None` (§4.2).
  * - Where a call's chosen function decides an argument's type, `none`, a bare variant and a call
- *   of one wait for it (§3.5), so `f(none)` reads like `const x: T? = none`.
+ *   of one wait for it (§8.1), so `f(none)` reads like `const x: T? = none`.
  */
 
 import { staticName } from '../../../../../foundation/language/static-names.ts';
@@ -41,7 +41,7 @@ import { chooseVariant, nominalEntityOf } from '../../../types/written/named-typ
 import { checkFunctionValue } from '../../closures/function-values.ts';
 
 /**
- * For a bare variant's name passed to a call that decides it (§3.5), the types it can take: an
+ * For a bare variant's name passed to a call that decides it (§8.1), the types it can take: an
  * enum having a variant of that name without fields, the value it names, or a function type the
  * constructor of one with fields can be.
  */
@@ -61,7 +61,7 @@ export function variantNameAccepts(
 
 /**
  * For a qualified variant without fields of a generic enum, `Options.Empty`, passed to a call that
- * decides it (§3.5): the instances of its enum, whose type arguments its name alone can't give;
+ * decides it (§8.1): the instances of its enum, whose type arguments its name alone can't give;
  * undefined for any other member access.
  */
 export function qualifiedVariantAccepts(
@@ -93,7 +93,7 @@ export function variantCallAccepts(context: BodyContext, node: Call): Admits | u
 }
 
 /**
- * `none`, the one value of `None` (§2), whatever is expected: it goes into a union as its member.
+ * `none`, the one value of `None` (§4.2), whatever is expected: it goes into a union as its member.
  */
 export function checkNone(): Type {
   return noneType;
@@ -101,7 +101,7 @@ export function checkNone(): Type {
 
 /**
  * The type of a variant named without a call, bare or qualified: its constructor as a function
- * value where its enum is known and isn't asked for (§3.14), else the variant as a value.
+ * value where its enum is known and isn't asked for (§5.3), else the variant as a value.
  */
 export function checkVariantValue(
   context: BodyContext,
@@ -119,7 +119,7 @@ export function checkVariantValue(
 
 /**
  * Whether `expected` asks for a value of an enum `naming` may name and for no function, so the
- * variant named there is that value (§3.11): a qualified variant's own enum, or, for a bare name,
+ * variant named there is that value (§5.3): a qualified variant's own enum, or, for a bare name,
  * which chooses among the enums so expected, any.
  */
 function asksForVariant(expected: Type | undefined, naming: VariantNaming): boolean {
@@ -165,11 +165,11 @@ interface VariantCall {
 
 /**
  * `Ok(v)`, `Verdict.Rejected(by: "legal")`: a call of the variant's constructor, chosen and
- * instantiated as any call's function is (§3.3, §3.5). With no type arguments written, the
+ * instantiated as any call's function is (§6.1, §8.1). With no type arguments written, the
  * expected type's are given when it is the variant's enum, so an argument fits its field as it
  * would in the literal. A variant without fields is called with no arguments, as the value it
  * names, its written type arguments completed and constrained as a written type's are; with none,
- * the `()` says nothing its name alone doesn't, so it is warned of (§3.11).
+ * the `()` says nothing its name alone doesn't, so it is warned of (§5.3).
  */
 export function checkVariantCall(
   context: BodyContext,
@@ -210,7 +210,7 @@ export function checkVariantCall(
 }
 
 /**
- * Refuses a variant named before braces or a block, `Rejected{by: "legal"}` or `Rejected:` (§3.11),
+ * Refuses a variant named before braces or a block, `Rejected{by: "legal"}` or `Rejected:` (§5.3),
  * a variant being built only by its call; its caller checks the values alone. A bare one the
  * expected type chooses is still recorded, so tools read what it names.
  */

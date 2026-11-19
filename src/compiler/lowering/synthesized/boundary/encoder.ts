@@ -3,8 +3,8 @@
  * A struct is an object of its fields, `@JsonSkip` ones left out, whose keys are sorted when it is
  * written; an enum the same, with its variant's tag; a tuple an array; a host type the JSON its
  * host gave, through the json module's helper; a literal its base's value, a union of literals' the
- * tag's literal (§2). Each part is written by its own type's codec, and a literal by its base's.
- * `Json` is a recursive union (§3.17), so what is built goes into it as the member it is: an array
+ * tag's literal (§4.3). Each part is written by its own type's codec, and a literal by its base's.
+ * `Json` is a recursive union (§4.6), so what is built goes into it as the member it is: an array
  * of `Json`, a map of `Json` by `String`, or a `String`.
  */
 
@@ -82,7 +82,7 @@ export class Encoder {
 
   /**
    * A literal's JSON, as its base's codec writes its value: a lone literal type is its base's value
-   * already (§2), and a union of literals' member is written by its own literal's base.
+   * already (§4.3), and a union of literals' member is written by its own literal's base.
    */
   #literal(type: Type, value: Register): Register {
     const code = this.#code;

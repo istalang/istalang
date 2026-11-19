@@ -1,5 +1,5 @@
 # outcome: 42
-# A variable declared in a field loop takes each pass's type (§4): in the pass where it is a struct,
+# A variable declared in a field loop takes each pass's type (§11.2): in the pass where it is a struct,
 # a field of it is written and read as that struct's.
 
 struct BoxB { onlyInB: Int }

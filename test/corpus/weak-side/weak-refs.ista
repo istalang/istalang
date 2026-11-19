@@ -1,5 +1,5 @@
 # outcome: "same true, other false, held true, signalled false | worked 2, watcher pending true"
-# Weak references and an async call's own `disposing()` (§7), short of disposing anything:
+# Weak references and an async call's own `disposing()` (§16), short of disposing anything:
 # `WeakRef(x)` is the one weak reference to `x`, so two are `==` exactly when they refer to the
 # same value; while `x` is held, `deref()` gives it and `disposed()` hasn't resolved. A call that
 # returns is never disposed: a watch on it, even taken by a closure that outlives the call, never

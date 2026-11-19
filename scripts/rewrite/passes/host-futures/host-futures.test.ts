@@ -49,6 +49,6 @@ describe('host futures', () => {
       'extern shared struct Future<T, K in Persistence> { type Mode = K }',
       'extern ista fn take<T>(self: Slot<T>) -> Future<T, "ista">',
     ].join('\n');
-    expect(rewritten(text, 'docs/spec.md')).toBe(text);
+    expect(rewritten(text, 'docs/spec/19-standard-library/01-prelude.md')).toBe(text);
   });
 });

@@ -4,9 +4,9 @@
 # error: 5109 at 24:24
 # error: 5118 at 25:32
 # A generic struct's arguments come from its fields, which must then fit the expected type
-# (§3.5); an operator needs a function for its operands (§3.9); a conversion needs a `from`
-# taking its argument (§3.10), so `Int` explains that it takes a float; a variant with fields is
-# called with exactly its own fields (§3.11).
+# (§8.1); an operator needs a function for its operands (§10.2); a conversion needs a `from`
+# taking its argument (§8.4), so `Int` explains that it takes a float; a variant with fields is
+# called with exactly its own fields (§5.3).
 
 import * as runtime from 'runtime'
 

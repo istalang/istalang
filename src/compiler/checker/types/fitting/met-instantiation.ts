@@ -1,6 +1,6 @@
 /**
  * The instantiation of a trait a type meets where an `any` type's constraint asks for another
- * (§3.10), as the program's one search finds it
+ * (§8.3), as the program's one search finds it
  * (resolution/conformance/met-instantiations/index.ts), kept per type and constraint, so fitting,
  * dispatch and the reports of a misfit read one answer.
  */

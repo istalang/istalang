@@ -8,7 +8,7 @@
  *   against it (`plus(1)‸`), where a word would be glued to the operand. The parser cut off
  *   whatever it could not finish there (a header before its `:`, a guard, a template's `${…}`, a
  *   call's argument), so its tree can't. After an operand shaped as a deferred call's taker, which
- *   the placeholder's parse gives the name as the call it defers (§3.14), a name starting that call
+ *   the placeholder's parse gives the name as the call it defers (§6.5), a name starting that call
  *   may come too.
  * - A name the parser can't place (an `Invalid` node) stands in a `match` or `select` body, which
  *   holds only cases, or in a line of a module or a block.
@@ -48,7 +48,7 @@ export type GrammarPosition =
   /** Only these words may be written. */
   | { readonly kind: 'words'; readonly words: readonly Word[] }
   /**
-   * After a deferred call's taker (§3.14): a name starting the call it is given, or one of the
+   * After a deferred call's taker (§6.5): a name starting the call it is given, or one of the
    * words going on after the taker as an operand.
    */
   | { readonly kind: 'deferredCall'; readonly words: readonly Word[] }
@@ -59,7 +59,7 @@ export type GrammarPosition =
       readonly continuesIf: boolean;
     }
   | { readonly kind: 'operand'; readonly surroundings: Surroundings }
-  /** The place a `&` passes (§3.7). */
+  /** The place a `&` passes (§7.3). */
   | { readonly kind: 'referenced' }
   | { readonly kind: 'labels'; readonly labels: readonly Identifier[] };
 
@@ -95,7 +95,7 @@ export function grammarPositionAt(cursor: Cursor, { parsed }: GrammarPlace): Gra
 /**
  * What alone may follow the tokens before the cursor, where those decide it: the words after a
  * modifier or a loop's target; after an operand, the words going on after it, and where the
- * operand is a deferred call's taker, a name starting its call (§3.14).
+ * operand is a deferred call's taker, a name starting its call (§6.5).
  */
 function positionAfter(
   cursor: Cursor,
@@ -124,7 +124,7 @@ function positionAfter(
 }
 
 /**
- * Whether the name `name` starts the call a deferred call gives its taker (§3.14), as the
+ * Whether the name `name` starts the call a deferred call gives its taker (§6.5), as the
  * placeholder's parse reads it: some node holding it is a deferred call whose call starts there.
  */
 function startsDeferredCall({ tree, chain }: Parse, name: SyntaxNode): boolean {
@@ -160,13 +160,13 @@ function heldIn(
   }
 }
 
-/** Whether `reference` is a call's argument, the only place a `&` may stand (§3.7). */
+/** Whether `reference` is a call's argument, the only place a `&` may stand (§7.3). */
 function passesArgument({ chain }: Parse, reference: SyntaxNode): boolean {
   const holder = holderIn(chain, reference);
   return holder?.kind === 'Call' || holder?.kind === 'NamedArgument';
 }
 
-/** `hold(‸`: the label of a scope to hold until (§3.4); the parser reads it as a call. */
+/** `hold(‸`: the label of a scope to hold until (§7.1); the parser reads it as a call. */
 function holds(call: Extract<SyntaxNode, { readonly kind: 'Call' }>, node: SyntaxNode): boolean {
   const { callee } = call;
   return callee.kind === 'Identifier' && callee.text === 'hold' && callee !== node;
@@ -278,7 +278,7 @@ function startsHead(tree: SyntaxTree, word: Token): boolean {
 
 /**
  * Whether the parse read `word` alone as a deferred call's taker, as it reads a kind starting an
- * operand when a name follows it where a lambda's head would (§3.14).
+ * operand when a name follows it where a lambda's head would (§6.4).
  */
 function takesAlone(tree: SyntaxTree, word: Token): boolean {
   return nodesAt(tree, word.span.start).some(
@@ -332,7 +332,7 @@ const operandEnds: ReadonlySet<string> = new Set([
 
 /**
  * What may go on after the operand right before the cursor: an infix word, `by` after a range
- * with no step, `as` after a `select` case's future (§4, §3.8, §8).
+ * with no step, `as` after a `select` case's future (§3.1, §19.1, §15.4).
  */
 function goingOn({ tree, before }: Cursor): readonly Word[] {
   if (before === undefined) {
@@ -359,7 +359,7 @@ function continuesIf(tree: SyntaxTree, block: SyntaxNode, item: SyntaxNode): boo
 
 /**
  * Whether `node` ends in an `if` chain with no `else`, as a statement, a declared value or a
- * returned one does (§4): its last node, down to the first `if`, never into a block, whose `if`
+ * returned one does (§10.1): its last node, down to the first `if`, never into a block, whose `if`
  * takes its `else` deeper.
  */
 function endsInOpenIf(tree: SyntaxTree, node: SyntaxNode): boolean {

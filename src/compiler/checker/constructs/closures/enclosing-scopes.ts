@@ -1,5 +1,5 @@
 /**
- * The loops and labelled blocks around what one function checks (§3.4, §4): a function's own, since
+ * The loops and labelled blocks around what one function checks (§7.1, §11.1): a function's own, since
  * neither `break`, `continue` nor a label ever leaves the function it is written in
  * (function-scope.ts). Labels are resolved against it once, by constructs/statements/loops.ts.
  */

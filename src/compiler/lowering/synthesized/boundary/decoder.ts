@@ -118,7 +118,7 @@ export class Decoder {
    * The literal the value read is: each base's codec reads it in turn, a base that can't moving on
    * to the next, and the value read is compared with that base's literals, else an `Err` naming
    * them all. A union of literals' member holds nothing; a lone literal type is its base's value
-   * (§2).
+   * (§4.3).
    */
   #literals(
     form: Extract<DerivedForm, { kind: 'literals' }>,

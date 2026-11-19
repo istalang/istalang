@@ -1,16 +1,16 @@
 /**
- * Building structs (§3.1); reading their fields is ../access/member-access.ts's.
+ * Building structs (§5.2); reading their fields is ../access/member-access.ts's.
  *
  * - A struct literal names its type, or with `struct{…}` takes it: from the expected type when
  *   that is a struct, else from a leading spread's value, else it is the shape of its named items,
- *   each typed by its value. A literal through an alias of a shape builds the shape (§3.17).
+ *   each typed by its value. A literal through an alias of a shape builds the shape (§4.6).
  * - Its items are checked by one path (literal-fields/index.ts), so a generic struct's type
  *   arguments are written, expected, spread or inferred alike. A variant is built by its call
  *   (variants.ts), so braces after a variant's name, or a block below it, are refused, naming the
  *   call.
  * - A struct without fields is written bare (../access/names.ts), so braces after one are an error,
  *   whatever they hold.
- * - A shared struct is built with `new` and only one is (§3.18): its literal checks as any other,
+ * - A shared struct is built with `new` and only one is (§5.4): its literal checks as any other,
  *   braces and all, and its type is the shared struct, while a spread gives it the value behind
  *   another (`new Inbox{...*box}`).
  */
@@ -74,7 +74,7 @@ function leadingSpread(node: FieldsLiteral): LiteralSpread | undefined {
 
 /**
  * A literal naming a variant or a declared struct, with `new` or not, or an alias of a struct type,
- * which builds the type it stands for (§3.17).
+ * which builds the type it stands for (§4.6).
  */
 export function checkNamedLiteral(
   context: BodyContext,
@@ -132,7 +132,7 @@ function namedLiteralType(
 }
 
 /**
- * Reports a literal of a shared struct without `new`, or `new` before another type (§3.18); the
+ * Reports a literal of a shared struct without `new`, or `new` before another type (§5.4); the
  * literal is checked as written all the same.
  */
 function checkNew(context: BodyContext, node: NamedLiteral, isShared: boolean): void {
@@ -178,7 +178,7 @@ function checkAnonymousLiteral(
 
 /**
  * Whether `type` is a struct type whose fields aren't all known yet, which has keys all the same
- * (§3.1).
+ * (§5.2).
  */
 function hasKeys(context: BodyContext, type: Type): boolean {
   return context.checker.typeRules.keysOf(type, []).kind !== 'error';
@@ -240,7 +240,7 @@ function declaredShape(
  * A `struct{…}` of `shape` in a constraint scope that doesn't know yet what it builds
  * (docs/work/done/variance-inference/i2-scope.md §3): a placeholder of the scope, bounded below by its
  * shape, marked as one, and above by what it is `expected` to be, so a call choosing sees its
- * fields' types and it settles on a struct its fields give where one is expected (§3.1). The scope builds it once it knows what is expected of
+ * fields' types and it settles on a struct its fields give where one is expected (§5.2). The scope builds it once it knows what is expected of
  * it, of its fields as they were checked, so a field the scope postponed is told what it is
  * expected to be then; with nothing expected, it is its shape.
  */
@@ -270,7 +270,7 @@ function builtOnceExpected(
 
 /**
  * What a `struct{…}` of `shape`, its fields checked already, builds where `expected` is expected
- * (§3.1): the struct or shape `expected` is, or of a union the one member it gives the fields of,
+ * (§5.2): the struct or shape `expected` is, or of a union the one member it gives the fields of,
  * built of its fields as they were checked; else its own shape.
  */
 function builtAs(
@@ -297,7 +297,7 @@ function memberTaking(context: BodyContext, union: UnionType, shape: Type): Type
 
 /**
  * A `struct{…}` with nothing to take a type from: the shape of its named items, typed by their
- * values (§3.1). Its fields keep the shape's name order, and so do the sources recorded for them.
+ * values (§5.2). Its fields keep the shape's name order, and so do the sources recorded for them.
  */
 function freshAnonymous(context: BodyContext, node: StructLiteral): Type {
   const given: {

@@ -1,6 +1,6 @@
 /**
  * A module's check, and the diagnostics derived from it (docs/work/done/m6-m7/incremental-checking.md
- * §3). The check reads each top-level item's check, then the rules over the module as a whole:
+ * §5.1). The check reads each top-level item's check, then the rules over the module as a whole:
  * clashes among its functions, endless expansion, the constraint checks noted for it by everything
  * it read, and the cycles static lifetimes rejects. Each is an entry, so a lookup can read one
  * item's check alone.
@@ -98,7 +98,7 @@ export class ModuleChecks {
 
 /**
  * The diagnostics in `notes` reported in `module`, by position, then code and message; one made
- * again at the same place, as each pass of a field loop checks its body's text again (§4), once.
+ * again at the same place, as each pass of a field loop checks its body's text again (§11.2), once.
  */
 function diagnosticsIn(
   module: ModuleId,

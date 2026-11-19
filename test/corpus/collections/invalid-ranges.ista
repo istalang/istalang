@@ -3,8 +3,8 @@
 # error: 5302 at 15:27
 # error: 5303 at 17:3
 # error: 5016 at 18:17
-# Ranges hold ints (§3.8); a comprehension's condition is a bool and it runs over an iterable
-# (§4); a slice of a string can't be assigned, and a key no `index` takes can't slice (§3.9).
+# Ranges hold ints (§19.3); a comprehension's condition is a bool and it runs over an iterable
+# (§10.5); a slice of a string can't be assigned, and a key no `index` takes can't slice (§10.2).
 
 import * as runtime from 'runtime'
 

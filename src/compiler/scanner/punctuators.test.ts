@@ -1,5 +1,5 @@
 /**
- * Punctuators (spec §2–§4): each one alone, any sequence of them, and longest-match cases where a
+ * Punctuators (spec §2–§11): each one alone, any sequence of them, and longest-match cases where a
  * shorter punctuator is a prefix of a longer one.
  */
 

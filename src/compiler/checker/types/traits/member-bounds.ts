@@ -1,6 +1,6 @@
 /**
- * Member bounds on associated types (§3.10): `type Mode in Persistence` makes `T.Mode`, for a `T`
- * not known yet, stand for one member of that union, as a member parameter does (§3.5), so it may
+ * Member bounds on associated types (§8.2): `type Mode in Persistence` makes `T.Mode`, for a `T`
+ * not known yet, stand for one member of that union, as a member parameter does (§8.1), so it may
  * be a requirement's mark (`Self.Mode fn`) and a member parameter's argument. Where several of
  * `T`'s traits bound it, it is one member of each, so of the members they share.
  */

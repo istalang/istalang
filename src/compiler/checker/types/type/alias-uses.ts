@@ -1,10 +1,10 @@
 /**
- * How a type was written where it isn't spelled as itself (§3.1, §3.17): through an alias, an
+ * How a type was written where it isn't spelled as itself (§5.2, §4.6): through an alias, an
  * associated type or a struct's keys. An alias names no type of its own: a type written through one
  * carries it (type/index.ts `WrittenThrough`) only so its text can read as written
  * (`Entries<Int>`), which messages and hovers show. An associated type on a known type is such an
  * alias too (`Field<Int>.Data`), whose spelling also keeps inference from looking through it
- * (§3.5); on a type not known yet, it is a type of its own, opaque (`AssociatedOfType`). Exact
+ * (§8.1); on a type not known yet, it is a type of its own, opaque (`AssociatedOfType`). Exact
  * relations and type keys look through it. Only substitution keeps it, substituting its arguments
  * too (`mapAliasUse`), since that rewrites the alias's own parameters alike; any other change of a
  * type leaves a type the alias didn't write, so widening, the one other, drops it.
@@ -14,7 +14,7 @@ import { sameItems } from '../../../../foundation/structures/equality.ts';
 import type { TypeAliasDeclaration } from '../../../syntax/declarations/index.ts';
 import type { Type } from './index.ts';
 
-/** The alias a type was written through, with the arguments it was given there (§3.17). */
+/** The alias a type was written through, with the arguments it was given there (§4.6). */
 export interface DeclaredAliasUse {
   readonly kind: 'alias';
   readonly declaration: TypeAliasDeclaration;
@@ -22,8 +22,8 @@ export interface DeclaredAliasUse {
 }
 
 /**
- * The associated type `name` of `of` a type was written as, `Field<T>.Data` (§3.1): the same type
- * as what it names, which inference never looks through (§3.5).
+ * The associated type `name` of `of` a type was written as, `Field<T>.Data` (§5.2): the same type
+ * as what it names, which inference never looks through (§8.1).
  */
 export interface AssociatedUse {
   readonly kind: 'associated';
@@ -32,7 +32,7 @@ export interface AssociatedUse {
 }
 
 /**
- * The keys of the struct `of` a union of String literals was written as, `keyof Settings` (§3.1
+ * The keys of the struct `of` a union of String literals was written as, `keyof Settings` (§5.2
  * Key types): the same type as the union, whose literals name `of`'s fields, which tools read.
  */
 interface KeysUse {
@@ -47,7 +47,7 @@ interface KeysUse {
 export type AliasUse = DeclaredAliasUse | AssociatedUse | KeysUse;
 
 /**
- * How a recursive type's node reads (§3.17): the alias it was written through, or, for a recursive
+ * How a recursive type's node reads (§4.6): the alias it was written through, or, for a recursive
  * type `match` use an associated type stands for, that associated type, `Group<Category>.Data`.
  */
 export type RecursiveLabel = DeclaredAliasUse | AssociatedUse;

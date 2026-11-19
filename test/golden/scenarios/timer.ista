@@ -1,5 +1,5 @@
 # A child instance waiting on a timer at a named waypoint: its host sees where it waits and until
-# when, wakes it early to nothing new, then once the timer is due (§3.8, §9).
+# when, wakes it early to nothing new, then once the timer is due (§19.2, §17.3).
 import * as log from 'log'
 import * as runtime from 'runtime'
 import * as time from 'time'

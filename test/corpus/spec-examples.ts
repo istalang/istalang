@@ -1,5 +1,5 @@
 /**
- * The fenced code examples of docs/spec.md and docs/guide.md, read when tests load.
+ * The fenced code examples of the spec's chapters (docs/spec/) and docs/guide.md, read when tests load.
  *
  * The spec and guide are the only homes of their examples. Tests derive them on every run instead
  * of keeping copies, which would drift with the next doc edit. Each example records the heading it
@@ -20,18 +20,37 @@
  * cheat sheet's. An unknown word there fails every test at load, so a typo can't hide an example.
  */
 
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 
 /** A whole module, statements shown outside any function, or a sample that is neither. */
 type ExampleForm = 'module' | 'statements' | 'fragment';
 
-/** The documents holding examples, relative to the repository's root. */
-export const documentPaths = ['docs/spec.md', 'docs/guide.md'] as const;
+const repositoryRoot = new URL('../../', import.meta.url);
 
-type DocumentPath = (typeof documentPaths)[number];
+/** The spec's folder, one folder per chapter and one file per section, relative to the repository's root. */
+const specFolder = 'docs/spec/';
+
+/** Whether `document` is one of the spec's chapters, rather than the guide. */
+export function isSpecDocument(document: string): boolean {
+  return document.startsWith(specFolder);
+}
+
+/** An example's section as tests key it, `document › section`, naming the spec as one document. */
+export function sectionKey({ document, section }: SpecExample): string {
+  return `${isSpecDocument(document) ? 'docs/spec' : document} › ${section}`;
+}
+
+/** The documents holding examples, relative to the repository's root, the spec's in reading order. */
+export const documentPaths: readonly string[] = [
+  ...readdirSync(new URL(specFolder, repositoryRoot), { recursive: true, encoding: 'utf8' })
+    .filter((path) => path.endsWith('.md'))
+    .map((path) => `${specFolder}${path}`)
+    .sort(),
+  'docs/guide.md',
+];
 
 export interface SpecExample {
-  readonly document: DocumentPath;
+  readonly document: string;
   /** The title of the heading the example sits under in `document`. */
   readonly section: string;
   /** One-based line of the example's first code line in `document`. */
@@ -83,7 +102,7 @@ interface OpenExample {
 }
 
 /** The examples of `markdown`, the text of the document at `path`. */
-export function extractExamples(path: DocumentPath, markdown: string): SpecExample[] {
+export function extractExamples(path: string, markdown: string): SpecExample[] {
   const examples: SpecExample[] = [];
   let section = '';
   let open: OpenExample | undefined;
@@ -122,7 +141,7 @@ export function extractExamples(path: DocumentPath, markdown: string): SpecExamp
 }
 
 export const specExamples: readonly SpecExample[] = documentPaths.flatMap((path) =>
-  extractExamples(path, readFileSync(new URL(`../../${path}`, import.meta.url), 'utf8')),
+  extractExamples(path, readFileSync(new URL(path, repositoryRoot), 'utf8')),
 );
 
 /** The code of every spec example in `section` that `wanted` picks; throws when it picks none. */
@@ -133,7 +152,7 @@ export function specCode(
   const found = specExamples
     .filter(
       (example) =>
-        example.document === 'docs/spec.md' && example.section === section && wanted(example.code),
+        isSpecDocument(example.document) && example.section === section && wanted(example.code),
     )
     .map(({ code }) => code);
   if (found.length === 0) {

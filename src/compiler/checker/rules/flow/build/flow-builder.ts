@@ -7,7 +7,7 @@
  *   after it goes in a fresh block nothing jumps to, so it is still built, as code no path reaches.
  * - A name the body declares is one variable per function; any other name a global.
  * - The view the body's facts are read through changes inside a field loop's pass (`inView`):
- *   each pass reads the body as that pass checked it (§4).
+ *   each pass reads the body as that pass checked it (§11.2).
  */
 
 import type { VariableEntity } from '../../../../binder/entities.ts';
@@ -70,7 +70,7 @@ export interface Constructs {
 }
 
 /**
- * The optional chain (§4) whose links are being built: its links, the block its end meets at,
+ * The optional chain (§10.4) whose links are being built: its links, the block its end meets at,
  * and the value it gives there, `none` where a link met none.
  */
 export interface OpenChain {
@@ -216,7 +216,7 @@ export class FlowBuilder {
 
   /**
    * A temporary holding the value of `node`, of the type checking recorded for it; a link of an
-   * optional chain's, of what its own step gives, which only the chain wraps (§4).
+   * optional chain's, of what its own step gives, which only the chain wraps (§10.4).
    */
   temporaryOf(node: Expression): ValueId {
     return this.temporary(node, this.#body.chainOf(node)?.carried ?? this.#body.typeOf(node));
@@ -331,7 +331,7 @@ export class FlowBuilder {
     return value;
   }
 
-  /** `name`, the function's own name inside it, as the closure it runs as (§3.14). */
+  /** `name`, the function's own name inside it, as the closure it runs as (§6.4). */
   ownName(name: Identifier, type: Type | undefined): void {
     const entity = this.entityOf(name);
     if (entity !== undefined) {

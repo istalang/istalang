@@ -1,5 +1,5 @@
 /**
- * A value converted into an `any` type (§3.10), as a fit or a conversion entry makes it: from a
+ * A value converted into an `any` type (§8.3), as a fit or a conversion entry makes it: from a
  * concrete type, the variant holding it (members/holdings.ts); from another `any` type, whose constraints
  * stand for the target's, through the entry converting variant by variant; from the same `any` type,
  * the value itself; from a union, each member's value as a value of that member.

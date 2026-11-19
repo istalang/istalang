@@ -1,8 +1,8 @@
 # outcome: ["round trip","none, unknown fields ignored","$.items[0].qty: expected an integer, found a string","$.id: missing","$.shape._type: names no variant 'Square'","$.pair: expected 2 elements, found 1","$.due: 'P1Y' is not an ISO 8601 duration.","$.tags.x: 'x' is not an Int.","$.items[0].qty: expected an integer, found a number","json","123456789012345678901234567890","skipped 7"]
-# Reading JSON back by the declared type (§9): what stringify writes parses to an equal value, a
+# Reading JSON back by the declared type (§17.4): what stringify writes parses to an equal value, a
 # missing optional field is none and an unknown one is ignored, and a mismatch is an Err whose
 # message names the path of the first part that doesn't fit, a struct's fields read in name order
-# (§3.1); text that isn't JSON is an Err with code json. A @JsonBigInt field reads the string of digits it was written as, and a @JsonSkip field
+# (§5.2); text that isn't JSON is an Err with code json. A @JsonBigInt field reads the string of digits it was written as, and a @JsonSkip field
 # reads back as its type's default().
 
 import * as json, JsonBigInt, JsonSkip from 'json'

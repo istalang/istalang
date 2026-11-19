@@ -1,5 +1,5 @@
 # outcome: "0 3 6 9|10 8 6 4 2 0|[]|[0, 2, 4]|[4, 3, 2, 1, 0]|[9, 1, 9, 3, 9]|true false true|ace"
-# Range steps (§3.8, §3.9): the step's sign is the direction, `..=` reaches its end when a step
+# Range steps (§19.3, §10.2): the step's sign is the direction, `..=` reaches its end when a step
 # lands on it, a range whose end lies the other way is empty, and slicing steps through the items,
 # its open ends defaulting by the direction.
 

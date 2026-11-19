@@ -1,5 +1,5 @@
 /**
- * An `Instance<T>` (§9) is a value of its extern type entry whose payload is the name of the
+ * An `Instance<T>` (§17.1) is a value of its extern type entry whose payload is the name of the
  * instance it is a handle to. This is the one home of that shape: the natives that spawn, and those
  * that read a handle, go through it.
  */

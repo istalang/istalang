@@ -9,7 +9,7 @@
  *   (constructs/declarations/module-checks.ts), so each is reported once and found by every module
  *   it is in.
  * - A top-level constant is checked the same lazy way, and one reached while it is being checked
- *   is defined through itself (§3).
+ *   is defined through itself (§5.1).
  * - What one kind of declaration needs lives in a unit beside its rules, which this class composes
  *   (constructs/declarations/: functions, constants, layouts, parameters, aliases, static
  *   functions, type parameters; program-type-rules.ts: the type rules and fitting; rules/:

@@ -1,5 +1,5 @@
 # outcome: "iter 0, iter 1, iter 2, while, d-early, r=5, stopped 1, v=3, stopped 7, timer, after select"
-# Every way out of a block releases what it holds (§3.4, §7): `break` and `return` run the defers
+# Every way out of a block releases what it holds (§7.1, §16): `break` and `return` run the defers
 # of each block they leave, innermost first, and a variable an async call held when `return` left
 # its block is released there, before the caller sees the result. A select's loser is disposed
 # before the winner's body runs.

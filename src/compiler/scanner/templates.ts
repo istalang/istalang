@@ -1,5 +1,5 @@
 /**
- * Templates and docstrings (spec §2): the literals that span lines.
+ * Templates and docstrings (spec §3.1): the literals that span lines.
  *
  * - A template, `` `…${value}…` ``, takes a string's escapes and holds values. Where a value's `}`
  *   stands is known only by scanning the code inside it, which may hold braces, strings and other

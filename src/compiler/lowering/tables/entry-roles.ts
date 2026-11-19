@@ -1,7 +1,7 @@
 /**
  * The roles of type entries (definition/tables/types.ts): the std types the runtime treats by what
  * they are, recognized by their declarations, never by their names. A shared struct's role comes
- * from its declaration's kind instead (§3.18).
+ * from its declaration's kind instead (§5.4).
  */
 
 import type { EnumRole, ExternRole } from '../../../definition/tables/types.ts';
@@ -14,7 +14,7 @@ import type { Checker } from '../../checker/check.ts';
 /**
  * The std type each role of an extern type entry is (definition/tables/types.ts), so the runtime
  * recognizes none by its name; a shared struct's role comes from its declaration's kind instead
- * (§3.18).
+ * (§5.4).
  */
 export const externRoles = {
   array: wellKnown.array,
@@ -27,7 +27,7 @@ export const externRoles = {
 
 /**
  * The std type each role of an enum entry is (definition/tables/types.ts): `json.Json`, a recursive
- * alias whose union is an enum entry (§3.17).
+ * alias whose union is an enum entry (§4.6).
  */
 export const enumRoles = {
   json: wellKnown.json,

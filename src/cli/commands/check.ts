@@ -2,7 +2,7 @@
  * `ista check [files…]`: report every problem the compiler finds in the given modules and in
  * everything they import, without running anything.
  *
- * With no files, every `.ista` file under the project root is a root (§3.13). Exit codes: 0 when
+ * With no files, every `.ista` file under the project root is a root (§13.1). Exit codes: 0 when
  * there are no errors (warnings alone don't fail a check), 1 when there are, and 2 when a named
  * file can't be read, which is a mistake in the command line rather than in the code.
  */

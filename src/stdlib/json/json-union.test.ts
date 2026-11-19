@@ -153,7 +153,7 @@ describe('Json as a recursive union: literals, matching and codecs (§3)', () =>
   });
 });
 
-describe('Json in a union (§2, §3.17)', () => {
+describe('Json in a union (§4.2, §4.6)', () => {
   it('merges a member Json holds into it: Json | Int | String is Json', () => {
     expect(
       reported(

@@ -3,7 +3,7 @@
  * as, in source order.
  *
  * Keywords, literals, comments and operators are known from the token alone. A name takes its role
- * from the tree (name-types.ts); a contextual word (§2) the tree holds no name for is acting as a
+ * from the tree (name-types.ts); a contextual word (§2.2) the tree holds no name for is acting as a
  * keyword there, such as `new` before a struct literal. Brackets and separators have no kind:
  * they are punctuation, which an editor's grammar colors already.
  *

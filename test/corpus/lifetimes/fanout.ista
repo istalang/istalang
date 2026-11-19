@@ -1,5 +1,5 @@
 # outcome: "got a, first 2"
-# Static lifetimes accepts the std's own linking (§7): a subscription kept in a `Shared` and let
+# Static lifetimes accepts the std's own linking (§16): a subscription kept in a `Shared` and let
 # go of by setting it to `none`, the bus's `_publish` linking each message into its stream behind
 # fresh slots, and `futures.first` over several futures.
 

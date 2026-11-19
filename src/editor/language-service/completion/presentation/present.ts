@@ -11,10 +11,10 @@
  *   being written, a local or the module's, or a place's own (a member, a field, an argument):
  *   a prelude or imported name fitting by its type alone is no guess worth accepting with Enter.
  * - A field named in a literal or an annotation inserts `name: ` and asks for the next list, its
- *   value's (§3.1), as an argument's label does, but alone where its `:` already follows.
+ *   value's (§5.2), as an argument's label does, but alone where its `:` already follows.
  *   Its priority puts a field with no default first, as it must be given.
  * - Where a function value is expected, a function or a variant's constructor fitting it as a
- *   value, as checking binds one (`givenAsValue`, presenting.ts), fits too (§3.14).
+ *   value, as checking binds one (`givenAsValue`, presenting.ts), fits too (§6.4).
  * - Within a member's list, fields and variants come before methods, a variant reached through its
  *   enum being no name a scope offers, of no group; a value another case already tests ranks after
  *   the rest.

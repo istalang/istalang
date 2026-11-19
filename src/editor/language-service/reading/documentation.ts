@@ -1,6 +1,6 @@
 /**
  * What documents a declaration, as hover and completion show it: the comments written right above
- * it, then its docstring (§2), as Markdown.
+ * it, then its docstring (§2.3), as Markdown.
  *
  * The comments above a declaration are the block of `#` comments, each on a line of its own,
  * whose last ends on the line before the declaration's first, with no blank line in the block: a
@@ -29,7 +29,7 @@ export function documentationOf(checker: Checker, declared: Declared): string | 
   return written.length === 0 ? undefined : written.join('\n\n');
 }
 
-/** The docstring of what `declared` names, for the declarations that may have one (§2). */
+/** The docstring of what `declared` names, for the declarations that may have one (§2.3). */
 function docstringOf(checker: Checker, declared: Declared): string | undefined {
   switch (declared.kind) {
     case 'function':

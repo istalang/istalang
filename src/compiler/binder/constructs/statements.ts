@@ -1,14 +1,14 @@
 /**
- * Binding names in blocks and statements (§3.4, §4, §7, §9).
+ * Binding names in blocks and statements (§7.1, §10.1, §16, §17.1).
  *
  * A block defines its names one statement at a time, so a name is visible only after the statement
- * that declares it, and nothing is hoisted: not a `let`, not a local function (§3.14). Before any
+ * that declares it, and nothing is hoisted: not a `let`, not a local function (§6.4). Before any
  * statement is bound, the block notes every name it will declare, so a use that comes too early is
  * reported as such rather than as undeclared. When the block ends, its names move to the enclosing
  * block's list of names that have ended (module/scope.ts).
  *
  * A local function's name is defined before its body is bound, so it can call itself. `_` as a
- * target holds a value without a name (§3.4).
+ * target holds a value without a name (§7.1).
  */
 
 import { type Handlers, handlerOf } from '../../../foundation/structures/kind-table.ts';
@@ -103,7 +103,7 @@ export function spanThrough(binder: LocalBinder, item: SyntaxNode): AnchoredSpan
   return body?.span ?? item.span;
 }
 
-/** The scope a transient's type and initializer are bound in (§3.4), which tools see there too. */
+/** The scope a transient's type and initializer are bound in (§7.1), which tools see there too. */
 function fencedScope(binder: LocalBinder, node: VariableDeclaration, scope: Scope): Scope {
   const fenced = Scope.fenced(scope);
   binder.enter(node.initializer, fenced);
@@ -143,7 +143,7 @@ export function bindTargets(
 
 /**
  * An assignment target: a variable it assigns, a place whose root it reads, or a tuple or struct
- * literal of targets (§3.15). A struct target's shorthand `first` assigns the variable `first`.
+ * literal of targets (§4.5). A struct target's shorthand `first` assigns the variable `first`.
  */
 function bindAssignmentTarget(binder: LocalBinder, target: Expression, scope: Scope): void {
   const bare = unparenthesized(target);

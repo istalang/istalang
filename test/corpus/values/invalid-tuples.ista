@@ -2,8 +2,8 @@
 # error: 5201 at 10:13
 # error: 5202 at 11:9
 # error: 5202 at 14:3
-# A tuple's element is named by a position it has (§3.1), and a tuple target names each element
-# once (§3.15).
+# A tuple's element is named by a position it has (§4.5), and a tuple target names each element
+# once (§4.5).
 
 fn subject(n: Int):
   const y = n.0

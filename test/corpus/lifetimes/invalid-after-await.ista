@@ -1,6 +1,6 @@
 # error: 5720 at 18:3
 # After an `await`, other code may have linked what the function was given as their declarations
-# allow (§7), so a write that would close a cycle through a disposable if it had is reported in
+# allow (§16), so a write that would close a cycle through a disposable if it had is reported in
 # the function itself: here `b` may hold `a` by then, and `a` holds a lease.
 
 import * as runtime from 'runtime'

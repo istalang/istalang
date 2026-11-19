@@ -1,5 +1,5 @@
 /**
- * Generic types that would need endlessly many instantiations (§3.5): `struct W<T>` with a field of
+ * Generic types that would need endlessly many instantiations (§8.1): `struct W<T>` with a field of
  * type `W<(T,)>?` makes `W<Int>`, `W<(Int,)>` and so on without end.
  *
  * The expansion graph (edges.ts) takes its edges from fields here: each generic struct or enum a

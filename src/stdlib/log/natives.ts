@@ -1,7 +1,7 @@
 /**
  * The `log` module's natives (log.ista): `write`, which adds a record to its segment's log
  * (runtime/natives.ts `NativeLogs`), its level as a host reads it and its fields as the JSON a host
- * reads (§9).
+ * reads (§17.3).
  */
 
 import type { NativeKeys } from '../../definition/extern-key.ts';

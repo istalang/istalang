@@ -1,6 +1,6 @@
 /**
  * The type `match`es and associated types an instantiation reaches, every one of which must name a
- * type (§3.1, §3.5, §3.17): no case matching, or an associated type expanding itself, is a compile
+ * type (§5.2, §8.1, §4.6): no case matching, or an associated type expanding itself, is a compile
  * error where the alias is used, and a generic declaration's uses are used where an instantiation
  * gives its parameters their arguments.
  *
@@ -8,7 +8,7 @@
  *   type with arguments not known yet stands in: its fields, variants and associated types, an
  *   alias's body, and a function's written types, signature and body alike, and its result, with
  *   the type arguments its calls give and their callees' requirements, read through those
- *   arguments, and the structs without fields its code names with type arguments, `Tag<D>` (§3.1);
+ *   arguments, and the structs without fields its code names with type arguments, `Tag<D>` (§5.2);
  *   a struct's or variant's field defaults bring what their calls reach and make alike. A function
  *   reached again while its requirements are found adds none: the cycle's own uses are among the
  *   others'.
@@ -194,7 +194,7 @@ export class ReductionRequirements {
 
   /**
    * What the defaults of a struct's or variant's fields reach through their calls and the structs
-   * without fields they make (§3.1).
+   * without fields they make (§5.2).
    */
   #defaultsReach(fields: FieldsFunction | undefined): readonly Type[] {
     if (fields === undefined) {
@@ -208,7 +208,7 @@ export class ReductionRequirements {
 
   /**
    * A function's types: those written in it, once its signature and code are checked, its result,
-   * which a variant's constructor never writes (§3.11), and those the calls its code makes reach,
+   * which a variant's constructor never writes (§5.3), and those the calls its code makes reach,
    * read through each call's type arguments.
    */
   #functionTypes(declaration: FunctionDeclaration): readonly Type[] {
@@ -258,7 +258,7 @@ export class ReductionRequirements {
   }
 }
 
-/** The types a type's own associated types stand for, its parameters open (§3.1). */
+/** The types a type's own associated types stand for, its parameters open (§5.2). */
 function associated(checker: CheckerContext, declaration: AssociatingDeclaration): readonly Type[] {
   return declaration.associatedTypes.map((each) =>
     aliasInstance(each, checker.aliasedType(each), new Map(), checker.typeRules),
@@ -272,7 +272,7 @@ function isGenericDeclaration(declaration: Instantiable): boolean {
 
 /**
  * The structs without fields that code among `nodes`, as `bodies` checked it, makes by naming them
- * with type arguments, `Tag<D>` (§3.1), which no call records.
+ * with type arguments, `Tag<D>` (§5.2), which no call records.
  */
 function madeBare(
   nodes: readonly SyntaxNode[],

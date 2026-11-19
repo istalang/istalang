@@ -1,5 +1,5 @@
 # outcome: "load later | x inner | later | 40 5 12 | 9 | 14 3 3 8 20"
-# A deferred call, `g f(args)` (§3.14), gives `g` a function making the call later, everything
+# A deferred call, `g f(args)` (§6.5), gives `g` a function making the call later, everything
 # written in it computed now: `load(id)` before `.process()` is deferred, `x` of `a b c(x)` once,
 # and a default the call leaves out when it runs. Its taker may write arguments of its own, by
 # position or by name, be a method on a receiver or a function value; the function fits as any

@@ -1,5 +1,5 @@
 /**
- * How a multi-line literal's lines become its value (§2): one rule for templates and docstrings.
+ * How a multi-line literal's lines become its value (§3.1): one rule for templates and docstrings.
  *
  * - A line break in the source is `\n` in the value, whichever break the source uses.
  * - If the opening delimiter ends its line, that line break goes; so does the one before a closing
@@ -63,7 +63,7 @@ export class PieceReader {
 
 const blankText = /^[ \t]*$/u;
 
-/** Each text of a literal, laid out (§2): `texts` are what stands around its values, in order. */
+/** Each text of a literal, laid out (§4.2): `texts` are what stands around its values, in order. */
 export function layOutLines(texts: readonly Pieces[]): readonly string[] {
   const first = texts[0] ?? [];
   const last = texts.at(-1) ?? [];

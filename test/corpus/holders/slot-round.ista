@@ -1,6 +1,6 @@
 # outcome: "disposed inside, disposed first | disposed inside, disposed first | disposed inside, disposed first"
-# A slot dies with the values in it (§6), so what it holds is disposed in the slot's own round,
-# before what was created earlier (§7), whether no weak reference, a named one or an unnamed one
+# A slot dies with the values in it (§15.1), so what it holds is disposed in the slot's own round,
+# before what was created earlier (§16), whether no weak reference, a named one or an unnamed one
 # refers to the slot: a weak reference holds nothing.
 
 import * as runtime from 'runtime'

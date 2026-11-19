@@ -90,7 +90,7 @@ export function declaringModuleOf(node: NodeOf<string>): ModuleId | undefined {
 }
 
 /**
- * `item`, its type parameters, a trait's members with theirs, its associated types (§3.1), and the
+ * `item`, its type parameters, a trait's members with theirs, its associated types (§5.2), and the
  * functions it reads as.
  */
 function itemDeclarations(item: Declaration): readonly NodeOf<string>[] {

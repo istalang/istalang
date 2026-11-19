@@ -1,6 +1,6 @@
 /**
- * The binder's rules (§2, §3.1, §3.4, §3.11, §3.13): one invalid case per rule, reported once at
- * the offending name; valid programs, the prelude and §12 binding cleanly; totality on broken
+ * The binder's rules (§4.2, §5.2, §7.1, §11.3, §13.1): one invalid case per rule, reported once at
+ * the offending name; valid programs, the prelude and §20 binding cleanly; totality on broken
  * programs; reuse of unchanged modules' bindings across snapshots; and the module declaring each
  * entity, at the top level or inside a declaration.
  */
@@ -122,13 +122,13 @@ describe('binding reports, once and at the name', () => {
       'B',
     ],
     [
-      'a name after a generic alias of an enum, in a pattern (§3.17)',
+      'a name after a generic alias of an enum, in a pattern (§4.6)',
       'enum Color { Red, Green }\ntype Id<Color> = Color\nfn f(c: Color) -> Int:\n  match c:\n    case Id.Green: 1\n    case _: 2',
       d.qualifiesNothing,
       'Green',
     ],
     [
-      'a name after an alias of an enum given type arguments, in a pattern (§3.17)',
+      'a name after an alias of an enum given type arguments, in a pattern (§4.6)',
       'type IntResult = Result<Int, String>\nfn f(r: Result<Int, String>) -> Int:\n  match r:\n    case IntResult.Ok(value): value\n    case _: 2',
       d.qualifiesNothing,
       'Ok',
@@ -251,8 +251,8 @@ describe('valid programs bind without diagnostics', () => {
     expect(boundReport(corpus, 'names/lib')).toEqual(reportedNothing);
   });
 
-  it('§12.1, its examples joined into one module', () => {
-    const purchase = specCode('12.1 Purchase approval').join('\n');
+  it('§20.1, its examples joined into one module', () => {
+    const purchase = specCode('20.1 Purchase approval').join('\n');
     expect(boundReport({ main: purchase })).toEqual(reportedNothing);
   });
 

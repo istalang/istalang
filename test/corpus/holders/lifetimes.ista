@@ -1,9 +1,9 @@
 # outcome: "started 0, stopped 0, started 1, stopped 1, loop done, stopped 10, overwritten, stopped 20, dropped, stopped 30, temporary, stopped 11, subscribed, stopped 60, unsubscribed, kept until return, stopped 41, stopped 40, returned"
-# What a block's variables hold is released when the block ends (§3.4, §7), so each pass of a
+# What a block's variables hold is released when the block ends (§7.1, §16), so each pass of a
 # loop releases its own: an async call held by `_` in a loop body is disposed at the end of its
 # pass, stopped at the await it waits at, and its defers run. Overwriting a variable releases the
 # old value, `drop x` releases `x` at once, and a temporary ends with its statement. Setting a
-# `Shared` holding the only handle to `none` releases it, as §7 stops a subscription. A `hold _`
+# `Shared` holding the only handle to `none` releases it, as §16 stops a subscription. A `hold _`
 # holding lasts until its function returns, across its awaits, and is disposed newest first then.
 
 import * as runtime from 'runtime'

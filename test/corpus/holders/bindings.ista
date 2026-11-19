@@ -1,5 +1,5 @@
 # outcome: "in case, stopped 1, after match, in if, stopped 2, after if, pass, stopped 3, pass, stopped 4, after while"
-# A pattern's bindings belong to the scope they are visible in (§3.11, §7): a `match` case's end
+# A pattern's bindings belong to the scope they are visible in (§11.3, §16): a `match` case's end
 # with its body, an `is` binding's with the body of its `if` or `while`, on every pass. A header's
 # temporaries, such as the subject a call made, end before the body, so once a binding ends,
 # nothing holds what it held, and it is disposed there.

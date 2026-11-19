@@ -1,5 +1,5 @@
 /**
- * Running over a struct's fields (§4): a field loop, an array comprehension and a struct
+ * Running over a struct's fields (§11.2): a field loop, an array comprehension and a struct
  * comprehension each check what their header heads once per pass over the fields it visits
  * (`fieldPassesOver`). Over a value's fields, its subject is checked once, and the header's key and
  * value take apart the pair of the pass's key and value; over a type's keys, the key the header
@@ -92,10 +92,10 @@ export function inFieldPasses(
 }
 
 /**
- * The passes a field loop's body is checked in over a value of `subject`, or its keys (§4): one
+ * The passes a field loop's body is checked in over a value of `subject`, or its keys (§11.2): one
  * per key a literal names, its value that field's type; and, for the keys not known yet, one pass whose key
  * is a member parameter keyed by `header` ranging over them, its value the field that key names;
- * a struct with no field, or a subject with no value (§2), one pass visiting none (`noFieldPass`).
+ * a struct with no field, or a subject with no value (§4.1), one pass visiting none (`noFieldPass`).
  * Undefined when `subject` has no keys.
  */
 function fieldPassesOver(

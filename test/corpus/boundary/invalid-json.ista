@@ -4,7 +4,7 @@
 # error: 5101 at 29:8
 # error: 5101 at 31:25
 # error: 5101 at 32:9
-# json writes and reads only what is Encodable, or Decodable (§9): not a function, not a map whose
+# json writes and reads only what is Encodable, or Decodable (§17.4): not a function, not a map whose
 # keys aren't Stringable, not an enum with a variant field keyed _type, which the tag uses; and a
 # type declaring a toJson but no fromJson is written but not read, since nothing is derived for it.
 # main's outcome is written as JSON for its host.

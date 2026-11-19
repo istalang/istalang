@@ -1,5 +1,5 @@
 /**
- * Finishing inference (§3.5): each parameter settled by the one policy (settle.ts), its default
+ * Finishing inference (§8.1): each parameter settled by the one policy (settle.ts), its default
  * read with what is settled before it. The first parameter left unsettled, or one whose bounds
  * disagreed, can't be inferred; calls and literals report it alike.
  */

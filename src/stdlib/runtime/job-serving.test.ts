@@ -1,5 +1,5 @@
 /**
- * The loop serving delegated jobs (spec §5, proposal 8 Rule 8) serves an instance again once a
+ * The loop serving delegated jobs (spec §14, proposal 8 Rule 8) serves an instance again once a
  * retry runs it after a panic, which ended the loop serving it, and serves what that retry spawns.
  */
 

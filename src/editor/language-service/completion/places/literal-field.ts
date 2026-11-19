@@ -1,16 +1,16 @@
 /**
  * A literal field's place: where a struct literal's item names its field, the fields
- * the literal builds that its other items don't give (§3.1), by the checker's one rule of which
+ * the literal builds that its other items don't give (§5.2), by the checker's one rule of which
  * field an item gives (struct-items.ts), so a value given by position counts; none for a literal
- * checking found no declared fields for. An indented value's entry (§2) is the same place, read
+ * checking found no declared fields for. An indented value's entry (§3.2) is the same place, read
  * through the literal checking built it as: a struct's fields, or the keys a map's key type
  * spells, quoted.
  *
  * Right after its `{`, a struct literal building one field also takes that field's value without
- * its name (§3.1), so a value may stand there too, and what an expression starts with is offered
+ * its name (§5.2), so a value may stand there too, and what an expression starts with is offered
  * beside the field when completion is invoked (grammar/expression.ts); typing the `{` asks for
  * fields alone. Braces after a variant's name build nothing, a variant
- * being built by its call (§3.11), so they offer no field. A visible variable named like a field
+ * being built by its call (§5.3), so they offer no field. A visible variable named like a field
  * not given yet is offered too, as the shorthand writing both (`Pair{first}`); the leading spread
  * only where it may stand, as the first item.
  */
@@ -43,7 +43,7 @@ import { expressionCandidates } from './grammar/expression.ts';
 /**
  * Where a field's name is written in a struct literal: right after the literal's own
  * `{` (`opens`) or one of its `,`, or first on a line after one of its items, where the line break
- * separates two items as a `,` does (§2), whatever the parser made of a name half written there
+ * separates two items as a `,` does (§2.1), whatever the parser made of a name half written there
  * (`item`, the item it starts) or of a literal not closed yet.
  */
 export interface LiteralFieldPlace {
@@ -173,7 +173,7 @@ function isFieldItem(item: FieldsLiteral['items'][number] | IndentedEntry): item
 }
 
 /**
- * The keys an indented map's key type spells (§2) that its other entries don't give: each String
+ * The keys an indented map's key type spells (§3.2) that its other entries don't give: each String
  * literal among its members, quoted.
  */
 function mapKeys(type: Type | undefined, given: readonly string[]): readonly Candidate[] {

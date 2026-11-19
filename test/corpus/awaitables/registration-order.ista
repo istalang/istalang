@@ -1,6 +1,6 @@
 # outcome: [7,7]
 # One resolver registered on several futures that resolve together is decided by the one registered
-# earliest (§6), whichever order the awaitable lists them in.
+# earliest (§15.2), whichever order the awaitable lists them in.
 
 import * as runtime from 'runtime'
 

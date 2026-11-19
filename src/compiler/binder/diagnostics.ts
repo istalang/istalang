@@ -1,5 +1,5 @@
 /**
- * Diagnostics of binding names, codes 4000–4999 (§2, §3.1, §3.4, §3.11, §3.13, §7, §10).
+ * Diagnostics of binding names, codes 4000–4999 (§4.2, §5.2, §7.1, §11.3, §13.1, §16, §18).
  *
  * A name that resolves to nothing gets the most specific explanation the binder can give: it was
  * declared later in its block, in a block that has ended, or on one side of an `or`. Only when none
@@ -104,11 +104,11 @@ export const binderDiagnostics = defineDiagnostics('binder', {
   ambiguousName: {
     code: 4022,
     message: (name: string) =>
-      `'${name}' is ambiguous here: a '*' import gives it, and so does another import, a declaration or the prelude (§3.13).`,
+      `'${name}' is ambiguous here: a '*' import gives it, and so does another import, a declaration or the prelude (§13.1).`,
   },
   transientReads: {
     code: 4021,
     message: (name: string) =>
-      `A transient's initializer runs at the outermost call alone, so it can't read '${name}', a variable of its function (§3.4).`,
+      `A transient's initializer runs at the outermost call alone, so it can't read '${name}', a variable of its function (§7.1).`,
   },
 });

@@ -5,17 +5,17 @@
  *
  * A native takes its arguments as values and returns one; an argument the extern takes by `&` it
  * changes by writing it back through its context. It signals a bug in the program, such as
- * a division by zero, by throwing a `Panic` (§3.12), and JSON from the host that doesn't fit (§9)
+ * a division by zero, by throwing a `Panic` (§12), and JSON from the host that doesn't fit (§17.4)
  * by throwing a `Refusal` (runtime/refusal.ts), which fails the host's call so nothing it ran
  * commits; anything else it throws is a bug in the native itself and propagates.
  *
  * Natives the runtime backs need the running instance, so each call also receives a context: the
  * extern being called, its declared result and type arguments, and the Definition's types (for
- * building typed values), what `now()` reads (§5), and
+ * building typed values), what `now()` reads (§14), and
  * capabilities, one per part of the instance a native reaches: the futures the runtime creates
- * for an extern that returns one (§3.6), its waits and language resolvers and its slots (§6), its
- * weak references and its resources (§7), its random source and its log (§3.8), its instances and
- * a live run's contexts (§9), what a test reaches (§10), the JSON it wrote values as (§9), and the
+ * for an extern that returns one (§17.2), its waits and language resolvers and its slots (§15.1), its
+ * weak references and its resources (§16), its random source and its log (§19.2), its instances and
+ * a live run's contexts (§17.1), what a test reaches (§18), the JSON it wrote values as (§17.4), and the
  * run's own primitives the prelude's futures, resolvers and waits stand on. Every capability has
  * one shape, a member of the context, and the runtime builds them once per segment. A native
  * states the capabilities it uses and never holds the context beyond its call.
@@ -29,10 +29,10 @@ import type { Inspection, LogRecord, SpawnOptions } from './instance-state.ts';
 import { Refusal } from './refusal.ts';
 import type { RunPrimitives } from './run/run-primitives.ts';
 
-/** Whose code a context call runs: the program's own, or the job server's (§5). */
+/** Whose code a context call runs: the program's own, or the job server's (§14). */
 export type CallMaker = 'program' | 'jobs';
 
-/** What a test waits for of an instance (§10): its being idle, or its reaching a waypoint. */
+/** What a test waits for of an instance (§18): its being idle, or its reaching a waypoint. */
 export type TestWatch =
   | { readonly kind: 'idle' }
   | { readonly kind: 'waypoint'; readonly label: string };
@@ -56,39 +56,39 @@ export interface NativeContext {
   };
   /** The Definition's types, which the extern's types index, for building values of them. */
   readonly types: readonly TypeDefinition[];
-  /** `==` and map keys over the program's values (§3.8, §3.9), its maps' tables kept. */
+  /** `==` and map keys over the program's values (§19.3, §10.2), its maps' tables kept. */
   readonly values: Pick<RuntimeValues, 'entryPosition' | 'entryValue'>;
-  /** The instance whose code called the native, as its host names it (§9). */
+  /** The instance whose code called the native, as its host names it (§17.1). */
   readonly instance: string;
-  /** The content hash of the Definition the instance runs, fixed for its life (§5). */
+  /** The content hash of the Definition the instance runs, fixed for its life (§14). */
   readonly version: string;
   /**
-   * Milliseconds since the Unix epoch, as `now()` reads them (§5): when the segment started, in an
+   * Milliseconds since the Unix epoch, as `now()` reads them (§14): when the segment started, in an
    * instance, so a segment run again reads the same; the clock, in a live run (proposal 8).
    */
   readonly now: () => bigint;
   /**
    * The changes the native makes to the value of argument `position`, which the extern takes by `&`
-   * (§3.7): each in place when nothing else holds it, else in a copy that takes its place
+   * (§7.3): each in place when nothing else holds it, else in a copy that takes its place
    * (run/lifetimes.ts).
    */
   readonly changes: (position: number) => ValueChanges;
-  /** Where every running frame is, innermost first, as an `Error`'s `trace` reads (§3.12). */
+  /** Where every running frame is, innermost first, as an `Error`'s `trace` reads (§12). */
   readonly trace: () => string;
   /**
-   * The trace of the code a default gives its value to (§3.1): `trace` without the innermost
+   * The trace of the code a default gives its value to (§5.2): `trace` without the innermost
    * frame when its entry gives a default.
    */
   readonly callerTrace: () => string;
 }
 
-/** The futures the runtime makes for an extern returning one (§3.6). */
+/** The futures the runtime makes for an extern returning one (§17.2). */
 interface NativeFutures {
   /** A future already resolved with `value`. */
   readonly resolved: (value: Value) => Value;
   /** A future that resolves at `at`, in milliseconds since the Unix epoch (`time.at`). */
   readonly timer: (at: bigint) => Value;
-  /** How a host fills `future`, the pending future its extern's call gives (§9). */
+  /** How a host fills `future`, the pending future its extern's call gives (§17.2). */
   readonly filling: (future: Value) => HostFilling;
 }
 
@@ -114,7 +114,7 @@ export interface HostFilling {
 type ResolverState = 'pending' | 'resolved' | 'cancelled';
 
 /**
- * The running instance's weak references (§7). A referent is a handle to a disposable, and each
+ * The running instance's weak references (§16). A referent is a handle to a disposable, and each
  * has one weak reference, which holds nothing.
  */
 interface NativeWeakSide {
@@ -130,7 +130,7 @@ interface NativeWeakSide {
 }
 
 /**
- * The running instance's resources (§7): values of a host type a `dispose` makes disposable, each
+ * The running instance's resources (§16): values of a host type a `dispose` makes disposable, each
  * an object holding its host's JSON, `payload`, made as the value arrives from the host.
  */
 interface NativeResources {
@@ -140,7 +140,7 @@ interface NativeResources {
   readonly payloadOf: (handle: Value) => unknown;
 }
 
-/** The instances the running one spawns and waits for (§9). */
+/** The instances the running one spawns and waits for (§17.1). */
 interface NativeInstances {
   /**
    * Spawns the closure `entry`, which takes nothing, as a new instance with `options` once the
@@ -163,7 +163,7 @@ export interface ContextCall {
 }
 
 /**
- * The contexts live code runs ista code in (§9): instances named by key, in the host's store, run
+ * The contexts live code runs ista code in (§17.1): instances named by key, in the host's store, run
  * by the runtimes the live run opens over it while it runs. Only a live run has them; the call rule
  * keeps ista code from these natives (proposal 8, Rule 2).
  */
@@ -187,12 +187,12 @@ export interface NativeContexts {
    * they are more than `known`: every instance it drives while it is the earliest open runtime.
    */
   readonly served: (runtime: Value, known: number) => Value;
-  /** The program's job server (§5) as a function value; undefined in a program with no jobs. */
+  /** The program's job server (§14) as a function value; undefined in a program with no jobs. */
   readonly jobServer: () => Value | undefined;
 }
 
 /**
- * What a test reaches through the `testing` module (§10): the run's function slots, which the
+ * What a test reaches through the `testing` module (§18): the run's function slots, which the
  * testing library makes its mocks of, waits on the instances a test spawns, and host values equal
  * to no other. A read of another instance's last commit that only the runtime running a test can
  * answer (runtime/testing/) panics anywhere else.
@@ -210,14 +210,14 @@ interface NativeTesting {
   readonly handle: (type: TypeId) => Value;
 }
 
-/** The running instance's random source (§3.8 `random`, random-draws.ts). */
+/** The running instance's random source (§19.2 `random`, random-draws.ts). */
 interface NativeRandom {
-  /** The next draw, 32 bytes; a segment that runs again draws the same ones (§5). */
+  /** The next draw, 32 bytes; a segment that runs again draws the same ones (§14). */
   readonly draw: () => Uint8Array;
 }
 
 /**
- * The running instance's log (§3.8 `log`): a record joins its segment's, stamped with the instance
+ * The running instance's log (§19.2 `log`): a record joins its segment's, stamped with the instance
  * and the segment's start time, and reaches the host only once the segment commits.
  */
 interface NativeLogs {
@@ -314,8 +314,8 @@ export function requireNatives(
 }
 
 /**
- * Thrown by a native to panic the instance (§3.12), where its code stands, or at `trace` for a
- * panic raised again from elsewhere, as a context's panic is in the live code that called it (§9).
+ * Thrown by a native to panic the instance (§12), where its code stands, or at `trace` for a
+ * panic raised again from elsewhere, as a context's panic is in the live code that called it (§17.1).
  */
 export class Panic extends Error {
   override readonly name = 'Panic';
@@ -333,7 +333,7 @@ export class Panic extends Error {
 
 /**
  * The stack where it is read, every frame of it, under `heading`: the engine keeps only the
- * innermost few in an `Error` by default, which would cut a deep trace short (§3.12).
+ * innermost few in an `Error` by default, which would cut a deep trace short (§12).
  */
 export function wholeStack(heading: string): string | undefined {
   return stackSite(heading).stack;
@@ -378,14 +378,14 @@ export function panicOf(error: unknown): Panic | undefined {
 /** What V8's RangeError says once the host's stack runs out. */
 const stackExhausted = 'Maximum call stack size exceeded';
 
-/** Whether `error` is the host's stack running out, which the recursion panic stands for (§5). */
+/** Whether `error` is the host's stack running out, which the recursion panic stands for (§14). */
 export function exhaustsStack(error: unknown): boolean {
   return error instanceof RangeError && error.message === stackExhausted;
 }
 
 /**
  * What each limit's RangeError says, as V8 words it, and what the panic says instead: a string, an
- * array or an integer larger than JavaScript can hold is a limit, not a bug (§3.12). The engine
+ * array or an integer larger than JavaScript can hold is a limit, not a bug (§12). The engine
  * says so only with a RangeError and its message, so the messages are matched here, the one place
  * every runtime reads them; any other RangeError is a bug and propagates.
  */
@@ -393,6 +393,6 @@ const limits = new Map([
   ['Invalid string length', 'The string would be longer than the runtime can hold.'],
   ['Invalid array length', 'The array would be longer than the runtime can hold.'],
   ['Maximum BigInt size exceeded', 'The integer would be larger than the runtime can hold.'],
-  // Compiled code calls on the host's stack: recursion past it is the language's limit (§5).
+  // Compiled code calls on the host's stack: recursion past it is the language's limit (§14).
   [stackExhausted, 'A call nests deeper than the runtime allows.'],
 ]);

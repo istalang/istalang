@@ -1,5 +1,5 @@
 # error: 5170 at 22:25
-# A witness an instantiation passes is instantiated with it (§3.5, §3.17): a generic witness whose
+# A witness an instantiation passes is instantiated with it (§8.1, §4.6): a generic witness whose
 # own code reaches a type match no case matches for the type it is passed for is refused where the
 # call passing it is written, as a call of the witness itself would be.
 

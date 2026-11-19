@@ -1,6 +1,6 @@
 # Istalang toolchain
 
-Compiler, runtime and tooling for Istalang (spec: `docs/spec.md`). One npm package: ESM, TypeScript 7, Node ≥ 22.18.
+Compiler, runtime and tooling for Istalang (spec: `docs/spec/`). One npm package: ESM, TypeScript 7, Node ≥ 22.18.
 
 ## Commands
 

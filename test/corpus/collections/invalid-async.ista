@@ -1,6 +1,6 @@
 # error: 5306 at 19:3
 # A collection runs its `index` and `setIndex` at once, inside the place or literal that needs
-# them, so neither may be async (§3.9).
+# them, so neither may be async (§10.2).
 
 import * as runtime from 'runtime'
 

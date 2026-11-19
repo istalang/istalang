@@ -1,6 +1,6 @@
 # outcome: [4,5,6,3,7,8,9,2,11]
 # A value meeting one instantiation of a trait goes into an `any` type of another that the trait's
-# variance lets stand for it (§3.10): one only giving what its argument names (`Source`) for a wider
+# variance lets stand for it (§8.3): one only giving what its argument names (`Source`) for a wider
 # argument, one only taking it (`Sink`) for a narrower one. A call through it converts what it gives
 # and takes, a field it requires is read converted, and a downcast finds the value's own type.
 

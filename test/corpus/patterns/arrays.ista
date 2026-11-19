@@ -1,7 +1,7 @@
 # outcome: ["empty","one 7","1..4 around 2","[2, 3]",1,2,-1]
 # An array pattern matches an array of its length, or longer with a rest: its items counted from
 # the start before the rest and from the end after it, the rest a new array of those between
-# (§3.11).
+# (§11.3).
 
 import * as runtime from 'runtime'
 

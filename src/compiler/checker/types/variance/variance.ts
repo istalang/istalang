@@ -1,5 +1,5 @@
 /**
- * Variance (§3.5): how the instantiations of a declaration relate, one answer per type parameter.
+ * Variance (§8.1): how the instantiations of a declaration relate, one answer per type parameter.
  * `X<A>` fits `X<B>` where its parameter is covariant and `A` fits `B`, contravariant and `B` fits
  * `A`, or invariant and the two are the same type (types/fitting/fit/index.ts).
  *

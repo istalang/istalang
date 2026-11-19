@@ -1,5 +1,5 @@
 # outcome: "check, lease 1, disposed 1, check, lease 2, disposed 2, check, after"
-# A block's last expression is a statement like any other (§7): the temporaries it makes are
+# A block's last expression is a statement like any other (§16): the temporaries it makes are
 # released when the block ends, here at the end of each loop pass, before the next check.
 
 import * as runtime from 'runtime'

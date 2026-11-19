@@ -1,5 +1,5 @@
 /**
- * Loops (§3.10, §4), the way every iterating construct runs:
+ * Loops (§8.4, §11.1), the way every iterating construct runs:
  *
  * - Over an iterable, through the cursor its `iterate` gives: the top calls the cursor and tests
  *   its step for `Next`, going on with the item it holds, or leaving past the loop on `Done`. A

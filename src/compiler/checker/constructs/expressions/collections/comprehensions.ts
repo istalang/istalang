@@ -1,5 +1,5 @@
 /**
- * Array comprehensions (§4): `[for x in xs if c: e]` runs over any iterable like a `for`
+ * Array comprehensions (§10.5): `[for x in xs if c: e]` runs over any iterable like a `for`
  * (constructs/loops/iteration.ts) and builds an array of `e` for each item `c` keeps. The expected
  * array's element type, seen as an array literal sees it (collections.ts), is what `e` is expected
  * to have; `is` bindings in `c` reach `e` as the binder arranged.
@@ -8,7 +8,7 @@
  * (constructs/loops/field-passes.ts), `e` checked once per pass with only the expected element
  * type expected, so no pass decides another's; the elements then agree as an array literal's do,
  * in any order (rules/agreement.ts), each settled back in its own pass, widened with nothing
- * expected as disagreeing ones widen however many passes there are, so a key gives a String (§4)
+ * expected as disagreeing ones widen however many passes there are, so a key gives a String (§11.2)
  * over one field as over several, and over a generic struct as over the one substituted for it. A
  * struct with no fields gives no element, so an array of `Never` with nothing expected.
  */
@@ -85,7 +85,7 @@ export function checkFieldComprehension(
 /**
  * What a field comprehension's elements agree on: with nothing expected, widened as producers
  * that disagree widen, a key inside an element built from it too, so a key is a String whichever
- * and however many fields it names (§4), and a generic comprehension has, instantiated, the type
+ * and however many fields it names (§10.5), and a generic comprehension has, instantiated, the type
  * it has over the struct substituted.
  */
 function agreedElement(

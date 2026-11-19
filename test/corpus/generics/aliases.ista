@@ -1,5 +1,5 @@
 # outcome: "250 x 3"
-# An alias is the type it names, and may be generic (§3.17).
+# An alias is the type it names, and may be generic (§4.6).
 
 import * as runtime from 'runtime'
 

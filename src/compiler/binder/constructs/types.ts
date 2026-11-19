@@ -1,14 +1,14 @@
 /**
- * Binding names in types (§2, §3.1, §3.14): every type name resolves in the scope the type is
+ * Binding names in types (§4.1, §5.2, §6.4): every type name resolves in the scope the type is
  * written in, where type parameters and `Self` are visible.
  *
  * Fields live in their own namespace, so they are checked for convention and repeats but never
- * defined in a scope, except as the variables the defaults after them read (declarations.ts, §3.1).
+ * defined in a scope, except as the variables the defaults after them read (declarations.ts, §5.2).
  *
- * A mapped entry's type parameter (`[F in keyof S]: T`, §3.1) is visible in its field's type
+ * A mapped entry's type parameter (`[F in keyof S]: T`, §5.2) is visible in its field's type
  * alone; its union is bound in the type's own scope, where `F` is not yet defined.
  *
- * A type `match` case's `infer` variables (§3.17) are visible in its whole case: its pattern, so a
+ * A type `match` case's `infer` variables (§4.6) are visible in its whole case: its pattern, so a
  * later bare `T` names the same part as `infer T`, and its type.
  */
 
@@ -128,7 +128,7 @@ function bindMappedField(binder: LocalBinder, node: MappedField, scope: Scope): 
 }
 
 /**
- * Constraints after `is` (§3.5): a trait is a type's name; a struct constraint names fields, which
+ * Constraints after `is` (§8.1): a trait is a type's name; a struct constraint names fields, which
  * live in their own namespace.
  */
 export function bindConstraints(

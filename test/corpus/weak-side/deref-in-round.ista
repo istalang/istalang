@@ -1,5 +1,5 @@
 # outcome: "none"
-# A weak reference's `deref()` gives none once the last holder has released its referent (§7),
+# A weak reference's `deref()` gives none once the last holder has released its referent (§16),
 # also from a `dispose` running in the same round, so no disposal brings a released value back.
 
 import * as runtime from 'runtime'

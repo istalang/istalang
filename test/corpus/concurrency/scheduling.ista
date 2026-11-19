@@ -1,6 +1,6 @@
 # outcome: "started,took 7,main,done"
 # Every await commits, even on a future that has already resolved, and the execution then runs
-# after every execution that became ready before it (§5, §6). Here the put releases the waiting
+# after every execution that became ready before it (§14, §15.1). Here the put releases the waiting
 # call, which becomes ready first, so it runs before the caller that awaited the resolved put.
 
 import * as runtime from 'runtime'

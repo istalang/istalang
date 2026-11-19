@@ -1,6 +1,6 @@
 /**
- * JSON as values of the json module's `Json` (spec §9), the recursive union `None | Bool | Int |
- * Float | String | Array<Json> | Map<String, Json>` (§3.17), and the two forms JSON takes outside
+ * JSON as values of the json module's `Json` (spec §17.4), the recursive union `None | Bool | Int |
+ * Float | String | Array<Json> | Map<String, Json>` (§4.6), and the two forms JSON takes outside
  * an instance: text, and the JavaScript values a host works with. The compiled codecs turn typed
  * values into `Json` and back (docs/arch/boundary.md); this module only moves `Json` across, for
  * the json module's natives and the runtime's host boundary alike.
@@ -15,13 +15,13 @@
  *   an object, so a host function returning nothing gives `Unit` or `none`.
  * - Text is that JavaScript value in the canonical form (definition/formats/codec.ts): an integer
  *   keeps every digit at any size and an object's entries are sorted by key, so equal values always
- *   give the same text (§9). A float JSON can't hold, NaN or an infinity, is `null`, as
+ *   give the same text (§17.4). A float JSON can't hold, NaN or an infinity, is `null`, as
  *   `JSON.stringify` writes it. A key given twice with different values is refused rather than
  *   resolved by position, since the two readers of such text could disagree.
  * - `Json` nests no deeper than a persisted value may (`maximumDepth`), checked before either
  *   form is walked, so deep input is refused instead of overflowing the host's stack.
  * - What a host gets is frozen, and an array or a map given before, unchanged, is the same object
- *   again (spec §9, docs/arch/boundary.md): a host may skip work by reference equality.
+ *   again (spec §17.4, docs/arch/boundary.md): a host may skip work by reference equality.
  */
 
 import { memo } from '../../foundation/structures/memo.ts';

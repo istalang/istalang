@@ -1,5 +1,5 @@
 /**
- * The natives of the prelude's weak references (spec §7): `WeakRef(x)`, `deref()` and
+ * The natives of the prelude's weak references (spec §16): `WeakRef(x)`, `deref()` and
  * `disposed()`, and `disposing()` on an async call's handle, a watch on it like `disposed()`. What
  * a weak reference is, and when its watchers resolve, are the runtime's
  * (runtime/run/weak-references.ts).

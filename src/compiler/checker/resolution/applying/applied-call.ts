@@ -1,6 +1,6 @@
 /**
  * A call applied: chosen among its candidates, instantiated with its constraints met, and its
- * arguments fitted to what they fill (§3.5, §3.7). Written calls
+ * arguments fitted to what they fill (§8.1, §6.2). Written calls
  * (resolution/calls/resolve/index.ts) and the calls the language makes (implicit.ts) apply through
  * here, each saying how a call nothing takes is reported and recording what it made; so choosing,
  * ranking the implicit conversions (choosing/choice.ts) and fitting an argument, its conversion and
@@ -11,7 +11,7 @@
  *
  * - An argument of the error type was reported already, so a call nothing chosen for reports
  *   nothing more, while one chosen all the same judges its other arguments.
- * - A call through a union's trait is a candidate only where the union meets the trait (§6,
+ * - A call through a union's trait is a candidate only where the union meets the trait (§8.2,
  *   conformance/trait-calls.ts); one that inferred the trait's arguments is judged once they are,
  *   and closed with them, or made through the function declared for the union whole instead.
  * - A call several candidates take alike is ambiguous, named as `name` says; several traits a

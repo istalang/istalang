@@ -5,11 +5,11 @@
  * - A block's item starts with a statement's word (places/grammar/words.ts), `elif` and `else`
  *   after an `if` chain still open, or whatever an operand starts with.
  * - After a deferred call's taker, a name starts the call it is given, beside the words going on
- *   after an operand (§3.14).
+ *   after an operand (§6.5).
  * - `&` passes a place that may change: a `let` variable, or a reference parameter passing its
- *   caller's on (§3.7). A shared struct's cell or an element reached through others is left to the
+ *   caller's on (§7.3). A shared struct's cell or an element reached through others is left to the
  *   member list after the name.
- * - `break`, `continue` and `hold(` name a scope around the cursor by its label (§3.4, §4).
+ * - `break`, `continue` and `hold(` name a scope around the cursor by its label (§7.1, §11.1).
  */
 
 import type { Entity } from '../../../../../compiler/binder/entities.ts';
@@ -43,7 +43,7 @@ const byPosition: Handlers<Cursor, GrammarPosition, [place: GrammarPlace], reado
     labels.map(({ text }): Candidate => ({ name: text, subject: { kind: 'label' } })),
 };
 
-/** A `let` variable, or a reference parameter, which passes the caller's place on (§3.4, §3.7). */
+/** A `let` variable, or a reference parameter, which passes the caller's place on (§7.1, §7.3). */
 function isChangeable(entity: Entity): boolean {
   if (entity.kind !== 'variable') {
     return false;

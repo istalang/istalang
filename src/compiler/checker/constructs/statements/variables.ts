@@ -1,11 +1,11 @@
 /**
- * Declaring variables (§3.4, §3.15), and the facts a body keeps about its variables.
+ * Declaring variables (§7.1, §4.5), and the facts a body keeps about its variables.
  *
  * - A declaration's type is its annotation, which the initializer must fit, or else the
  *   initializer's own type, widened for a `let`, which later values may replace
  *   (types/unions/widening.ts). Its targets take that value apart (constructs/patterns/targets.ts).
  * - A `let` that nothing reassigns or changes gets a warning once the whole body has been seen
- *   (§3.4), so the body's VariableScope keeps which ones were, as assignments and places note
+ *   (§7.1), so the body's VariableScope keeps which ones were, as assignments and places note
  *   them (assignments.ts, resolution/calls/places.ts).
  * - A parameter is declared with its checked signature, so whether it is a reference is known from
  *   one source, its written `&` or the expected function type's (constructs/closures/lambdas.ts).
@@ -13,7 +13,7 @@
  *   which variables live in a cell, being passed by `&`, shared with a closure or transient. A
  *   type, a binding and a part are recorded per pass of a field loop (passes.ts); whether a
  *   variable changes or lives in a cell holds for every pass.
- * - A transient (§3.4) is one name, leading its function's body, so every call has it before it
+ * - A transient (§7.1) is one name, leading its function's body, so every call has it before it
  *   calls anything; the binder keeps its initializer from its function's variables. One never
  *   changed is no `const` in disguise: it still shares the outermost call's value, so it isn't
  *   warned about.
@@ -164,7 +164,7 @@ export class VariableScope implements Variables {
   }
 
   /**
-   * §3.4: a `let` never reassigned or changed should be a `const`; a name of one whose other names
+   * §7.1: a `let` never reassigned or changed should be a `const`; a name of one whose other names
    * change, a `const` of its own.
    */
   warnUnchanged(context: BodyContext): void {
@@ -196,7 +196,7 @@ export function checkVariableDeclaration(context: BodyContext, node: VariableDec
   }
 }
 
-/** §3.4: a transient's place, and its one name, which lives in a cell. */
+/** §7.1: a transient's place, and its one name, which lives in a cell. */
 function checkTransient(context: BodyContext, node: VariableDeclaration): void {
   if (!leadsFunctionBody(context.checker.inputs.holdersOf(context.module, node))) {
     context.report(checkerDiagnostics.transientPlace(node.span));

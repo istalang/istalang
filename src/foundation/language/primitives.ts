@@ -1,5 +1,5 @@
 /**
- * The language's built-in types (§2): part of the language itself, declared in no module, and
+ * The language's built-in types (§4.1): part of the language itself, declared in no module, and
  * spelled the same way by the compiler, by the Definition it produces and by extern keys.
  */
 

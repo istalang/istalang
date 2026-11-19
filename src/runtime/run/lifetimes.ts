@@ -8,12 +8,12 @@
  *   holder only once that disposal is done, in the next round. A let-go during a round joins it
  *   rather than starting one of its own, but for one `apart` from it: a disposed call's cleanup,
  *   whose let-gos are disposed as they happen, as a running call's are, so before its call is gone
- *   (§7), and a `select`'s losers before its winning case's body (§8).
+ *   (§16), and a `select`'s losers before its winning case's body (§15.4).
  * - **A panic passed over** (a termination's, `disposingPastPanics`) lets go of what each frame it
  *   unwinds through held (`unwound`), as its compiled code catches it on the way out.
  * - **Disposal is final.** An object is marked disposed as its round takes it, before its `dispose`
  *   runs, and a hold on it counts nothing from then on: whatever reaches it later (a mock recording
- *   its `dispose` call, §10) neither brings it back nor disposes it again as it lets go.
+ *   its `dispose` call, §18) neither brings it back nor disposes it again as it lets go.
  * - **Heap** values reach none: nothing is counted, but a value given a second holder is marked
  *   shared, for good. A write changes a value in place only while it is unique: counted once, or
  *   never shared. A shared value is copied, its parts then shared or held by the copy too.
@@ -74,7 +74,7 @@ export class Lifetimes {
     this.#values = values;
   }
 
-  /** Another holder of `value`; none of a disposed object, which nothing brings back (§7). */
+  /** Another holder of `value`; none of a disposed object, which nothing brings back (§16). */
   readonly hold = (value: Value | undefined): void => {
     if (value instanceof RunObject) {
       if (!value.disposed) {
@@ -156,7 +156,7 @@ export class Lifetimes {
 
   /**
    * Runs `release`, a disposal panicking within it stopping none of the others: terminating an
-   * instance disposes everything it holds (§3.12).
+   * instance disposes everything it holds (§12).
    */
   disposingPastPanics(release: () => void): void {
     this.#passesPanics = true;
@@ -167,14 +167,14 @@ export class Lifetimes {
     }
   }
 
-  /** Whether a disposal's panic is passed over now, its disposal going on (§3.12). */
+  /** Whether a disposal's panic is passed over now, its disposal going on (§12). */
   get passesPanics(): boolean {
     return this.#passesPanics;
   }
 
   /**
    * Lets go of `values`, what a frame held as `error` unwinds through it, where its panic is
-   * passed over: a termination disposes everything (§3.12). Any other panic freezes the instance
+   * passed over: a termination disposes everything (§12). Any other panic freezes the instance
    * as it stood, letting go of nothing.
    */
   readonly unwound = (error: unknown, ...values: (Value | undefined)[]): void => {

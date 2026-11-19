@@ -1,5 +1,5 @@
 /**
- * What an indented value builds (§2), read off its entries alone, never the type it is built as,
+ * What an indented value builds (§3.2), read off its entries alone, never the type it is built as,
  * so the parser reports what doesn't fit it and checking builds it (checker/desugaring/
  * indented-values.ts) by one rule.
  *

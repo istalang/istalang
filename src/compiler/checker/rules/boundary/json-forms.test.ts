@@ -1,5 +1,5 @@
 /**
- * Which types cross as JSON (§3.10, §9): those with codecs, declared or derived. A struct, an enum,
+ * Which types cross as JSON (§8.4, §17.4): those with codecs, declared or derived. A struct, an enum,
  * a tuple and a recursive type derive theirs from what they hold, and a literal type or a union of
  * literals its literals, and a host type its host's JSON when its type arguments cross; a type
  * declaring one codec has the other neither derived nor otherwise; a function, a handle, a map whose

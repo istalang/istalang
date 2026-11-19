@@ -1,5 +1,5 @@
 /**
- * Patterns and comparisons the subject's type rules out (spec §3.11, §4): a case whose pattern its
+ * Patterns and comparisons the subject's type rules out (spec §11.3, §11.1): a case whose pattern its
  * subject's type can't hold, a literal outside it, another type, another enum's variant, a type an
  * `any` value never holds, never matches, so it is warned of once (5422) and never runs; an `==`,
  * `!=` or `is` whose operands' types fix it is warned of once (5421) and is that value. A field
@@ -123,7 +123,7 @@ describe('a union subject', () => {
 /**
  * A `match` on the key `k` of a field, by `name`, then, unless `keyOnly`, on its value `v` by its
  * type: a type pattern needs the value's type known, which a struct constraint's other fields
- * aren't (§3.5), so a generic loop matches its keys only.
+ * aren't (§8.1), so a generic loop matches its keys only.
  */
 function matchesOf(v: string, k: string, name: string, keyOnly = false): readonly string[] {
   const kinds = [

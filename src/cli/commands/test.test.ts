@@ -1,5 +1,5 @@
 /**
- * `ista test` end to end (§10): which modules it finds, what it prints, and its exit codes. What
+ * `ista test` end to end (§18): which modules it finds, what it prints, and its exit codes. What
  * the tests themselves can do is runtime/testing/'s to test; here they only pass, fail or skip.
  */
 
@@ -164,12 +164,12 @@ describe('ista test', () => {
     expect(run.err + run.out).toContain('error 4015');
   });
 
-  it("runs spec §10's suite against spec §12.1's purchase approval", {
+  it("runs spec §18's suite against spec §20.1's purchase approval", {
     timeout: slowTestTimeout,
   }, async () => {
     const suite = new URL('../../../test/spec-suites/purchase.test.ista', import.meta.url);
     const root = project({
-      'purchase.ista': [...specCode('12.1 Purchase approval'), ''].join('\n'),
+      'purchase.ista': [...specCode('20.1 Purchase approval'), ''].join('\n'),
       'purchase.test.ista': readFileSync(suite, 'utf8'),
     });
     const run = await ista(root, 'test');

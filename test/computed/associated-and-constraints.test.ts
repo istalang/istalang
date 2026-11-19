@@ -102,7 +102,7 @@ describe('associated types on structs, enums, and traits (§1)', () => {
 
   it('calls static functions through `Type.Name` and constrained `T.Name`', async () => {
     // No primitive meets `Default` (prelude), and a witness is declared beside its type or trait
-    // (§3.10), so the bound is met by a type of this module.
+    // (§8.2), so the bound is met by a type of this module.
     const decls = [
       'trait HasDefaultData:',
       '  type Data is Default & Parsable',

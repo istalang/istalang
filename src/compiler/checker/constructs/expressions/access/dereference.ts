@@ -1,5 +1,5 @@
 /**
- * `*x` (§3.9): the value behind the handle `x`. It is built in, as reading a field is, so it
+ * `*x` (§10.2): the value behind the handle `x`. It is built in, as reading a field is, so it
  * resolves no call: lowering reads the handle's cell. `x->f` is `(*x).f`. `*x` is a place too:
  * written whole (`*x = v`) or in part (`x->f = v`), it is written as any place reached through a
  * pair of reads and writes is (resolution/calls/places.ts). The `x->` of `x->f` is a link of an

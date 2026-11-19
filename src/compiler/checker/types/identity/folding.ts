@@ -1,5 +1,5 @@
 /**
- * Folding (§3.17): the labelled recursive type a type holding recursion is equal to, when a graph
+ * Folding (§4.6): the labelled recursive type a type holding recursion is equal to, when a graph
  * it reaches has one, so a union naming a recursive alias's members, or a recursive member with
  * more of its members, reads as that alias. Apart from building graphs (recursive-types.ts), so the
  * union constructor folding its unions (../unions/unions.ts) is one that building graphs uses too.

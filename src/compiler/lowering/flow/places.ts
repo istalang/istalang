@@ -1,18 +1,18 @@
 /**
- * Places (§3.7, §3.9; docs/arch/definition.md, "Places") as a flow names them (`Place`): a value
+ * Places (§7.3, §10.2; docs/arch/definition.md, "Places") as a flow names them (`Place`): a value
  * and the parts into it, which a `write` writes and a call passes by `&`. An element of a container
  * is no part: the flow reads and writes it back through its container's accessors.
  *
  * - A Definition place is a root, how it is reached, and the steps into its value: a variable's
  *   register, the cell a captured or `&`-passed variable lives in, the cell behind a shared struct's
- *   handle (§3.18), or the place a `&` parameter refers to. A write is a `store`, in place where
+ *   handle (§5.4), or the place a `&` parameter refers to. A write is a `store`, in place where
  *   nothing else holds the values along it.
  * - A field a key of several names reaches is the one the key's value names: a switch on it, each
  *   case reaching its field and the steps past it, the value converted into that field's own type
  *   (`intoKeyedField`), as it is where an instantiation left the key one name.
  * - A place passed by `&` that no cell or reference roots, or that is behind a handle and passed to
  *   code, is copied into a cell of its own and written back once the call returns (copy-in/copy-
- *   out, §3.7): code could read the handle's value meanwhile, which still holds the old one.
+ *   out, §7.3): code could read the handle's value meanwhile, which still holds the old one.
  * - Appending an item to an array or a `Map` being built changes it in place where nothing else
  *   holds it (`append`, `appendEntry`).
  */

@@ -34,7 +34,7 @@ describe('completion in an annotation', () => {
     }
   });
 
-  it("offers nothing on a shape's field, which takes no annotation (§3.16)", () => {
+  it("offers nothing on a shape's field, which takes no annotation (§5.5)", () => {
     expect(names('fn f(p: { id: Int @‸ }) -> Int: 1')).toEqual([]);
   });
 

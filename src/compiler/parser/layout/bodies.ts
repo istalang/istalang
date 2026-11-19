@@ -1,9 +1,9 @@
 /**
- * The bodies that follow a construct's `:` (spec §4), and the docstring of a declaration without
- * one (§2).
+ * The bodies that follow a construct's `:` (spec §10.1), and the docstring of a declaration without
+ * one (§2.3).
  *
  * A body after `:` is either one item on the same line, or a block indented deeper than the line
- * the construct starts on. A `;` right after a one-line body is an error (§4): a Python reader
+ * the construct starts on. A `;` right after a one-line body is an error (§10.1): a Python reader
  * would think `if x: a; b` puts both statements in the body.
  *
  * A function's body is entered as a segment of its own (syntax/tree/positions.ts) after the `:` and
@@ -54,7 +54,7 @@ export function parseBody<Item extends SyntaxNode>(
 
 /**
  * A body whose block must stand right of `column`: an indented value's, whose column may be that of
- * the entries it stands among rather than its line's (§2). As `parseBody` otherwise.
+ * the entries it stands among rather than its line's (§3.2). As `parseBody` otherwise.
  */
 export function parseBlockBelow<Item extends SyntaxNode>(
   parser: Parser,

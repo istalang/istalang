@@ -1,5 +1,5 @@
 /**
- * Codecs (§3.10, §9; docs/arch/boundary.md): a type crosses as JSON through its `toJson` and
+ * Codecs (§8.4, §17.4; docs/arch/boundary.md): a type crosses as JSON through its `toJson` and
  * `fromJson`, what `Encodable` and `Decodable` require, found as any witness is (conformance.ts).
  * A struct, an enum, a tuple or a host type declaring neither has both derived by the compiler from
  * its form, decided here once per type, which lowering writes the derived codecs from.
@@ -10,9 +10,9 @@
  *   in turn: a literal's JSON says which it is.
  * - A union crosses only as `T | None`, through the json module's codecs of `T?`, or as literals:
  *   which member a value of any other union is would need a tag of its own, and how codecs read an
- *   untagged member is left open until codecs move into the language (§14).
+ *   untagged member is left open until codecs move into the language (§21).
  * - What a struct, an enum or a tuple holds crosses through its own codecs, which are coherent
- *   witnesses (§3.10), so a derived codec is the same wherever its type is used; so do a host
+ *   witnesses (§8.4), so a derived codec is the same wherever its type is used; so do a host
  *   value's type arguments, whose values its host's JSON holds, so a `Box<fn() -> Int>` crosses no
  *   more than an `Array<fn() -> Int>` does. A host handle crosses as its id, whatever it holds.
  * - A codec declared for a type is a witness found as any is: beside the type, or in the json
@@ -76,11 +76,11 @@ import type { Annotations } from '../annotations/index.ts';
 
 /**
  * Why a handle has no codec, a std one such as a slot or a shared struct alike: its values have an
- * identity of their own (§3.1, §3.18).
+ * identity of their own (§7.2, §5.4).
  */
 const handleHasNoForm = 'a JSON form, which no handle has: it stays in its instance';
 
-/** Why a union other than an optional or a union of literals has no codec (§9). */
+/** Why a union other than an optional or a union of literals has no codec (§17.4). */
 const unionHasNoForm = 'a JSON form, which a union has only as an optional or as literals';
 
 /** What the unit needs beside the checker: field annotations. */
@@ -237,9 +237,9 @@ export class JsonForms implements JsonCodecs {
   }
 
   /**
-   * A type whose values aren't fields a form could follow (§3.6, §3.18): a host type is its host's
+   * A type whose values aren't fields a form could follow (§17.2, §5.4): a host type is its host's
    * JSON when it is a value or a `sendable` handle, or kept in a resource when a `dispose` makes
-   * its handle disposable (§7); any other handle has none, nor has a std module's extern type that
+   * its handle disposable (§16); any other handle has none, nor has a std module's extern type that
    * declares no codecs.
    */
   #opaque(type: NominalType): FormOrNone {
@@ -351,7 +351,7 @@ function literalsForm(union: UnionType): DerivedForm | undefined {
 
 /**
  * The parts a derived codec writes and reads through their own types' codecs. A host value's are
- * its type arguments, whose values its host's JSON holds (§3.6); a host handle crosses as its id,
+ * its type arguments, whose values its host's JSON holds (§17.2); a host handle crosses as its id,
  * holding none.
  */
 function partsOf(form: DerivedForm): readonly Part[] {

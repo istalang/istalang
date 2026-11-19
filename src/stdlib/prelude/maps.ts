@@ -1,5 +1,5 @@
 /**
- * The prelude's natives for maps (§3.8, §3.9, §3.10): the primitives the rest of a map's methods are
+ * The prelude's natives for maps (§19.3, §10.2, §8.4): the primitives the rest of a map's methods are
  * written over in prelude.ista, finding a key, reading and writing its entry, and the entry at a
  * position. Keys are found by the built-in `==` (definition/values/equality.ts). A map is a value,
  * so a method taking `&self` changes it through its context, in place only when nothing else holds

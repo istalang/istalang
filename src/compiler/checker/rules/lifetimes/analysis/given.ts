@@ -25,7 +25,7 @@ type CallOperation = Extract<Operation, { readonly op: 'call' }>;
  * The call's result, related to what it was given as the summary says; to what owns each place it
  * was given by `&`, which it may keep, as a future an async call it makes does; an async call's
  * future to what its call may come to reach, and to every transient global, since its execution
- * keeps those visible where it started (§3.4); and, for a future, what it settles with.
+ * keeps those visible where it started (§7.1); and, for a future, what it settles with.
  */
 export function giveResult(
   at: At,

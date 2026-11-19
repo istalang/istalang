@@ -1,6 +1,6 @@
 /**
  * The precedence property: random operator trees, printed with full parentheses and with only
- * the parentheses the §3.9 table requires, both parse back to the same tree with no diagnostics.
+ * the parentheses the §10.3 table requires, both parse back to the same tree with no diagnostics.
  */
 
 import fc from 'fast-check';

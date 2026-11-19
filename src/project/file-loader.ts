@@ -1,5 +1,5 @@
 /**
- * Loads the project's modules from disk, for import paths in the toolchain's syntax (§3.13,
+ * Loads the project's modules from disk, for import paths in the toolchain's syntax (§13.1,
  * foundation/language/import-paths.ts): one starting with `./` or `../` goes from the importing
  * file, any other from the project root, and a path out of that syntax names no file here. A
  * module's id is its file's URL, so every path that reaches one file names one module.

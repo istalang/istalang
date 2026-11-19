@@ -2,7 +2,7 @@
 # error: 5111 at 22:4
 # error: 5111 at 26:3
 # error: 5111 at 32:40
-# A call a default makes counts towards endless instantiation as a written call does (§3.5): a
+# A call a default makes counts towards endless instantiation as a written call does (§8.1): a
 # struct literal leaving out a field calls its default, and a default calls whatever it names. So
 # a cycle that grows a type argument through a field's or a parameter's default is reported where
 # it grows, as one through written calls is. A field whose type grows its own argument is

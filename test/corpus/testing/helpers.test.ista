@@ -7,9 +7,9 @@
 # error: 5954 at 42:30
 #
 # A mock's target names a function, which has an identity to replace, never a variant, built
-# where it is called (§3.11), at a type taking every parameter, since its replacement is given its
-# defaults filled; and `handle` makes values of host types only (§10). A mock's target is the one
-# place `dispose` may be named (§7).
+# where it is called (§5.3), at a type taking every parameter, since its replacement is given its
+# defaults filled; and `handle` makes values of host types only (§18). A mock's target is the one
+# place `dispose` may be named (§16).
 
 import handle, mock from 'testing'
 

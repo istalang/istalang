@@ -1,8 +1,8 @@
 /**
- * `delegate` (spec §5, proposal 8 Rule 8): ista code's job runs as live code after its segment
+ * `delegate` (spec §14, proposal 8 Rule 8): ista code's job runs as live code after its segment
  * commits, its result in the delegating code's future; a segment discarded runs none, and a job
  * whose result never committed runs again at the store's next open. Letting go of its future
- * withdraws it: queued, it never runs; running, it is cancelled (§7). A job that isn't sendable, or
+ * withdraws it: queued, it never runs; running, it is cancelled (§16). A job that isn't sendable, or
  * a result without codecs, is refused.
  */
 

@@ -1,5 +1,5 @@
 # outcome: "a=10;b=7; 17 3 100 0 1"
-# A program's own collection type (§2, §3.9, §3.10): a map literal of it starts from its
+# A program's own collection type (§3.3, §10.2, §8.4): a map literal of it starts from its
 # `default()` and assigns each entry with its `setIndex`, a spread's items included; `for` runs the
 # cursor its `iterate` gives; and its elements are places, also inside an array of them.
 

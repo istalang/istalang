@@ -10,10 +10,10 @@
  *   let go of at once, so what `onAwait` did with it is all that holds it, and one it dropped panics;
  * - `park`, which gives the position the wait was decided for; the case at that position takes its
  *   value out of its shared value (`_caseTaken`), leaving it empty: a resolver outliving the wait
- *   still reaches the shared value, and must not keep the value its waiter moved on with (§7).
+ *   still reaches the shared value, and must not keep the value its waiter moved on with (§16).
  *
  * A case's shared value is an array, never an optional, so none of this names a union of the
- * case's type, and one instance of each serves every type of one representation (§3.5,
+ * case's type, and one instance of each serves every type of one representation (§8.1,
  * tables/stencils.ts).
  *
  * Code with a body calls each case's `onAwait` as the checker recorded it; synthesized code awaits
@@ -118,7 +118,7 @@ export function parked(
 }
 
 /**
- * The position `open` was decided for at once, as a `select` with an `else` asks (§8); -1 where no
+ * The position `open` was decided for at once, as a `select` with an `else` asks (§15.4); -1 where no
  * case decided it, the wait then given up.
  */
 export function decidedAt(context: CodeContext, open: OpenWait, span: AnchoredSpan): Register {

@@ -1,5 +1,5 @@
 /**
- * A resource: a host type's value with a `dispose` (§7, §9), and the payload its natives read. One
+ * A resource: a host type's value with a `dispose` (§16, §17.2), and the payload its natives read. One
  * whose disposal is the runtime's own (a std type's extern `dispose`) says what disposing it does.
  */
 

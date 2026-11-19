@@ -1,10 +1,10 @@
 /**
- * The `InstanceStore` seam: where a runtime persists what outlives a process (§5). It keeps bytes
+ * The `InstanceStore` seam: where a runtime persists what outlives a process (§14). It keeps bytes
  * and texts, never objects, in the forms definition/formats/ writes, so a store needs no knowledge
  * of their contents.
  *
  * - A Definition is kept once, as its bytes, by their hash; every instance names the hash it runs.
- * - An instance's snapshot is kept by the instance's name: a context's key (§9), or the name the
+ * - An instance's snapshot is kept by the instance's name: a context's key (§17.1), or the name the
  *   runtime gave one spawned. Writing replaces the previous snapshot: a commit is one write, so a
  *   store whose writes are atomic keeps every instance at a committed state. A store lists the
  *   names it keeps, so a runtime opened over it resumes them all.

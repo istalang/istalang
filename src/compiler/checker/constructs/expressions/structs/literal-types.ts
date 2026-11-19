@@ -1,10 +1,10 @@
 /**
- * What a literal naming a type builds (§3.1, §3.17): a declared struct, with the type arguments
+ * What a literal naming a type builds (§5.2, §4.6): a declared struct, with the type arguments
  * written or expected; or, through an alias of a shape, the shape, the alias's own type parameters
  * inferred from the values as a generic struct's are, so a generic alias names a family of shapes
  * a literal picks one of (structs.ts checks the literal). An alias names a struct declaration only
  * as a type: its literal names the struct itself. Where a union is expected, the literal builds
- * the one member its items fit (§2).
+ * the one member its items fit (§4.2).
  */
 
 import type { Entity, TypeEntity } from '../../../../binder/entities.ts';
@@ -98,7 +98,7 @@ export function builtThrough(
 
 /**
  * The shape the alias `declaration` names, with its own type parameters, a recursive one's as it
- * unfolds (§3.17); undefined for any other declaration, or an alias of anything but a shape.
+ * unfolds (§4.6); undefined for any other declaration, or an alias of anything but a shape.
  */
 function aliasedShape(
   context: BodyContext,
@@ -112,7 +112,7 @@ function aliasedShape(
 }
 
 /**
- * What a literal of `declaration` builds where `expected` is expected (§2): of a union, its one
+ * What a literal of `declaration` builds where `expected` is expected (§4.2): of a union, its one
  * member of `declaration`'s type, or the one of several whose fields the literal's items fit, as
  * `Entry{key: "region", …}` against `Entry<S, "retries"> | Entry<S, "region">` builds the second;
  * else `expected` itself, which fitting then judges.
@@ -136,7 +136,7 @@ function builtMember(
 
 /**
  * Whether each item of `node` gives a field of `type` a value fitting it, as far as is known before
- * checking it: a literal with its literal type where the field expects one (§2), and a value that
+ * checking it: a literal with its literal type where the field expects one (§4.3), and a value that
  * needs what is expected of it as it can be one (../postponed.ts).
  */
 function itemsFit(context: BodyContext, node: FieldsLiteral, type: Type): boolean {

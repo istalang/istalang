@@ -1,7 +1,7 @@
 # error: 5005 at 9:40
 # error: 5301 at 10:23
 # error: 5005 at 11:27
-# The optional join (§2, §4) joins no other union: values that may be `none` take the optional of
+# The optional join (§4.2, §4.2) joins no other union: values that may be `none` take the optional of
 # what the others agree on, and one that agrees with none of them is reported against it, not
 # against `None`.
 

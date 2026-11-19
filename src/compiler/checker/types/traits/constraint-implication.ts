@@ -1,5 +1,5 @@
 /**
- * What constraints imply of one another (§3.10): a type meeting some meets another when it is one
+ * What constraints imply of one another (§8.2): a type meeting some meets another when it is one
  * of them, or Sendable implied by one requiring it of every type meeting it (`Encodable`,
  * `Decodable`), or Inert implied by Sendable, every sendable type being inert, or `DataKind<K>`
  * implied by Sendable where `K` holds `"simple"`, no sendable value holding a kind, or by a

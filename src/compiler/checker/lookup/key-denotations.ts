@@ -1,5 +1,5 @@
 /**
- * What a String literal written as a key denotes (§3.1 Key types): the field of the struct whose
+ * What a String literal written as a key denotes (§5.2 Key types): the field of the struct whose
  * key it is, so going to a definition, finding references and renaming treat it as a name of that
  * field.
  *
@@ -10,7 +10,7 @@
  *   of `S`, and a literal type given as a type argument for a member parameter within a struct's
  *   keys, `Entry<Settings, "region">`, is a key of the struct the instantiation makes it.
  *
- * A literal in an extern function's `@Keeps` names one of its parameters (§3.16), so it denotes
+ * A literal in an extern function's `@Keeps` names one of its parameters (§5.5), so it denotes
  * that parameter instead, which its annotation's check reads by name.
  */
 
@@ -162,7 +162,7 @@ interface Instantiated {
  * What `node`, a type or a name taking type arguments, instantiates, with the arguments it was
  * given: a nominal type or an alias written in a type, a struct literal's type, what the call of a
  * name given type arguments makes (`callInstantiations`), the function such a name names as a
- * value (§3.14), or else the struct without fields it makes (§3.1).
+ * value (§6.4), or else the struct without fields it makes (§5.2).
  */
 function instantiationsAt(
   checker: CheckerContext,
@@ -187,7 +187,7 @@ function instantiationsAt(
 
 /**
  * What `call` instantiates: each function a generic call calls, or the enum a variant without
- * fields called makes, its value, in each pass (§3.11).
+ * fields called makes, its value, in each pass (§5.3).
  */
 function callInstantiations(
   checker: CheckerContext,

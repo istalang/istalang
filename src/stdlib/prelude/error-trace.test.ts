@@ -1,6 +1,6 @@
 /**
  * An `Error` built without `trace` gets the frames where it was built, innermost first, one line
- * per frame naming the function and where it stands (§3.12), as a panic's trace does. Line and
+ * per frame naming the function and where it stands (§12), as a panic's trace does. Line and
  * column count from 1, where the frame's instruction is: the literal, and each call on the way.
  * `trace` is a default, computed in the prologue of `Error`'s entry, whose frame the trace leaves
  * out; a default building an `Error` runs in the prologue of its own function's entry, a struct's
@@ -48,7 +48,7 @@ const builtInDefaults = [
 const failureLine = /^at \S*Job \(\S+:2:20\)$/u;
 const numberLine = /^at \S*Job \(\S+:3:25\)$/u;
 
-/** The std's frames building a parse error, innermost first, which `Int.parse` returns (§3.10). */
+/** The std's frames building a parse error, innermost first, which `Int.parse` returns (§8.4). */
 const parseLines = [
   /^at prelude\.Error\.unparsed \(std:prelude:\d+:\d+\)$/u,
   /^at prelude\._parsed<Int> \(std:prelude:\d+:\d+\)$/u,

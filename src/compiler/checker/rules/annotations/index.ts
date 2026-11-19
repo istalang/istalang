@@ -1,5 +1,5 @@
 /**
- * Annotations (§3.16): struct values computed at compile time, attached to fields, functions,
+ * Annotations (§5.5): struct values computed at compile time, attached to fields, functions,
  * struct declarations and statements. ProgramChecker composes this unit; each item's annotations are checked once, on
  * first demand: by its declaration's check, a body's statement, the boundary's forms or lowering.
  * What they are checked against depends on the item alone: a field's on its type as declared,
@@ -9,7 +9,7 @@
  *   constant is (computation/), so the two can't disagree on what compile time
  *   computes. A value that isn't a struct is no annotation.
  * - What an annotation means decides where it may stand, and none on a shape's field, which has no
- *   declaration to carry one (§3.16): the json module's on fields (`@JsonSkip` only on a field
+ *   declaration to carry one (§5.5): the json module's on fields (`@JsonSkip` only on a field
  *   whose type, as declared, has a default to read back as, which JSON forms decide,
  *   rules/boundary/json-forms.ts; `@JsonBigInt` only on an `Int`), `@Waypoint` on a statement that
  *   waits, `@Suite` on a function (rules/testing.ts says which), `lifetimes`' `@Holds` on an extern
@@ -122,12 +122,12 @@ export class Annotations implements AnnotationChecks {
     return declared === undefined ? [] : this.of(declared.module, declared.node, { kind: 'field' });
   }
 
-  /** The name a field has in JSON (§9): its `@JsonName`, or its own. */
+  /** The name a field has in JSON (§17.4): its `@JsonName`, or its own. */
   jsonNameOf(field: FieldMember): string {
     return this.#textOf(this.ofField(field), 'jsonName') ?? field.name;
   }
 
-  /** The name `statement`'s `@Waypoint` gives where it waits (§10); undefined without one. */
+  /** The name `statement`'s `@Waypoint` gives where it waits (§18); undefined without one. */
   waypointOf(module: ModuleId, statement: Statement): string | undefined {
     return this.#textOf(this.of(module, statement, statementPlace(statement)), 'waypoint');
   }
@@ -195,7 +195,7 @@ export class Annotations implements AnnotationChecks {
   /**
    * Where the field `node` of `module` stands: in a struct, a variant or a trait, with the type it
    * is declared with there; undefined in a shape, whose field takes no annotation, as resolving
-   * its type reported (§3.16). Its owner is found among the module's items, which checking reads,
+   * its type reported (§5.5). Its owner is found among the module's items, which checking reads,
    * not by walking its tree, and its type is read here, in the entry of its annotations, so the
    * entry depends on both.
    */

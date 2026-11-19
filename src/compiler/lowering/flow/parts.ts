@@ -4,12 +4,12 @@
  * key names, and what a top-level, extern or context constant holds, read as it is stored: its
  * value, its extern's reader, its accessor.
  *
- * - A field of a struct is read at its position in the layout the instantiation made (§3.1); one a
+ * - A field of a struct is read at its position in the layout the instantiation made (§5.2); one a
  *   trait requires as the type the instance knows has it, its stored field or its getter's call,
- *   and of an `any` value through the dispatch reading it so from each member (§3.10).
+ *   and of an `any` value through the dispatch reading it so from each member (§8.3).
  * - A union's member is taken out as it is held (values/members/index.ts), as is the value of a pattern's
  *   name narrowed from a union or an `any`.
- * - A field a key of several names names is read in each case of a switch on the key (§3.9).
+ * - A field a key of several names names is read in each case of a switch on the key (§10.2).
  */
 
 import type { Register } from '../../../definition/operands.ts';
@@ -104,7 +104,7 @@ function stepRead(
   const { code, tables, checker } = context;
   const typed = (type: Type) => tables.types.reference(concreteType(context, type));
   if (typeof step === 'number') {
-    // A recursive alias's value is read as the tuple it unfolds to (§3.17).
+    // A recursive alias's value is read as the tuple it unfolds to (§4.6).
     const element =
       tupleElements(unfolded(value.type))?.[step] ?? unreachable(`No element ${step}.`);
     return code.tupleItem(value.register, step, typed(element), span);

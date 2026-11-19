@@ -1,5 +1,5 @@
 /**
- * Rebindable function slots (§10), in a Definition built to run tests: while a function value is
+ * Rebindable function slots (§18), in a Definition built to run tests: while a function value is
  * bound to a function-table entry, the calls of that entry run it instead, in the instance holding
  * the binding and in every instance spawned from it. The testing library makes its mocks of them
  * (testing.ista): it binds a replacement recording its calls, and unbinds it as the mock is let go.

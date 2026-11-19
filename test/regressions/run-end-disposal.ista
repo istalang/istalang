@@ -1,6 +1,6 @@
 # outcome: 42
-# As a run finishes, it lets go of everything it still holds, once its outcome is encoded (§3.12,
-# §7): the outcome itself, a call still suspended, which stops, and what a readied callback was to
+# As a run finishes, it lets go of everything it still holds, once its outcome is encoded (§12,
+# §16): the outcome itself, a call still suspended, which stops, and what a readied callback was to
 # be called with, each disposed then.
 
 import * as log from 'log'

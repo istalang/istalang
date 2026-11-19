@@ -1,5 +1,5 @@
 /**
- * The common type (§2, §4): the two joins, a literal type into its base and a type with `None`
+ * The common type (§4.2, §10.1): the two joins, a literal type into its base and a type with `None`
  * into its optional, in any order, and no other union.
  */
 

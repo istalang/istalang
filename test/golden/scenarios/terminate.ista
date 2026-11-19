@@ -1,5 +1,5 @@
 # A child instance that panics holding a lease: its host terminates it, which disposes what it held
-# as of its last commit (§3.12, §7), and a terminated instance stays so.
+# as of its last commit (§12, §16), and a terminated instance stays so.
 import * as log from 'log'
 import * as runtime from 'runtime'
 

@@ -1,5 +1,5 @@
 /**
- * Type aliases (§3.17) and associated types (§3.1), which are aliases too: each one's type,
+ * Type aliases (§4.6) and associated types (§5.2), which are aliases too: each one's type,
  * resolved once in its module, its declaration's own parameters left open for each use to
  * substitute. One reaching itself where it would have to be known first, directly or through
  * others, is reported at each member of the cycle, which then stands for the error type.
@@ -95,7 +95,7 @@ export class Aliases implements TypeMatchQueries {
     return this.#types.get(alias);
   }
 
-  /** The subject and cases of `alias`'s type `match` (§3.17); undefined when its body is a type. */
+  /** The subject and cases of `alias`'s type `match` (§4.6); undefined when its body is a type. */
   typeMatchOf(alias: AliasDeclaration): TypeMatchForm | undefined {
     return this.#matches.get(alias);
   }

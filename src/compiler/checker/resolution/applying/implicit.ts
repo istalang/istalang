@@ -1,5 +1,5 @@
 /**
- * Calls the language makes on its own (§2, §3.9, §3.10, §3.11): what a construct means as calls
+ * Calls the language makes on its own (§4.2, §10.2, §8.2, §11.3): what a construct means as calls
  * that no call written in the source stands for.
  *
  * - A `for`, a comprehension and a spread call `iterate`; writing an element and a map literal of
@@ -7,7 +7,7 @@
  *   struct field orderings in patterns) call `compare`; and `in` and `not in` call `includes`. A
  *   program may define these for its own types, so they are found like a written call's function:
  *   in scope, through argument-dependent lookup, and among the requirements of type parameters
- *   (§3.10, §3.13).
+ *   (§8.2, §13.1).
  * - Constructs backed by prelude-owned helpers (array patterns' `length`, `_patternItem`,
  *   `_patternRest` and `compare`, and range patterns' `compare`) go through `preludeCall`: the
  *   prelude is a toolchain invariant, so a missing or inapplicable prelude helper is

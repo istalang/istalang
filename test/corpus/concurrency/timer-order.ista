@@ -1,8 +1,8 @@
 # outcome: "2 at 1 | true"
-# Timers come due in the order of their instants, whichever was made first (§6): the earlier one
+# Timers come due in the order of their instants, whichever was made first (§15.2): the earlier one
 # wins a race of `futures.first` and of `select`, even when the later one was made before it. Each
 # race reads `now()` once and sets its timers at instants from it: live code reads the clock itself
-# (§5), so two timers set by `delay` could be any time apart, and the later-made one earlier.
+# (§14), so two timers set by `delay` could be any time apart, and the later-made one earlier.
 
 import * as futures from 'futures'
 import * as time from 'time'

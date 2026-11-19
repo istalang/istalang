@@ -1,5 +1,5 @@
 # outcome: "7 shape 1 pixel 3"
-# A pattern may name an alias of a shape (§3.11): against a value of the shape it takes it apart;
+# A pattern may name an alias of a shape (§11.3): against a value of the shape it takes it apart;
 # against an `any` value it matches one whose own type is that shape, while a nominal value inside
 # keeps its own type, so the shape's pattern doesn't match it.
 

@@ -3,15 +3,15 @@
  * the grammar lets something else stand first.
  *
  * - A top-level function's name may first name the type a static is declared on (`fn Duration.
- *   zero()`, §3.7): whatever the checker's static functions may be declared on
- *   (types/written/named-types.ts), an alias of a shape among them (§3.17); a trait's function,
- *   `Self` (§3.10). A module's own function may be a getter instead, `fn get full(…)` (§3.1).
+ *   zero()`, §6.2): whatever the checker's static functions may be declared on
+ *   (types/written/named-types.ts), an alias of a shape among them (§4.6); a trait's function,
+ *   `Self` (§8.2). A module's own function may be a getter instead, `fn get full(…)` (§5.2).
  * - `extern` is followed by what an extern's head may go on with (syntax/tokens/modifiers.ts), or
- *   by the constant's name; a handle's word by `struct` (§3.6).
+ *   by the constant's name; a handle's word by `struct` (§17.2).
  * - A method's first parameter may be the receiver, `self`: a top-level or a trait's function,
- *   never a static or a local one (§3.7).
+ *   never a static or a local one (§6.2).
  * - A struct's, an enum's or a trait's member may be an associated type instead, `type Data = T`
- *   (§3.1, §3.10), and a trait's a function; a variant's field, one of its parameters (§3.11), may
+ *   (§5.2, §8.2), and a trait's a function; a variant's field, one of its parameters (§5.3), may
  *   not.
  */
 

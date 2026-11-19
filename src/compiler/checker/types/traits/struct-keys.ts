@@ -1,11 +1,11 @@
 /**
- * Struct keys (§3.1, §3.5, §3.9): `keyof S`, the type of the field a key names, `S[K]`, and mapped
+ * Struct keys (§5.2, §8.1, §10.2): `keyof S`, the type of the field a key names, `S[K]`, and mapped
  * struct types, each reduced once what it is built from is known (types/type/type-rules.ts). One
  * home, so `keyof`, mapped types, field loops, struct comprehensions, rest patterns and `s[k]` read
  * keys alike.
  *
- * - A struct type is a struct declaration's, not shared or extern, or a shape (§3.5). Its keys are
- *   its fields' names as String literals, in the name order every struct's fields are in (§3.1).
+ * - A struct type is a struct declaration's, not shared or extern, or a shape (§8.1). Its keys are
+ *   its fields' names as String literals, in the name order every struct's fields are in (§5.2).
  * - A struct type not known yet, a type parameter with a struct constraint or a type computed from
  *   one, has the literals its constraints name beside one opaque type for every other key (a
  *   `KeysType`), so a written key fits `keyof S` as a union member does, and the keys a field
@@ -47,7 +47,7 @@ import { keysOwner } from '../written/key-types.ts';
 import { entryRules, structConstraintsOn } from './known-constraints.ts';
 
 /**
- * Whether `type` is a struct type (§3.5): a struct declaration's, not shared or extern, or a shape.
+ * Whether `type` is a struct type (§8.1): a struct declaration's, not shared or extern, or a shape.
  */
 export function isStructType(type: Type): type is StructValueType {
   return (
@@ -98,7 +98,7 @@ export function keysOf(checker: CheckerContext, of: Type, without: readonly stri
   return unionOf([...inNameOrder(named.filter(left)).map(literalType), others], rules);
 }
 
-/** `names` each once, in the name order keys are in (§3.1). */
+/** `names` each once, in the name order keys are in (§5.2). */
 function inNameOrder(names: readonly string[]): readonly string[] {
   return [...new Set(names)].sort(compareOrdered);
 }
@@ -124,7 +124,7 @@ function withoutKeys(checker: CheckerContext, keys: Type, names: readonly string
 }
 
 /**
- * The keys of a mapped entry (§3.1): its parameter's `union`, less every name the braces `holding`
+ * The keys of a mapped entry (§5.2): its parameter's `union`, less every name the braces `holding`
  * it give a field of their own.
  */
 function mappedKeys(checker: CheckerContext, holding: StructType, union: Type): Type {
@@ -136,7 +136,7 @@ function mappedKeys(checker: CheckerContext, holding: StructType, union: Type): 
 
 /**
  * The union the member parameter `parameter` stands for one member of, resolved where it is
- * declared (§3.5); a mapped entry's less the names its braces give fields (`mappedKeys`).
+ * declared (§8.1); a mapped entry's less the names its braces give fields (`mappedKeys`).
  * Undefined for any other parameter; the error type where it names a member parameter, one type
  * with no members to choose from (`namesMemberParameter`), so nothing follows it round a cycle.
  * Its union is resolved as `resolve` says: where it is written, or in a pass binding a loop's key.
@@ -163,7 +163,7 @@ export function memberUnionOf(
 
 /**
  * Whether the member parameter `parameter` is written of a type standing for one type already
- * (`S in S`, `A in B, B in A`, `K in W.Mode`): a mistake (§3.5).
+ * (`S in S`, `A in B, B in A`, `K in W.Mode`): a mistake (§8.1).
  */
 export function namesMemberParameter(checker: CheckerContext, parameter: TypeParameter): boolean {
   return (
@@ -199,7 +199,7 @@ export function isKeyWithin(checker: CheckerContext, key: Type, keys: Type): boo
 }
 
 /**
- * The type of the field `key` names in `of` (§3.1): a known struct's field's, the union of their
+ * The type of the field `key` names in `of` (§5.2): a known struct's field's, the union of their
  * types for several keys, `Never` for none. A key not known yet names an opaque field of its own,
  * and so does one a struct constraint names without an exact type. The error type when `of` has no
  * keys, or `key` is no key of `of`.
@@ -281,7 +281,7 @@ function mappedFieldType(
 }
 
 /**
- * The mapped struct type `parts` builds (§3.1), its value read through `outer` too: once every key
+ * The mapped struct type `parts` builds (§5.2), its value read through `outer` too: once every key
  * is a String literal, the shape of its named fields and one per key, of its value for that key;
  * else the opaque mapped type. A key and what it keys into are replaced in one pass, so the field
  * a key names is never asked of a struct while the key still ranges over another's keys. Keys
@@ -309,9 +309,9 @@ export function mappedTypeOf(
 
 /**
  * The struct the value of `value` is a key of, as checked: its type a struct's keys, or a member
- * parameter within them, or a field loop's key, a name of the struct it runs over (§4), or a
+ * parameter within them, or a field loop's key, a name of the struct it runs over (§11.2), or a
  * member parameter `K in keyof S` named as a value, a loop's over a type's keys among them; else
- * undefined. A String literal compared with it is a key of that struct too (§3.1).
+ * undefined. A String literal compared with it is a key of that struct too (§5.2).
  */
 export function keyOwnerOfValue(
   context: Pick<BodyContext, 'checker' | 'entityOf' | 'typeOf' | 'resolveType'>,
@@ -339,7 +339,7 @@ export function keyOwnerOfValue(
 
 /**
  * Records each String literal `pattern` compares the whole subject with, through `|` and `as`, as
- * a key of the struct `owner` (§3.1).
+ * a key of the struct `owner` (§5.2).
  */
 export function recordPatternKeys(
   context: Pick<BodyContext, 'recordKey'>,

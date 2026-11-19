@@ -1,11 +1,11 @@
 /**
- * Operators (spec §3.9) as data: each one's precedence, associativity, what it means, and the
+ * Operators (spec §10.2) as data: each one's precedence, associativity, what it means, and the
  * operands it refuses without parentheses. The language fixes them, so they live with the syntax
  * contract: the parser builds its operator parselets from these tables, the checker and lowering
  * dispatch on an operator's meaning, and the formatter will decide where parentheses are needed
  * from the same levels. An operator is spelled once, here.
  *
- * Levels are listed from loosest to tightest, the §3.9 table read bottom-up, so a level's position
+ * Levels are listed from loosest to tightest, the §10.3 table read bottom-up, so a level's position
  * is its binding power. Operators on one level associate to the left unless their entry says
  * otherwise.
  */
@@ -32,10 +32,10 @@ const precedenceLevels = [
 
 export type PrecedenceLevel = (typeof precedenceLevels)[number];
 
-/** The relation `compare`'s int is in for an ordering operator (§3.9). */
+/** The relation `compare`'s int is in for an ordering operator (§10.2). */
 export type Relation = 'less' | 'lessOrEqual' | 'greater' | 'greaterOrEqual';
 
-/** What a binary operator does (§3.9). */
+/** What a binary operator does (§10.2). */
 export type BinaryMeaning =
   /**
    * Calls `function` with both operands, so a type gives it meaning through the function's trait.
@@ -47,7 +47,7 @@ export type BinaryMeaning =
   | { readonly kind: 'equality'; readonly negated: boolean }
   /** `and` and `or`: on bools, the right side run, and given, only when the left one is `rightWhen`. */
   | { readonly kind: 'logic'; readonly rightWhen: boolean }
-  /** `??`: the left side's value inside an optional, else the right side (§4). */
+  /** `??`: the left side's value inside an optional, else the right side (§10.4). */
   | { readonly kind: 'coalesce' }
   /** `in` and `not in`: whether the right side contains the left, as `function` called on both says. */
   | { readonly kind: 'membership'; readonly function: 'includes'; readonly negated: boolean };
@@ -57,7 +57,7 @@ export interface BinaryOperatorEntry {
   /** Left unless stated: `2 ** 3 ** 2` is `2 ** (3 ** 2)`. */
   readonly associativity?: 'right';
   readonly meaning: BinaryMeaning;
-  /** Operators an operand of this one may not use unless parenthesized (§3.9). */
+  /** Operators an operand of this one may not use unless parenthesized (§10.3). */
   readonly refusesUnparenthesized?: readonly TokenKind[];
   /**
    * Whether a prefix-level operator directly on the left operand needs parentheses: `-2 ** 2`
@@ -117,7 +117,7 @@ type BinaryOperatorOf<Kind extends BinaryMeaning['kind']> = {
 
 /**
  * The operators that compare two values: the orderings and equality. A struct pattern tests a
- * field with one (§3.11).
+ * field with one (§11.3).
  */
 export type ComparisonOperator = BinaryOperatorOf<'order' | 'equality'>;
 
@@ -146,7 +146,7 @@ export type UnaryOperator = keyof typeof unaryOperators;
 
 /**
  * A binary operator that calls the function its entry names, which gives it meaning for a type
- * (§3.9); the implicit operators call theirs as the language does (`ImplicitOperator`).
+ * (§10.2); the implicit operators call theirs as the language does (`ImplicitOperator`).
  */
 export type CallingBinaryOperator = BinaryOperatorOf<'call'>;
 
@@ -159,7 +159,7 @@ export type CallingUnaryOperator = {
 
 /**
  * Where the operators without an entry above sit. `is` shares the comparison level, `..` the range
- * level, and a deferred call, `g f(x)`, prefix `await`'s (§3.14).
+ * level, and a deferred call, `g f(x)`, prefix `await`'s (§6.5).
  */
 export const operatorLevels = {
   await: 'prefix',
@@ -170,7 +170,7 @@ export const operatorLevels = {
   range: 'range',
 } as const satisfies Record<string, PrecedenceLevel>;
 
-/** `=` and the compound assignments; `x += y` means `x = x + y` (§3.9). */
+/** `=` and the compound assignments; `x += y` means `x = x + y` (§10.2). */
 const assignmentOperators = [
   '=',
   '+=',

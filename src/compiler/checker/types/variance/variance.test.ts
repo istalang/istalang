@@ -31,7 +31,7 @@ function variancesIn(text: string): ReadonlyMap<string, readonly Variance[]> {
   );
 }
 
-describe('a declaration’s variance (§3.5)', () => {
+describe('a declaration’s variance (§8.1)', () => {
   it.each([
     ['struct Box<T> { value: T }', 'Box', ['covariant']],
     ['struct Sink<T> { take: fn(T) -> Unit }', 'Sink', ['contravariant']],

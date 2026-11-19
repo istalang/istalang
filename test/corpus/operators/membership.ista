@@ -1,5 +1,5 @@
 # outcome: [true,false,true,true,true,false,true,true]
-# `item in c` calls `includes(c, item)` (§3.9): an array's element, a map's key, a substring, an
+# `item in c` calls `includes(c, item)` (§10.2): an array's element, a map's key, a substring, an
 # int a range reaches, and a program's own type through `Container`.
 
 import * as runtime from 'runtime'

@@ -8,7 +8,7 @@
  *   register of its entry's type (./parts.ts).
  * - The purpose's `main` names a start, and no two starts share a key: a host starts one by key.
  * - Every code entry ends where no path runs off its end, and one `wrapping` a function value
- *   captures it, as a start follows it there (§10).
+ *   captures it, as a start follows it there (§18).
  * - The call rule (foundation/language/call-rule.ts) over the entries the purpose names, which the
  *   runtime calls itself: a test's runner and suites as ista code, the job server as live code. Any
  *   other call is checked by the run, against the kind of code running it.

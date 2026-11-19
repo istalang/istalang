@@ -1,5 +1,5 @@
 /**
- * Formatting getters (§3.1): `get` printed between `fn` and the name, after the head's marks, and
+ * Formatting getters (§5.2): `get` printed between `fn` and the name, after the head's marks, and
  * reparsing to the tree printed.
  */
 

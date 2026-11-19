@@ -3,12 +3,12 @@
  * statement's annotations never run.
  *
  * - A declaration runs its initializer, then binds its targets; a `hold`'s variables end with the
- *   scope it names (§7). A `_` among them keeps its part as a variable with no name would, until
+ *   scope it names (§16). A `_` among them keeps its part as a variable with no name would, until
  *   its scope or `hold` ends. A local `fn` is a closure made
- *   where it is declared. A transient (§3.4) runs its initializer only where no call it is nested
+ *   where it is declared. A transient (§7.1) runs its initializer only where no call it is nested
  *   in shares it, releasing the initializer's temporaries there.
  * - An assignment runs its value, then, for each part of it, enters its place and writes it there,
- *   left to right (§3.15), converted as checking fitted it; a `_` keeps its part until its block
+ *   left to right (§4.5), converted as checking fitted it; a `_` keeps its part until its block
  *   ends.
  *   A compound one reads its place first and writes what its operator's call gives.
  * - `drop x` uses `x`, then releases it; `drop e` leaves `e`'s value to its statement's end.

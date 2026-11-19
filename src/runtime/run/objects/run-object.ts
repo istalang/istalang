@@ -1,7 +1,7 @@
 /**
  * What every object of a run has (ir-first design, decision 6): an identity from its run's serial,
  * so a newer object has the greater id and disposal rounds go newest first, its holders' count, and
- * whether it was disposed: once, for good, since a disposed value is held by nothing (§7).
+ * whether it was disposed: once, for good, since a disposed value is held by nothing (§16).
  *
  * Every object compares by identity as a handle does (definition/values/equality.ts): its `kind`
  * is `handle` and its `object` its id. `count` is kept only for what reaches a disposable

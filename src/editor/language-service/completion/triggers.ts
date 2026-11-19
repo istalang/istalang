@@ -3,7 +3,7 @@
  * one only where its character starts what the list completes: `.` a member or an import path's
  * segment, not a range's `..`; `>` only as the end of a `->` or `?->`, not a comparison or a type
  * argument list's close; `@` an annotation; a quote or `/` an import's path, and `"` a String
- * literal's text where literals are expected (a key, §3.1). Anywhere else such a
+ * literal's text where literals are expected (a key, §5.2). Anywhere else such a
  * request is answered with nothing, so the list stays closed.
  *
  * `{`, `,` and a space go on a list of names (a literal's or a pattern's fields, an annotation's,
@@ -36,7 +36,7 @@ const kinds =
   (place) =>
     opened.includes(place.kind);
 
-/** A call pattern's argument starts by position, which a field's name may label (§3.11). */
+/** A call pattern's argument starts by position, which a field's name may label (§11.3). */
 const startsPatternArgument: PlaceTest = (place) => {
   if (place.kind !== 'pattern') {
     return false;

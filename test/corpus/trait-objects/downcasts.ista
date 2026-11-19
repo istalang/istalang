@@ -1,5 +1,5 @@
 # outcome: [["email to a","sms","decided by legal","other","marker"],true,"a"]
-# An `any` value is matched against its own type (§3.10): a struct pattern, a struct without
+# An `any` value is matched against its own type (§8.3): a struct pattern, a struct without
 # fields, or a qualified variant, then the rest of the pattern against the value inside; `as`
 # binds that value, of its own type.
 

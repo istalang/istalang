@@ -32,7 +32,7 @@ interface Site {
   readonly end: number;
   /**
    * Whether its name is given type arguments, `Some<Int>(n)`, which select among a union's
-   * instances of one generic type where the name alone, as offered, would match several (§3.11).
+   * instances of one generic type where the name alone, as offered, would match several (§11.3).
    */
   readonly typed: boolean;
 }
@@ -111,7 +111,7 @@ function misfitsOf({ text, start, end }: Site): readonly string[] {
 /**
  * The word `site`'s pattern starts with, if a pattern start offers it: a variant or a type named
  * bare, the first name of a qualified one, `_` or a literal keyword. A camelCase bare name binds a
- * variable (§3.11), which nothing offers, and a name given type arguments selects by them.
+ * variable (§11.3), which nothing offers, and a name given type arguments selects by them.
  */
 function startWordOf({ text, start, end, typed }: Site): string | undefined {
   const word = leadingWord.exec(text.slice(start, end))?.[0];

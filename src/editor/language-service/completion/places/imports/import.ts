@@ -1,11 +1,11 @@
 /**
- * An import's place (§3.13): `import items from 'path'`, the items in parentheses, an item a
+ * An import's place (§13.1): `import items from 'path'`, the items in parentheses, an item a
  * name, `* as alias` or `*`.
  *
  * - A name to import offers what the module the import's path names exports, less what the file
  *   already imports from it by name, whatever alias it is bound as. Until the path is written the
  *   module is unknown, so nothing. In parentheses a name starts after `(`, a `,`, or on a line of
- *   its own, which a line break separates from the name before (§2).
+ *   its own, which a line break separates from the name before (§2.1).
  * - Inside the path, the module paths that may continue what is written (module-paths.ts).
  * - After a name or the closing `)`, the word `from`; after `*`, the word `as`; an alias, whether
  *   a namespace's or a renamed name's, is a new name: nothing.

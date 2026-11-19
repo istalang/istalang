@@ -1,5 +1,5 @@
 # panic: Division by zero.
-# A bug panics the instance (§3.12); the trace names where each frame stood.
+# A bug panics the instance (§12); the trace names where each frame stood.
 
 import * as runtime from 'runtime'
 

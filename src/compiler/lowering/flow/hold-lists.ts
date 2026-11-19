@@ -1,5 +1,5 @@
 /**
- * The arrays what `hold`s keep is kept in (§7), one per scope and type, for the flow writing them
+ * The arrays what `hold`s keep is kept in (§16), one per scope and type, for the flow writing them
  * (writer.ts): each made empty where first asked for, each `keep` appending to its own
  * (operations.ts). One is let go of where its scope ends and made anew, empty, for the scope's next
  * run; the function's are let go of by the entry's return, never by a loop's turn.

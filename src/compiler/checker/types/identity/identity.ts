@@ -1,5 +1,5 @@
 /**
- * One home for type identity (§2, §3.1): two types are the same type exactly when their keys are
+ * One home for type identity (§4.2, §5.2): two types are the same type exactly when their keys are
  * equal (type-keys.ts), so no second, structural notion of sameness can drift from the key every
  * map keyed by type uses. A shape is the same type wherever and in whatever order it is written,
  * and an alias is the type it names, because the key says so.
@@ -7,7 +7,7 @@
  * The exact relations built on it live here too: assignability, which only `Never`, a future of
  * it, the error type and a function's looser header (`functionFits`) widen, and constraints
  * compared one by one. A future of `Never` never gives a value, so it is a future of any type
- * (§3.14), as `Never` is a value of any type (§2).
+ * (§6.4), as `Never` is a value of any type (§4.1).
  */
 
 import { sameItems } from '../../../../foundation/structures/equality.ts';
@@ -35,7 +35,7 @@ export function sameConstraint(first: Constraint, second: Constraint): boolean {
 /**
  * Whether a value of type `source` fits where `target` is expected as it is: the same type, a
  * future of `Never` where a future of its kind is, or a function whose sendability is at least
- * `target`'s and whose result fits `target`'s (§2, §3.14).
+ * `target`'s and whose result fits `target`'s (§4.2, §6.4).
  */
 export function isAssignable(
   source: Type,
@@ -49,7 +49,7 @@ export function isAssignable(
 }
 
 /**
- * Whether a value of type `source` stands where `target` is expected invariantly (§3.5), as
+ * Whether a value of type `source` stands where `target` is expected invariantly (§8.1), as
  * `isAssignable` says, but a function's mark and sendability its own: a `Shared<sendable fn()>`
  * is no `Shared<fn()>`, whose holders could put a plain function in it.
  */

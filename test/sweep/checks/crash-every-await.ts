@@ -1,5 +1,5 @@
 /**
- * Every program shows the same with its contexts crashing at every await (§10): each segment runs
+ * Every program shows the same with its contexts crashing at every await (§18): each segment runs
  * again from the instance as it last committed, read back from its snapshot into a second build of
  * the same Definition, its functions emitted in a shuffled order into a fresh module, a new order
  * at every read-back (docs/work/done/ir-first/contracts.md, "Typed-IR gate"). So what a program shows

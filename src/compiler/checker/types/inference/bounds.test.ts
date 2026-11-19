@@ -1,5 +1,5 @@
 /**
- * Two variables related, one bounding the other, hand each other their bounds (§3.5, design.md §4):
+ * Two variables related, one bounding the other, hand each other their bounds (§8.1, design.md §4):
  * the lower one's lower bounds are the upper one's, the upper one's upper bounds the lower one's,
  * now and as they are added; a probe that fails leaves none of it behind.
  */

@@ -1,6 +1,6 @@
 /**
  * A recursive alias whose body is another alias of its group, written as one or reached through a
- * type `match`, is that alias (§3.17): it closes to the same recursive type, never to one with the
+ * type `match`, is that alias (§4.6): it closes to the same recursive type, never to one with the
  * error type where its own use stands, and it checks and runs as that type.
  */
 

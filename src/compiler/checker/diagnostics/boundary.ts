@@ -1,11 +1,11 @@
 /**
- * The checker's diagnostics of the host boundary and of tests, codes 5900–5999 (§3.6, §3.16, §9,
- * §10): a part of the checker's one catalog (index.ts), a block of codes per family below. A type
+ * The checker's diagnostics of the host boundary and of tests, codes 5900–5999 (§17.2, §5.5, §17.4,
+ * §18): a part of the checker's one catalog (index.ts), a block of codes per family below. A type
  * that can't cross as JSON is a constraint not met (generics.ts).
  */
 
 export const boundaryTemplates = {
-  // The host boundary, 5900–5949 (§3.6, §3.16, §9): externs a host implements, and annotations.
+  // The host boundary, 5900–5949 (§17.2, §5.5, §17.4): externs a host implements, and annotations.
   hostReference: {
     code: 5901,
     message: () =>
@@ -50,7 +50,7 @@ export const boundaryTemplates = {
   unconfinedDisposable: {
     code: 5910,
     message: (type: string) =>
-      `A 'dispose' can't make ${type} disposable: a disposable value has an identity of its own, which never leaves its instance, so declare it 'extern shared struct' or 'extern live struct' (§3.6, §7).`,
+      `A 'dispose' can't make ${type} disposable: a disposable value has an identity of its own, which never leaves its instance, so declare it 'extern shared struct' or 'extern live struct' (§17.2, §16).`,
   },
   resourceConstant: {
     code: 5911,
@@ -65,7 +65,7 @@ export const boundaryTemplates = {
   annotationOfInstances: {
     code: 5914,
     message: (annotation: string, place: string) =>
-      `'@${annotation}' names a type parameter, yet an annotation on ${place} has one value for every instance; name the types it means (§3.16).`,
+      `'@${annotation}' names a type parameter, yet an annotation on ${place} has one value for every instance; name the types it means (§5.5).`,
   },
   hostExternMark: {
     code: 5913,
@@ -73,7 +73,7 @@ export const boundaryTemplates = {
       `The host's extern '${name}' is unmarked or 'live': only the runtime runs ista code or fills an ista future (proposal 8, Rule 9). Declare it 'extern live', and reach it from ista code through 'runtime.delegate'.`,
   },
 
-  // Tests, 5950–5999 (§10): suite functions, and the testing module's calls whose arguments
+  // Tests, 5950–5999 (§18): suite functions, and the testing module's calls whose arguments
   // its signatures can't constrain.
   suiteSignature: {
     code: 5950,

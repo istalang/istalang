@@ -1,14 +1,14 @@
 /**
- * Finding the function declared to meet a trait's requirement for a type (§3.10): chosen among the
+ * Finding the function declared to meet a trait's requirement for a type (§8.2): chosen among the
  * witness candidates (choosing/candidates.ts) by the required parameter types, taken exactly, so a
  * function taking the type only once wrapped into an optional is one for the optional. A field a
  * trait requires and the type stores none of is met so by a getter, read as `fn get name(self:
  * Self)` giving the field's type would be. Conformance
  * builds on it (conformance.ts); a derived codec or default may stand only where none is declared.
  *
- * A lone literal type's value is its base's (§2), so a parameter of a literal type taken by value
+ * A lone literal type's value is its base's (§4.3), so a parameter of a literal type taken by value
  * is taken as its base: `"draft"` meets `Stringable` with `String`'s `toString`. Through `&` a
- * place has its type exactly (§3.7), and the base's function could write any value of the base
+ * place has its type exactly (§7.3), and the base's function could write any value of the base
  * there, so a `&Self` parameter stays the literal. A requirement giving `Self` still gives the
  * base, which is no literal, so it isn't met that way either.
  */
@@ -59,7 +59,7 @@ export function declaresWitness(
 /**
  * The function declared to meet `required`, a requirement mapped for `type`: chosen among the
  * witness candidates by the required parameter types, taken exactly and bound as a function value
- * is, a rest parameter one array, since a call through the requirement passes it so (§3.10).
+ * is, a rest parameter one array, since a call through the requirement passes it so (§8.2).
  */
 export function chooseWitness(checker: CheckerContext, type: Type, required: Signature): Choice {
   const parameterTypes = required.parameters.map((parameter) => parameter.type);
@@ -80,7 +80,7 @@ export type RequiredSignature = Pick<
 >;
 
 /**
- * A field a trait requires read as the getter meeting it is called (§3.10): on `self`, by value,
+ * A field a trait requires read as the getter meeting it is called (§8.2): on `self`, by value,
  * giving `fieldType`, an unmarked requirement, since any code reads a field.
  */
 export function fieldGetterSignature(self: Type, fieldType: () => Type): RequiredSignature {
@@ -95,7 +95,7 @@ export function fieldGetterSignature(self: Type, fieldType: () => Type): Require
 
 /**
  * The getter declared to meet `required`'s field for `type`, which stores none of its name
- * (§3.10): chosen among the getters beside `type` or the trait as a witness of its read is.
+ * (§8.2): chosen among the getters beside `type` or the trait as a witness of its read is.
  */
 export function chooseFieldGetter(
   checker: CheckerContext,

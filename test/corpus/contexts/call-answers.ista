@@ -1,5 +1,5 @@
 # outcome: 42
-# A live run calls ista code in a context of a runtime it opens (§9), and the call answers with
+# A live run calls ista code in a context of a runtime it opens (§17.1), and the call answers with
 # `Ok` of what that code gave.
 
 import * as runtime from 'runtime'

@@ -1,9 +1,9 @@
-# The time module (spec §3.8): instants and durations as structs wrapping milliseconds.
+# The time module (spec §19.2): instants and durations as structs wrapping milliseconds.
 #
 # `at` is the runtime's only time primitive and `now` its only clock, both read in the instance's
-# segment (now() is the segment's start time, §5). Everything else is code over them, so mocking
-# `now` and `at` controls all time (§10). The operators on Time and Duration are declared here, so
-# argument-dependent lookup finds them wherever the types are used (§3.13).
+# segment (now() is the segment's start time, §14). Everything else is code over them, so mocking
+# `now` and `at` controls all time (§18). The operators on Time and Duration are declared here, so
+# argument-dependent lookup finds them wherever the types are used (§13.1).
 
 import * as json from 'json'
 
@@ -27,14 +27,14 @@ fn multiply(left: Duration, right: Int) -> Duration:
 K fn delay<K in Persistence>(duration: Duration) -> Future<Unit, K>:
   at(now() + duration)
 
-# Times and durations are ordered as the milliseconds they hold (§3.10 `Comparable`).
+# Times and durations are ordered as the milliseconds they hold (§8.4 `Comparable`).
 fn compare(left: Time, right: Time) -> Int:
   compare(left.value, right.value)
 
 fn compare(left: Duration, right: Duration) -> Int:
   compare(left.value, right.value)
 
-# ISO 8601 text (§3.8, §9). Both are Stringable and Parsable, and cross as JSON as that text.
+# ISO 8601 text (§19.2, §17.4). Both are Stringable and Parsable, and cross as JSON as that text.
 #
 # - A time is written as JavaScript's Date.toJSON writes it: UTC, with milliseconds, and a six-digit
 #   signed year outside 0000–9999. Beyond the instants a JavaScript Date holds, ±8.64e15 ms, there
@@ -92,7 +92,7 @@ fn Time.fromJson(value: json.Json, path: String) -> Result<Time>:
 fn Duration.fromJson(value: json.Json, path: String) -> Result<Duration>:
   json.decodeText(value, path)
 
-# Time zones (§3.8). A zone is an IANA name, a DateTime what a wall clock reads, with no zone. The
+# Time zones (§19.2). A zone is an IANA name, a DateTime what a wall clock reads, with no zone. The
 # zone rules are the host's time-zone data, so two hosts with different data can disagree. A Zone
 # is a type the runtime implements, holding its zone's canonical id, so no code can build one in a
 # form of its own, and `==` and map keys compare zones.

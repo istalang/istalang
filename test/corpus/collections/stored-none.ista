@@ -1,5 +1,5 @@
 # outcome: "1,none,3|a=1;b=none;c=3;|1,none,3|1,none,3|1,none,3|3"
-# Items that are themselves `none` (§3.10): a cursor gives a `Step`, never `T?`, so a stored `none`
+# Items that are themselves `none` (§8.4): a cursor gives a `Step`, never `T?`, so a stored `none`
 # is an item like any other, not the end. An array's in a `for`, a map's values, a comprehension's
 # and a spread's items, and those of a program's own cursor, which gives `Done` once there are no
 # more, also through the `Iterable` constraint of generic code.

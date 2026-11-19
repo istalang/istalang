@@ -2,7 +2,7 @@
  * The types a type is built from, one level down, and a type rebuilt from new ones: the one order
  * every walk over a type's parts reads them in (type-parts.ts, the term graphs of recursive types).
  *
- * - A recursive type (§3.17) is a node of a cyclic graph, so walking into its body would never end:
+ * - A recursive type (§4.6) is a node of a cyclic graph, so walking into its body would never end:
  *   what it is built from is its graph's parts, each largest type inside a node's body that refers
  *   to no node of the graph and to no parameter a type around it there binds (an `any` type's
  *   traits' `Self`, a mapped struct type's own). They are what substitution replaces and what a
@@ -242,7 +242,7 @@ function mentionsAnyOf(type: Type, keys: ReadonlySet<ParameterKey>): boolean {
 }
 
 /**
- * Whether `type` is, or is built from, a recursive type (§3.17). A type built from no other, most
+ * Whether `type` is, or is built from, a recursive type (§4.6). A type built from no other, most
  * of those asked, answers without a lookup: the memo's lookups were most of what asking cost.
  */
 export function holdsRecursion(type: Type): boolean {

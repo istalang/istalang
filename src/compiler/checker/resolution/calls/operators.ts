@@ -1,12 +1,12 @@
 /**
- * Operators as calls (§3.9): `a + b` calls `add(a, b)`. Which function an operator calls is its
+ * Operators as calls (§10.2): `a + b` calls `add(a, b)`. Which function an operator calls is its
  * entry's in syntax/expressions/operators.ts; the orderings and `in`, which call `compare` and
  * `includes`, are the language's implicit calls (resolution/applying/implicit.ts).
  *
  * An operator's function is found like any call's: by its name where the operator is written, the
  * prelude's included, which declares the operators on primitives as externs; through the modules
- * of the operands' types (§3.13); and among the requirements of the type parameters the operands
- * mention (§3.10).
+ * of the operands' types (§13.1); and among the requirements of the type parameters the operands
+ * mention (§8.2).
  */
 
 import type { Expression } from '../../../syntax/expressions/index.ts';
@@ -24,7 +24,7 @@ import type { Type } from '../../types/type/index.ts';
 import { topLevelCandidates } from '../choosing/candidates.ts';
 import { resolveCall } from './resolve/index.ts';
 
-/** An operator a call site applies: as it is written, and the function it calls (§3.9). */
+/** An operator a call site applies: as it is written, and the function it calls (§10.2). */
 interface AppliedOperator {
   readonly spelling: BinaryOperator | UnaryOperator;
   readonly function: string;

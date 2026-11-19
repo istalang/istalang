@@ -98,7 +98,7 @@ const prefixParselets: Partial<Record<CursorKind, PrefixParselet>> = {
 } satisfies StartParselets<OperandWord, PrefixParselet>;
 
 /**
- * `new` before a name starts a shared struct's literal (§3.18), and a kind a lambda's head;
+ * `new` before a name starts a shared struct's literal (§5.4), and a kind a lambda's head;
  * undefined where the word is a name.
  */
 const wordParselets = {
@@ -226,7 +226,7 @@ const listItemOpeners: ReadonlySet<CursorKind> = new Set([spreadOpener, structCo
 
 /**
  * Whether a token of `kind`, first on its line inside a list, starts an item rather than
- * continuing the one before (§2), as the item parsers and the tables say: what opens an item only
+ * continuing the one before (§2.1), as the item parsers and the tables say: what opens an item only
  * a list holds starts one, and so does a token only the prefix table has. One both tables have
  * starts one where it applies to an operand only on the operand's line (a postfix bracket, a
  * template, or a name starting a deferred call's call); where it is a word, unless it spells a

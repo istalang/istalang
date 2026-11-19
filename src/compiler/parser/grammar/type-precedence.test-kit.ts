@@ -3,8 +3,8 @@
  * types, type arguments, `keyof` and a field's type by key (`S[K]`), the text writing each with
  * only the parentheses the grammar needs, and the tree a parsed type denotes, parentheses ignored.
  *
- * `|` binds looser than `?`, `[K]` and type arguments and tighter than `->` (§2), and `keyof`
- * binds between them (§3.1), so the printer wraps a union, a function type or a `keyof` under `?`
+ * `|` binds looser than `?`, `[K]` and type arguments and tighter than `->` (§4.2), and `keyof`
+ * binds between them (§5.2), so the printer wraps a union, a function type or a `keyof` under `?`
  * or before `[K]`, a union or a function type after `keyof`, and a function type in a union unless
  * it is the last member, whose return type would take the members after it. A union member that is
  * itself a union is wrapped too, as the tree keeps members as written.

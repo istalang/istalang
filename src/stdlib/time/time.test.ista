@@ -1,4 +1,4 @@
-# The time module (spec §3.8): the ordering of times and durations, and zones: readings in a zone,
+# The time module (spec §19.2): the ordering of times and durations, and zones: readings in a zone,
 # the instants a wall clock names across changes of offset, and their text; the rest of the module
 # is the corpus's. Berlin moves from +01:00 to +02:00 at 02:00 on 2026-03-29,
 # and back at 03:00 on 2026-10-25.

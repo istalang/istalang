@@ -1,6 +1,6 @@
 /**
  * A member's place: after a member's operator (`.`, `?.`, `->`, `?->`), what the value before it
- * has: its fields and getters (§3.1), and the methods and statics a call through it may choose
+ * has: its fields and getters (§5.2), and the methods and statics a call through it may choose
  * (checker lookup/members.ts); after a namespace, what its module exports; after a type, its
  * statics and variants. A qualified name offers only what its place takes: in a type, or before
  * braces, a namespace's types and a type's associated types; naming what a pattern matches, a
@@ -12,10 +12,10 @@
  * where the tree reads a member access.
  *
  * A link of an optional chain offers what the value its step works on has, as checking found it
- * (§4): the value inside after `?.`, and nothing after a `?.` on a value that isn't optional.
+ * (§10.4): the value inside after `?.`, and nothing after a `?.` on a value that isn't optional.
  *
  * A `.` typed right after an integer may start its fraction (`1.5`), so it opens no list; asked
- * for, the integer's members are offered, since `2.toString()` calls one (§2).
+ * for, the integer's members are offered, since `2.toString()` calls one (§3.1).
  */
 
 import {
@@ -62,7 +62,7 @@ export interface MemberPlace {
 /**
  * What the qualified name `holder` holds names: a variant in a pattern's name or a call pattern's,
  * a type before braces, which build and take apart only structs, a variant being built and taken
- * apart by its call (§3.11).
+ * apart by its call (§5.3).
  */
 function namedBy(tree: SyntaxTree, holder: NamedType | NamePattern): 'type' | 'variant' {
   return holder.kind === 'NamePattern' || parentOf(tree, holder)?.kind === 'VariantCallPattern'
@@ -70,7 +70,7 @@ function namedBy(tree: SyntaxTree, holder: NamedType | NamePattern): 'type' | 'v
     : 'type';
 }
 
-/** What a member's name is written right after (§4). */
+/** What a member's name is written right after (§10.4). */
 const memberOperators: ReadonlySet<string> = new Set(['.', '?.', '->', '?->']);
 
 /** What only a member can follow. */
@@ -158,7 +158,7 @@ function exportsNaming(
 }
 
 /**
- * What a type has through its name: its associated types (§3.1), its variants, and for a value its
+ * What a type has through its name: its associated types (§5.2), its variants, and for a value its
  * statics too.
  */
 function typeMembers(
@@ -216,7 +216,7 @@ function valueMembers(
 }
 
 /**
- * The link of an optional chain `access` is read by, if it is one (§4): a method call takes the
+ * The link of an optional chain `access` is read by, if it is one (§10.4): a method call takes the
  * access's step, so its call is the link, type arguments written after the access or not; any
  * other access is its own.
  */

@@ -1,6 +1,6 @@
 # outcome: [24,3,7,true]
 # disable-ista-formatter
-# The bitwise operators bind as Python's (§3.9): the shifts below `+`, then `&`, `^` and `|`, all
+# The bitwise operators bind as Python's (§10.2): the shifts below `+`, then `&`, `^` and `|`, all
 # above the comparisons. The formatter would add parentheses to every line here, so it is off.
 
 import * as runtime from 'runtime'

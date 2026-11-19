@@ -1,12 +1,12 @@
 /**
- * Patterns' shapes over the checker's types (§3.11): the constructors each type is made of, the
+ * Patterns' shapes over the checker's types (§11.3): the constructors each type is made of, the
  * shape a literal gives, and how a shape no case matches is written back as a pattern.
  *
- * - A union is made of its members (§3.11), each holding its value, and a literal member or `None`
+ * - A union is made of its members (§11.3), each holding its value, and a literal member or `None`
  *   nothing beside its tag.
  * - An enum is made of its variants, `Bool` of `true` and `false`, and a tuple, a struct, `Unit`
  *   and a literal type of one constructor each, the literal's being its value; an array of its
- *   lengths (exhaustiveness.ts). A member parameter (§3.5) is made of what its union's members are
+ *   lengths (exhaustiveness.ts). A member parameter (§8.1) is made of what its union's members are
  *   made of, since each instantiation makes its value one member's, with no tag around it. Any
  *   other type (`Int`, `String`, a handle, a type parameter) has no finite set, so only a pattern
  *   taking anything covers it.
@@ -64,7 +64,7 @@ function constructorsOf(
   type: Type,
 ): readonly ConstructorOf<Type>[] | undefined {
   if (type.kind === 'recursive') {
-    // A recursive type is made of what it unfolds to (§3.17).
+    // A recursive type is made of what it unfolds to (§4.6).
     return constructorsOf(checker, unfolded(type));
   }
   const union = checker.fitting.memberUnionOf(type);
@@ -218,7 +218,7 @@ function structWitness(
 }
 
 /**
- * A variant's shape as its call pattern, as it is built (§3.11): `Rejected(…)`, or the fields a
+ * A variant's shape as its call pattern, as it is built (§11.3): `Rejected(…)`, or the fields a
  * case looked into, by name, and `...` for the others.
  */
 function variantWitness(

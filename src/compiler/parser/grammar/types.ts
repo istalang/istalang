@@ -1,5 +1,5 @@
 /**
- * Type grammar (§2, §3): named and generic types, `T?`, tuples, function types (whose parameters
+ * Type grammar (§4.1, §5.1): named and generic types, `T?`, tuples, function types (whose parameters
  * may end in a rest, `...A`), anonymous structs (mapped ones too, grammar/parts/structs.ts), `any
  * T`, `&T`, unions, literal types, associated types (`Field<Int>.Data`), key types (`keyof S`,
  * `S[K]`) and a type `match` case's type variables (`infer T`). What follows `is` is
@@ -7,20 +7,20 @@
  *
  * Operators bind at two levels, as patterns' do (grammar/parts/levels.ts): `|` between a union's
  * members, then the postfix `?`, `.Name` and `[K]`. `keyof` takes a type of the postfix level, so
- * `keyof S[K]` is `keyof (S[K])` and `keyof S | T` is `(keyof S) | T` (§3.1). A function type's
+ * `keyof S[K]` is `keyof (S[K])` and `keyof S | T` is `(keyof S) | T` (§5.2). A function type's
  * return type is a whole type, so `fn() -> A | B` returns the union, while `any`'s traits are
  * names, so `any A & B | C` is `(any A & B) | C`. A literal type is a string, an integer, maybe
- * negative, or a bool (§2), so another literal is no type.
+ * negative, or a bool (§4.3), so another literal is no type.
  *
- * Only a parameter's type may be a reference (§3.7), and `parseParameterType` is the one entry that
+ * Only a parameter's type may be a reference (§7.3), and `parseParameterType` is the one entry that
  * allows it: a function type's parameters, and a tuple type's items, which `Fn<(&T,), R>` writes a
- * function type's parameters as (§3.14); the checker reports a tuple's anywhere else, since only
+ * function type's parameters as (§6.4); the checker reports a tuple's anywhere else, since only
  * what the tuple is given to tells. A `&` met anywhere else is still parsed, so the tree shows what
  * was written, but it is reported. Expressions follow the same rule for `&x` in call arguments.
  *
  * `T??` arrives as one `??` token and means `T?` twice. Fields of an anonymous struct, as the items
- * of every list in a type, are separated by `,` or line breaks (§2). A function type without `->`
- * returns unit, as `Setup<E> = async fn(async fn(E))` in §10 shows.
+ * of every list in a type, are separated by `,` or line breaks (§2.1). A function type without `->`
+ * returns unit, as `Setup<E> = async fn(async fn(E))` in §18 shows.
  */
 
 import type { TypeParameter } from '../../syntax/declarations/index.ts';
@@ -176,7 +176,7 @@ function parseMemberType(parser: Parser, owner: TypeNode): TypeNode {
   return { kind: 'MemberType', span: parser.spanFrom(parser.startOf(owner)), owner, name };
 }
 
-/** `[K]` after a type, `S["region"]`: the type of the field the key names (§3.1). */
+/** `[K]` after a type, `S["region"]`: the type of the field the key names (§5.2). */
 function parseIndexedType(parser: Parser, owner: TypeNode): TypeNode {
   const key = parseEnclosed(parser, '[', () => parser.type()).value;
   return { kind: 'IndexedType', span: parser.spanFrom(parser.startOf(owner)), owner, key };
@@ -190,7 +190,7 @@ function parseKeyofType(parser: Parser): TypeNode {
 }
 
 /**
- * `infer T`, or `infer T is C & D`, at `infer` (§3.17): its variable is a type parameter, whose
+ * `infer T`, or `infer T is C & D`, at `infer` (§4.6): its variable is a type parameter, whose
  * constraints are read as any type parameter's are. Where it may stand is the checker's to judge.
  */
 function parseInferType(parser: Parser): TypeNode {
@@ -255,7 +255,7 @@ function parseParameterTypes(parser: Parser): FunctionType['parameters'] {
   ).items;
 }
 
-/** `...A`: the rest of a function type's parameters, an array or a pack (§3.3, §3.5). */
+/** `...A`: the rest of a function type's parameters, an array or a pack (§6.1, §8.1). */
 function parseRestType(parser: Parser): RestType {
   const { start } = parser.cursor.advance().span;
   const type = parser.type();

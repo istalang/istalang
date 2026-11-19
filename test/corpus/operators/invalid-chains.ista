@@ -3,7 +3,7 @@
 # error: 5016 at 10:11
 # error: 5016 at 11:3
 # Each link of a chain is checked as its comparison alone would be; `in` needs an `includes`
-# taking the container and the item (§3.9).
+# taking the container and the item (§10.2).
 
 fn f(x: Int, y: Int, flag: Bool) -> Bool:
   _ = 1 < "a" < 2

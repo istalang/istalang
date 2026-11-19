@@ -1,6 +1,6 @@
 /**
  * What checking a construct that could fail to match gives the walk of a pattern that may fail
- * (§3.11): the tests lowering runs and a shape for exhaustiveness. A target has none, so the walk
+ * (§11.3): the tests lowering runs and a shape for exhaustiveness. A target has none, so the walk
  * refuses those constructs there (walk/index.ts).
  */
 
@@ -18,7 +18,7 @@ export interface Leaf {
 /** Nothing to test, after a report; a guard for exhaustiveness. */
 export const failed: Leaf = { tests: [], shape: undefined };
 
-/** A construct its part's type rules out (§3.11): it never matches, so it covers nothing. */
+/** A construct its part's type rules out (§11.3): it never matches, so it covers nothing. */
 export const ruledOutLeaf: Leaf = { tests: [neverTest], shape: nothingShape };
 
 /**
@@ -34,7 +34,7 @@ export interface Selection {
 }
 
 /**
- * A selection its part's type rules out (§3.11): the pattern never matches there, so nothing past
+ * A selection its part's type rules out (§11.3): the pattern never matches there, so nothing past
  * it is taken apart, and what it binds has no value.
  */
 export function ruledOutSelection(part: ValuePart): Selection {

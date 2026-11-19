@@ -1,5 +1,5 @@
 /**
- * Object safety (§3.10): each way a trait can't follow `any` gives its own reason, the trait's
+ * Object safety (§8.3): each way a trait can't follow `any` gives its own reason, the trait's
  * parameters counting as `Self` where its arguments make them so, and a trait using `Self` only as
  * its functions' receivers can.
  */

@@ -1,4 +1,4 @@
-# The fanout module (spec §3.8): delivery to every subscriber, order, revertible messages and the
+# The fanout module (spec §19.2): delivery to every subscriber, order, revertible messages and the
 # end of a subscription. Each subscriber passes what it handles on to an inbox the test reads.
 
 import * as fanout from 'fanout'

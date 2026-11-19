@@ -1,8 +1,8 @@
 /**
- * Positions in sequences, arrays and strings alike (§3.8, §3.9): what an index, a range, `at` and
+ * Positions in sequences, arrays and strings alike (§19.3, §10.2): what an index, a range, `at` and
  * `slice` select, and when indexing panics. One home, so arrays and strings can't disagree.
  *
- * - `xs[i]` needs `0 <= i < length`; anything else is a bug in the program, so it panics (§3.12).
+ * - `xs[i]` needs `0 <= i < length`; anything else is a bug in the program, so it panics (§12).
  * - `at(i)` counts a negative index from the end, as JavaScript does, and gives none outside.
  * - A range's open start means 0 and its open end the length. Slicing with it needs
  *   `0 <= start <= end <= length`, and panics otherwise. A range stepping backward runs from the

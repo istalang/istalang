@@ -1,5 +1,5 @@
 /**
- * Struct values built by their fields' names (§3.1 "Field order"): every struct is laid out in its
+ * Struct values built by their fields' names (§5.2 "Field order"): every struct is laid out in its
  * type's layout, name order (`laidOut`), so whatever builds one, a literal, a conversion into a
  * shape or a pattern's rest, names each field's value and never depends on the order it has them
  * in. The units below every builder of structs, so none of them imports another to build one.
@@ -21,7 +21,7 @@ import type { CodeContext } from '../context.ts';
 /**
  * Builds a value of the struct type `type` from its fields, each taken by its name from `named`:
  * the struct; or, for a shared struct, a new cell holding the shape its fields make, whose handle
- * is the shared struct's value (§3.18).
+ * is the shared struct's value (§5.4).
  */
 export function structValue(
   context: CodeContext,
@@ -57,8 +57,8 @@ export function construct(
 
 /**
  * A struct of `to` built from `value`, a struct of `from`, each of `to`'s fields taken from the
- * field of `from` with its name: a nominal struct's value as its shape (§3.1), or the fields a
- * struct pattern's rest takes (§3.11).
+ * field of `from` with its name: a nominal struct's value as its shape (§5.2), or the fields a
+ * struct pattern's rest takes (§11.3).
  */
 export function rebuiltAs(
   context: CodeContext,
@@ -79,7 +79,7 @@ export function rebuiltAs(
   return construct(context, to, named, span);
 }
 
-/** The tuple of `elements`' values: the unit constant of none (§3.15). */
+/** The tuple of `elements`' values: the unit constant of none (§4.5). */
 export function tupleOf(
   context: CodeContext,
   elements: readonly Register[],

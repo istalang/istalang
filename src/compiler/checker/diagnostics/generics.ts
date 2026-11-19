@@ -1,55 +1,55 @@
 /**
- * The checker's diagnostics of generics, codes 5080–5199 and 5380–5389 (§3.1, §3.5, §3.7,
- * §3.9–§3.11, §3.17): a part of the checker's one catalog (index.ts), a block of codes per family
+ * The checker's diagnostics of generics, codes 5080–5199 and 5380–5389 (§5.2, §8.1, §6.2,
+ * §8.2–§8.4, §10.2, §11.3, §4.6): a part of the checker's one catalog (index.ts), a block of codes per family
  * below. How messages
  * spell a parameter is here too: messages of several parts name parameters, so the spelling is one.
  */
 
 export const genericTemplates = {
-  // Packs, 5080–5099 (§3.5): type parameters standing for a tuple of types, where they may
+  // Packs, 5080–5099 (§8.1): type parameters standing for a tuple of types, where they may
   // stand, and what a call passes one.
   restNotPack: {
     code: 5080,
     message: (type: string) =>
-      `A function type's rest is a pack, '...A' (§3.5), and '${type}' is no pack: a function value takes an array's rest as one array.`,
+      `A function type's rest is a pack, '...A' (§8.1), and '${type}' is no pack: a function value takes an array's rest as one array.`,
   },
   packNotLast: {
     code: 5087,
     message: () =>
-      "A function type's rest, its pack, is its last parameter, and its only rest (§3.5).",
+      "A function type's rest, its pack, is its last parameter, and its only rest (§8.1).",
   },
   packOutsideFunction: {
     code: 5081,
     message: (name: string) =>
-      `'${name}' can't be a pack: only a function's type parameters stand for a tuple of types (§3.5).`,
+      `'${name}' can't be a pack: only a function's type parameters stand for a tuple of types (§8.1).`,
   },
   packConstrained: {
     code: 5082,
     message: (name: string, form: string) =>
-      `The pack '${name}' takes no ${form}: its types are only passed through (§3.5).`,
+      `The pack '${name}' takes no ${form}: its types are only passed through (§8.1).`,
   },
   packNamed: {
     code: 5083,
     message: (name: string) =>
-      `'${name}' is a pack, whose arguments have no names: give them by position (§3.5).`,
+      `'${name}' is a pack, whose arguments have no names: give them by position (§8.1).`,
   },
   packArguments: {
     code: 5084,
     message: (pack: string) =>
-      `A pack (${pack}) takes single values by position, or one spread of a value of that pack (§3.5).`,
+      `A pack (${pack}) takes single values by position, or one spread of a value of that pack (§8.1).`,
   },
   packTypeArgument: {
     code: 5085,
     message: (name: string, type: string) =>
-      `'${type}' can't fill the pack '${name}': a pack takes a tuple type, such as '(Int, String)', '(Int,)' or '()' (§3.5).`,
+      `'${type}' can't fill the pack '${name}': a pack takes a tuple type, such as '(Int, String)', '(Int,)' or '()' (§8.1).`,
   },
   packMismatch: {
     code: 5086,
     message: (expected: string, found: string) =>
-      `These arguments fill a pack of ${expected}, not ${found} (§3.5).`,
+      `These arguments fill a pack of ${expected}, not ${found} (§8.1).`,
   },
 
-  // Generics and calls, 5100–5149 (§3.5, §3.7, §3.9–§3.11, §3.17).
+  // Generics and calls, 5100–5149 (§8.1, §6.2, §8.2–§8.4, §10.2, §11.3, §4.6).
   cannotInfer: {
     code: 5100,
     message: (name: string, parameter: string) =>
@@ -63,7 +63,7 @@ export const genericTemplates = {
   unmetStructConstraint: {
     code: 5134,
     message: (reason: string, type: string, constraint: string) =>
-      `${reason[0]?.toUpperCase() ?? ''}${reason.slice(1)}, so ${type} doesn't meet ${constraint} (§3.5).`,
+      `${reason[0]?.toUpperCase() ?? ''}${reason.slice(1)}, so ${type} doesn't meet ${constraint} (§8.1).`,
   },
   notTrait: {
     code: 5102,
@@ -90,12 +90,12 @@ export const genericTemplates = {
   aliasCycle: {
     code: 5106,
     message: (name: string) =>
-      `The alias '${name}' refers to itself where it would have to be known first: a recursive alias names itself only inside a type built from others (a nominal type's argument, or an alias's its body guards, a trait's argument in an 'any' type, a field, a tuple element, a function's parameter or result) (§3.17).`,
+      `The alias '${name}' refers to itself where it would have to be known first: a recursive alias names itself only inside a type built from others (a nominal type's argument, or an alias's its body guards, a trait's argument in an 'any' type, a field, a tuple element, a function's parameter or result) (§4.6).`,
   },
   irregularAlias: {
     code: 5128,
     message: (name: string, named: string) =>
-      `The recursive alias '${name}' must pass its own type parameters, in order, where it names '${named}': other type arguments would need endlessly many types (§3.17).`,
+      `The recursive alias '${name}' must pass its own type parameters, in order, where it names '${named}': other type arguments would need endlessly many types (§4.6).`,
   },
   bareVariant: {
     code: 5107,
@@ -112,13 +112,13 @@ export const genericTemplates = {
   variantInBraces: {
     code: 5139,
     message: (name: string) =>
-      `A variant is built by calling it, as in '${name}(…)', not by naming its fields in braces or a block (§3.11).`,
+      `A variant is built by calling it, as in '${name}(…)', not by naming its fields in braces or a block (§5.3).`,
   },
   fieldlessCalled: {
     code: 5138,
     severity: 'warning',
     message: (name: string) =>
-      `The variant '${name}' has no fields, so it is a value: write '${name}', without '()' (§3.11).`,
+      `The variant '${name}' has no fields, so it is a value: write '${name}', without '()' (§5.3).`,
   },
   disposeCall: {
     code: 5110,
@@ -147,7 +147,7 @@ export const genericTemplates = {
   parameterTypeMissing: {
     code: 5129,
     message: (name: string | undefined) =>
-      `${spelledParameter(name, true)} has no type: write one, or give it a default to take it from (§3.3).`,
+      `${spelledParameter(name, true)} has no type: write one, or give it a default to take it from (§4.4).`,
   },
   endlessConformance: {
     code: 5114,
@@ -161,7 +161,7 @@ export const genericTemplates = {
   restNotArray: {
     code: 5116,
     message: (name: string, found: string) =>
-      `The rest parameter '${name}' collects arguments into an array or a pack, so its type is an Array<T> or a pack (§3.5), not ${found}.`,
+      `The rest parameter '${name}' collects arguments into an array or a pack, so its type is an Array<T> or a pack (§8.1), not ${found}.`,
   },
   restDefault: {
     code: 5117,
@@ -204,47 +204,47 @@ export const genericTemplates = {
   severalTraits: {
     code: 5127,
     message: (name: string, union: string, traits: readonly string[]) =>
-      `'${name}' on ${union} could be what any of ${traits.join(', ')} requires, each a trait it meets; convert the value into the 'any' type of the one meant, then call it (§3.10).`,
+      `'${name}' on ${union} could be what any of ${traits.join(', ')} requires, each a trait it meets; convert the value into the 'any' type of the one meant, then call it (§8.3).`,
   },
   noAssociatedType: {
     code: 5132,
-    message: (type: string, name: string) => `${type} has no associated type '${name}' (§3.1).`,
+    message: (type: string, name: string) => `${type} has no associated type '${name}' (§5.2).`,
   },
   severalOtherFields: {
     code: 5133,
     message: () =>
-      "A struct constraint has one '[_]' entry at most: it constrains every field the others don't name (§3.5).",
+      "A struct constraint has one '[_]' entry at most: it constrains every field the others don't name (§8.1).",
   },
   notMemberArgument: {
     code: 5131,
     message: (parameter: string, union: string, found: string) =>
-      `'${parameter}' stands for one member of ${union}, which ${found} isn't (§3.5).`,
+      `'${parameter}' stands for one member of ${union}, which ${found} isn't (§8.1).`,
   },
   associatedItself: {
     code: 5136,
     message: (use: string) =>
-      `'${use}' refers to itself: an associated type may name itself only when its body is a type 'match', whose recursive uses close into a recursive type (§3.1, §3.17).`,
+      `'${use}' refers to itself: an associated type may name itself only when its body is a type 'match', whose recursive uses close into a recursive type (§5.2, §4.6).`,
   },
   memberOfMemberParameter: {
     code: 5135,
     message: (parameter: string) =>
-      `'${parameter}' stands for one member of a union, and a member parameter is one type already, with no members to choose from: write the union itself after 'in' (§3.5).`,
+      `'${parameter}' stands for one member of a union, and a member parameter is one type already, with no members to choose from: write the union itself after 'in' (§8.1).`,
   },
   severalMembersArgument: {
     code: 5130,
     message: (parameter: string, union: string, found: string) =>
-      `'${parameter}' stands for one member of ${union}, and a value of ${found} may be several; narrow it first, with a literal or a pattern (§3.5).`,
+      `'${parameter}' stands for one member of ${union}, and a value of ${found} may be several; narrow it first, with a literal or a pattern (§8.1).`,
   },
 
-  // Choosing in a constraint scope, 5380–5389 (§3.5): a call chosen only once what it is given
+  // Choosing in a constraint scope, 5380–5389 (§8.1): a call chosen only once what it is given
   // settled, which what the scope settled read as no call.
   undecidedCall: {
     code: 5380,
     message: (name: string) =>
-      `Which '${name}' this calls can't be chosen while what it is given is still inferred; write the types it is given (§3.5).`,
+      `Which '${name}' this calls can't be chosen while what it is given is still inferred; write the types it is given (§8.1).`,
   },
 
-  // Trait objects, 5150–5159 (§3.10): `any` types, the traits they take, and values converted
+  // Trait objects, 5150–5159 (§8.2): `any` types, the traits they take, and values converted
   // into them or matched out of them.
   notObjectSafe: {
     code: 5150,
@@ -271,90 +271,90 @@ export const genericTemplates = {
       `'${field}' is a field a trait requires, read through an 'any' value or a type parameter, so it can't change: only the value's own type has the field.`,
   },
 
-  // Struct keys, 5160–5169 (§3.1, §3.7, §3.9, §4): `keyof`, `S[K]`, mapped struct types, a
+  // Struct keys, 5160–5169 (§5.2, §7.3, §10.2, §11.2): `keyof`, `S[K]`, mapped struct types, a
   // field read or written through a key, what a field loop runs over, and the fields a struct
   // comprehension gives.
   noStructKeys: {
     code: 5160,
     message: (type: string) =>
-      `Only a struct type has keys, its fields' names, and ${type} is none: a struct declaration's, not shared or extern, a shape, or a type parameter with a struct constraint (§3.1).`,
+      `Only a struct type has keys, its fields' names, and ${type} is none: a struct declaration's, not shared or extern, a shape, or a type parameter with a struct constraint (§5.2).`,
   },
   notKeyOf: {
     code: 5161,
     message: (key: string, type: string) =>
-      `${key} is no key of ${type}: a key is a String literal naming one of its fields, or a union of such (§3.1).`,
+      `${key} is no key of ${type}: a key is a String literal naming one of its fields, or a union of such (§5.2).`,
   },
   mappedKeysNotNames: {
     code: 5162,
     message: (keys: string) =>
-      `A mapped entry gives a field to each String literal of its union, which ${keys} isn't a union of (§3.1).`,
+      `A mapped entry gives a field to each String literal of its union, which ${keys} isn't a union of (§5.2).`,
   },
   mappedFieldName: {
     code: 5163,
     message: (name: string) =>
-      `A mapped entry's key "${name}" can't name a field: a field's name is a camelCase name (§3.1).`,
+      `A mapped entry's key "${name}" can't name a field: a field's name is a camelCase name (§5.2).`,
   },
   severalMappedEntries: {
     code: 5164,
-    message: () => 'An anonymous struct type has one mapped entry at most (§3.1).',
+    message: () => 'An anonymous struct type has one mapped entry at most (§5.2).',
   },
   severalKeysReferenced: {
     code: 5165,
     message: (key: string) =>
-      `A field passed by '&' is one place, but a key of ${key} may name several fields, each of its own type; narrow the key to one first (§3.7).`,
+      `A field passed by '&' is one place, but a key of ${key} may name several fields, each of its own type; narrow the key to one first (§7.3).`,
   },
   comprehendedFieldsUnknown: {
     code: 5167,
     message: (type: string) =>
-      `A struct comprehension over ${type}, whose fields aren't all known, builds only a type expected of it whose fields are its named fields and those (§3.1): give the literal one, such as a mapped struct type over its keys.`,
+      `A struct comprehension over ${type}, whose fields aren't all known, builds only a type expected of it whose fields are its named fields and those (§5.2): give the literal one, such as a mapped struct type over its keys.`,
   },
   comprehendedFields: {
     code: 5168,
     message: (type: string) =>
-      `This literal gives its named fields and those its struct comprehension runs over, which aren't exactly ${type}'s (§3.1).`,
+      `This literal gives its named fields and those its struct comprehension runs over, which aren't exactly ${type}'s (§5.2).`,
   },
   fieldLoopSubject: {
     code: 5166,
     message: (type: string) =>
-      `A field loop runs over the fields of a struct, and ${type} is none: a struct declaration's, not shared or extern, a shape, or a type parameter with a struct constraint; '...*x' runs over the value behind a shared struct (§4).`,
+      `A field loop runs over the fields of a struct, and ${type} is none: a struct declaration's, not shared or extern, a shape, or a type parameter with a struct constraint; '...*x' runs over the value behind a shared struct (§11.2).`,
   },
 
-  // Type `match`es, 5170–5179 (§3.5, §3.17): a use no case matches, reductions without end,
+  // Type `match`es, 5170–5179 (§8.1, §4.6): a use no case matches, reductions without end,
   // and `infer` written outside a case's pattern.
   noCaseMatches: {
     code: 5170,
     message: (use: string) =>
-      `No case of ${use} matches its subject: a type match gives the type of its first case matching its subject, so it needs one that does, such as 'case _' (§3.17).`,
+      `No case of ${use} matches its subject: a type match gives the type of its first case matching its subject, so it needs one that does, such as 'case _' (§4.6).`,
   },
   endlessTypeMatch: {
     code: 5171,
     message: (alias: string) =>
-      `${alias} reduces to itself with a type built from its own type parameter, so its reductions never end (§3.5, §3.17).`,
+      `${alias} reduces to itself with a type built from its own type parameter, so its reductions never end (§8.1, §4.6).`,
   },
   inferOutsideCase: {
     code: 5172,
     message: () =>
-      "'infer' binds a type variable only in a type match case's pattern, to the part of the subject standing there (§3.17).",
+      "'infer' binds a type variable only in a type match case's pattern, to the part of the subject standing there (§4.6).",
   },
   fnArgumentsNotTuple: {
     code: 5690,
     message: (written: string) =>
-      `'Fn' takes its parameters as a tuple, '(A,)' for one, or a pack, not '${written}' (§3.14).`,
+      `'Fn' takes its parameters as a tuple, '(A,)' for one, or a pack, not '${written}' (§6.4).`,
   },
   unknownMark: {
     code: 5692,
     message: (written: string) =>
-      `'${written}' is no mark: a head names a type parameter 'M in Mark' or 'K in Persistence' as its mark (§3.5).`,
+      `'${written}' is no mark: a head names a type parameter 'M in Mark' or 'K in Persistence' as its mark (§9.2).`,
   },
   asyncMarkNotKind: {
     code: 5693,
     message: (written: string) =>
-      `An async head's mark is one of the two kinds, which its future takes: declare '${written}' 'in Persistence' (§3.5).`,
+      `An async head's mark is one of the two kinds, which its future takes: declare '${written}' 'in Persistence' (§9.2).`,
   },
   misplacedReferenceItem: {
     code: 5691,
     message: () =>
-      "'&' stands only on a parameter's type, or on an item of the tuple of an 'Fn''s parameters (§3.14).",
+      "'&' stands only on a parameter's type, or on an item of the tuple of an 'Fn''s parameters (§6.4).",
   },
 } as const;
 

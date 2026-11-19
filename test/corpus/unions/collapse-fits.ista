@@ -1,5 +1,5 @@
 # outcome: "draft!|sent?|a!|7"
-# A value put into a union an instantiation collapses (§2, §3.5): `T | "draft" | "sent"` with
+# A value put into a union an instantiation collapses (§4.2, §8.1): `T | "draft" | "sent"` with
 # `T = String` is `String`, so a value of the literals goes in as their base, whether a function
 # gives it back or `?` passes its error on.
 

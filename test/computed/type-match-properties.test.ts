@@ -1,5 +1,5 @@
 /**
- * Type `match` commutes with instantiation (§3.5, §3.17; test/AGENTS.md): a generic function over a
+ * Type `match` commutes with instantiation (§8.1, §4.6; test/AGENTS.md): a generic function over a
  * type match alias, instantiated with a type argument, gives what the same function written for
  * the argument gives, including arguments that distribute over a union and collapse, and a reduced
  * mapped data type is the shape written by hand.

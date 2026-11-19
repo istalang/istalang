@@ -1,5 +1,5 @@
 /**
- * Indented values (§2), each the brace or bracket literal its entries say it builds
+ * Indented values (§3.2), each the brace or bracket literal its entries say it builds
  * (syntax/expressions/literals/indented-values.ts), checked and typed as that literal is where it
  * stands, so every rule of literals keeps its one home: `T{…}`, `new T{…}` or `struct{…}` of a
  * struct's entries; `["key": value, …]` of a map's quoted keys and spreads; `[…]` of an array's

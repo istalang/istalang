@@ -1,5 +1,5 @@
-# The random module (spec §3.8): draws within their bounds, UUIDs in their layout, values a mock
-# fixes, and the draws a segment makes again when it runs again (§5).
+# The random module (spec §19.2): draws within their bounds, UUIDs in their layout, values a mock
+# fixes, and the draws a segment makes again when it runs again (§14).
 
 import * as random from 'random'
 import * as runtime from 'runtime'

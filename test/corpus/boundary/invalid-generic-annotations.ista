@@ -6,7 +6,7 @@
 # error: 5750 at 37:1
 # error: 5751 at 40:1
 # Every instance's entry carries the annotations of a field and of a function, their values
-# computed once for the declaration (§3.16), so they name none of its type parameters, written or
+# computed once for the declaration (§5.5), so they name none of its type parameters, written or
 # reached through another; a struct declaration's annotations, which no instance carries, may, held
 # to the annotation's constraints. Holds and Keeps stand only on the std's externs.
 

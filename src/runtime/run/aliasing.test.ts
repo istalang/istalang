@@ -1,6 +1,6 @@
 /**
  * Fast-check aliasing (ir-first design, "Verification"): generated programs over arrays, maps,
- * structs, closures, `&` paths and copies give what value semantics gives (§2), so no value one
+ * structs, closures, `&` paths and copies give what value semantics gives (§7.2), so no value one
  * holder keeps observably changes as another changes in place. Each run compiles one program of
  * several cases, so the property costs a compile per run rather than per case.
  */

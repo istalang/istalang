@@ -1,12 +1,12 @@
 /**
- * The one walk over a top-level constant's initializer (§3): it decides what compile time computes
+ * The one walk over a top-level constant's initializer (§5.1): it decides what compile time computes
  * and computes it, in the same switch, so the two can't disagree. Compile time computes literals, a
  * negated number and a template without values among them, duration literals, tuples (including a
- * value converted to or from a one-element tuple, §3.15), structs in every literal form (a spread
+ * value converted to or from a one-element tuple, §4.5), structs in every literal form (a spread
  * copying a computed struct's fields), a struct without fields written bare, type arguments and
  * all (`Holds<Int>`), arrays and maps of `Map`, lambdas, which capture nothing at the top level
- * (§3.14), and other top-level constants, through a namespace too (`lib.limit`, `lib.Marker`); a
- * struct's value converted into its shape (§3.1);
+ * (§6.4), and other top-level constants, through a namespace too (`lib.limit`, `lib.Marker`); a
+ * struct's value converted into its shape (§5.2);
  * anything else, a map literal of another type, a shared struct's `new`, an enum variant, or a
  * value needing an optional wrap, an `any` conversion or an async function fit among them, is
  * refused where it stands (forms.ts).
@@ -15,7 +15,7 @@
  * as tuples. Anything else iterable is iterated by `iterate` when the program runs, and computing
  * it here would be a second home for what the runtime's `iterate` does.
  *
- * A field a struct literal leaves to its default (§3.1) is computed by the same walk over the
+ * A field a struct literal leaves to its default (§5.2) is computed by the same walk over the
  * default, in its declaration's module, read through the literal's type arguments, with the fields
  * before it as computed: it is computed when the default is, and refused where it isn't, as a
  * default calling a function is. A default reached again while it is being computed builds a value
@@ -192,7 +192,7 @@ class Computation {
 
   /**
    * A struct in any literal form, its fields computed in declaration order, then laid out by name
-   * (§3.1 "Field order"); `new`'s cell is refused.
+   * (§5.2 "Field order"); `new`'s cell is refused.
    */
   #struct(node: StructLiteral): Outcome {
     const sources = node.items.some((item) => item.kind === 'Invalid')
@@ -356,7 +356,7 @@ class Computation {
     return computed({ kind: 'array', elements });
   }
 
-  /** A map of its entries in order, a later equal key replacing the value (§2). */
+  /** A map of its entries in order, a later equal key replacing the value (§3.3). */
   #map(node: MapLiteral): Outcome {
     if (this.#scope.checked.collectionFormOf(node) !== 'map') {
       return refused(node);
@@ -399,7 +399,7 @@ class Computation {
   }
 
   /**
-   * A name read through a namespace, `lib.limit` or `lib.Marker` (§3.13): a constant, or a struct
+   * A name read through a namespace, `lib.limit` or `lib.Marker` (§13.1): a constant, or a struct
    * without fields; a field read from a value is refused.
    */
   #qualified(node: MemberAccess): Outcome {
@@ -415,8 +415,8 @@ class Computation {
 
   /**
    * A type named as a value, the one it holds: a struct without fields named bare, qualified or
-   * not, with type arguments or not (§3.1), or a member parameter over literal types, the literal
-   * the instantiation computing it makes it (§3.5); any other name that isn't a constant is refused.
+   * not, with type arguments or not (§5.2), or a member parameter over literal types, the literal
+   * the instantiation computing it makes it (§8.1); any other name that isn't a constant is refused.
    */
   #namedTypeValue(node: Identifier | MemberAccess | TypeApplication): Outcome {
     const type = this.#scope.checked.typeOf(node);

@@ -1,5 +1,5 @@
 /**
- * `ista run --host` as a real process (§9): a run whose host holds a promise that never settles
+ * `ista run --host` as a real process (§17.3): a run whose host holds a promise that never settles
  * must still end, with the documented exit code 1. In-process tests can't see this: Node ends a
  * process whose entry awaits something nothing can settle with exit code 13, so the built
  * executable is the thing to run.

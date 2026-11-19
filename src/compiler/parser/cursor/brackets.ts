@@ -45,7 +45,7 @@ export function isBracketOpener(kind: string): kind is BracketOpener {
  * How the brackets of one token list pair. A closer closes the innermost open bracket of its kind,
  * and with it every bracket opened inside that one, which no closer can match any more; a closer
  * that closes nothing is stray. Code whose brackets all pair is read by bracket alone, whatever its
- * indentation, since line breaks are ignored inside brackets (§2).
+ * indentation, since line breaks are ignored inside brackets (§2.1).
  *
  * Code being typed leaves brackets open, and a bracket no closer matches would take in the rest of
  * the file, or of the bracket around it. Indentation decides where it ends instead: before the

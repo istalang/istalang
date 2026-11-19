@@ -1,5 +1,5 @@
 /**
- * Which nodes stand in brackets, where the printer may break a line inside an item (spec §2):
+ * Which nodes stand in brackets, where the printer may break a line inside an item (spec §2.1):
  * inside `()`, `[]` and a struct literal's or pattern's `{}`. A break it makes after an operator or
  * an opening bracket continues the item, since only one before a token that starts an item
  * separates two. A block nested there makes line breaks count again (parser/cursor/), a field list

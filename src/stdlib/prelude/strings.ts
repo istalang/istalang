@@ -1,5 +1,5 @@
 /**
- * The prelude's natives for strings as sequences (§3.8, §3.9, §3.10). A string is a sequence of
+ * The prelude's natives for strings as sequences (§19.3, §10.2, §8.4). A string is a sequence of
  * code points, as in Python, so its length, indexing, slicing and iteration all count code points
  * and never split one; the runtime holds it as a JavaScript string, whose iterator gives code
  * points. Its cursor steps by UTF-16 offset instead (`_characterAt`), so each step reads one code

@@ -1,5 +1,5 @@
 # outcome: "3|true|{\"children\":[{\"children\":[],\"value\":1}],\"value\":1}"
-# A type match whose reduction reaches itself is one recursive type (§3.17): its values are built,
+# A type match whose reduction reaches itself is one recursive type (§4.6): its values are built,
 # read, compared and encoded as the struct type it stands for.
 import * as json from 'json'
 import * as runtime from 'runtime'

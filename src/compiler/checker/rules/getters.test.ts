@@ -20,7 +20,7 @@ function reportedIn(declarations: string, body: string) {
   return reported(`${declarations}\n\nfn subject():\n${lines.join('\n')}\n`);
 }
 
-describe('reading a getter (§3.1)', () => {
+describe('reading a getter (§5.2)', () => {
   it('reads as a field, computed by its call on every read', async () => {
     expect(await mainGives('String', `${ada}.full`, person)).toBe('Ada Lovelace');
   });
@@ -169,7 +169,7 @@ describe('a getter is never stored', () => {
     ]);
   });
 
-  it("meets no struct constraint, while it meets a trait's field requirement (§3.10)", () => {
+  it("meets no struct constraint, while it meets a trait's field requirement (§8.2)", () => {
     const declarations = [
       person,
       'trait HasFull:',
@@ -320,7 +320,7 @@ describe('one meaning per name', () => {
 });
 
 describe('a getter is a call to every rule of calls', () => {
-  it("is a suite's effect where it gives a handle (§10)", () => {
+  it("is a suite's effect where it gives a handle (§18)", () => {
     const declarations = [
       "import Suite, Test, test from 'testing'",
       'shared struct Lease:\n  n: Int',
@@ -364,7 +364,7 @@ describe('a getter obeys the data rule (proposal 8)', () => {
   });
 });
 
-describe('an index taking &self (§3.7, §3.9)', () => {
+describe('an index taking &self (§6.2, §10.2)', () => {
   it('is rejected by [] and keyed reads rather than failing in lowering', () => {
     const declarations = [
       'struct Box { v: Int }',
@@ -376,7 +376,7 @@ describe('an index taking &self (§3.7, §3.9)', () => {
   });
 });
 
-describe('a keyed read chooses as a method call (§3.5, §3.7, §3.9)', () => {
+describe('a keyed read chooses as a method call (§8.1, §6.2, §10.2)', () => {
   it('gives its receiver type parameters exactly rather than widening a covariant receiver', () => {
     const declarations = [
       'struct Scope<gives T> { v: T }',

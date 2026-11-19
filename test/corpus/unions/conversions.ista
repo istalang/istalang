@@ -1,5 +1,5 @@
 # outcome: "pixel:3:point:1|mail:cfo:7:11:9:4:draft|sent|7:0:0:12:r:draft|30:nf:p1:to:500|30"
-# Conversions into a union (§2): exact member first, else the one member reached by a §2 conversion
+# Conversions into a union (§4.2): exact member first, else the one member reached by a §4.2 conversion
 # (any, nominal-to-shape, plain-to-async fn, 1-tuple, literal-to-base), union into wider union,
 # building literals/lambdas/variants from the one member they fit, ? propagating an error into an
 # error union, and type-parameter inference against a union.

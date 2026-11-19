@@ -1,5 +1,5 @@
 /**
- * A case of a `match`, a `select` or a type `match` (§3.11, §3.17, §8): `case`, then what the
+ * A case of a `match`, a `select` or a type `match` (§11.3, §4.6, §15.4): `case`, then what the
  * construct reads after it. The constructs differ in what a case holds, never in how a line that
  * isn't one recovers, so that lives here once.
  */

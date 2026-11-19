@@ -1,5 +1,5 @@
 # panic: no verdict for p-1
-# `panic` stops the instance at once (§3.12): it has type `Never`, so it fits where any value is
+# `panic` stops the instance at once (§12): it has type `Never`, so it fits where any value is
 # expected, such as a `match` case or the right side of `??`.
 
 import * as runtime from 'runtime'

@@ -1,12 +1,12 @@
 /**
- * A name used as a value (§3.4): what it means comes from the binder, and its type from where it
+ * A name used as a value (§7.1): what it means comes from the binder, and its type from where it
  * was declared. A variant's type comes from its enum (structs/variants.ts). Types, primitives and
  * namespaces are not values; a type in value position is how a static function or a conversion is
  * called, which the call checks before it gets here. The types that are values hold one value
- * each: a struct without fields, written bare (§3.1), which takes its type arguments from the
+ * each: a struct without fields, written bare (§5.2), which takes its type arguments from the
  * expected type, or from those written after it (../../closures/function-values.ts); and a member
- * parameter over literal types (§3.5), one literal per instantiation, a loop's key over a type's
- * keys among them (§4).
+ * parameter over literal types (§8.1), one literal per instantiation, a loop's key over a type's
+ * keys among them (§11.2).
  */
 
 import { type Entity, localFunctionOf, type VariableEntity } from '../../../../binder/entities.ts';
@@ -42,7 +42,7 @@ export function checkName(
 }
 
 /**
- * Which types a name passed to a call can take when the call decides its type (§3.5): a function
+ * Which types a name passed to a call can take when the call decides its type (§8.1): a function
  * among several or a generic one the function types it can be, a bare variant the enums having it
  * and the function types its constructor can be, a generic struct without fields its instances.
  */
@@ -55,7 +55,7 @@ export function nameAccepts(context: BodyContext, node: Identifier): Admits | un
 }
 
 /**
- * Which types a member access passed to a call can take when the call decides its type (§3.5): a
+ * Which types a member access passed to a call can take when the call decides its type (§8.1): a
  * qualified variant without fields of a generic enum the instances of its enum, and a qualified
  * generic struct without fields its own, as their names alone can't give their type arguments;
  * functions named through a namespace or a type the function types they can be.
@@ -69,7 +69,7 @@ export function memberAccepts(context: BodyContext, node: MemberAccess): Admits 
 }
 
 /**
- * For a generic struct without fields named bare, `Tag` (§3.1), the instances of it, whose type
+ * For a generic struct without fields named bare, `Tag` (§5.2), the instances of it, whose type
  * arguments its name alone can't give; undefined for any other name.
  */
 function bareStructAccepts(context: BodyContext, name: Identifier): Admits | undefined {
@@ -124,7 +124,7 @@ export function entityValueType(
 
 /**
  * The type of the context constant `declaration` where `node` reads it: in a function, an ista call
- * of its accessor (§3.4), which the call rule judges as any call. A value of its own, a constant's
+ * of its accessor (§7.1), which the call rule judges as any call. A value of its own, a constant's
  * or an annotation's, is computed while compiling, which refuses it then.
  */
 function contextConstantRead(
@@ -150,7 +150,7 @@ function variableType(context: BodyContext, variable: VariableEntity): Type {
 }
 
 /**
- * The type `variable`'s declaration gives it outside every body (§3, §3.6): an extern constant's
+ * The type `variable`'s declaration gives it outside every body (§5.1, §17.2): an extern constant's
  * written type, or a top-level constant's computed one; undefined for a variable a body or a
  * signature declares, whose type is that body's to say. The one rule for both, whether a body
  * reads the variable or a tool asks for it (lookup/denotations/index.ts).
@@ -173,7 +173,7 @@ export function declaredOutsideBodies(
 }
 
 /**
- * The type of the value a member parameter is where a body names it (§3.5): itself, as the pass
+ * The type of the value a member parameter is where a body names it (§8.1): itself, as the pass
  * being checked reads it, when each of its members is a literal, of one value; undefined for any
  * other entity, or a member parameter one of whose members holds more values, such as `String`.
  */
@@ -187,7 +187,7 @@ function memberParameterValue(context: BodyContext, entity: Entity): Type | unde
   }
   const type = context.inPass(parameterType(entity.declaration));
   if (stops(type)) {
-    // A loop's key over no field, or over a type already reported (§4): no value to be wrong about.
+    // A loop's key over no field, or over a type already reported (§11.2): no value to be wrong about.
     return type;
   }
   const union = type.kind === 'literal' ? type : context.checker.fitting.memberUnionOf(type);
@@ -196,7 +196,7 @@ function memberParameterValue(context: BodyContext, entity: Entity): Type | unde
 }
 
 /**
- * The value a bare name denotes when it names a struct without fields (§3.1); undefined for any
+ * The value a bare name denotes when it names a struct without fields (§5.2); undefined for any
  * other entity. A generic one takes its type arguments from the expected type, as nothing else
  * could give them.
  */

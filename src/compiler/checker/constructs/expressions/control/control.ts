@@ -1,5 +1,5 @@
 /**
- * `if` as an expression (§4): its branches agree on its type
+ * `if` as an expression (§10.1): its branches agree on its type
  * (constructs/expressions/control/branches.ts). An `if` without `else` produces nothing, so its
  * branches must be `Unit`.
  *

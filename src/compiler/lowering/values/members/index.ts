@@ -1,5 +1,5 @@
 /**
- * Members of union and `any` values in lowered code (§2): the one module that reads, builds and
+ * Members of union and `any` values in lowered code (§4.2): the one module that reads, builds and
  * tests them, which conversions, `none`, the optional operators, patterns and trait objects all go
  * through. A union's value is an enum with a variant per member (tables/type-table.ts); where a
  * type sits in another, and reading or building it there, is holdings.ts', testing which member a
@@ -10,12 +10,12 @@
  * - Out of a union, where a test has made sure which members it can be: the one member's value, or
  *   the union of those members, variant by variant. A member with one value, a literal or `none`,
  *   holds nothing, so its value is that one value, written as a constant.
- * - An instantiation may merge literals into their base (§3.5): `T | "a" | "b"` with `T = String`
+ * - An instantiation may merge literals into their base (§8.1): `T | "a" | "b"` with `T = String`
  *   is `String`, or a union holding `String`. A value of the base taken as a union of those
  *   literals is compared with each, a test having made sure it is one.
  * - A literal type on its own is its base's value, so taking it as its base changes nothing; a
  *   union of literals is a tag, whose literal is written variant by variant.
- * - An instantiation may let an `any` member take a member whole (§2, §3.5): `T | any Stringable`
+ * - An instantiation may let an `any` member take a member whole (§4.2, §8.1): `T | any Stringable`
  *   with `T = Int` is `any Stringable`. A value of the member then sits inside the `any` type's
  *   variant, which goes into the union's variant of that `any` member, and a test of it is the
  *   union's test, then the `any` type's.
@@ -106,7 +106,7 @@ export function outOfUnion(
 }
 
 /**
- * `value`, of an `any` type that took each member of `to` whole (§2, §3.5), as a value of `to`,
+ * `value`, of an `any` type that took each member of `to` whole (§4.2, §8.1), as a value of `to`,
  * which a test made sure it is: the `any` type's value tested for each type it may hold, a
  * literal's base standing for its literals, but the last, which is what is left.
  */
@@ -148,7 +148,7 @@ function outOfAny(
 }
 
 /**
- * A value of a literal type, or of a union of literals, as their base (§2): itself for a literal,
+ * A value of a literal type, or of a union of literals, as their base (§4.3): itself for a literal,
  * since it is its base's value already, and the tag's literal for a union.
  */
 export function asBase(context: CodeContext, value: TypedValue, span: AnchoredSpan): Register {
@@ -171,7 +171,7 @@ function oneValueOf(member: Type): Value {
   return isPrimitive(member, 'None') ? null : unreachable('Only a literal or None has one value.');
 }
 
-/** The value a literal type's one value is at run time: its base's (§2). */
+/** The value a literal type's one value is at run time: its base's (§4.3). */
 export function literalValue(type: LiteralType): Value {
   return type.value;
 }

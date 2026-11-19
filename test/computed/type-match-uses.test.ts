@@ -1,5 +1,5 @@
 /**
- * Uses of type `match`es as instantiations reach them (§3.5, §3.17): a recursive use stays one
+ * Uses of type `match`es as instantiations reach them (§8.1, §4.6): a recursive use stays one
  * type when its arguments are substituted, recursive or not as the substituted use decides; a use
  * with fixed arguments in its own case is a finite recursive type; a literal matches a case naming
  * its base only matched whole; and a `struct{…}` literal passed as an argument takes its type from

@@ -1,5 +1,5 @@
 /**
- * The `time` module's time-zone natives (time.ista, §3.8): readings of times in IANA zones, through
+ * The `time` module's time-zone natives (time.ista, §19.2): readings of times in IANA zones, through
  * Temporal, from temporal-polyfill since Node 22 has none. Its zone rules are the host's time-zone
  * data.
  *
@@ -9,7 +9,7 @@
  * - A Zone holds its canonical id, which only `Zone.parse` and `utc` make, so every zone a native
  *   is given exists, unless a snapshot moved to a host whose zone data lacks it, which panics.
  *   `DateTime.parse` refuses a date that doesn't exist, so one reaches the other natives only in a
- *   struct the program built itself, which panics (§3.12), as a reading beyond the years Temporal
+ *   struct the program built itself, which panics (§12), as a reading beyond the years Temporal
  *   holds does.
  * - An offset is written to the minute, as ISO 8601 writes one, so a time before a zone's
  *   standard offsets, whose local mean time runs to the second, reads back seconds apart.

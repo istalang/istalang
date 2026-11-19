@@ -12,10 +12,10 @@
  *   is written (places.ts); any other is a move or copy into its own, or the conversion checking
  *   fitted.
  * - A call's `&` arguments are entered as places; a function value's pack spread passes its
- *   tuple's elements (§3.5). An `onAwait` gets the resolver of its case, and an `await` parks on
+ *   tuple's elements (§8.1). An `onAwait` gets the resolver of its case, and an `await` parks on
  *   its wait (flow-waits.ts).
  * - `keep` copies a held variable's value into its scope's array of its type, then lets go of it
- *   (§7); a scope ending lets go of those arrays instead.
+ *   (§16); a scope ending lets go of those arrays instead.
  */
 
 import type { Argument as DefinitionArgument } from '../../../definition/instructions/calls.ts';
@@ -191,7 +191,7 @@ function made(writer: FlowWriter, { into, made: what, parts, site }: Of<'make'>)
   }
 }
 
-/** The closure of the nested function `node`, of `type`, carrying `captures` (§3.14). */
+/** The closure of the nested function `node`, of `type`, carrying `captures` (§6.4). */
 function closureMade(
   writer: FlowWriter,
   node: SyntaxNode,
@@ -236,7 +236,7 @@ function mapEntries(
   return entries;
 }
 
-/** A struct of `type` made of `registers`, each the field `fields` names (§3.1). */
+/** A struct of `type` made of `registers`, each the field `fields` names (§5.2). */
 function structMade(
   writer: FlowWriter,
   type: Type,

@@ -1,18 +1,18 @@
 /**
  * What a type lacks to meet a constraint beyond its functions and fields, in words a diagnostic
- * finishes ("it needs …"): the associated types a trait requires (§3.10), and the entries of a
- * struct constraint (§3.5). Each judgment is pure; whether a type meets a trait and which goals
+ * finishes ("it needs …"): the associated types a trait requires (§8.2), and the entries of a
+ * struct constraint (§8.1). Each judgment is pure; whether a type meets a trait and which goals
  * are active on the search stack is the caller's to say (`Meets`, conformance.ts), so these rules
  * sit beside conformance without a cycle.
  *
- * - A required associated type is met by the type's own (§3.1), which meets the bound; a union or
+ * - A required associated type is met by the type's own (§5.2), which meets the bound; a union or
  *   an `any` type has none, so it meets such a trait only for calls on its values (conformance.ts
  *   `callWitnessesFor`).
  * - Only a struct type meets a struct constraint: a struct declaration, not a shared or extern
  *   one, or a shape. Each named entry needs its field, of exactly its type or meeting its
  *   constraints; the others' entry holds for every field the constraint doesn't name. A concrete
  *   struct already active on the search stack for the same struct constraint counts as meeting it
- *   (coinductive, §3.5). A type known only per instantiation meets one when its own struct
+ *   (coinductive, §8.1). A type known only per instantiation meets one when its own struct
  *   constraints imply it (`entailed`).
  */
 
@@ -68,7 +68,7 @@ export interface Meets {
 
 /**
  * The first associated type `constraint`'s trait requires that `type` lacks, or whose bound it
- * doesn't meet, said as it lacks it. A union has none of its own (§3.1), so it never meets such a
+ * doesn't meet, said as it lacks it. A union has none of its own (§5.2), so it never meets such a
  * trait as a type; a call on its values runs its members' functions (`callWitnessesFor`).
  */
 export function associatedShortfall(
@@ -134,7 +134,7 @@ function boundShortfall(
 
 /**
  * Why `type` doesn't meet the struct constraint `model`, as a clause leading the diagnostic (the
- * field and what it doesn't meet, §3.5); undefined when it meets it. Traits an entry asks for are
+ * field and what it doesn't meet, §8.1); undefined when it meets it. Traits an entry asks for are
  * met as `meets` says, with `(type, model)` active on the stack while its fields are checked.
  */
 export function structShortfall(

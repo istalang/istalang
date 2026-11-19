@@ -1,5 +1,5 @@
 /**
- * Lambdas (§3.14).
+ * Lambdas (§6.4).
  *
  * After `fn`, the next two tokens decide the form:
  * - `(` starts the parameter list

@@ -1,18 +1,18 @@
 /**
- * What disposing an object that lost its last holder does (§7), as lifetimes.ts collects it: the
+ * What disposing an object that lost its last holder does (§16), as lifetimes.ts collects it: the
  * values it held are given back, to lose their holder in the next round.
  *
  * - A **cell** of a shared struct runs its declared `dispose`, then lets go of its value.
  * - A declared `dispose` is code a disposal runs: what it lets go of, its own locals included, is
- *   disposed in rounds of its own as it returns, before what the disposed value held (§7).
+ *   disposed in rounds of its own as it returns, before what the disposed value held (§16).
  * - A **future** cancels what a host was to fill, and runs what waits on it as code its disposal
- *   runs (§6: its resolvers cancelled), stops its call (executions.ts), and lets go of what waits on
+ *   runs (§15.2: its resolvers cancelled), stops its call (executions.ts), and lets go of what waits on
  *   it and of its value.
  * - A **resource** is forgotten, and released: by the runtime, where its
- *   disposal is the runtime's own, else by its host through its type's `dispose` (§7, §9).
+ *   disposal is the runtime's own, else by its host through its type's `dispose` (§16, §17.2).
  * - Its weak reference is cleared first, and its `disposed()` settles once it is gone.
  * - A declared `dispose` that panics stops the other disposals, but while disposing past panics, as
- *   terminating an instance does (§3.12): then its panic is passed over and what it held let go.
+ *   terminating an instance does (§12): then its panic is passed over and what it held let go.
  */
 
 import type { Value } from '../../definition/values/values.ts';
@@ -39,7 +39,7 @@ export interface DisposalSeams {
   readonly runDispose: (index: number, disposed: Value) => void;
   /** Whether a dispose's panic is passed over now (`Lifetimes.disposingPastPanics`). */
   readonly passesPanics: () => boolean;
-  /** Calls the closure `closure` with nothing, as code a disposal runs, its let-gos apart (§7). */
+  /** Calls the closure `closure` with nothing, as code a disposal runs, its let-gos apart (§16). */
   readonly callApart: (closure: Value) => void;
   readonly letGo: (...values: (Value | undefined)[]) => void;
   readonly stop: (execution: Execution) => void;

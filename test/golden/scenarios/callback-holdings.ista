@@ -1,5 +1,5 @@
 # A callback a resolver readied holds the values it is called with until it runs; an instance that
-# finishes or ends runs none still pending, and lets go of what they hold (§7): a host's lease is
+# finishes or ends runs none still pending, and lets go of what they hold (§16): a host's lease is
 # disposed when its instance finishes, and when its panicked instance is terminated.
 import * as runtime from 'runtime'
 

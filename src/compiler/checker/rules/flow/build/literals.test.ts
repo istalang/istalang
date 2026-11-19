@@ -1,5 +1,5 @@
 /**
- * What a struct literal makes (§3.1, §3.18): its struct, behind a new handle for `new`; or, where
+ * What a struct literal makes (§5.2, §5.4): its struct, behind a new handle for `new`; or, where
  * it leaves fields to their defaults, the one call of its struct's fields function, given the
  * others, which computes the defaults and makes the value.
  */

@@ -139,7 +139,7 @@ function codesOf(diagnostics: readonly Diagnostic<Span, string>[]): readonly num
   return diagnostics.map(({ code }) => code);
 }
 
-/** A variant without fields called with `()`, warned of yet still checked (§3.11). */
+/** A variant without fields called with `()`, warned of yet still checked (§5.3). */
 const fieldlessCalled = checkerDiagnostics.fieldlessCalled.code;
 
 describe('what a called variant denotes', () => {

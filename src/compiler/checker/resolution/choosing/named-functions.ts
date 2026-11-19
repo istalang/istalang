@@ -1,30 +1,30 @@
 /**
- * Functions named as values (§3.14): which functions a name means, and which of them, chosen by
+ * Functions named as values (§6.4): which functions a name means, and which of them, chosen by
  * the function type expected, as a call passing that type's parameters would choose it
  * (choice.ts). A top-level function is named by its name, plain (`inc`) or through a namespace
  * (`math.inc`), a static function through its type (`Duration.zero`), and a variant with fields,
- * its enum's constructor (§3.11), qualified (`Result.Ok`) or bare (`Ok`), whose enum is then the
+ * its enum's constructor (§5.3), qualified (`Result.Ok`) or bare (`Ok`), whose enum is then the
  * one the expected function type's result is: a variant without fields is a value, never a
  * function. Nothing here records or reports, so checking a function value
  * (constructs/closures/function-values.ts) and judging one a call is passed
  * (constructs/expressions/postponed.ts) choose it alike.
  *
  * - The expected function type chooses among the functions named, and infers a generic one's
- *   type arguments from its parameters and its result (§3.5). A shorter function type leaves
- *   trailing parameters to their defaults, which the value computes at each call (§3.3), and a
+ *   type arguments from its parameters and its result (§8.1). A shorter function type leaves
+ *   trailing parameters to their defaults, which the value computes at each call (§6.1), and a
  *   rest parameter is one array (binding.ts). A top-level name also finds what argument-dependent
- *   lookup does from those types (§3.13).
+ *   lookup does from those types (§13.1).
  * - Type arguments written after the name (`parse<Int>`, `Result.Ok<Int, String>`) are taken as a
- *   call takes them (§3.5): they choose among the functions as the call's would, by their count,
+ *   call takes them (§8.1): they choose among the functions as the call's would, by their count,
  *   and fix the type parameters they give, the expected type inferring the rest.
  * - With no expected function type, only a lone function can be named, non-generic or given type
- *   arguments that suit it alone; any other name needs one (§3.14), which a call it is passed to
+ *   arguments that suit it alone; any other name needs one (§6.4), which a call it is passed to
  *   gives (`functionsAccepted`). A lone one whose parameters don't take the expected type's is its
  *   own function all the same, so the type it is expected as reports the mismatch, as for any
  *   value.
  * - A function value's parameters take exactly the expected type's, with none of a call's
- *   conversions (§3.14): a value of `fn(Int?)` is no `fn(Int)`.
- * - A function's type as a value gives what its call gives, an async one's the future (§3.14).
+ *   conversions (§6.4): a value of `fn(Int?)` is no `fn(Int)`.
+ * - A function's type as a value gives what its call gives, an async one's the future (§6.4).
  */
 
 import { staticName } from '../../../../foundation/language/static-names.ts';
@@ -154,7 +154,7 @@ function topLevelFunctions(
 }
 
 /**
- * The constructor a variant's name may mean (§3.11): a qualified variant's own, undefined for one
+ * The constructor a variant's name may mean (§5.3): a qualified variant's own, undefined for one
  * without fields, a value and never a function; or, for a bare name, that of the variant of the
  * enum an expected function type's result is, found by name among those enums only, as a bare
  * variant is (program-inputs.ts), so no other enum's variants are read.
@@ -187,7 +187,7 @@ function variantConstructors(
   };
 }
 
-/** Which parts of an expected type a call is still finding, as choosing asks them (§3.5). */
+/** Which parts of an expected type a call is still finding, as choosing asks them (§8.1). */
 type OpenParts = (part: Type) => boolean;
 
 /** Whether `type` mentions a part `isOpen` says a call is still finding. */
@@ -242,7 +242,7 @@ export interface MadeValue {
 /**
  * `application` instantiated at `site`, its result expected to be `result`, with its type as a
  * value; undefined when it can't be, which `site` reports. A function giving no future is expected
- * to give the value of a future `result` is, which its value is made (§3.14).
+ * to give the value of a future `result` is, which its value is made (§6.4).
  */
 export function instantiatedValue(
   context: BodyContext,
@@ -308,11 +308,11 @@ function valueTypeOf(
 
 /**
  * For functions named as an argument, the function types they can be passed as, so the call
- * decides which (§3.5): those whose parameters choose one that, instantiated, fits the type, or,
+ * decides which (§8.1): those whose parameters choose one that, instantiated, fits the type, or,
  * while the call is still finding a parameter's type, those whose count one takes. Undefined for a
  * lone function of one type of its own (`hasOwnType`); a lone one with defaults or a rest fits the
- * types leaving them out too (§3.14), and one whose written type arguments leave a defaulted type
- * parameter open takes it from the type it is passed as (§3.5), so the call decides it, and one
+ * types leaving them out too (§6.4), and one whose written type arguments leave a defaulted type
+ * parameter open takes it from the type it is passed as (§8.1), so the call decides it, and one
  * nothing gives the parameters of is its whole function (constructs/expressions/postponed.ts).
  */
 export function functionsAccepted(context: BodyContext, named: NamedFunctions): Admits | undefined {
@@ -383,7 +383,7 @@ function takesCount(context: BodyContext, named: NamedFunctions, shape: Function
 /**
  * The application of the one function `named` means where `shape` is expected, whatever its
  * parameters are: its one candidate, when that isn't generic; or, given type arguments, the one
- * candidate they suit, as they would a call's (§3.5).
+ * candidate they suit, as they would a call's (§8.1).
  */
 function loneFunction(
   context: BodyContext,
@@ -403,7 +403,7 @@ function loneFunction(
 
 /**
  * How `candidate` takes its own parameters given the type arguments written after `named`
- * (`ownArguments`): type arguments it can't take are refused as a call's are (§3.5); else it takes
+ * (`ownArguments`): type arguments it can't take are refused as a call's are (§8.1); else it takes
  * them only when they and the defaults give every type parameter, a pack's included, since only
  * an expected type instantiates a generic function further; with none written, only a non-generic
  * one takes them.
@@ -436,7 +436,7 @@ export function ownChoice(
  * The arguments that pass `slot` its own type: as declared, with no type arguments `written`; with
  * them, an argument whose type the instantiation decides, which fits any type, as counting
  * parameters takes them (`takesCount`), but for a pack's rest, which they write: a tuple's items,
- * one by one, or another pack's value, spread (§3.5).
+ * one by one, or another pack's value, spread (§8.1).
  */
 function ownArguments(
   slot: SignatureSlot,
@@ -460,7 +460,7 @@ function ownArguments(
 /**
  * The function `named` means that takes `shape`'s parameters exactly, as a call passing them would
  * choose it; none for a shape ending in a pack, whose parameters are known only once a function
- * is chosen (§3.5).
+ * is chosen (§8.1).
  */
 function chosenFor(
   context: BodyContext,

@@ -1,5 +1,5 @@
 # outcome: {"at":"2026-10-25T12:00:00.000Z","big":"123456789012345678901234567890","due":"PT1H30M","items":[{"qty":2,"sku":"a"}],"note":null,"order_id":"o1","pair":[3,true],"price":"12.50 EUR","ratio":null,"raw":{"keep":[1,"two",null]},"shape":{"_type":"Circle","radius":1.5},"tags":{"10":1,"9":2}}
-# The JSON form (§9) of every kind of field, written as main's outcome: a @JsonName, structs in an
+# The JSON form (§17.4) of every kind of field, written as main's outcome: a @JsonName, structs in an
 # array, none as null, a map with int keys written by toString, an enum with its "type" tag, a
 # tuple, a Duration and a Time in ISO 8601, a @JsonBigInt int as a string, NaN as null, a struct
 # declaring its own toJson as what that gives, and a Json value as itself. The @JsonSkip field is

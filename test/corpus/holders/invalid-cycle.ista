@@ -1,6 +1,6 @@
 # error: 5720 at 14:3
 # Two leases holding each other would be a cycle holding a disposable, which no count could ever
-# dispose (§7): the second write closes it, so it is the error. Holding one side through a
+# dispose (§16): the second write closes it, so it is the error. Holding one side through a
 # `WeakRef` breaks the cycle.
 
 shared struct Lease { name: String, partner: Lease? = none }

@@ -1,5 +1,5 @@
 /**
- * The expansion rule (§3.5) over generated call graphs: a call is reported exactly when it passes
+ * The expansion rule (§8.1) over generated call graphs: a call is reported exactly when it passes
  * a type argument built from the caller's own parameter and the callee leads back to the caller.
  * Checking a module stays lazy: it never checks the body of a generic function it can't reach.
  */
@@ -83,7 +83,7 @@ describe('endless instantiation', () => {
     );
   });
 
-  it("never forms where a codec would spawn: an ista one meets no codec's requirement (§3.3)", () => {
+  it("never forms where a codec would spawn: an ista one meets no codec's requirement (§9.3)", () => {
     const main = [
       "import Json from 'json'\nimport * as runtime from 'runtime'",
       'struct Box<T> { value: T }',

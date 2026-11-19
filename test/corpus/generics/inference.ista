@@ -1,6 +1,6 @@
 # outcome: "3 x 7 true true"
 # Type arguments inferred from the arguments, written explicitly, and taken from the type a call
-# is expected to have (§3.5).
+# is expected to have (§8.1).
 
 import * as runtime from 'runtime'
 

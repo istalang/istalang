@@ -15,7 +15,7 @@
  * header segment for each item of a module or a trait standing on lines of its own, and a function
  * that is such an item parses its body as a segment of its own (`inFunctionBody`).
  *
- * Speculation settles two ambiguities: `name<…>(` against a comparison (§3.5), and `a, b = …`
+ * Speculation settles two ambiguities: `name<…>(` against a comparison (§8.1), and `a, b = …`
  * against a comma that belongs to an enclosing call. An attempt that reports anything is undone
  * completely, cursor (cursor/index.ts) and diagnostics together, and while speculating, recovery
  * gives up instead of skipping tokens. A failed guess therefore costs only the tokens a well-formed
@@ -64,7 +64,7 @@ export interface Grammar {
   readonly startsExpression: (parser: Parser) => boolean;
   /**
    * The value after `=`, `return` or a key's `:`, `opener` starting its line or entry: an indented
-   * value when the line ends there or in `T:` (§2), else an expression.
+   * value when the line ends there or in `T:` (§3.2), else an expression.
    */
   readonly value: (parser: Parser, opener: number) => Expression;
   /**
@@ -74,9 +74,9 @@ export interface Grammar {
    */
   readonly startsItemOnNewLine: (kind: CursorKind, next: CursorKind, spaced: boolean) => boolean;
   readonly type: (parser: Parser) => TypeNode;
-  /** A parameter's type, the one place `&T` is allowed (§3.7). */
+  /** A parameter's type, the one place `&T` is allowed (§7.3). */
   readonly parameterType: (parser: Parser) => TypeNode;
-  /** A parameter's pattern (§3.3), the one place `{…}` stands for `struct{…}`. */
+  /** A parameter's pattern (§6.1), the one place `{…}` stands for `struct{…}`. */
   readonly parameterPattern: (parser: Parser) => Pattern;
   /** `<A, B>`, starting at the `<`. */
   readonly typeArguments: (parser: Parser) => readonly TypeNode[];
@@ -134,7 +134,7 @@ export class Parser implements SegmentBases {
 
   /**
    * Runs `parse` over a template value's own tokens (syntax/tokens/index.ts), whose `end` stands
-   * where its `}` does; line breaks there are ignored, as in brackets (§2).
+   * where its `}` does; line breaks there are ignored, as in brackets (§2.1).
    */
   withinTemplateValue<Result>(value: TemplateValue, parse: () => Result): Result {
     const outer = this.#cursor;
@@ -317,7 +317,7 @@ export class Parser implements SegmentBases {
     return this.#grammar.parameterType(this);
   }
 
-  /** An annotation's `name<…>` or `name<…>{…}` after `left` (§3.16), its `<` never compared. */
+  /** An annotation's `name<…>` or `name<…>{…}` after `left` (§5.5), its `<` never compared. */
   readonly typeApplication = (left: Expression) => this.#grammar.typeApplication(this, left);
 
   typeArguments(): readonly TypeNode[] {
@@ -353,7 +353,7 @@ export class Parser implements SegmentBases {
     return textOf(this.#source, this.textSpanOf(node.span));
   }
 
-  /** Whether the cursor stands at `word`, a keyword only in one position, a name elsewhere (§2). */
+  /** Whether the cursor stands at `word`, a keyword only in one position, a name elsewhere (§2.2). */
   atWord(word: ContextualWord): boolean {
     return this.cursor.at('identifier') && this.textOf(this.cursor.token) === word;
   }

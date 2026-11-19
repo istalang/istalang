@@ -1,5 +1,5 @@
 /**
- * Expressions with bodies (§4, §8): `if` chains as values, `match` with field patterns, renames
+ * Expressions with bodies (§11.1, §15.4): `if` chains as values, `match` with field patterns, renames
  * and guards, `select` with and without `await`, its `else` case, and block expressions.
  */
 

@@ -6,7 +6,7 @@
 # error: 5708 at 23:8
 # error: 5706 at 26:26
 #
-# A label names one loop or block of its function (§3.4, §4): `break` and `continue` name loops
+# A label names one loop or block of its function (§7.1, §11.1): `break` and `continue` name loops
 # only, `hold(name)` a loop, a block or the function itself, a label may not repeat one around it
 # nor take the function's name, a block's label means nothing after the block, and no name
 # crosses into a nested function.

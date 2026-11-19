@@ -1,5 +1,5 @@
 /**
- * Values (§3.1, §3.4, §3.7, §3.15) through the coordinator: the valid forms of struct literals,
+ * Values (§5.2, §7.1, §6.2, §4.5) through the coordinator: the valid forms of struct literals,
  * tuples, destructuring, places, references and methods report nothing. Their errors are corpus
  * programs (`test/corpus/values/`), which state their positions; a warning, which the corpus
  * doesn't state, is checked here.

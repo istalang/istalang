@@ -1,5 +1,5 @@
 /**
- * The checker's entry: a program's types (§2–§4), as queries memoized on the Program.
+ * The checker's entry: a program's types (§2–§11), as queries memoized on the Program.
  *
  * Checking is lazy (program-checker.ts): the coordinator asks for every module's diagnostics, and
  * lowering asks for the bodies it lowers, so an editor pays only for what it asks, and a checker
@@ -50,7 +50,7 @@ import type {
 import type { TypeRules } from './types/type/type-rules.ts';
 import { type CheckerOptions, ProgramChecker } from './wiring/program/program-checker.ts';
 
-/** A field of a struct type, as the type has it, and its position in the type's layout (§3.1). */
+/** A field of a struct type, as the type has it, and its position in the type's layout (§5.2). */
 export interface LaidOutField {
   readonly member: FieldMember;
   readonly index: number;
@@ -63,7 +63,7 @@ export interface VariantMember {
 }
 
 /**
- * Who disposes a value of an extern type when its last holder releases it (§7): nobody, the
+ * Who disposes a value of an extern type when its last holder releases it (§16): nobody, the
  * runtime, or the `dispose` declared for it, a call with a handle to the value.
  */
 export type Disposal =
@@ -71,7 +71,7 @@ export type Disposal =
   | { readonly kind: 'runtime' | 'function'; readonly call: FunctionCall };
 
 /**
- * What one parameter of an extern function comes to hold (§3.16): the values of the parameters at
+ * What one parameter of an extern function comes to hold (§5.5): the values of the parameters at
  * `kept`, by position, as the parameter at `holder` does.
  */
 export interface Kept {
@@ -85,7 +85,7 @@ export interface CheckedConstant {
   readonly form: ConstantForm | undefined;
 }
 
-/** What checking context constants gives (§3.4). */
+/** What checking context constants gives (§7.1). */
 export interface ContextConstantQueries {
   /** The type of `declaration`: its written one, or its initializer's. */
   readonly typeOf: (declaration: ContextConstantDeclaration) => Type;
@@ -103,7 +103,7 @@ export interface Checker {
   readonly diagnosticsOf: (module: ModuleId) => readonly Diagnostic<Span, ModuleId>[];
   /** The module declaring `declaration`: whose item it is, or whose tree holds a local one. */
   readonly moduleOf: (declaration: Declaration | VariableDeclaration | TypeParameter) => ModuleId;
-  /** Whether the toolchain ships `module` (§3.8); false for none. */
+  /** Whether the toolchain ships `module` (§19.2); false for none. */
   readonly isStd: (module: ModuleId | undefined) => boolean;
   readonly parametersOf: (declaration: FunctionDeclaration) => readonly SignatureParameter[];
   /** What calling the function yields: `Future<T>` for an async one. */
@@ -116,17 +116,17 @@ export interface Checker {
    */
   readonly blockOf: (module: ModuleId, declaration: FunctionDeclaration) => Block | undefined;
   /**
-   * The checked default values of a function's parameters (§3.3), as one body in which each
+   * The checked default values of a function's parameters (§6.1), as one body in which each
    * default sees the parameters before it; undefined for a function with no defaults.
    */
   readonly defaultsOf: (declaration: FunctionDeclaration) => CheckedBody | undefined;
   /**
-   * The checked top-level constant `declaration` declares (§3); undefined for any other variable.
+   * The checked top-level constant `declaration` declares (§5.1); undefined for any other variable.
    */
   readonly constantOf: (declaration: VariableDeclaration) => CheckedConstant | undefined;
-  /** The checking of a top-level constant's initializer, which lowers its lambdas (§3.14). */
+  /** The checking of a top-level constant's initializer, which lowers its lambdas (§6.4). */
   readonly constantBodyOf: (declaration: VariableDeclaration) => CheckedBody | undefined;
-  /** The context constants' types and initializers, checked (§3.4). */
+  /** The context constants' types and initializers, checked (§7.1). */
   readonly contextConstants: ContextConstantQueries;
   /**
    * The checked top-level constant `name` denotes in `module`; undefined when it denotes anything
@@ -148,7 +148,7 @@ export interface Checker {
    */
   readonly variantsOf: (type: NominalType) => readonly VariantMember[] | undefined;
   /**
-   * The value behind a shared struct, `*x` (§3.18), substituted for its type arguments; undefined
+   * The value behind a shared struct, `*x` (§5.4), substituted for its type arguments; undefined
    * for another type.
    */
   readonly sharedValueOf: (type: Type) => AnonymousStructType | undefined;
@@ -166,21 +166,21 @@ export interface Checker {
    * (rules/lifetimes/externs.ts).
    */
   readonly keepsOf: (declaration: FunctionDeclaration) => readonly Kept[];
-  /** How values of `any` types are called, read and taken apart (§3.10). */
+  /** How values of `any` types are called, read and taken apart (§8.3). */
   readonly traitObjects: TraitObjects;
-  /** `_Cell<T>` for `type`, what a variable passed by `&` or captured lives in (§3.7, §3.14). */
+  /** `_Cell<T>` for `type`, what a variable passed by `&` or captured lives in (§7.3, §6.4). */
   readonly cellOf: (type: Type) => NominalType;
   /**
    * What a well-known name (foundation/language/well-known/index.ts) denotes; undefined without its
    * module.
    */
   readonly wellKnownEntity: (declaration: WellKnownDeclaration) => Entity | undefined;
-  /** The functions of `name` a language module declares, private ones included (§3.13). */
+  /** The functions of `name` a language module declares, private ones included (§13.1). */
   readonly languageFunctions: (
     module: LanguageModule,
     name: string,
   ) => readonly FunctionDeclaration[];
-  /** The functions of `name` `module` declares at its top level, private ones included (§3.13). */
+  /** The functions of `name` `module` declares at its top level, private ones included (§13.1). */
   readonly topLevelFunctions: (module: ModuleId, name: string) => readonly FunctionDeclaration[];
   /**
    * A well-known type, such as `Future`, with its type arguments; undefined when the program
@@ -191,14 +191,14 @@ export interface Checker {
     typeArguments?: readonly Type[],
   ) => NominalType | undefined;
   /**
-   * How types cross as JSON (§9; rules/boundary/json-forms.ts): their codecs, and derived codecs'
+   * How types cross as JSON (§17.4; rules/boundary/json-forms.ts): their codecs, and derived codecs'
    * forms.
    */
   readonly json: JsonFormQueries;
-  /** Annotations, each checked once where its item stands (§3.16; rules/annotations.ts). */
+  /** Annotations, each checked once where its item stands (§5.5; rules/annotations.ts). */
   readonly annotations: AnnotationQueries;
   /**
-   * How a value of type `found` fits where `expected` is, by implicit conversions (§2); undefined
+   * How a value of type `found` fits where `expected` is, by implicit conversions (§4.1); undefined
    * when it can't.
    */
   readonly fitOf: (found: Type, expected: Type) => Fit | undefined;
@@ -212,9 +212,9 @@ export interface Checker {
    * union built after checking, as lowering's, takes, so its types are the checker's.
    */
   readonly typeRules: TypeRules;
-  /** The type an alias stands for, its own type parameters left open (§3.17). */
+  /** The type an alias stands for, its own type parameters left open (§4.6). */
   readonly aliasedType: (alias: AliasDeclaration) => Type;
-  /** The kind of a function's code (§3.3; types/type/function-kinds.ts). */
+  /** The kind of a function's code (§9.1; types/type/function-kinds.ts). */
   readonly kindOf: (declaration: FunctionDeclaration) => Type;
   /**
    * Whether values of `type` may reach a disposable (rules/lifetimes/): what the runtime counts
@@ -227,7 +227,7 @@ export interface Checker {
    */
   readonly opaqueParametersOf: (declaration: FunctionDeclaration) => ReadonlySet<TypeParameter>;
   /**
-   * The functions the program's test modules mock (§10), whose instances are never shared across
+   * The functions the program's test modules mock (§18), whose instances are never shared across
    * types (rules/testing.ts).
    */
   readonly mockedFunctions: () => ReadonlySet<FunctionDeclaration>;
@@ -260,7 +260,7 @@ export function checkProgram(
 }
 
 /**
- * How values of `any` types are called, read and taken apart (§3.10): through the functions each
+ * How values of `any` types are called, read and taken apart (§8.3): through the functions each
  * value's own type meets a trait with, at the instantiation it meets in the `any` type's
  * constraint's place, which the trait's variance may let differ, what is taken and given then
  * converting between the two (resolution/conformance/met-instantiations/index.ts).
@@ -311,7 +311,7 @@ export interface TraitObjects {
   ) => MemberConversion<Type> | undefined;
   /**
    * The calls a value of `type` meets `constraint` with, as conformance found them once for the
-   * program (coherence, §3.10): its trait's functions', then the getters meeting the fields the
+   * program (coherence, §8.2): its trait's functions', then the getters meeting the fields the
    * type stores none of; undefined where it doesn't meet it.
    */
   readonly witnessesMeeting: (
@@ -325,7 +325,7 @@ export interface TraitObjects {
    */
   readonly mayHold: (type: Type, target: AnyType) => boolean;
   /**
-   * The `any` member of `members` a value of `type` is inside: the one that took it whole (§2),
+   * The `any` member of `members` a value of `type` is inside: the one that took it whole (§4.2),
    * where its values land, else the first that may hold it (`mayHold`).
    */
   readonly holdingMember: (members: readonly Type[], type: Type) => AnyType | undefined;
@@ -343,8 +343,8 @@ export interface SignatureParameter {
   readonly type: Type;
   readonly reference: boolean;
   /**
-   * For a rest parameter, what it collects into: an array of `item` (§3.3), or a pack's tuple
-   * (§3.5).
+   * For a rest parameter, what it collects into: an array of `item` (§6.1), or a pack's tuple
+   * (§8.1).
    */
   readonly rest: RestSlot | undefined;
 }

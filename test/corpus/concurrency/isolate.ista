@@ -1,5 +1,5 @@
 # outcome: "Err panic: no stock; Ok 3"
-# runtime.isolate runs a function as an instance of its own (§9): its panic comes back as an Err
+# runtime.isolate runs a function as an instance of its own (§17.1): its panic comes back as an Err
 # and terminates that instance, so the run fails nothing; its result comes back as an Ok.
 
 import * as runtime from 'runtime'

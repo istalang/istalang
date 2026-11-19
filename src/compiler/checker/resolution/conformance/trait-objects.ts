@@ -1,17 +1,17 @@
 /**
- * How a value becomes an `any` type's (§3.10): a type converts into `any A & B` when it meets each
+ * How a value becomes an `any` type's (§8.3): a type converts into `any A & B` when it meets each
  * constraint, its own type standing for the constraint's `Self`, or an instantiation of its trait
  * that the trait's variance lets stand for it (met-instantiations/index.ts), and an `any` type
  * converts into another whose constraints its own stand for so. A union converts when each of its
- * members does (§6), since a value inside an `any` type is a value of its own type, never of a
+ * members does (§8.2), since a value inside an `any` type is a value of its own type, never of a
  * union: one converts as whichever member it is.
  *
- * Meeting is decided once per type and constraint, wherever it is asked (coherence, §3.10), so a
+ * Meeting is decided once per type and constraint, wherever it is asked (coherence, §8.2), so a
  * conversion records no witnesses: lowering finds them again for each type a value converts from,
  * through the instantiation it meets, with the types what a call takes and gives converts between
  * (`traitObjectsOf`).
  *
- * Whether an `any` member of a union takes another member whole (§2), the union's normal form, is
+ * Whether an `any` member of a union takes another member whole (§4.2), the union's normal form, is
  * decided by meeting exactly: types are normalized while they are resolved, and a trait's variance
  * is derived from the types it resolves. A member meeting it only through variance stays beside it,
  * and a value of it goes in as its own type.
@@ -45,7 +45,7 @@ import { absorbingMember, baseOf } from '../../types/unions/union-members.ts';
 import { meets, witnessesFor } from './conformance.ts';
 import { memberConstraint } from './met-instantiations/index.ts';
 
-/** Whether a value of `found` converts into `target` (§3.10). */
+/** Whether a value of `found` converts into `target` (§8.2). */
 export function meetsAny(checker: CheckerContext, found: Type, target: AnyType): boolean {
   return meetsEach(
     checker,
@@ -54,7 +54,7 @@ export function meetsAny(checker: CheckerContext, found: Type, target: AnyType):
   );
 }
 
-/** Whether `target`, an `any` member of a union, takes `found`, another member, whole (§2). */
+/** Whether `target`, an `any` member of a union, takes `found`, another member, whole (§4.2). */
 export function absorbs(checker: CheckerContext, found: Type, target: AnyType): boolean {
   const site = searchSite(checker);
   return meetsEach(checker, { found, target }, (type, constraint) => meets(site, type, constraint));

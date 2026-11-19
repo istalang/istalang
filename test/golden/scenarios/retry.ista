@@ -1,5 +1,5 @@
 # A child instance whose first run panics until its host is ready, then is retried by its host:
-# the retry runs the failed segment again at the time it first started (§3.12).
+# the retry runs the failed segment again at the time it first started (§12).
 import * as runtime from 'runtime'
 import * as time from 'time'
 

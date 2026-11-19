@@ -1,15 +1,15 @@
 /**
- * Array and map literals of `Array` and `Map` (§2, §3.8), whose items agree as an `if`'s branches
+ * Array and map literals of `Array` and `Map` (§3.3, §19.3), whose items agree as an `if`'s branches
  * do (collections.ts), a spread among them settled once they agree:
  *
  * - An array literal's spread gives its items where the literal's items are expected, so each is
- *   wrapped into `T?` as an element would be (§2), the fit recorded on the spread; a spread whose
+ *   wrapped into `T?` as an element would be (§4.2), the fit recorded on the spread; a spread whose
  *   items need it is never copied whole, but goes through its cursor, each item fitted as it is
  *   added. Whether they need it is known only once the literal's items agree, which a later
  *   `none` can make optional.
  * - A map literal's spread gives its entries as `(key, value)` pairs, a key and a value together,
  *   so it is settled once the keys and the values agree: each pair fitted to the agreed pair, part
- *   by part (§3.5), a misfit reported by the part that doesn't fit, and copied whole or through its
+ *   by part (§8.1), a misfit reported by the part that doesn't fit, and copied whole or through its
  *   cursor as an array literal's spread is, so `[...m, "b": none]` wraps each of `m`'s values.
  */
 

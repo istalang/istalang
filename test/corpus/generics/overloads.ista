@@ -1,5 +1,5 @@
 # outcome: "int generic generic 5 5.0 1"
-# A concrete function beats a generic one; written type arguments choose the generic one (§3.7).
+# A concrete function beats a generic one; written type arguments choose the generic one (§6.3).
 # A free function may take a value or a reference to one, since `&` at the call tells them apart.
 
 import * as runtime from 'runtime'

@@ -1,5 +1,5 @@
 /**
- * What an alias or an associated type stands for (§3.1, §3.17): a type, or a type `match`, whose
+ * What an alias or an associated type stands for (§5.2, §4.6): a type, or a type `match`, whose
  * cases follow layout as a `match` expression's do (layout/bodies.ts).
  *
  * - A case's pattern is `_`, a struct constraint at `struct` (never the shape `struct { … }`

@@ -1,11 +1,11 @@
 /**
- * What arrives in a run from outside it (§9): a host filling its extern's future, another
+ * What arrives in a run from outside it (§17.1): a host filling its extern's future, another
  * instance's answer or end, an answer of a function another instance holds (world.ts,
  * remote-calls.ts). Each arrives as a turn of its own, run between the run's steps, never inside
  * one; whatever waits for the next arrival wakes as one comes.
  *
  * - **On its object.** A turn concerns one object of the run it lands in. A run replaced by one read
- *   back from its snapshot (a segment run again, §5) hands on what arrived and all that arrives
+ *   back from its snapshot (a segment run again, §14) hands on what arrived and all that arrives
  *   after, which acts there on the object of the same id.
  * - **In order.** Every run's arrivals are numbered as they come, so a world runs its runs in the
  *   order their turns arrived.

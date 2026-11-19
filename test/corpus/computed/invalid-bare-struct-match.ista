@@ -1,8 +1,8 @@
 # error: 5170 at 21:18
 # error: 5170 at 22:3
-# A struct without fields named with type arguments is a value of that instance (§3.1), so a
+# A struct without fields named with type arguments is a value of that instance (§5.2), so a
 # generic body or field default making one reaches what its type does: an associated type's type
-# match no case matches is refused where the instantiation is written (§3.5, §3.17).
+# match no case matches is refused where the instantiation is written (§8.1, §4.6).
 
 struct Field<T> { value: T? }
 

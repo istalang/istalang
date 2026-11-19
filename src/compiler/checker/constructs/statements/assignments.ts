@@ -1,27 +1,27 @@
 /**
- * Assignments (§3.4, §3.9, §3.15).
+ * Assignments (§7.1, §10.2, §4.5).
  *
  * - A target is a place, or a tuple or struct literal of targets that takes the value apart, by the
  *   walk a declaration's targets take (constructs/patterns/walk/index.ts); several targets are a
  *   tuple of them. Taking a value apart checks the value on its own first, then fits each part to
  *   the place it goes to.
  * - In a struct target, the shorthand `first` assigns the variable `first`, and a struct with one
- *   field takes a positional target, as a literal takes a positional value (§3.1).
- * - Only a `let` is reassigned. A parameter is the function's own copy (§3.1), so it may be too;
+ *   field takes a positional target, as a literal takes a positional value (§5.2).
+ * - Only a `let` is reassigned. A parameter is the function's own copy (§7.2), so it may be too;
  *   a `const`, and a binding a pattern or loop introduces, never is. Changing part of a variable is
  *   the rule of places (resolution/calls/places.ts).
- * - A compound assignment `x += y` is `x = x + y` (§3.9): the operator's function is resolved for
+ * - A compound assignment `x += y` is `x = x + y` (§10.2): the operator's function is resolved for
  *   the place's type and recorded on the assignment, and its result must fit the place.
- * - A value written to an optional place is wrapped into it (§2), whether the whole value, a part
+ * - A value written to an optional place is wrapped into it (§4.2), whether the whole value, a part
  *   of it or an operator's result, so each part records its own fit. A place a key that may name
- *   several fields reads takes a value fitting each of them (§3.9), which converts into whichever
+ *   several fields reads takes a value fitting each of them (§10.2), which converts into whichever
  *   the key names once its fields are concrete: its part records that, not one conversion
  *   (`WrittenFit`), since an instantiation may leave the key one name or several.
- * - `*x = v` writes the value behind the handle `x` whole (§3.9;
+ * - `*x = v` writes the value behind the handle `x` whole (§10.2;
  *   constructs/expressions/access/dereference.ts), as its one part.
- * - `_` as a target holds the value without a name, so it records no part to write (§3.4).
+ * - `_` as a target holds the value without a name, so it records no part to write (§7.1).
  * - Taking a value apart writes each place once: no target is another's place, or a part of it,
- *   so the order the parts are written in never decides a value (§3.15).
+ *   so the order the parts are written in never decides a value (§4.5).
  * - What lowering needs is recorded: each place written, with its part of the value and its fit.
  */
 

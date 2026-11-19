@@ -1,5 +1,5 @@
 /**
- * JSON crossing in from the host (§9; docs/arch/boundary.md), as code: decoded by the type's codec
+ * JSON crossing in from the host (§17.3; docs/arch/boundary.md), as code: decoded by the type's codec
  * at a path a failure names, then accepted by a helper that decides what a mismatch does. A
  * result, what its future gives, or an extern constant's value that doesn't fit panics the code
  * reading it (`_hostResult`); JSON a host starts an instance with fails the host's call

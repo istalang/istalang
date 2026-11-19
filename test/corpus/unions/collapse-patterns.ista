@@ -1,5 +1,5 @@
 # outcome: "draft|other|other|sent|other|42|7"
-# A pattern on a union an instantiation collapses (§3.5, §3.11): a name bound to literals merged into
+# A pattern on a union an instantiation collapses (§8.1, §11.3): a name bound to literals merged into
 # their base gets the literal its value equals, whether a member is left beside the base or the
 # base is all there is; and a member test collapsing in one alternative of an or-pattern leaves the
 # parts the other alternatives read as they are.

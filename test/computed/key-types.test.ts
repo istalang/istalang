@@ -36,7 +36,7 @@ describe('key types: `keyof S`, `S[K]`, `s[k]`, and `Entry` / `AnyEntry` (§8)',
     );
   });
 
-  it('parses `a < b[c] > (d)` as a call with type argument `b[c]` (§3.5)', async () => {
+  it('parses `a < b[c] > (d)` as a call with type argument `b[c]` (§8.1)', async () => {
     expect(
       await runMain('Int', 'id<Settings["retries"]>(42)', [...keyDecls, 'fn id<T>(x: T) -> T: x']),
     ).toBe(42);

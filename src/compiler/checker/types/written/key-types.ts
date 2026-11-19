@@ -1,10 +1,10 @@
 /**
- * Key types and anonymous struct types as written (§3.1): `keyof S`, `S[K]`, and a `{…}` type, a
+ * Key types and anonymous struct types as written (§5.2): `keyof S`, `S[K]`, and a `{…}` type, a
  * mapped one among them. Each builds through the program's rules (../type/type-rules.ts), which
  * reduce it once what it is built from is known, so a written type and a substituted one are one
  * type; here, what only writing it can get wrong is reported.
  *
- * - A shape's field takes no annotation (§3.16), which is reported here, where nothing else
+ * - A shape's field takes no annotation (§5.5), which is reported here, where nothing else
  *   declares it, without computing its value: that could reach the very type being resolved.
  * - A mapped entry's keys are its parameter's union less the names the braces give fields
  *   (checker `memberUnionOf`), each a String literal naming a field, or the keys of a struct not
@@ -30,7 +30,7 @@ import { typeText } from '../type/type-text.ts';
 import { declaredFields } from './declared-fields.ts';
 import { reportWritten, type Written } from './written.ts';
 
-/** `keyof S` (§3.1): the union of `S`'s keys; the error type, reported, for no struct type. */
+/** `keyof S` (§5.2): the union of `S`'s keys; the error type, reported, for no struct type. */
 export function keysWritten(written: Written, node: TypeNode, owner: Type): Type {
   const keys = written.checker.typeRules.keysOf(owner, []);
   if (keys.kind === 'error' && owner.kind !== 'error') {
@@ -40,7 +40,7 @@ export function keysWritten(written: Written, node: TypeNode, owner: Type): Type
 }
 
 /**
- * `S[K]` (§3.1): the type of the field `K` names, or the union of those it may name; the error
+ * `S[K]` (§5.2): the type of the field `K` names, or the union of those it may name; the error
  * type, reported, when `S` has no keys or `K` isn't one of them.
  */
 export function fieldWritten(written: Written, node: IndexedType, owner: Type, key: Type): Type {
@@ -57,7 +57,7 @@ export function fieldWritten(written: Written, node: IndexedType, owner: Type, k
 }
 
 /**
- * A `{…}` type (§3.1): a shape, or a mapped struct type when one of its entries maps keys; each
+ * A `{…}` type (§5.2): a shape, or a mapped struct type when one of its entries maps keys; each
  * type it writes resolved by `resolve`.
  */
 export function structWritten(
@@ -140,7 +140,7 @@ function isKey(checker: CheckerContext, key: Type): boolean {
   }
 }
 
-/** Whether `name` can name a field, as a key a mapped entry makes one of (§2, §3.1). */
+/** Whether `name` can name a field, as a key a mapped entry makes one of (§2.1, §5.2). */
 function isFieldName(name: string): boolean {
   return !(isUnnamed(name) || isKeyword(name)) && followsConvention(name, 'value');
 }

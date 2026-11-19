@@ -1,5 +1,5 @@
 /**
- * `worker.disposing()` (§7) through the checker: whose call it watches, which nested functions
+ * `worker.disposing()` (§16) through the checker: whose call it watches, which nested functions
  * capture that call, that `disposing()` is a method of what the name reads, and the warning on an
  * `await` in a case cleaning up after the call is disposed, its `disposing()` and no other
  * method. Errors are corpus programs (`test/corpus/weak-side/`), which state their positions.

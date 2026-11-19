@@ -23,7 +23,7 @@ function codesAfterTraits(...lines: readonly string[]): readonly number[] {
 
 const mismatch = checkerDiagnostics.typeMismatch.code;
 
-describe('the instantiation a type meets in an `any` type’s place (§3.10)', () => {
+describe('the instantiation a type meets in an `any` type’s place (§8.3)', () => {
   it.each([
     [
       'what a requirement gives, for a trait giving it',
@@ -159,7 +159,7 @@ function fitsPairwise(): readonly {
   });
 }
 
-describe('variance through `any` (§3.10)', () => {
+describe('variance through `any` (§8.3)', () => {
   it('relates `any` types of a giving trait as their arguments fit, and of a taking one reversed', () => {
     const answers = fitsPairwise();
     const reversed = new Map(answers.map((each) => [`${each.expected}→${each.found}`, each.plain]));

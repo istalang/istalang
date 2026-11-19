@@ -1,5 +1,5 @@
 /**
- * An associated type can't refer to itself unless its body is a type `match` (§3.1, §3.17):
+ * An associated type can't refer to itself unless its body is a type `match` (§5.2, §4.6):
  * one whose body reaches its own use again through an instantiation, as a mapped struct type over
  * a recursive struct's fields does, is the error type wherever it is reached, reported where an
  * instantiation reaching it is written, a written type's or one a call infers, instead of being

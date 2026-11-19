@@ -1,7 +1,7 @@
 # error: 5111 at 13:17
-# An instance's outcome is encoded for its host by the codec writing it (§9), which an
+# An instance's outcome is encoded for its host by the codec writing it (§17.4), which an
 # instantiation finds once it knows the outcome's type, so code naming an `Instance` of a type it
-# grows from its own reaches that codec as a call (§3.5): a codec naming an instance of a bigger
+# grows from its own reaches that codec as a call (§8.1): a codec naming an instance of a bigger
 # value it writes is reported where it names it.
 
 import * as json, Json from 'json'

@@ -4,10 +4,10 @@
  *
  * Brackets are found from the code's tokens, a template's values' included, so every kind of
  * bracketed list folds alike: arguments,
- * parameters, collections, struct literals, braced blocks. Layout (§4) is found from the tree,
+ * parameters, collections, struct literals, braced blocks. Layout (§10.1) is found from the tree,
  * since only the parser knows where an indented block or an item list begins and ends:
  * - an indented block folds from the line that introduces it, where its `:` stands, past any
- *   docstring between, to its last line, and so does an indented value (§2), from its `=`,
+ *   docstring between, to its last line, and so does an indented value (§3.2), from its `=`,
  *   `return`, key or `-`;
  * - a declaration's members, and a `match`'s or a `select`'s cases, fold from the line naming the
  *   declaration or holding the keyword.

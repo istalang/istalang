@@ -1,6 +1,6 @@
 # outcome: [1,2,5]
 # A field a type parameter's trait requires is read from whatever each instantiation gives it,
-# a struct's at its own position or an `any` value's through its value's own type (§3.5, §3.10).
+# a struct's at its own position or an `any` value's through its value's own type (§8.1, §8.3).
 
 import * as runtime from 'runtime'
 

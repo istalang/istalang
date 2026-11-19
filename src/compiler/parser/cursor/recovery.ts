@@ -2,8 +2,8 @@
  * Bracketed constructs and error recovery.
  *
  * Every bracketed construct in the grammar goes through `parseEnclosed`, a list through `parseList`
- * (or, for braces whose lines matter, `parseEnclosedIn`), so trailing commas (§2), line-break
- * rules (§2) and recovery behave the same everywhere. A caller names only the opener; its closer
+ * (or, for braces whose lines matter, `parseEnclosedIn`), so trailing commas (§2.1), line-break
+ * rules (§2.1) and recovery behave the same everywhere. A caller names only the opener; its closer
  * comes from `openers` (brackets.ts). The closer is consumed inside the construct's own region, so
  * a closer on a line of its own still closes it. A list's items are separated by `,` or by a line
  * break where layout/item-breaks.ts says one separates them; blocks, whose items line breaks
@@ -130,7 +130,7 @@ interface GroupShapes<Item, Node> {
 
 /**
  * `(…)` of `parseItem`s: one item and no comma groups it, anything else, `()` and `(x,)` included,
- * is a tuple (§3.15). Expressions, patterns and types all read parentheses this way.
+ * is a tuple (§4.5). Expressions, patterns and types all read parentheses this way.
  */
 export function parseGroup<Item, Node>(
   parser: Parser,
@@ -187,7 +187,7 @@ function atListSeparator(parser: Parser, itemOpeners: ReadonlySet<CursorKind>): 
 
 /**
  * Takes the separator next, if any: a `,`, a `;` in its place, reported once (`;` separates only
- * statements, §2), or a line break separating two items, which leaves nothing to consume.
+ * statements, §2.1), or a line break separating two items, which leaves nothing to consume.
  */
 function takeListSeparator(
   parser: Parser,
@@ -207,7 +207,7 @@ function takeListSeparator(
 
 /**
  * What separates two items of a block on one line (layout/index.ts): `;` between statements, `,`
- * between a list's items, and only a line break between cases (§2).
+ * between a list's items, and only a line break between cases (§2.1).
  */
 export type ItemSeparator = ';' | ',' | 'lineBreak';
 

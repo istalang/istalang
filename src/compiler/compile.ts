@@ -71,12 +71,12 @@ type Compilation =
   | { readonly kind: 'compiled'; readonly definition: Definition }
   /** Some module has errors; `diagnose` lists them. */
   | { readonly kind: 'failed' }
-  /** The entry module declares no `live async fn main()` (§9). */
+  /** The entry module declares no `live async fn main()` (§17.1). */
   | { readonly kind: 'noMain' };
 
 const compiled = new WeakMap<Program, Map<ModuleId, Compilation>>();
 
-/** The Definition that runs `entry`'s `main`, when the program has no errors (§9). */
+/** The Definition that runs `entry`'s `main`, when the program has no errors (§17.1). */
 export function compileProgram(program: Program, entry: ModuleId): Compilation {
   const byEntry = memo(compiled, program, () => new Map<ModuleId, Compilation>());
   return memo(byEntry, entry, () => compile(program, entry));
@@ -93,7 +93,7 @@ function compile(program: Program, entry: ModuleId): Compilation {
   return { kind: 'compiled', definition: lower(checkProgram(program), main) };
 }
 
-/** A program's tests compiled for running (§10), or why they couldn't be. */
+/** A program's tests compiled for running (§18), or why they couldn't be. */
 type TestCompilation =
   | { readonly kind: 'compiled'; readonly definition: Definition }
   /** Some module has errors; `diagnose` lists them. */
@@ -103,7 +103,7 @@ type TestCompilation =
 
 const compiledTests = new WeakMap<Program, TestCompilation>();
 
-/** The Definition that runs every `@Suite` function of `program`'s own modules (§10). */
+/** The Definition that runs every `@Suite` function of `program`'s own modules (§18). */
 export function compileTests(program: Program): TestCompilation {
   return memo(compiledTests, program, () => {
     if (hasErrors(program)) {
@@ -117,7 +117,7 @@ export function compileTests(program: Program): TestCompilation {
   });
 }
 
-/** Every `@Suite` function of `program`'s own modules (§10), with its title. */
+/** Every `@Suite` function of `program`'s own modules (§18), with its title. */
 export function suitesOf(program: Program, checker: Checker): readonly Suite[] {
   return [...program.modules].flatMap(([id, { tree, isStd }]) =>
     isStd
@@ -139,7 +139,7 @@ function hasErrors(program: Program): boolean {
   return [...diagnose(program).values()].some(({ diagnostics }) => diagnostics.some(isError));
 }
 
-/** The `live async fn main()` that `entry` declares (§9). */
+/** The `live async fn main()` that `entry` declares (§17.1). */
 export function mainOf(program: Program, entry: ModuleId): FunctionDeclaration | undefined {
   const entity = bindProgram(program).exportsOf(entry).get(entryFunction);
   return entity?.kind === 'functions' ? entity.overloads.find(isMain) : undefined;

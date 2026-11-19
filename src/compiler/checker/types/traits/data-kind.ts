@@ -1,5 +1,5 @@
 /**
- * The `DataKind<K in Mark>` trait (proposal 8, Rule 3; §3.10): derived, never declared, met by a
+ * The `DataKind<K in Mark>` trait (proposal 8, Rule 3; §8.4): derived, never declared, met by a
  * type whose kind is one of `K`'s marks, `"simple"` where its values hold no kind
  * (properties/value-kinds.ts). Conformance meets it by this rule
  * (resolution/conformance/derived-traits.ts).

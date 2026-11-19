@@ -241,7 +241,7 @@ describe('parts and handles related soundly', () => {
   });
 });
 
-describe("a getter meeting a trait's field (§3.10), read where nobody names it", () => {
+describe("a getter meeting a trait's field (§8.2), read where nobody names it", () => {
   /**
    * A pair whose generic `stored` getter writes its item into its box, which holds a lease: a cycle
    * when run on a pair of a node holding that box, and none for other items.

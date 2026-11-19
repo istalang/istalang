@@ -1,5 +1,5 @@
 /**
- * A union and the traits it meets through its members (§6). A union has no module and no functions
+ * A union and the traits it meets through its members (§8.2). A union has no module and no functions
  * of its own, so it meets a trait through functions declared for it, as a shape does
  * (conformance.ts), or else through its members: when every member meets the trait and the trait
  * could follow `any` (types/traits/object-safety.ts), its functions run the function of whichever
@@ -63,7 +63,7 @@ export function traitMetBy(through: AnyType, type: Type, rules: TypeRules): Cons
 /**
  * Why `union` can't meet `through`'s trait through its members, needing `declaration` declared
  * for it whole instead, in words a diagnostic finishes ("it needs …"): the trait can't follow `any`
- * (§3.10), or a member doesn't meet it, as `memberMeets` says; undefined when it can.
+ * (§8.3), or a member doesn't meet it, as `memberMeets` says; undefined when it can.
  */
 export function membersShortfall(
   checker: CheckerContext,

@@ -50,7 +50,7 @@ describe('completion', () => {
     ]);
   });
 
-  it("offers an alias's statics and variants, and an alias of a shape as a static's owner (§3.17)", () => {
+  it("offers an alias's statics and variants, and an alias of a shape as a static's owner (§4.6)", () => {
     const point = ['type Point = { x: Int, y: Int }', 'type Spot = { y: Int, x: Int }', ''];
     const origin = 'fn Point.origin() -> Point: Point{x: 0, y: 0}';
     expect(names(...point, origin, 'fn f() -> Spot: Spot.or‸igin()')).toContain('origin');

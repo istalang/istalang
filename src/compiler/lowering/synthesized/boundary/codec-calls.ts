@@ -1,5 +1,5 @@
 /**
- * The codec of a type that code lowering writes calls (§9; docs/arch/boundary.md): the one the
+ * The codec of a type that code lowering writes calls (§17.4; docs/arch/boundary.md): the one the
  * checker finds, Encodable's or Decodable's witness, so a derived codec, a host extern's wrapper
  * and an instance's outcome encoder, a start's or an `Instance<T>` type entry's, call what checking
  * let through. A wrapper of a generic extern finds

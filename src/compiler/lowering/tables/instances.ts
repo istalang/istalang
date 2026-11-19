@@ -1,9 +1,9 @@
 /**
- * Instances (§3.5: generics are compiled per instantiation): what one function-table entry is.
+ * Instances (§8.1: generics are compiled per instantiation): what one function-table entry is.
  *
  * - An instance is a declaration with concrete type arguments and the concrete witnesses of its
- *   constraints (§3.10). Its entry takes every parameter, computing those a call leaves out from
- *   their defaults in its prologue (§3.1, §3.3), so a function named as a value of a shorter type
+ *   constraints (§8.2). Its entry takes every parameter, computing those a call leaves out from
+ *   their defaults in its prologue (§5.2, §6.1), so a function named as a value of a shorter type
  *   is that entry too; only an extern, which computes nothing, has a second entry computing them
  *   (tables.ts).
  * - A body is checked once, generically (checker), so lowering one instance reads the body through
@@ -11,9 +11,9 @@
  *   (../calls/closed-calls.ts). Its defaults are checked apart from its body, in a body of their
  *   own, which its prologue reads (`BodyOwner`).
  * - Two instances are one entry when their key is: the declaration and its arguments' types.
- *   Witnesses are coherent (§3.10), the same for the same types wherever they are found, so the
+ *   Witnesses are coherent (§8.2), the same for the same types wherever they are found, so the
  *   types decide them.
- * - A lambda or local function (§3.14) is an entry of its own per instance of the top-level
+ * - A lambda or local function (§6.4) is an entry of its own per instance of the top-level
  *   function holding it: it is checked within that body, so it reads the body through the same
  *   substitution, and its key is the instance's plus its node. A lambda in a top-level constant's
  *   value is one entry, owned by the constant, which has no type parameters to substitute.
@@ -46,8 +46,8 @@ export interface NestedInstance {
 
 /**
  * What a lowered body belongs to: an instance of a function, the defaults of one, which its
- * prologue computes (§3.3), a top-level constant's value, or a context constant's initializer, its
- * accessor's (§3.4); and the passes of the field loops it is lowered inside (§4), outermost first,
+ * prologue computes (§6.1), a top-level constant's value, or a context constant's initializer, its
+ * accessor's (§7.1); and the passes of the field loops it is lowered inside (§11.2), outermost first,
  * each read as checked.
  */
 export type BodyOwner = (
@@ -62,7 +62,7 @@ export function ownerInstance(owner: BodyOwner): FunctionInstance | undefined {
   return owner.kind === 'constant' || owner.kind === 'contextConstant' ? undefined : owner.instance;
 }
 
-/** A pass of a field loop a body is lowered in (§4): the loop's header, and the field it visits. */
+/** A pass of a field loop a body is lowered in (§11.2): the loop's header, and the field it visits. */
 export interface FieldPassStep {
   readonly header: FieldLoopHeader;
   readonly field: string;
@@ -79,7 +79,7 @@ export function ownerDeclaration(
 
 /**
  * The instance of `declaration` that nothing calls in code of a kind, with its `written` type
- * arguments: a start, which a host runs (§9), or a conversion's own function. A mark parameter
+ * arguments: a start, which a host runs (§17.3), or a conversion's own function. A mark parameter
  * left unwritten (`M in Mark`) is `"simple"`: a conversion's converter is simple code.
  */
 export function rootInstance(
@@ -95,7 +95,7 @@ export function rootInstance(
 }
 
 /**
- * A conversion of parts lowering writes an entry for (§3.5), one per pair of types, wherever the
+ * A conversion of parts lowering writes an entry for (§8.1), one per pair of types, wherever the
  * pair is met: a value of `from` made to fit `to` as the checker fits them (`converting`), or a
  * function of type `from` wrapped as one of `to`, converting what it takes and gives (`wrapping`).
  * Its pair alone names and places it (functions/fits/), so no site it was met at shows.

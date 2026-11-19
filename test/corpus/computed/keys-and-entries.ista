@@ -1,5 +1,5 @@
 # outcome: "eu:5|11:7|42:42"
-# Key types (§8): keyof S, S[K], s[k] runtime field access, single-key places (&s[k] and s[k] = v),
+# Key types (§15.4): keyof S, S[K], s[k] runtime field access, single-key places (&s[k] and s[k] = v),
 # multi-key writes converting into each field's type, compound assignment across uniform keys, and
 # the Entry<S, K> / AnyEntry<S> pattern.
 

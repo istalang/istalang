@@ -1,14 +1,14 @@
 /**
- * Templates (§2), each the core expression it stands for:
+ * Templates (§3.1), each the core expression it stands for:
  *
  * - `` tag`a ${x} b` `` is the call `tag(["a ", " b"], x)`, an ordinary call, so `tag` is any
  *   function, method or function value, and its parameters decide what the values must be.
  * - A template without values or a tag is its text, a String literal.
  * - Any other is `join([texts and values, in order], "")`, each value written as text by
- *   `(value).toString()`, a method call (§3.7): among the functions its top level sees and those
+ *   `(value).toString()`, a method call (§6.2): among the functions its top level sees and those
  *   its type's module, a type parameter's requirement, an `any Stringable` and a union's trait
- *   bring (§3.10, §6). An empty text is left out. `join` is the prelude's, whatever a local name
- *   shadows (§3.4).
+ *   bring (§8.2, §8.2). An empty text is left out. `join` is the prelude's, whatever a local name
+ *   shadows (§7.1).
  * - Each `toString` call is checked to give a String where it stands, so a value with no such
  *   `toString` is worded as the template's mistake, at the value.
  */

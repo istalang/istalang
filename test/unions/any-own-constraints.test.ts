@@ -1,5 +1,5 @@
 /**
- * A type meeting `any Trait<B>` through constraints it carries of another trait (§3.10): a type
+ * A type meeting `any Trait<B>` through constraints it carries of another trait (§8.3): a type
  * parameter's or an `any` type's own requirements stand as witnesses, and a keyed field meets what
  * every field it may name meets, an exact type by its own witnesses.
  */
@@ -15,7 +15,7 @@ const baseTraits = [
   '  fn put(self: Self, x: T) -> Int',
 ];
 
-describe('a type meeting `any` through its own constraints of another trait (§3.10)', () => {
+describe('a type meeting `any` through its own constraints of another trait (§8.3)', () => {
   const decls = [
     ...baseTraits,
     'trait MySource<T>:',

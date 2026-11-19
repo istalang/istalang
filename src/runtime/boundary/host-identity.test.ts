@@ -1,6 +1,6 @@
 /**
  * A value given to a host again, unchanged, is the same JavaScript object, at every depth, and
- * everything a host gets is frozen (§9; definition/values/written-json.ts, json-values.ts `plainOfJson`):
+ * everything a host gets is frozen (§17.3; definition/values/written-json.ts, json-values.ts `plainOfJson`):
  * on programs the real compiler builds, seen by the host extern `main.show`.
  */
 

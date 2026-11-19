@@ -1,5 +1,5 @@
 /**
- * The function sets of called names no scope defines (§3.13): a set with no overloads of its own,
+ * The function sets of called names no scope defines (§13.1): a set with no overloads of its own,
  * which argument-dependent lookup fills, and which the checker reports when it finds none.
  *
  * Per module, the set each name denotes is kept while the module's items are, as entities are kept

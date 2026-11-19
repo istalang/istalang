@@ -1,5 +1,5 @@
 # outcome: "10 1|10 1|7 5|9 0|10 1|10 1 1|1 5"
-# Writing a part of a value reached through a handle or an element (§3.7, §3.9) changes that part
+# Writing a part of a value reached through a handle or an element (§7.3, §10.2) changes that part
 # of the value as it is when the write happens, so whatever changed another part meanwhile stays
 # changed: the right side of a compound assignment, the call a part is passed to by `&`, or
 # another execution while an `await` waits. A part passed by `&` to code is a copy: until the call

@@ -1,6 +1,6 @@
 # outcome: "[10, 2] 5 [[0, 7], [0, 0]] 3 [1, 2, 3] [4] 11 [1, 2]"
-# Elements are places (§3.7, §3.9): assigned whole, in part through a field, nested, compounded,
-# passed by `&`, and changed by a method taking `&self`. A copy taken before is untouched (§3.1).
+# Elements are places (§7.3, §10.2): assigned whole, in part through a field, nested, compounded,
+# passed by `&`, and changed by a method taking `&self`. A copy taken before is untouched (§7.2).
 
 import * as runtime from 'runtime'
 

@@ -1,5 +1,5 @@
 /**
- * Literals, names, parentheses, tuples and bracket literals (§2, §4), including trailing commas
+ * Literals, names, parentheses, tuples and bracket literals (§3.3, §10.5), including trailing commas
  * and line breaks inside brackets.
  */
 

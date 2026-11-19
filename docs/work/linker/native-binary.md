@@ -24,8 +24,8 @@ LLVM IR generated from a Definition and linked against the native runtime (`nati
 ## What works against native code
 
 - **Untyped instructions.** A code entry records only `{ reference }` per parameter and a register count (`definition/functions.ts`). Without types, every register is a boxed, tagged value, the speed of a dynamic language. Types can be partly recovered from constants and the `struct` and `variant` instructions, but not through calls to code entries.
-- **`Int` has arbitrary precision** (spec §2). It needs a small-integer fast path that checks for overflow and promotes to a bignum.
-- **Value semantics** (§3.1). Values are immutable and copied on assignment, and `==` and map keys compare structure. That needs reference counting with copy-on-write, and `language/values.ts` ported exactly.
+- **`Int` has arbitrary precision** (spec §3.4). It needs a small-integer fast path that checks for overflow and promotes to a bignum.
+- **Value semantics** (§7.2). Values are immutable and copied on assignment, and `==` and map keys compare structure. That needs reference counting with copy-on-write, and `language/values.ts` ported exactly.
 - **Collection after every instruction** (README, What every executor keeps). Compiled code that lets go of a disposable value must reach the collector before going on.
 - **Whole-snapshot commits.** Faster code doesn't make a commit cheaper; a program that computes and awaits often needs delta snapshots.
 

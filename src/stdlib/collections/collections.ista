@@ -1,16 +1,16 @@
-# The collections module (spec §3.8): `WeakMap<K, V>`, which keeps an entry only while its key is
-# alive (§7).
+# The collections module (spec §19.2): `WeakMap<K, V>`, which keeps an entry only while its key is
+# alive (§16).
 #
 # Entries are keyed by the key's one `WeakRef`, which holds nothing and is `==` only to itself, so
 # the map keeps no key alive. Each entry also holds a watch: a call waiting for its key's
 # `disposed()`, which then deletes the entry. Holding the watch is what keeps it running, so deleting
-# or replacing the entry, or dropping the map, stops it at its await (§7). The watch resumes in a
+# or replacing the entry, or dropping the map, stops it at its await (§16). The watch resumes in a
 # segment after the one that disposed the key, so that is when the entry and its value go. Nothing
 # lists or counts the entries, as in JavaScript.
 #
 # The entries live in a store the map holds, which each watch reaches only through a `WeakRef`: a
 # watch holding the map, which holds the watch, would be a cycle, which no disposable may be on
-# (§7). Letting go of the map lets go of the store, so its entries and their watches go with it.
+# (§16). Letting go of the map lets go of the store, so its entries and their watches go with it.
 
 struct _Entry<V> { value: V, watch: Future<Unit, "ista"> }
 
@@ -33,7 +33,7 @@ ista fn get<K is Disposable, V>(self: WeakMap<K, V>, key: K) -> V?:
 ista fn has<K is Disposable, V>(self: WeakMap<K, V>, key: K) -> Bool:
   self->_store->entries.has(WeakRef(key))
 
-# As `has`, for `in` (§3.9).
+# As `has`, for `in` (§10.2).
 ista fn includes<K is Disposable, V>(self: WeakMap<K, V>, key: K) -> Bool:
   self.has(key)
 

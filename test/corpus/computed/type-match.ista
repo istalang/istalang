@@ -1,5 +1,5 @@
 # outcome: "10:union:str|7|bool"
-# Type match (§3.17): a repeated infer, a constrained infer, a struct case binding an infer from a
+# Type match (§4.6): a repeated infer, a constrained infer, a struct case binding an infer from a
 # field, a literal matching its base type, union distribution, and a tuple subject matched whole.
 
 import * as runtime from 'runtime'

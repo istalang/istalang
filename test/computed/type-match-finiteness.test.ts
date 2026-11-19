@@ -1,6 +1,6 @@
 /**
- * A type `match` use is a type only when its reduction ends in one whose values end (§3.1,
- * §3.17): one reaching itself again before any struct type holds it (`case _: A<T>`, through a
+ * A type `match` use is a type only when its reduction ends in one whose values end (§5.2,
+ * §4.6): one reaching itself again before any struct type holds it (`case _: A<T>`, through a
  * union or another alias alike) would be itself, as an alias can't be, and one held by a struct
  * type is a recursive type, whose values must end as a recursive struct's do. Each is reported
  * where its use is written, never reaching lowering.

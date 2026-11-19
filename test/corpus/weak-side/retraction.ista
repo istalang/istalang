@@ -1,5 +1,5 @@
 # outcome: "sale | after: durable, then nothing | alone: nothing | b: later"
-# Revertible sends (§6, as §12.3 uses them): `announce` keeps each holder with `hold _`, so when it
+# Revertible sends (§15.3, as §20.3 uses them): `announce` keeps each holder with `hold _`, so when it
 # returns every unread copy is retracted, whether it waited in the backlog (`a`, behind a durable
 # message) or already in the inbox's slot (`alone`). A copy received in time (`b`) is final, and
 # retracting it leaves `b` taking later messages as before.

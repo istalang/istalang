@@ -1,17 +1,17 @@
 /**
- * Loads std modules (§3.8) by their simple names, such as `'time'`, from the list of std module
+ * Loads std modules (§19.2) by their simple names, such as `'time'`, from the list of std module
  * sources (std-sources.ts), which holds no natives: compiling a program needs none.
  *
  * A std module's id is `std:<name>`, a scheme no file can have, so a std module can never be
  * confused with a project file; a name that both this loader and the project's answer is ambiguous
- * (§3.13). Every module it loads is marked as shipped with the toolchain, so its externs need no
+ * (§13.1). Every module it loads is marked as shipped with the toolchain, so its externs need no
  * host.
  *
  * Five std modules the language itself refers to are handed to a program by role: the prelude,
  * which every module sees without importing it and no import names; `time`, whose `Duration`
- * types every duration literal (§2); `json`, whose codecs every value crossing to a host goes
- * through (§9); `lifetimes`, whose `Holds` and `Keeps` the std's externs are annotated with
- * (§3.16); and `testing`, which only test modules may import (§10). All but the prelude are loaded
+ * types every duration literal (§3.1); `json`, whose codecs every value crossing to a host goes
+ * through (§17.4); `lifetimes`, whose `Holds` and `Keeps` the std's externs are annotated with
+ * (§5.5); and `testing`, which only test modules may import (§18). All but the prelude are loaded
  * with every program but visible only where imported.
  *
  * Tests lay sources of their own over the shipped ones. The loader then answers only theirs, while
@@ -31,12 +31,12 @@ import { stdModuleSources } from './std-sources.ts';
 /** Std module sources by name. */
 export type StdSources = Readonly<Record<string, string>>;
 
-/** The prelude, as a module for the program to load (§3.13). */
+/** The prelude, as a module for the program to load (§13.1). */
 export function preludeModule(): LocatedModule {
   return roleModule(languageModules.prelude, stdModuleSources);
 }
 
-/** The std modules a program is handed by role, as every app hands them (§2, §3.13). */
+/** The std modules a program is handed by role, as every app hands them (§3.1, §13.1). */
 export function stdRoles(
   sources: StdSources = stdModuleSources,
 ): Readonly<Record<LanguageModule, LocatedModule>> {

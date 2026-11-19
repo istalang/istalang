@@ -1,8 +1,8 @@
 /**
- * Types computed from others (§3.1, §3.5, §3.17), opaque until what they are built from is known:
+ * Types computed from others (§5.2, §8.1, §4.6), opaque until what they are built from is known:
  * an associated type, a field's type, a struct's keys, a mapped struct type and a type `match`'s
  * use, each reduced by the program's rules (type-rules.ts) once an instantiation allows; and the
- * recursive types, which are known: a node of a cyclic graph (§3.17), and a type `match` use
+ * recursive types, which are known: a node of a cyclic graph (§4.6), and a type `match` use
  * reached again while it reduces, standing for the shape it reduces to.
  */
 
@@ -24,8 +24,8 @@ import type {
 } from './index.ts';
 
 /**
- * `T.Data` (§3.1): the associated type `name` of `of`, a type not known yet, a type parameter or
- * another such type. Opaque (§3.5): equal only to itself, it meets what its trait requires of it
+ * `T.Data` (§5.2): the associated type `name` of `of`, a type not known yet, a type parameter or
+ * another such type. Opaque (§8.1): equal only to itself, it meets what its trait requires of it
  * (`type Data is C`). An instantiation that makes `of` known reduces it to that type's own
  * associated type (TypeRules), so lowering never meets one.
  */
@@ -35,13 +35,13 @@ export interface AssociatedOfType extends WrittenThrough {
   readonly name: string;
 }
 
-/** The associated type `name` a nominal type's own declaration declares (§3.1); else undefined. */
+/** The associated type `name` a nominal type's own declaration declares (§5.2); else undefined. */
 export function ownAssociatedType(owner: NominalType, name: string): AssociatedType | undefined {
   return owner.entity.declaration.associatedTypes.find((each) => each.name.text === name);
 }
 
 /**
- * `S["meta"]` (§3.5, §3.9): the type of the field `key` names in `of`, a struct type not known
+ * `S["meta"]` (§8.1, §10.2): the type of the field `key` names in `of`, a struct type not known
  * yet, such as a type parameter with a struct constraint. Opaque until an instantiation makes `of`
  * known (TypeRules): equal only to itself, it meets what the constraint's entry for that field
  * requires. A known struct's is its field's type.
@@ -54,7 +54,7 @@ export interface FieldOfType extends WrittenThrough {
 
 /**
  * The keys of `of`, a struct type not known yet, that its struct constraints don't name, less those
- * `without` names, in name order (§3.1, §3.5): opaque until `of` is known. `keyof S` is this beside
+ * `without` names, in name order (§5.2, §8.1): opaque until `of` is known. `keyof S` is this beside
  * the literals its constraints name, so a written key fits it as a union member does; the keys of
  * a field loop's other fields, a rest's and a mapped entry's are this with more names left out.
  */
@@ -65,11 +65,11 @@ export interface KeysType extends WrittenThrough {
 }
 
 /**
- * A mapped struct type (§3.1) whose `keys` aren't all known yet: its `named` fields, in name
+ * A mapped struct type (§5.2) whose `keys` aren't all known yet: its `named` fields, in name
  * order, and a field of the type `value` for each key, `parameter` standing for that key in it.
  * Once the keys are String literals it is the shape of those fields (TypeRules), written at
  * `origin`; until then it is opaque, equal to another only up to the name of its parameter. A
- * struct pattern's rest is one, written at the rest: `{ [F in keyof S except …]: S[F] }` (§3.11).
+ * struct pattern's rest is one, written at the rest: `{ [F in keyof S except …]: S[F] }` (§11.3).
  */
 export interface MappedType extends WrittenThrough {
   readonly kind: 'mapped';
@@ -81,7 +81,7 @@ export interface MappedType extends WrittenThrough {
 }
 
 /**
- * A use of an alias or associated type whose body is a type `match` (§3.17), not reduced: its
+ * A use of an alias or associated type whose body is a type `match` (§4.6), not reduced: its
  * arguments hold types not known yet, and its first case that could match doesn't match whatever
  * they become. Opaque, equal only to the same alias with the same arguments; an instantiation
  * reduces it (TypeRules), so lowering never meets one.
@@ -90,14 +90,14 @@ export interface MatchType extends WrittenThrough {
   readonly kind: 'match';
   readonly declaration: AliasDeclaration;
   readonly arguments: readonly Type[];
-  /** The type declaring an associated type, whose use reads through it, `Bad<T>.Data` (§3.1). */
+  /** The type declaring an associated type, whose use reads through it, `Bad<T>.Data` (§5.2). */
   readonly owner?: NominalEntity | undefined;
 }
 
 /** What a mapped struct type is built from (`MappedType`), reduced or not. */
 export type MappedParts = Omit<MappedType, 'kind' | 'alias'>;
 
-/** A type computed from others, opaque until they are known (§3.5): reduced by TypeRules. */
+/** A type computed from others, opaque until they are known (§8.1): reduced by TypeRules. */
 export type ComputedType = AssociatedOfType | FieldOfType | KeysType | MappedType | MatchType;
 
 /** Whether `type` is computed from types not known yet, so only an instantiation reduces it. */
@@ -120,14 +120,14 @@ export function formDecidedBy(type: ComputedType): Type {
 }
 
 /**
- * Whether `type` is known only per instantiation: a type parameter, or computed from one (§3.5).
+ * Whether `type` is known only per instantiation: a type parameter, or computed from one (§8.1).
  */
 export function isOpaque(type: Type): type is TypeParameterType | ComputedType {
   return type.kind === 'parameter' || isComputed(type);
 }
 
 /**
- * A recursive type (§3.17): a node of an immutable, minimized cyclic graph whose nodes are ordinary
+ * A recursive type (§4.6): a node of an immutable, minimized cyclic graph whose nodes are ordinary
  * types, a recursive type of the same graph standing wherever a node is reached again. Its identity
  * is its structure (equi-recursive): two graphs whose nodes unfold alike are one type, whatever
  * aliases wrote them, so its key is its graph's canonical spelling (identity/type-keys.ts). It
@@ -153,20 +153,20 @@ export interface RecursiveGraph {
   readonly labels: readonly (RecursiveLabel | undefined)[];
 }
 
-/** What the recursive type `type` stands for (§3.17): its node's body. */
+/** What the recursive type `type` stands for (§4.6): its node's body. */
 export function unfoldRecursive(type: RecursiveType): Type {
   return type.graph.nodes[type.node] ?? type;
 }
 
 /**
- * `type`, as a value of it is built and taken apart: what a recursive type unfolds to (§3.17), the
+ * `type`, as a value of it is built and taken apart: what a recursive type unfolds to (§4.6), the
  * same type by identity; any other type as it is.
  */
 export function unfolded(type: Type): Type {
   return type.kind === 'recursive' ? unfoldRecursive(type) : type;
 }
 
-/** Whether `declaration`'s body is a type `match`, whose uses reduce rather than unfold (§3.17). */
+/** Whether `declaration`'s body is a type `match`, whose uses reduce rather than unfold (§4.6). */
 export function isMatchAlias(declaration: AliasDeclaration): boolean {
   return declaration.type.kind === 'TypeMatch';
 }

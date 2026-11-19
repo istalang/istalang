@@ -1,5 +1,5 @@
 # outcome: "3 4 | 7 4 | u-1 u-2 | 1 9 | 10 20 | 2 fine | marked"
-# Struct literals in every form (§3.1): named, shorthand, positional, a spread update, struct{…}
+# Struct literals in every form (§5.2): named, shorthand, positional, a spread update, struct{…}
 # taking the expected type or making a type of its own, and a struct without fields written bare.
 
 import * as runtime from 'runtime'

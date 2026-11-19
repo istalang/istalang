@@ -1,6 +1,6 @@
 /**
  * What a module's top level must keep against the rest of the program, checked once its imports
- * are linked (§3.9, §3.13, §10): its names don't reuse the prelude's, but for functions, which join
+ * are linked (§10.2, §13.1, §18): its names don't reuse the prelude's, but for functions, which join
  * its overloads; and only a test module imports `testing`, or another test module, so production
  * code can never install a mock.
  */

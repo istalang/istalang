@@ -11,7 +11,7 @@ tags: [language, guide]
 # Istalang, level by level
 
 Read top to bottom and stop anywhere: each level is a complete picture, only coarser than the next.
-The spec, `docs/spec.md`, is the source of truth; `§` numbers point into it.
+The spec, `docs/spec/`, is the source of truth; `§` numbers point into it.
 
 ---
 
@@ -74,9 +74,9 @@ ista async fn purchase(req: PurchaseRequest) -> String:
         case Err(error): "failed: " + error.message
 ```
 
-A file holds only declarations: imports, `struct`, `shared struct`, `enum`, `trait`, `type`, `fn`, `extern`, compile-time `const`, and `ista const`, one value per context made at its first read (§3.4) (no top-level statements or mutable globals).
+A file holds only declarations: imports, `struct`, `shared struct`, `enum`, `trait`, `type`, `fn`, `extern`, compile-time `const`, and `ista const`, one value per context made at its first read (§7.1) (no top-level statements or mutable globals).
 
-### 2.2 Syntax, types, variables (§2, §3.4)
+### 2.2 Syntax, types, variables (§2.1, §4.1, §7.1)
 
 ```python statements
 const limit: Int = 50_000      # immutable, deeply
@@ -101,7 +101,7 @@ const a, b = (1, "x")          # destructuring
 - **Names:** types, traits and variants are `PascalCase`; functions, variables and fields are `camelCase` (both compiler-enforced). Leading `_` on a top-level declaration makes it module-private.
 - **Keywords:** `fn`, `async`, `await`, `let`, `const`, `if`, `elif`, `else`, `for`, `in`, `while`, `match`, `case`, `select`, `return`, `break`, `continue`, `struct`, `enum`, `trait`, `import`, `extern`, `drop`, `is`, `and`, `or`, `not`, `true`, `false`, `none`, `as` are reserved everywhere (never field or variable names). `type`, `shared`, `live`, `ista`, `gives`, `takes`, `new`, `from`, `sendable`, `any`, `keyof`, `infer`, `hold` and `by` are contextual and may name fields or functions.
 
-### 2.3 Data: structs, enums, optionals (§3.1, §3.11, §3.18)
+### 2.3 Data: structs, enums, optionals (§5.2, §5.3, §5.4)
 
 ```python
 struct Order:
@@ -151,7 +151,7 @@ const snapshot = *lease          # a plain copy of the fields
 
 `Shared<T>` is the built-in one-field shared struct: `new Shared{value: v}`, read/written as `x->value`.
 
-### 2.4 Functions (§3.3, §3.7, §3.14)
+### 2.4 Functions (§6.1, §6.2, §6.4)
 
 ```python
 fn add(a: Int, b = 1): a + b                      # default parameter; return type inferred
@@ -176,7 +176,7 @@ ista async fn fetch(id: String) -> User: …     # may await; inside it, return 
 - **Async declarations vs. async function types.** A declared `ista async fn` writes `-> R`, the value its body returns; its call gives `Future<R, "ista">`, and its type is `ista async fn(A) -> R`, another spelling of `ista fn(A) -> Future<R, "ista">`. An unmarked `async fn` or `async fn` type is an error: a future names its kind. A plain `fn(A) -> R` converts where `ista async fn(A) -> R` is expected. A lambda infers its mark from its expected type or its body; a local `fn` writes its own.
 - **Conversions.** Infallible conversions use `T(x)` (`Float(3)`, `Int(3.7)`, `String(42)` for any `Stringable`), backed by `fn T.from(v)`. Fallible parsing uses `T.parse(s) -> Result<T>`.
 
-### 2.5 Generics, traits, operators (§3.5, §3.9, §3.10)
+### 2.5 Generics, traits, operators (§8.1, §10.2, §8.2)
 
 ```python
 fn swap<A, B>(p: Pair<A, B>) -> Pair<B, A>: Pair{first: p.second, second: p.first}
@@ -196,7 +196,7 @@ fn sum<T is Monoid>(xs: Array<T>) -> T:
 - **Keyed members.** An `index` whose key is a member parameter of String literals (`K in keyof S`) serves member syntax: `x.k`, where `x`'s type has no member `k`, is `x["k"]`, each key read with its own type (`scope.company.size`). Read only; a name served by both a member and the index is an error.
 - **Packs & member parameters.** `<...A>` is a tuple pack (`fn(...args: A) -> R`); `<K in U>` stands for a single member of union `U` per instantiation (`struct Entry<S is struct, K in keyof S>`). When every member of `U` is a literal type, `K` is also a value: `fn describe<S in Status>() -> String: S`.
 
-**Computed types and field loops (§3.1, §3.5, §3.17, §4):**
+**Computed types and field loops (§5.2, §8.1, §4.6, §11.2):**
 - **Associated types:** `type Data = T` inside a `struct` or `enum`, required in a trait with `type Data`, read as `N.Data`.
 - **Struct constraints:** `S is struct { title: String, [_] is FormNode }` (met by nominal `struct`s and anonymous shapes, not `shared` or `extern` structs).
 - **Mapped struct types:** `{ [F in keyof S]: S[F].Data }` (a structural shape with one field per key of `S`; named fields alongside `[F in …]` override/skip those keys).
@@ -224,7 +224,7 @@ fn check<S is struct { [_] is FormNode }>(self: Group<S>, data: Group<S>.Data) -
     true
 ```
 
-### 2.6 Control flow and patterns (§4, §3.11)
+### 2.6 Control flow and patterns (§11.1, §11.3)
 
 ```python statements
 const size = if n < 10: "small" elif n < 100: "medium" else: "large"
@@ -247,7 +247,7 @@ if r is Ok(y) and y > 0: use(y)                           # a pattern outside ma
 
 Patterns: a variant's fields as a call gives them, `case Rejected("legal", reason)`, `case Rejected(by: "legal", ...)` (`...` leaves the others, `...children` takes a rest field); a struct's in braces, `field`, `field as name`, `field == expr`, `field is Pattern`, `...rest` (on structs and arrays: `const struct{title, ...rest} = form`, `case [first, ...rest]:`); alternatives `A | B`, int ranges `0..=59`, and type patterns `case Int as n:` (on unions and `any` values).
 
-### 2.7 Errors (§3.12)
+### 2.7 Errors (§12)
 
 ```python
 ista async fn pay(req: Req) -> Result<String>:
@@ -258,13 +258,13 @@ ista async fn pay(req: Req) -> Result<String>:
 - **Must-use:** Futures, `Result`s, disposables and unions holding one cannot be ignored. Consume with `await`, `match` or `?`, bind to `_ =` / `hold _ =`, or discard with `drop expr`.
 - **`panic("msg")` -> `Never`:** discards the uncommitted segment and freezes the instance at its last snapshot.
 
-### 2.8 Persistence (§5)
+### 2.8 Persistence (§14)
 
 - **Every `await` in ista code commits**, even on an already-resolved future; a live one waits in memory (`await runtime.commit()` commits without waiting).
 - **Atomic segments:** state mutations, slot operations and disposals between two `await`s commit together or roll back together.
 - **Deterministic:** `time.now()` is fixed per segment, `random` draws from the snapshot's seed. Extern side effects are not rolled back on crash, so make externs idempotent.
 
-### 2.9 Concurrency (§6, §8, §9)
+### 2.9 Concurrency (§15.1, §15.4, §17.1)
 
 ```python
 const a = fetchA()          # started already; runs alongside
@@ -284,9 +284,9 @@ const both = (await a, await b)
 
 - **Slots & Inboxes:** `Slot.create<T>()` offers `put(v)`, `take()` and `read()`. `Inbox.create<T>()` (from `'inbox'`) offers `send(m)`, `sendRevertible(m)` (retracted if unread when its `Revertible<T>` holder is disposed), `receive()` and `pending()`.
 - **Library concurrency:** `'futures'` (`first`, `all`, `allSettled`, `race`, `any`, `quorum`, `timeout`, `retry`), `'rpc'`, `'fanout'`.
-- **`spawn f(args)`**, a deferred call of the prelude's `spawn` (§3.14), computes `args` now and starts a new instance making the call `f(args)`, async or plain, returning `Instance<R>` (`await inst.result()` waits for its `Result<R>`). What it computes now must be `Sendable`. `spawn(g)` starts a sendable function value `g` itself.
+- **`spawn f(args)`**, a deferred call of the prelude's `spawn` (§6.5), computes `args` now and starts a new instance making the call `f(args)`, async or plain, returning `Instance<R>` (`await inst.result()` waits for its `Result<R>`). What it computes now must be `Sendable`. `spawn(g)` starts a sendable function value `g` itself.
 
-### 2.10 Lifetimes and disposal (§7)
+### 2.10 Lifetimes and disposal (§16)
 
 Resources (pending futures, slots, inboxes, revertible sends, and shared/extern structs with `fn dispose(self: T)`) are disposed synchronously when their last holder ends.
 
@@ -310,7 +310,7 @@ ista async fn approve(req: Req, roles: Array<String>) -> String:
 - **Graceful stop:** Inside `ista async fn worker`, `case worker.disposing():` in `select` runs synchronous cleanup (cannot `await`) when `worker`'s future is disposed.
 - **Weak references:** `WeakRef(x)` watches a disposable without holding it (`w.deref() -> T?`, `w.disposed() -> Future<Unit, "ista">`).
 
-### 2.11 Modules, host, JSON, tools (§3.6, §3.13, §9, §11)
+### 2.11 Modules, host, JSON, tools (§13, §17)
 
 ```python
 import approve, Verdict from 'purchase/approve'   # a project file: purchase/approve.ista
@@ -330,7 +330,7 @@ import helper from './helper'                     # relative to this file
 - **JSON codecs:** Derived automatically for structs, shapes, enums (tagged by `"type"`), tuples, literal types, and **unions of literals** (`"a" | "b"`). General non-literal unions (other than `T?`) do not derive `Encodable`/`Decodable`. Generic code calling `json.parse<T>` or `json.stringify` must constrain `T is Decodable` / `T is Encodable`.
 - **CLI:** `ista check`, `ista fmt`, `ista run <entry> [--store <dir>] [--host <js>]` (running again on the same store resumes its work), `ista test`.
 
-### 2.12 Testing (§10)
+### 2.12 Testing (§18)
 
 ```python
 @Suite{"purchase"}

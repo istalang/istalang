@@ -27,7 +27,7 @@ export interface Region {
   readonly until: number | undefined;
   /**
    * In a `<…>` list, the index of its `<`: `<` is no bracket, so nothing pairs it, and a line
-   * heading no deeper than the `<`'s own ends the list unless its `>` heads it (§2), as one ends a
+   * heading no deeper than the `<`'s own ends the list unless its `>` heads it (§2.1), as one ends a
    * bracket left open (brackets.ts).
    */
   readonly angleOpener: number | undefined;
@@ -62,7 +62,7 @@ export function blockBracesRegion(column: number, until: number | undefined): Li
 }
 
 /**
- * A list from `start`, whose items `,` or a line break separates (§2), up to `closer` or `until`:
+ * A list from `start`, whose items `,` or a line break separates (§2.1), up to `closer` or `until`:
  * the items of brackets, of `<…>`, and of the braces that list fields or variants.
  */
 export function listRegion(start: number, closer: Closer, until: number | undefined): Region {

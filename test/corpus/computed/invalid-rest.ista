@@ -3,7 +3,7 @@
 # error: 5433 at 24:10
 # error: 5013 at 28:23
 # error: 5167 at 33:45
-# A struct pattern's rest (§3.11): it is the last item and the only one; a variant is never taken
+# A struct pattern's rest (§11.3): it is the last item and the only one; a variant is never taken
 # apart in braces; a pattern on a constrained type parameter names only the fields its constraint
 # names; and a struct comprehension over a rest of one needs a type expected of it.
 

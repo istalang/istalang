@@ -1,5 +1,5 @@
 /**
- * Which aliases refer to themselves (§3.17), read from what their bodies name before any type is
+ * Which aliases refer to themselves (§4.6), read from what their bodies name before any type is
  * resolved: resolving an alias's body needs to know first whether a use of it inside stands for the
  * alias (a placeholder while its group closes) or would resolve the body again (a cycle, reported
  * where aliases resolve).

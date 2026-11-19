@@ -1,6 +1,6 @@
 /**
  * What the text of a String literal offers: the String literals a value expected there may be
- * (§2), a key naming a field among them (§3.1 Key types), written without their quotes, which the
+ * (§4.3), a key naming a field among them (§5.2 Key types), written without their quotes, which the
  * literal around the cursor already has. They come from the one source of expected literals
  * (expected.ts), as a value's place offers them quoted.
  */

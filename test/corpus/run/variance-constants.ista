@@ -1,5 +1,5 @@
 # outcome: "true 1 [[1],[2,3]] 1 2 1"
-# Top-level constants convert part by part as values do (§3.5): computed at compile time, and a
+# Top-level constants convert part by part as values do (§8.1): computed at compile time, and a
 # box widened from a literal type equals one built wide, so a map keyed by both holds one entry.
 import * as json from 'json'
 import * as runtime from 'runtime'

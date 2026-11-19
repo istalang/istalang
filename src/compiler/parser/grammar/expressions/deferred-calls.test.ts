@@ -1,5 +1,5 @@
 /**
- * Deferred calls, `g f(args)` (§3.14): a name on a taker's line starts the call it is given, at
+ * Deferred calls, `g f(args)` (§6.5): a name on a taker's line starts the call it is given, at
  * prefix `await`'s level, nesting from the right; anything else keeps its meaning.
  */
 

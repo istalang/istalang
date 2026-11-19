@@ -1,6 +1,6 @@
 # outcome: [21,21,25,3,1]
 # A call through a requirement binds its arguments against the required function's parameters
-# (§3.10): named, in any order, through a constraint and through an `any` value alike; a function
+# (§8.2): named, in any order, through a constraint and through an `any` value alike; a function
 # meeting it may take more parameters, each with a default it computes; and a rest parameter
 # reaches it as one array.
 import * as runtime from 'runtime'

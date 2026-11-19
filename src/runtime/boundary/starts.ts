@@ -1,5 +1,5 @@
 /**
- * Starting a program's function by the key a host names it by (§9): the start entry a Definition
+ * Starting a program's function by the key a host names it by (§17.3): the start entry a Definition
  * lists for it (definition/tables/index.ts), which decodes its arguments, runs it and encodes its
  * outcome, so a host gives JSON and gets JSON.
  *

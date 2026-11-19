@@ -1,6 +1,6 @@
 /**
- * The fields of a struct literal (§3.1), and where each field's value comes from, which the
- * checker records for later phases. A variant is built by its call, never in braces (§3.11).
+ * The fields of a struct literal (§5.2), and where each field's value comes from, which the
+ * checker records for later phases. A variant is built by its call, never in braces (§5.3).
  *
  * - Every field is given exactly once, each value fitting the field's type, by the one rule of
  *   which field an item gives (items.ts, struct-items.ts): by name, by the shorthand `first` for
@@ -9,18 +9,18 @@
  *   and a positional value is the only item (the parser enforces that), so neither leaves fields to
  *   report as missing.
  * - A generic type's arguments are written, or inferred from the values and the spread value, the
- *   expected type advising, as a call's does (§3.5): a value whose field type is already known is
+ *   expected type advising, as a call's does (§8.1): a value whose field type is already known is
  *   checked against it, any other is checked expecting what its field's type is so far, and
  *   matched. Defaults fill what
  *   is left; anything still open can't be inferred. A shape has no type parameters, but an alias
- *   naming one may (§3.17), and a literal through it infers them as a struct's.
+ *   naming one may (§4.6), and a literal through it infers them as a struct's.
  * - A literal is a member of the constraint scope it stands in (wiring/body/constraint-scope.ts): its
  *   items matched, it waits for the scope to settle before it is completed and anything is
  *   recorded.
  * - What each field's value comes from is recorded per literal, in declaration order
  *   (../literal-sources.ts), so lowering and compile time read it rather than reading the items
  *   again. A literal with a mistake in its items has no record: nothing compiles it.
- * - A field left out with names alone takes its default (§3.1), from that field's default of the
+ * - A field left out with names alone takes its default (§5.2), from that field's default of the
  *   function the declaration's fields read as (syntax/declarations/field-defaults.ts), instantiated
  *   with the literal's type arguments, its constraints met where the literal is. A spread gives
  *   every field, so a literal with one runs no default.
@@ -60,7 +60,7 @@ import {
 /** Where a literal stands beside its shape: its leading spread, and what it is expected to be. */
 interface LiteralSetting {
   readonly spread?: LiteralSpread | undefined;
-  /** What it is expected to be, which advises its type arguments as a call's does (§3.5). */
+  /** What it is expected to be, which advises its type arguments as a call's does (§8.1). */
   readonly expected?: Type | undefined;
   /** Whether its values were checked already (items.ts `LiteralItems.checked`). */
   readonly checked?: boolean | undefined;
@@ -100,7 +100,7 @@ export function checkLiteralFields(
   for (const item of node.items) {
     checkItem(context, items, item, spread?.node);
   }
-  // As a call's, once what its items give is bound, so it is checked against them (§3.5).
+  // As a call's, once what its items give is bound, so it is checked against them (§8.1).
   inference.expect(shape.typeOf(parameters.map(parameterType)), expected);
   const comprehended = checkComprehended(context, node, {
     fields: shape.fields,
@@ -180,7 +180,7 @@ function completeLiteral(context: BodyContext, checked: CheckedLiteral): Type {
 
 /**
  * Fits each named item's value to its field, `substitution` giving the literal's type arguments; a
- * written literal checked again as its field's type then reads it (§2), and any other value has
+ * written literal checked again as its field's type then reads it (§4.2), and any other value has
  * its type as the scope settled it.
  */
 function fitItems(
@@ -231,7 +231,7 @@ function decidedArguments(
   return decided;
 }
 
-/** The type a spread gives a literal of `shape`: its own, or a shared struct's value (§3.18). */
+/** The type a spread gives a literal of `shape`: its own, or a shared struct's value (§5.4). */
 function spreadOf(shape: LiteralShape, typeArguments: readonly Type[]): Type {
   return shape.spreadOf?.(typeArguments) ?? shape.typeOf(typeArguments);
 }

@@ -1,7 +1,7 @@
 # error: 5101 at 9:18
 # error: 5101 at 18:14
 # error: 5001 at 19:18
-# An Instance<T> is what spawn gives (§9): its result() copies the outcome out, so T must be
+# An Instance<T> is what spawn gives (§17.1): its result() copies the outcome out, so T must be
 # sendable, and as a handle it never crosses to the host.
 
 import * as runtime from 'runtime'

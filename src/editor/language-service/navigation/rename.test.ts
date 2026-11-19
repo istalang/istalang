@@ -90,7 +90,7 @@ describe('renaming', () => {
     });
   });
 
-  it("refuses a shape's field, and a struct's whose field names a shape has (§3.1)", () => {
+  it("refuses a shape's field, and a struct's whose field names a shape has (§5.2)", () => {
     const { program, named } = navigable({
       main: 'type Point = { x: Int, y: Int }\nstruct Pixel { y: Int, x: Int }\nshared struct Lease { name: String }\nfn f(v: { name: String }) -> String: v.name\nstruct Size { width: Int }\n',
     });
@@ -100,7 +100,7 @@ describe('renaming', () => {
     expect(refusalOf(program, named('main', 'width'))).toBeUndefined();
   });
 
-  it('counts an anonymous indented value as the shape its braces would write (§3.1)', () => {
+  it('counts an anonymous indented value as the shape its braces would write (§5.2)', () => {
     const refusal = (value: string) => {
       const { program, named } = navigable({ main: `struct Size { width: Int }\n${value}` });
       return refusalOf(program, named('main', 'width'));
@@ -110,7 +110,7 @@ describe('renaming', () => {
     expect(refusal('const s: Size =\n  width: 1\n')).toBe(braces);
   });
 
-  it('renames the String literals that name a field as its key, and only those (§3.1)', () => {
+  it('renames the String literals that name a field as its key, and only those (§5.2)', () => {
     const { program, named } = navigable({
       main: [
         'struct Settings { retries: Int, region: String, zone: String }',
@@ -139,7 +139,7 @@ describe('renaming', () => {
     }
   });
 
-  it('renames a key given as a type argument, and one a literal pattern matches (§3.1, §4)', () => {
+  it('renames a key given as a type argument, and one a literal pattern matches (§5.2, §11.3)', () => {
     const { program, named } = navigable({
       main: [
         'struct Settings { retries: Int, region: String }',
@@ -242,7 +242,7 @@ describe('renaming', () => {
     expect(refusalOf(program, named('main', 'Other'))).toBeUndefined();
   });
 
-  it('refuses a field a struct constraint names, in a bound or a type `match` case (§3.5)', () => {
+  it('refuses a field a struct constraint names, in a bound or a type `match` case (§8.1)', () => {
     const { program, named } = navigable({
       main: [
         'struct Page:',
@@ -260,7 +260,7 @@ describe('renaming', () => {
     expect(refusalOf(program, named('main', 'body'))).toBeUndefined();
   });
 
-  it('refuses a field a shared struct and a struct share, the one spreading into the other (§3.18)', () => {
+  it('refuses a field a shared struct and a struct share, the one spreading into the other (§5.4)', () => {
     const { program, named } = navigable({
       main: 'shared struct Lease { name: String }\nstruct Plain { name: String }\nstruct Other { size: Int }\nshared struct Cell { size: Int }\nshared struct Lone { count: Int }\n',
     });

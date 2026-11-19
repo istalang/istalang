@@ -1,4 +1,4 @@
-# Waits on slots and races between them (spec §6, §8): which case a wait decides at, what a losing
+# Waits on slots and races between them (spec §15.1, §15.4): which case a wait decides at, what a losing
 # case consumes and holds, and the order executions are readied in. Each rule is its own function,
 # and its test asserts what the old runtime's unit test did.
 

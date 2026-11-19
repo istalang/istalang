@@ -1,8 +1,8 @@
 /**
  * What a value of a type has, by name, as a module sees it: its fields and variants as its layout
- * has them, a tuple's elements as fields named by position (`t.0`, §3.15), or the fields its
+ * has them, a tuple's elements as fields named by position (`t.0`, §4.5), or the fields its
  * constraints require; the static functions a call through it may choose, its methods, its
- * getters, and its keyed indexes' keys, read as fields are (§3.1, §3.9).
+ * getters, and its keyed indexes' keys, read as fields are (§5.2, §10.2).
  *
  * Methods and getters are what a member's name means through a value of the type
  * (resolution/choosing/member-meaning.ts), the one answer a read and a call give, each kept where

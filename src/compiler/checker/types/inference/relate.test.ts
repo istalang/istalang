@@ -1,5 +1,5 @@
 /**
- * Inference through a conversion into an `any` type (§3.5, §3.10): a value holding variables, or
+ * Inference through a conversion into an `any` type (§8.1, §8.3): a value holding variables, or
  * one converted into an `any` type holding them, relates through the instantiation its type may
  * meet, each argument as the trait's variance says, so neither side's type arguments need writing;
  * what can't be told before the variables settle gives nothing, and is judged once they do.

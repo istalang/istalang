@@ -1,38 +1,38 @@
 /**
- * The checker's model of types (§2): what every expression, variable and signature has.
+ * The checker's model of types (§4.1): what every expression, variable and signature has.
  *
  * - Types are plain immutable values compared by structure, except nominal types, which compare by
- *   the identity of the binder's entity for their declaration (§3.1: two declarations are two
+ *   the identity of the binder's entity for their declaration (§5.2: two declarations are two
  *   types even with identical fields). Entities live as long as their tree, so a type stays valid
  *   across Program snapshots that keep the declaring module.
  * - A nominal type carries its type arguments; field and variant types are derived on demand by
  *   substituting them (the checker's `fieldsOf` and `variantsOf`), never stored per instantiation.
- * - An anonymous struct (§3.1) is its shape: its field names and their types, wherever and in
+ * - An anonymous struct (§5.2) is its shape: its field names and their types, wherever and in
  *   whatever order it is written, so two with the same fields are one type. It carries its fields,
  *   since it has no declaration to derive them from, always in name order (`shapeType`), the one
  *   order every struct lays its fields out in (`inFieldOrder`). Where it was written (`origin`) is
- *   only its spelling, for tools to locate it: the value behind a shared struct (§3.18) is the
+ *   only its spelling, for tools to locate it: the value behind a shared struct (§5.4) is the
  *   shape of the shared struct's fields, written at its declaration.
- * - A literal type (§2) is the one value of a `String`, `Int` or `Bool` literal: `"draft"`, `-1`,
+ * - A literal type (§4.3) is the one value of a `String`, `Int` or `Bool` literal: `"draft"`, `-1`,
  *   `true`. Its base is derived from its value, never stored beside it.
- * - `A | B` (§2) is a value of one of its members, a set: unions/unions.ts normalizes it, so no
+ * - `A | B` (§4.2) is a value of one of its members, a set: unions/unions.ts normalizes it, so no
  *   value sits in two members and no union holds another. Its members keep the order they were
  *   first written in, which only its text reads; identity sorts them (identity/type-keys.ts). `T?`
  *   is `T | None`, `None` being the primitive whose one value is `none`.
  * - `error` stands for a type a diagnostic has already explained. It is compatible with everything,
  *   so one mistake is reported once instead of at every use that follows.
- * - `Never` (§2) is the type of expressions that don't produce a value, and fits wherever any type
+ * - `Never` (§4.1) is the type of expressions that don't produce a value, and fits wherever any type
  *   is expected. No value of it exists, so an operation on one never runs and reports nothing
  *   (resolution/calls/stopped-operations.ts).
  * - A type parameter is keyed by its declaration. A trait's `Self` is the trait's own implicit
  *   parameter, keyed by the trait declaration, so substituting the constrained type for it is the
  *   same operation as for any other parameter.
- * - `any A & B` (§3.10) is a value of any type meeting each of its constraints, a set: their order
+ * - `any A & B` (§8.3) is a value of any type meeting each of its constraints, a set: their order
  *   and the way they were written don't make two types. A constraint's arguments may name its
  *   trait's `Self` (`any Iterable<Int>` is `Iterable<Int, Self>`), which stands for each value's
  *   own type. The `any` type binds it, so substituting from outside never replaces it, and no type
  *   mentioning it is open.
- * - An alias names no type of its own (§3.17): every type carries the alias it was written through,
+ * - An alias names no type of its own (§4.6): every type carries the alias it was written through,
  *   if any (`WrittenThrough`), only so its text reads as written (alias-uses.ts).
  * - The primitives by name, and tuples built so `()` is `Unit`, are in primitives.ts.
  * - Identity and the exact relations live in identity/identity.ts, through type keys
@@ -91,7 +91,7 @@ export interface Constraint {
   readonly arguments: readonly Type[];
 }
 
-/** `any A & B`: a value of any type meeting every constraint, a set (§3.10). */
+/** `any A & B`: a value of any type meeting every constraint, a set (§8.3). */
 export interface AnyType extends WrittenThrough {
   readonly kind: 'any';
   readonly constraints: readonly Constraint[];
@@ -133,7 +133,7 @@ export interface TupleType extends WrittenThrough {
 
 /**
  * A field of a struct type, nominal or anonymous: its name, its type, and where it is declared,
- * whose annotations it carries (§3.16); a field a `struct{…}` literal made up has no declaration.
+ * whose annotations it carries (§5.5); a field a `struct{…}` literal made up has no declaration.
  */
 export interface FieldMember {
   readonly name: string;
@@ -143,9 +143,9 @@ export interface FieldMember {
 }
 
 /**
- * A struct without a name, its shape (§3.1): introduced by a `{…}` type, by a `struct{…}` literal
- * with nothing to take a type from, by a shared struct as the value behind it (§3.18), by a
- * struct as the shape its value converts into, or by a struct pattern's rest (§3.11). Its fields
+ * A struct without a name, its shape (§5.2): introduced by a `{…}` type, by a `struct{…}` literal
+ * with nothing to take a type from, by a shared struct as the value behind it (§5.4), by a
+ * struct as the shape its value converts into, or by a struct pattern's rest (§11.3). Its fields
  * are in name order; `origin` is where it was written, which no relation reads.
  */
 export interface AnonymousStructType extends WrittenThrough {
@@ -154,13 +154,13 @@ export interface AnonymousStructType extends WrittenThrough {
   readonly fields: readonly FieldMember[];
 }
 
-/** A use of an alias, by its declaration and arguments: a type `match` alias's (§3.17). */
+/** A use of an alias, by its declaration and arguments: a type `match` alias's (§4.6). */
 export interface RecursiveUse {
   readonly declaration: AliasDeclaration;
   readonly arguments: readonly Type[];
 }
 
-/** The shape of `fields`, written at `origin`: its fields in name order (§3.1). */
+/** The shape of `fields`, written at `origin`: its fields in name order (§5.2). */
 export function shapeType(
   origin: AnonymousStructType['origin'],
   fields: readonly FieldMember[],
@@ -168,7 +168,7 @@ export function shapeType(
   return { kind: 'anonymous', origin, fields: inFieldOrder(fields) };
 }
 
-/** A parameter of a function type: its type, and whether it takes a reference (§3.7). */
+/** A parameter of a function type: its type, and whether it takes a reference (§7.3). */
 export interface ParameterSlot {
   readonly type: Type;
   readonly reference: boolean;
@@ -178,8 +178,8 @@ export interface ParameterSlot {
 declare const builtFunctionType: unique symbol;
 
 /**
- * A function type; a sendable one's values capture only sendable values (§3.14). Its parameters may
- * end in a pack (`fn(Int, ...A) -> R`, §3.5), which stands for the parameters a tuple substituted
+ * A function type; a sendable one's values capture only sendable values (§6.4). Its parameters may
+ * end in a pack (`fn(Int, ...A) -> R`, §8.1), which stands for the parameters a tuple substituted
  * for it flattens into, so a type with a pack is always generic. An async function's type is one
  * giving a future (`ista async fn(A) -> R` is `ista fn(A) -> Future<R, "ista">`). Only
  * `functionType` builds one, so that holds of every function type, however it was reached.
@@ -191,7 +191,7 @@ export interface FunctionType extends WrittenThrough {
    * or `"ista"`, or a variable. A simple one fits where either kind is expected (`kindAdmits`).
    */
   readonly mark: Type;
-  /** `Fn`'s `Send` (§3.14): a `Sendability` member or a variable, ordered by `sendFits`. */
+  /** `Fn`'s `Send` (§6.4): a `Sendability` member or a variable, ordered by `sendFits`. */
   readonly send: Type;
   readonly parameters: readonly ParameterSlot[];
   readonly pack?: PackType | undefined;
@@ -205,8 +205,8 @@ export type PackType = TypeParameterType | ErrorType;
 /**
  * What a type parameter is keyed by: its declaration, a trait standing for its `Self`, a field
  * loop's header, whose pass over the fields a struct constraint leaves unnamed stands for one of
- * them by a key of its own (§4), a struct pattern's rest, whose struct maps each key it takes to
- * its field by one (§3.11), a recursive alias, whose own uses inside its group's bodies stand
+ * them by a key of its own (§11.2), a struct pattern's rest, whose struct maps each key it takes to
+ * its field by one (§11.3), a recursive alias, whose own uses inside its group's bodies stand
  * for the type being closed while the group closes
  * (constructs/declarations/aliases/recursive-bodies.ts), or a placeholder, and nowhere else.
  */
@@ -229,13 +229,13 @@ export interface Placeholder {
 }
 
 /**
- * A type parameter, opaque inside the declaration that introduces it (§3.5). A mapped entry's binds
- * it within the type (§3.1), whose keys a substitution from outside changes, so its occurrences
+ * A type parameter, opaque inside the declaration that introduces it (§8.1). A mapped entry's binds
+ * it within the type (§5.2), whose keys a substitution from outside changes, so its occurrences
  * carry the keys it ranges over (`within`), substituted with them, never read again from where it
  * is written. Its key holds them (identity/type-keys.ts): what is known of one field of several
  * keys isn't what is known of one of fewer, and results kept by a type's key must tell them apart.
  * A type `match`'s subject, written in the type of a `case struct …:`, stands for a member meeting
- * that constraint (§3.17), which it carries (`meeting`) and its key holds alike. Every use of the
+ * that constraint (§4.6), which it carries (`meeting`) and its key holds alike. Every use of the
  * alias substitutes the subject, so a substitution never keeps one.
  */
 export interface TypeParameterType extends WrittenThrough {
@@ -246,7 +246,7 @@ export interface TypeParameterType extends WrittenThrough {
 }
 
 /**
- * The key `declaration` binds, one of `keys` (§3.1, §4): a mapped entry's, a rest's, a struct
+ * The key `declaration` binds, one of `keys` (§5.2, §11.2): a mapped entry's, a rest's, a struct
  * constraint's other field, or the key of a field loop's pass over the fields not known yet.
  */
 export function keyParameter(declaration: ParameterKey, keys: Type): TypeParameterType {
@@ -255,7 +255,7 @@ export function keyParameter(declaration: ParameterKey, keys: Type): TypeParamet
 
 /**
  * Whether `type`, written after `in`, names among its members one standing for one type already
- * rather than listing members to choose from (§3.5, §3.10): a member parameter, or an associated
+ * rather than listing members to choose from (§8.1, §8.2): a member parameter, or an associated
  * type, opaque. A member bound naming one is a mistake, and bounds nothing, so nothing follows it
  * round a cycle (`type Mode in Self.Mode | "live"`).
  */
@@ -266,7 +266,7 @@ export function namesOneType(type: Type): boolean {
 }
 
 /**
- * Whether `type` stands for exactly one member of a union (§3.5): a member parameter, `K in U`, or
+ * Whether `type` stands for exactly one member of a union (§8.1): a member parameter, `K in U`, or
  * a key a mapped type or a field loop ranges over (`within`). Each instantiation makes it a value
  * of one member, never of the union around it.
  */
@@ -278,18 +278,18 @@ function isMemberParameter(type: Type): type is TypeParameterType {
   );
 }
 
-/** The struct constraint of the case a type `match`'s subject is written in (§3.17). */
+/** The struct constraint of the case a type `match`'s subject is written in (§4.6). */
 interface StructCaseConstraint {
   readonly pattern: StructConstraint;
   readonly constraint: StructConstraintModel;
 }
 
 /**
- * A use that names no type: one of a type `match` (§3.17), when no case matches its subject, its
+ * A use that names no type: one of a type `match` (§4.6), when no case matches its subject, its
  * reduction reaches the use itself before any struct type holds it, so it would be itself, or it is
- * recursive and its values would hold themselves through `field` (§3.1); or an associated type
+ * recursive and its values would hold themselves through `field` (§5.2); or an associated type
  * whose body is no type `match`, when expanding it reaches an associated type being expanded
- * again (§3.1), which only a type `match` closes into a recursive type.
+ * again (§5.2), which only a type `match` closes into a recursive type.
  */
 export type UnreducedUse =
   | { readonly use: RecursiveUse; readonly cause: 'unmatched' | 'itself' }
@@ -309,13 +309,13 @@ export interface ErrorType extends WrittenThrough {
 /** The value of a literal type: an `Int`'s, a `String`'s or a `Bool`'s. */
 export type LiteralValue = bigint | string | boolean;
 
-/** A literal type (§2): the one value of a `String`, `Int` or `Bool` literal. */
+/** A literal type (§4.3): the one value of a `String`, `Int` or `Bool` literal. */
 export interface LiteralType extends WrittenThrough {
   readonly kind: 'literal';
   readonly value: LiteralValue;
 }
 
-/** `A | B` (§2): a value of one of its members, two or more, normalized (unions/unions.ts). */
+/** `A | B` (§4.2): a value of one of its members, two or more, normalized (unions/unions.ts). */
 export interface UnionType extends WrittenThrough {
   readonly kind: 'union';
   readonly members: readonly Type[];

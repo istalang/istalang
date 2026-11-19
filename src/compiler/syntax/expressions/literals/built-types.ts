@@ -1,5 +1,5 @@
 /**
- * The type a value literal names as the one it builds (§2, §3.1): `P` in `P{…}`, `new P{…}`, `P:`
+ * The type a value literal names as the one it builds (§3.2, §3.1): `P` in `P{…}`, `new P{…}`, `P:`
  * and `new P:`. The tree holds that name as a written type, while it reads as a value's: a variant
  * or a struct whose literal the checker typed. Tools asking what such a name is (completion,
  * hover, rename) ask here, so every literal form that names its type is listed once.
@@ -26,7 +26,7 @@ export function literalNaming(
   }
 }
 
-/** Whether `literal` builds a shared struct, whose name only a type is (`new`, §3.18). */
+/** Whether `literal` builds a shared struct, whose name only a type is (`new`, §5.4). */
 export function buildsShared(literal: NamingLiteral): boolean {
   return literal.kind === 'NewStructLiteral' || (literal.kind === 'IndentedValue' && literal.isNew);
 }

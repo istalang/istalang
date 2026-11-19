@@ -1,23 +1,23 @@
 /**
- * Calls (§3.3, §3.7, §3.10): the callee names a set of candidates, and the arguments' types choose
+ * Calls (§6.1, §6.2, §8.2): the callee names a set of candidates, and the arguments' types choose
  * one (resolution/). A callee is written as:
  *
  * - a function's name, plain or through a namespace (`m.f()`), which looks only in that module,
- *   with no argument-dependent lookup (§3.13);
+ *   with no argument-dependent lookup (§13.1);
  * - a type and a static function (`Duration.zero()`, `T.zero()`, `time.Duration.zero()`);
- * - a type alone, a conversion (`Float(3)`), which calls the type's static `from` (§3.10);
+ * - a type alone, a conversion (`Float(3)`), which calls the type's static `from` (§8.4);
  * - a variant with fields, bare or qualified (`Ok(v)`, `Verdict.Rejected(by: "legal")`), which
- *   calls its constructor (structs/variants.ts, §3.11), its one candidate, as any generic call.
+ *   calls its constructor (structs/variants.ts, §5.3), its one candidate, as any generic call.
  *   A function value's parameters are known before its arguments, so each argument by position
  *   is checked against its parameter's type (closures/value-calls.ts).
  *
  * - a method called on a receiver (`x.f()`): a function whose first parameter is `self`, found by
  *   its name where the call is written and through the receiver's type (argument-dependent
- *   lookup), with the receiver as its first argument (§3.7). Which overload the receiver's type
+ *   lookup), with the receiver as its first argument (§6.2). Which overload the receiver's type
  *   picks decides whether `self` is a reference, and only then must the receiver be a place that
  *   may change.
  * - a function value: a variable, a field of the receiver or what its getter or keyed index gives
- *   (§3.1, §3.9), or any other expression of a function type (constructs/closures/value-calls.ts),
+ *   (§5.2, §10.2), or any other expression of a function type (constructs/closures/value-calls.ts),
  *   or of an optional one, called as `f?.(…)`, a link of an optional chain (access/optionals.ts). `x.f()` naming both
  *   a field or a getter and a method of `x`'s type is ambiguous, so it is reported; `(x.f)()` calls
  *   what the field holds or the getter gives.
@@ -26,14 +26,14 @@
  *
  * An argument written `&x` passes the place `x` by reference, which must be a place that may change
  * (resolution/calls/places.ts). A named argument fills the parameter of its name, and a spread a
- * rest parameter (§3.3, resolution/choosing/binding.ts). An argument given by position after a
+ * rest parameter (§6.1, resolution/choosing/binding.ts). An argument given by position after a
  * named one was reported by the parser, so it counts as the error type: the call still checks its
  * arguments and records the candidates a tool shows while the call is being written, and reports
  * nothing more.
  *
  * A call may give a function after its arguments (`Call.given`), which binding gives the first
  * parameter they leave unfilled of a function type taking nothing: a deferred call is checked as such
- * a call (checker/desugaring/deferred-calls.ts, §3.14), so every form of callee above may take one.
+ * a call (checker/desugaring/deferred-calls.ts, §6.5), so every form of callee above may take one.
  */
 
 import type { Diagnostic } from '../../../../foundation/diagnostics/diagnostic.ts';
@@ -159,8 +159,8 @@ function calledBy(context: BodyContext, call: WrittenCall, value: CalledValue | 
 
 /**
  * What a call reads before its arguments, by its callee: a function value (a variable, an
- * expression other than a name, an optional call's target, §3.14), a member of a receiver, read
- * first (§3.7), or nothing, for a function named: a missing name, a namespace's member, a type's
+ * expression other than a name, an optional call's target, §6.4), a member of a receiver, read
+ * first (§6.2), or nothing, for a function named: a missing name, a namespace's member, a type's
  * static function, a function or a variant.
  */
 export type CalleeRead =
@@ -192,7 +192,7 @@ export function calleeRead(context: BodyContext, node: Call): CalleeRead {
  * What a call calls, when its type is known before its arguments (`calleeRead`): a function
  * value's type, or for `x.f(…)` the receiver's, read once here for the call, with what `f` means
  * on it and the type of the value its field holds or its getter gives, the getter read now as a
- * field is (§3.1), unless the receiver stops the call or `f` means two things, which the call
+ * field is (§5.2), unless the receiver stops the call or `f` means two things, which the call
  * reports.
  */
 function calledValue(context: BodyContext, node: Call): CalledValue | undefined {
@@ -225,7 +225,7 @@ function calledValue(context: BodyContext, node: Call): CalledValue | undefined 
 
 /**
  * The type of what `x.f(…)` calls where `f` gives a value (`reads`): its field's, or what its getter
- * or keyed index gives, read now as a field is (§3.1, §3.9); undefined where nothing is read.
+ * or keyed index gives, read now as a field is (§5.2, §10.2); undefined where nothing is read.
  */
 function calledMemberType(
   context: BodyContext,
@@ -260,9 +260,9 @@ interface MemberRead {
 }
 
 /**
- * `x.f(…)`: `f` called with `x` as its `self` (§3.7); also as a link of an optional chain, which
+ * `x.f(…)`: `f` called with `x` as its `self` (§6.2); also as a link of an optional chain, which
  * calls it on the value inside and never through `&self` (access/optionals.ts). A field or a getter
- * of that name gives a function value to call instead (§3.14), read before the arguments
+ * of that name gives a function value to call instead (§6.4), read before the arguments
  * (`calledValue`); either beside a method of that name is ambiguous.
  */
 function callMethod(
@@ -299,7 +299,7 @@ function callMethod(
     { node: receiver, passing: 'receiver', type: receiverType } as const,
     ...call.written,
   ];
-  // The other arguments' types find methods too (§3.13), which a member's meaning leaves aside.
+  // The other arguments' types find methods too (§13.1), which a member's meaning leaves aside.
   const others = call.written.map(({ type }) => type);
   const { met, unmet } = methodsNamed(checker, module, name, [receiverType, ...others]);
   const methods = [...met, ...unmet];
@@ -364,7 +364,7 @@ function callEntity(
       return checkVariantCall(context, call, callee, entity);
     case 'type':
     case 'primitive': {
-      // A trait names no type, so nothing converts into it (§3.10): it can't be called.
+      // A trait names no type, so nothing converts into it (§8.2): it can't be called.
       const owner = namedType(context, callee);
       if (owner !== undefined) {
         return callStatic(context, call, owner, conversionFunction);
@@ -378,7 +378,7 @@ function callEntity(
   return errorType;
 }
 
-/** A static call of `name` through the type `owner` (§3.7), a conversion being one (§3.10). */
+/** A static call of `name` through the type `owner` (§6.2), a conversion being one (§8.4). */
 function callStatic(context: BodyContext, call: WrittenCall, owner: Type, name: string): Type {
   const { checker, module } = context;
   const target = staticTargetOf(checker, owner);

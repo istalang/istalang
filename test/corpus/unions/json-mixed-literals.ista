@@ -1,5 +1,5 @@
 # outcome: "[\"a\",1,true]|1|a|true|$: expected \"a\", 1 or true, found 2"
-# A union of literals of several bases crosses as JSON as its literals too (§6, §9): each written
+# A union of literals of several bases crosses as JSON as its literals too (§4.2, §17.4): each written
 # as its base writes it, and read back by each base's codec in turn, then only as one of them.
 
 import * as json from 'json'

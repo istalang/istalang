@@ -1,5 +1,5 @@
 /**
- * The waits of a flow (§6, §8), written through the prelude's waiting (calls/waits.ts): the one
+ * The waits of a flow (§15.2, §15.4), written through the prelude's waiting (calls/waits.ts): the one
  * place a flow's `await`s and `select`s are lowered.
  *
  * - **A wait is its `await` or `select`,** which the flow names with the futures its cases wait
@@ -45,7 +45,7 @@ import type { FlowWriter } from './writer.ts';
 
 /**
  * Where the flow waits: an `await`'s `suspend` or a `select`'s test. Not their syntax node, which
- * a field loop writes once per field (§3.16), each copy a wait of its own.
+ * a field loop writes once per field (§5.5), each copy a wait of its own.
  */
 type WaitSite =
   | Extract<Operation, { readonly op: 'suspend' }>

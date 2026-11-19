@@ -1,6 +1,6 @@
 # error: 5001 at 20:21
 # error: 5001 at 20:36
-# A struct's value converts into its shape (§3.1), inside a collection or another shape too (§3.5),
+# A struct's value converts into its shape (§5.2), inside a collection or another shape too (§8.1),
 # but never from a shape into a struct, and never for a struct with an annotated field, whose shape
 # would drop what the annotation says.
 

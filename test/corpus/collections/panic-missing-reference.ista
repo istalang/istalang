@@ -1,5 +1,5 @@
 # panic: The map holds no such key.
-# An element passed by `&` is read before its call (§3.7), so a key the map doesn't hold panics
+# An element passed by `&` is read before its call (§7.3), so a key the map doesn't hold panics
 # even when the callee only writes it; assigning `m[k] = v` adds the key instead.
 
 import * as runtime from 'runtime'

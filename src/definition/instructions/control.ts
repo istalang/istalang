@@ -31,7 +31,7 @@ const switchVariant = defineInstruction('switch', {
 /**
  * Ends the call, giving `value`, moved out, and letting go of `releasing`, every other register
  * still owning something (./lifetimes.ts), as one exit's let-gos: what loses its last holder there
- * is disposed together, newest first (§7). A call stopping as it is disposed returns into no
+ * is disposed together, newest first (§16). A call stopping as it is disposed returns into no
  * future, so `value` is let go of with them.
  */
 const returnValue = defineInstruction('return', {
@@ -39,7 +39,7 @@ const returnValue = defineInstruction('return', {
   releasing: z.array(register),
 });
 
-/** Where no path goes on: past a call giving `Never` (§3.1), such as a `panic`. */
+/** Where no path goes on: past a call giving `Never` (§4.1), such as a `panic`. */
 const unreachable = defineInstruction('unreachable', {});
 
 export const controlInstructions = [jump, branch, switchVariant, returnValue, unreachable] as const;

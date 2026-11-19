@@ -3,10 +3,10 @@
  * an item's own part of the list, before the list ranks it.
  *
  * What accepting a callable or a variant with fields writes depends on the place: only where a
- * value or a pattern is written does a name open its call, a variant's as a function's (§3.11),
+ * value or a pattern is written does a name open its call, a variant's as a function's (§5.3),
  * never in an import, a type or a declared name; an annotation is a struct's value, in braces.
  * Where a function value is expected that the call's result doesn't fit, a function or a variant
- * with fields is that value, its name alone (§3.14). A `(` or `{` already after the cursor on its
+ * with fields is that value, its name alone (§6.4). A `(` or `{` already after the cursor on its
  * line is the call's or the literal's own, so the name is written alone there; one on a later line
  * starts a statement of its own (a tuple, a block).
  */
@@ -111,7 +111,7 @@ export function fitsExpected({ cursor, expected }: Presenting, found: Type): boo
   );
 }
 
-/** A parameter as a function value's type binds it (§3.14): its type, and how it may be left. */
+/** A parameter as a function value's type binds it (§6.4): its type, and how it may be left. */
 interface ValueParameter {
   readonly type: Type;
   readonly reference: boolean;
@@ -127,7 +127,7 @@ interface ValueFunction {
 }
 
 /**
- * Where a function value is expected, the expected type when the function fits it as a value (§3.14),
+ * Where a function value is expected, the expected type when the function fits it as a value (§6.4),
  * as checking binds one: by position, trailing parameters left to their defaults and a rest taken
  * as one array, each matching the expected parameter exactly; then its type as a value fits the
  * expected one, its result into a future and its mark by their orders. Nothing otherwise, a generic
@@ -194,7 +194,7 @@ export function functionGivenAsValue(
   });
 }
 
-/** `givenAsValue` of a variant's constructor at its enum's type `enumType` (§3.11). */
+/** `givenAsValue` of a variant's constructor at its enum's type `enumType` (§5.3). */
 export function variantGivenAsValue(
   presenting: Presenting,
   variant: VariantMember,
@@ -215,7 +215,7 @@ export function variantGivenAsValue(
   return givenAsValue(presenting, { parameters, result: enumType, mark });
 }
 
-/** The function constructing `variant` of `enumType`'s enum (§3.11), whose kind its fields give. */
+/** The function constructing `variant` of `enumType`'s enum (§5.3), whose kind its fields give. */
 function constructorOf(variant: VariantMember, enumType: Type): FieldsFunction | undefined {
   const declaration = enumType.kind === 'nominal' ? enumType.entity.declaration : undefined;
   if (declaration?.kind !== 'EnumDeclaration') {
@@ -248,7 +248,7 @@ function writesPattern({ place }: Presenting): boolean {
 }
 
 /**
- * Accepting a function or a variant with fields, either of which may be named as a value (§3.14):
+ * Accepting a function or a variant with fields, either of which may be named as a value (§6.4):
  * where a function value is expected that none of `results`, what its call gives, fits, the name
  * alone; else its call.
  */
@@ -266,7 +266,7 @@ export function calledOrNamed(
 
 /**
  * Accepting a variant: with fields, its call, unless a `{` follows the name, whose text is then
- * left as written; a variant without fields is a value, its name alone (§3.11).
+ * left as written; a variant without fields is a value, its name alone (§5.3).
  */
 export function constructed(
   presenting: Presenting,
@@ -276,7 +276,7 @@ export function constructed(
   return hasFields && presenting.follows !== '{' ? calledOrNamed(presenting, name, enums) : {};
 }
 
-/** Accepting a struct as an annotation's value: with fields, its braces, listed next (§3.16). */
+/** Accepting a struct as an annotation's value: with fields, its braces, listed next (§5.5). */
 export function annotationValue(
   { writesValue, follows }: Presenting,
   name: string,

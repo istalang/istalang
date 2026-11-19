@@ -1,5 +1,5 @@
 # outcome: "2 -1 4 -1 1 3 1 -1 7 -1 3 -1 1 b 2 sent b 1 -1"
-# The optional join (§2, §4): with no type expected, producers that may be `none` agree on the
+# The optional join (§4.2, §4.2): with no type expected, producers that may be `none` agree on the
 # optional of what the others agree on, in any order: an `if`'s branches, a collection literal's
 # items, an array spread's items, each wrapped as it is added, and a body's tail and its returns.
 # A `none` decides nothing of the others, so what follows it is checked as if it weren't there,

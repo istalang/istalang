@@ -96,7 +96,7 @@ export interface BodyContext extends CheckedModule {
   readonly admitsOf: (node: Expression) => Admits | undefined;
   /**
    * Checks `node`, a lambda, maybe parenthesized, recording its type, where its parameters' types
-   * are known and its result is left for its body to decide (§3.5), `guide`, what is known of the
+   * are known and its result is left for its body to decide (§8.1), `guide`, what is known of the
    * result, guiding the body as its expected type, if given.
    */
   readonly inferLambda: (
@@ -120,24 +120,24 @@ export interface BodyContext extends CheckedModule {
   /**
    * Reports at `at` (the site's own span when absent) when `found`, the type of what `site` gives,
    * doesn't fit `expected`. When it fits by converting the value, made async or wrapped into `T?`
-   * (§2, §3.14), records the fit for lowering.
+   * (§4.1, §6.4), records the fit for lowering.
    */
   readonly fit: (found: Type, expected: Type, site: ValueSite, at?: AnchoredSpan) => void;
   /**
    * Reports at `at` when `found`, written to a place of `expected` by an assignment, doesn't fit
-   * it; how the value is converted to fit (§2, §3.14), which the assignment records on its part.
+   * it; how the value is converted to fit (§4.1, §6.4), which the assignment records on its part.
    */
   readonly fitWritten: (found: Type, expected: Type, at: AnchoredSpan) => Fit;
-  /** Checks a block in its own scope; its type is that of its last expression (§4). */
+  /** Checks a block in its own scope; its type is that of its last expression (§10.1). */
   readonly block: (node: Block, expected?: Type) => Type;
   /** Checks a block run only for its effects, such as a loop's body, discarding every value. */
   readonly effectBlock: (node: Block) => void;
-  /** Checks a statement; its type, which only a block's last statement passes on (§4). */
+  /** Checks a statement; its type, which only a block's last statement passes on (§10.1). */
   readonly statement: (node: Statement | Invalid, expected?: Type) => Type;
   /**
    * Checks `node` as a part of a value a joining composite builds, a tuple's element or a
    * `struct{…}`'s field (wiring/body/constraint-scope.ts): a literal stays fresh in the current scope,
-   * its literal type where what it goes into holds one once the scope settles, else its base (§2).
+   * its literal type where what it goes into holds one once the scope settles, else its base (§4.3).
    */
   readonly part: (node: Expression, expected?: Type) => Type;
   /** The type `node` denotes in this body's module, as the pass being checked reads it. */
@@ -156,7 +156,7 @@ export interface BodyContext extends CheckedModule {
   readonly entityOf: (name: Identifier) => Entity | undefined;
   /**
    * What `name`, used where it is written, denotes; a local variable used inside a nested function
-   * is captured there (§3.14).
+   * is captured there (§6.4).
    */
   readonly useEntity: (name: Identifier) => Entity | undefined;
   /** The calls the body makes (resolution/calls/call-records.ts). */
@@ -167,7 +167,7 @@ export interface BodyContext extends CheckedModule {
    */
   readonly recordField: (giver: FieldGiver, field: FieldMember) => void;
   /**
-   * Records that `value`, when it is a String literal, is a key of the struct `owner` (§3.1 Key
+   * Records that `value`, when it is a String literal, is a key of the struct `owner` (§5.2 Key
    * types): where checking decides it, so tools read it as a name of that struct's field.
    */
   readonly recordKey: (value: Expression, owner: Type | undefined) => void;
@@ -184,7 +184,7 @@ export interface BodyContext extends CheckedModule {
   /** What the body's checking decided of which of its code runs (rules/flow/flow-decisions.ts). */
   readonly decisions: DecisionRecord;
   /**
-   * Runs `check` once per pass of the field loop `header` heads (§4), each pass's records of nodes
+   * Runs `check` once per pass of the field loop `header` heads (§11.2), each pass's records of nodes
    * kept apart (passes.ts), so the body reads as each pass checked it; what is decided of every
    * pass together is then recorded back in each (`CheckedPasses`). Each pass checks the same text
    * again, so what it checks settles before the pass exits: a scope it joined would settle once
@@ -195,13 +195,13 @@ export interface BodyContext extends CheckedModule {
     passes: readonly FieldPassType[],
     check: (pass: FieldPassType) => void,
   ) => CheckedPasses;
-  /** Whether the innermost function is async, the only kind that may `await` (§5). */
+  /** Whether the innermost function is async, the only kind that may `await` (§14). */
   readonly inAsync: boolean;
   /** The kind of the innermost function's code (proposal 8, Rule 2). */
   readonly codeKind: Type;
   readonly variables: Variables;
   readonly literals: LiteralSources;
-  /** The functions being checked, the body's own and nested ones (§3.14), innermost current. */
+  /** The functions being checked, the body's own and nested ones (§6.4), innermost current. */
   readonly functions: Functions;
   /** The innermost function's result. */
   readonly returns: Returns;
@@ -219,7 +219,7 @@ export interface BodyContext extends CheckedModule {
 }
 
 /**
- * A field loop's passes once checked (§4): `inEach` runs back in each pass, in order, what is
+ * A field loop's passes once checked (§11.2): `inEach` runs back in each pass, in order, what is
  * decided of all of them together, such as the type their values agree on or the type arguments
  * they infer, recording and reporting it as that pass's.
  */
@@ -233,7 +233,7 @@ export interface Variables {
   readonly declareParameter: (
     parameter: Pick<SignatureParameter, 'node' | 'type' | 'reference'>,
   ) => void;
-  /** Whether `variable` is a parameter taking a reference (§3.7). */
+  /** Whether `variable` is a parameter taking a reference (§7.3). */
   readonly isReference: (variable: VariableEntity) => boolean;
   /** Whether `variable` may change: a `let`, or a parameter taking a reference. */
   readonly isChangeable: (variable: VariableEntity) => boolean;
@@ -242,8 +242,8 @@ export interface Variables {
   readonly noteChanged: (variable: VariableEntity) => void;
   /**
    * Notes that `variable` lives in a cell: passed by `&`, which needs storage a reference can reach,
-   * a `let` a closure captures, sharing its storage (§3.14), or a transient, which the calls nested
-   * in its function share (§3.4).
+   * a `let` a closure captures, sharing its storage (§6.4), or a transient, which the calls nested
+   * in its function share (§7.1).
    */
   readonly noteInCell: (variable: VariableEntity) => void;
   readonly recordTargets: (owner: TargetOwner, bindings: readonly TargetBinding[]) => void;
@@ -333,7 +333,7 @@ export interface FunctionFrame {
   readonly captures: ReadonlyMap<Identifier, CapturedUse>;
   /** Notes that the function captures `entity`, used where `site` is written. */
   readonly capture: (entity: VariableEntity, site: Identifier) => void;
-  /** Whether a `select` case watching this function's own call encloses what is checked (§7). */
+  /** Whether a `select` case watching this function's own call encloses what is checked (§16). */
   readonly inCleanup: boolean;
   /** Runs `check` inside a case that cleans up after this function's call is disposed. */
   readonly cleanup: <Result>(check: () => Result) => Result;
@@ -346,7 +346,7 @@ export interface Returns {
   readonly declared: Type | undefined;
   /** Checks a `return` and what it returns: its value, or `Unit` for a bare one. */
   readonly check: (context: BodyContext, node: Return) => void;
-  /** Notes a `?` at `span` that would return an `Err` of `error` (§3.12). */
+  /** Notes a `?` at `span` that would return an `Err` of `error` (§12). */
   readonly propagate: (context: BodyContext, error: Type, span: AnchoredSpan) => void;
 }
 
@@ -370,7 +370,7 @@ export interface CallRecord {
   readonly record: (site: ResolvedSite, call: ResolvedCall) => void;
   /** The call recorded at `site`; undefined for one not checked yet or that couldn't be made. */
   readonly of: (site: ResolvedSite) => ResolvedCall | undefined;
-  /** Records the function `naming` names as a value (§3.14), which calls nothing yet. */
+  /** Records the function `naming` names as a value (§6.4), which calls nothing yet. */
   readonly recordValue: (naming: FunctionNaming, named: ResolvedCall) => void;
   /** The function `naming` names as a value; undefined where it names none. */
   readonly valueOf: (naming: FunctionNaming) => ResolvedCall | undefined;
@@ -388,7 +388,7 @@ export interface DecisionRecord {
    * (constructs/expressions/operators/decided-conditions.ts), so it is neither checked nor lowered.
    */
   readonly ruleOut: (body: Block) => void;
-  /** Records that `operation` never runs past `operands`, the last of which has no value (§2). */
+  /** Records that `operation` never runs past `operands`, the last of which has no value (§4.1). */
   readonly stopAt: (operation: Expression | Assignment, operands: readonly Expression[]) => void;
   /**
    * Records the value `condition` always has, by its operands' types
@@ -415,7 +415,7 @@ export interface CollectionRecord {
   readonly record: (literal: ArrayLiteral | MapLiteral, form: CollectionForm) => void;
 }
 
-/** The calls of function values (constructs/closures/value-calls.ts, §3.14). */
+/** The calls of function values (constructs/closures/value-calls.ts, §6.4). */
 export interface ValueCallRecord {
   /** Records that `node` calls a function value, its arguments not judged yet. */
   readonly record: (node: Call) => void;

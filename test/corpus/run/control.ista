@@ -1,7 +1,7 @@
 # outcome: "odd sum 64, medium, short-circuit ok"
 # disable-ista-formatter
 # `if`/`elif`/`else` as expressions, `while` with `break` and `continue`, and `and`/`or` that skip
-# their right side (§4, §3.9): the division by zero on a skipped side never runs.
+# their right side (§11.1, §10.2): the division by zero on a skipped side never runs.
 
 fn size(n: Int) -> String:
   if n < 10: "small" elif n < 100: "medium" else: "large"

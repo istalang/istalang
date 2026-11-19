@@ -1,5 +1,5 @@
 /**
- * Fitting by the implicit conversions (§2, §3.1, §3.14, §3.15): a `T` fits `T?`, `T??` and so on
+ * Fitting by the implicit conversions (§4.1, §5.2, §6.4, §4.5): a `T` fits `T?`, `T??` and so on
  * by one wrap per level, never the other way round, and only into optionals of the same `T`; a
  * function fits one giving a future of its result, made async, and an async one fits one giving
  * a future of a type its own future's value fits, converted part by part; a one-element tuple and its
@@ -62,7 +62,7 @@ function levelsBetween(found: number, expected: number): number | undefined {
   return expected === 0 ? undefined : 0;
 }
 
-/** `type` made optional `levels` times, which is once for any `levels` above none (§2). */
+/** `type` made optional `levels` times, which is once for any `levels` above none (§4.2). */
 function wrapped(type: Type, levels: number): Type {
   return levels === 0 ? type : optionalOf(wrapped(type, levels - 1), fittingApart);
 }
@@ -135,7 +135,7 @@ describe('fitting into an optional, a union holding None', () => {
 
 /**
  * A function type taking `parameter` and giving `result`, sendable or not, async or not: an async
- * one's type gives a future of `result` (§3.14).
+ * one's type gives a future of `result` (§6.4).
  */
 function functionOf(
   parameter: Type,
@@ -150,7 +150,7 @@ function functionOf(
   });
 }
 
-/** `Sendability`'s chain (§3.14), each allowing the ones before it. */
+/** `Sendability`'s chain (§6.4), each allowing the ones before it. */
 const sendabilityRank: Readonly<Record<Sendability, number>> = { sendable: 0, inert: 1, plain: 2 };
 
 const kinds = fc.record({
@@ -187,7 +187,7 @@ describe('fitting a function where one giving a future is expected', () => {
     );
   });
 
-  it('makes a function inside another type async as a part of it (§3.5)', () => {
+  it('makes a function inside another type async as a part of it (§8.1)', () => {
     const plain = functionOf(intType, intType, { isAsync: false, send: 'plain' });
     const async = functionOf(intType, intType, { isAsync: true, send: 'plain' });
     const tuple = (element: Type): Type => ({ kind: 'tuple', elements: [element, intType] });
@@ -260,7 +260,7 @@ describe('fitting between a one-element tuple and its element', () => {
   });
 });
 
-describe("a struct's value where its shape is expected (§3.1)", () => {
+describe("a struct's value where its shape is expected (§5.2)", () => {
   const fieldTypes = ['Int', 'String', 'Bool', 'Array<Int>', '(Int, String)'];
   /** Distinct fields, each a name and a type, and the same fields in another order. */
   const fields = fc
@@ -315,7 +315,7 @@ describe("a struct's value where its shape is expected (§3.1)", () => {
   });
 });
 
-describe('a union where a union holding an `any` type is expected (§6)', () => {
+describe('a union where a union holding an `any` type is expected (§4.2)', () => {
   it('converts whole into the one any member each of its members meets, then goes into it', () => {
     const any: Type = { kind: 'any', constraints: [] };
     const union = unionOf([intType, stringType], fittingApart);

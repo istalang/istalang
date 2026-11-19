@@ -1,5 +1,5 @@
 /**
- * The annotation model (§3.16): an annotation as checked, where an annotated item stands, and what
+ * The annotation model (§5.5): an annotation as checked, where an annotated item stands, and what
  * later phases may ask of annotations. Checking them is rules/annotations.ts's; the checker's
  * surface (check.ts) and lowering depend on this model without depending on how they are checked.
  */
@@ -15,7 +15,7 @@ import type { FieldMember, NominalType } from '../types/type/index.ts';
 import type { CheckedBody } from './checked-body.ts';
 import type { ConstantForm } from './constant-form.ts';
 
-/** Where an annotated item stands, which decides which annotations mean anything on it (§3.16). */
+/** Where an annotated item stands, which decides which annotations mean anything on it (§5.5). */
 export type AnnotationPlace =
   /**
    * A field: of a struct, a variant or a trait, whose declared type its annotations' check reads.
@@ -35,7 +35,7 @@ export interface CheckedAnnotation {
   readonly form: ConstantForm;
 }
 
-/** Whether what `entity` declares may annotate (§3.16): a struct, not a shared or an extern one. */
+/** Whether what `entity` declares may annotate (§5.5): a struct, not a shared or an extern one. */
 export function canAnnotate(entity: TypeEntity): boolean {
   return entity.declaration.kind === 'StructDeclaration';
 }
@@ -74,9 +74,9 @@ export interface AnnotationQueries {
   ) => readonly CheckedAnnotation[];
   /** The annotations on a struct's or variant's field, checked where it is declared. */
   readonly ofField: (field: FieldMember) => readonly CheckedAnnotation[];
-  /** The name a statement's `@Waypoint` gives where it waits (§10); undefined without one. */
+  /** The name a statement's `@Waypoint` gives where it waits (§18); undefined without one. */
   readonly waypointOf: (module: ModuleId, statement: Statement) => string | undefined;
-  /** The title a function's `@Suite` gives its suite (§10); undefined without one. */
+  /** The title a function's `@Suite` gives its suite (§18); undefined without one. */
   readonly suiteTitleOf: (module: ModuleId, declaration: FunctionDeclaration) => string | undefined;
   /** The checking of `annotation`'s value, on its own in `module`, wherever it stands. */
   readonly bodyOf: (module: ModuleId, annotation: Annotation) => CheckedBody;

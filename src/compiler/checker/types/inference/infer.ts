@@ -1,5 +1,5 @@
 /**
- * Inferring type arguments (§3.5): each type parameter a call or literal leaves to inference is a
+ * Inferring type arguments (§8.1): each type parameter a call or literal leaves to inference is a
  * variable of its own (variables.ts), so a generic function's own call inside its body tells its
  * variables from its rigid parameters, and matching the types it is given against the types its
  * declaration takes bounds them (bounds.ts), which settling then decides (settle.ts). This class
@@ -83,7 +83,7 @@ export class Inference {
   #kind: MatchKind = 'argument';
 
   /**
-   * `written` gives the type arguments written for some of `parameters`, taken as given (§3.5).
+   * `written` gives the type arguments written for some of `parameters`, taken as given (§8.1).
    * Each parameter is inferred as a variable of its own (variables.ts), in a system of its own, a
    * copy of `at.copying`'s where given.
    */
@@ -120,7 +120,7 @@ export class Inference {
   /**
    * Matches a written literal where `declared` is taken: its literal type where a literal of its
    * base is expected; else as its base, so it goes where its base goes, a variable given it bound
-   * by its literal type, fresh, for settling to widen (§2).
+   * by its literal type, fresh, for settling to widen (§4.3).
    */
   matchLiteral(declared: Type, literal: LiteralType): boolean {
     const typed = this.literalType(literal.value, declared);
@@ -132,7 +132,7 @@ export class Inference {
 
   /**
    * Matches a struct literal of items where `declared` is taken, as its `shape`, which may build a
-   * struct a variable settles to, as a literal where a struct is expected builds it (§3.1).
+   * struct a variable settles to, as a literal where a struct is expected builds it (§5.2).
    */
   matchShape(declared: Type, shape: Type): boolean {
     return this.#system.match(this.#prepared(declared), shape, this.#matching({ kind: 'shape' }));
@@ -409,7 +409,7 @@ export class Inference {
   }
 
   /**
-   * The type a literal of `value` has where `declared` is expected (§2, §3.5): its literal type
+   * The type a literal of `value` has where `declared` is expected (§4.3, §8.1): its literal type
    * where a literal type of its base is expected, or a union holding one, or a member parameter
    * whose union holds one; its base otherwise.
    */

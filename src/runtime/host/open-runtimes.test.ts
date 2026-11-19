@@ -1,5 +1,5 @@
 /**
- * The runtimes live code opens over the host's store (§9, open-runtimes.ts): opening one resumes
+ * The runtimes live code opens over the host's store (§17.1, open-runtimes.ts): opening one resumes
  * the instances stored there that haven't ended, which run on while the live code runs.
  */
 

@@ -1,6 +1,6 @@
 # error: 5105 at 9:9
 # error: 5105 at 13:7
-# Static functions on an alias are its type's (§3.7, §3.17): declared through an alias of a shape or
+# Static functions on an alias are its type's (§6.2, §4.6): declared through an alias of a shape or
 # of a struct, they clash with those declared through the type itself or another alias of it.
 
 type Point = { x: Int, y: Int }

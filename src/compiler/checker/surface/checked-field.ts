@@ -1,10 +1,10 @@
 /**
- * How a field read reaches its field, as the checker finds it and lowering emits it (§3.1, §3.10):
+ * How a field read reaches its field, as the checker finds it and lowering emits it (§5.2, §8.2):
  * lowering reads the record and never looks a field up by name again. A read through a type
  * parameter's constraint can't be resolved by the generic body checked once; each instantiation
  * resolves it into one of the others (wiring/body/facts/instantiation.ts), by the reads here.
  *
- * A field is read by its name, `s.name`, or by a key, `s[k]` (§3.9): a key that is one name once
+ * A field is read by its name, `s.name`, or by a key, `s[k]` (§10.2): a key that is one name once
  * known reads as the name does, and several keys read the field the key's value names when the
  * program runs.
  */
@@ -18,7 +18,7 @@ import type { Constraint, FieldMember, Type } from '../types/type/index.ts';
 import type { ResolvedCall } from './resolved-call.ts';
 
 /**
- * A field a trait requires (§3.10): the constraint requiring it, its trait with the arguments the
+ * A field a trait requires (§8.2): the constraint requiring it, its trait with the arguments the
  * read's type meets it at, and its field's declaration.
  */
 export interface RequiredField {
@@ -31,8 +31,8 @@ export interface RequiredField {
  * order, which lowering reads, the field's `name` naming it for what reads the field itself; as
  * a trait requires it of a value of `on`, an `any` type or a type known only per instantiation (a
  * type parameter, or a type computed from one), whose own type meets it with a field it stores or
- * a getter (§3.10), which lowering decides once it knows the type; or, on a type known only per
- * instantiation, as a struct constraint names it, which only a struct meets (§3.5).
+ * a getter (§8.2), which lowering decides once it knows the type; or, on a type known only per
+ * instantiation, as a struct constraint names it, which only a struct meets (§8.1).
  */
 export type FieldRead =
   | { readonly kind: 'position'; readonly on: Type; readonly name: string; readonly index: number }
@@ -40,7 +40,7 @@ export type FieldRead =
   | { readonly kind: 'named'; readonly on: Type; readonly name: string }
   | { readonly kind: 'keyed'; readonly on: Type; readonly key: Type };
 
-/** What reads a field: `s.name`, or `s[k]` with a key of `s`'s type (§3.9). */
+/** What reads a field: `s.name`, or `s[k]` with a key of `s`'s type (§10.2). */
 export type FieldReading = MemberAccess | Index;
 
 /**
@@ -60,7 +60,7 @@ export function keyedFieldRead(
 /**
  * The getter among `witnesses`, those a type meets a constraint with, that meets `field`, which
  * the constraint's trait requires and the type stores none of: they follow the functions', each
- * named as the field it meets (§3.10).
+ * named as the field it meets (§8.2).
  */
 export function fieldGetterAmong(
   witnesses: readonly ResolvedCall[],

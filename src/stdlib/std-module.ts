@@ -1,5 +1,5 @@
 /**
- * A std module (§3.8) as the toolchain ships it: its name, its `.ista` source, and the natives of
+ * A std module (§19.2) as the toolchain ships it: its name, its `.ista` source, and the natives of
  * its externs. A module's natives are built from keys bound to its name, so the name is spelled
  * once, where the module is listed (std-modules.ts), and a natives table can't key an extern or a
  * type under another module's name, or spell a static function apart from `staticName`.

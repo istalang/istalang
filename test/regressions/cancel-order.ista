@@ -1,7 +1,7 @@
 # outcome: "won 4, cancelled, other got 7"
-# A wait's losing case is cancelled as its waiter stops at the `select`, every case known (§8): a
+# A wait's losing case is cancelled as its waiter stops at the `select`, every case known (§15.4): a
 # later resolve of it does nothing, and its `onCancel` callback runs right after the waiter, before
-# an execution readied after (§6).
+# an execution readied after (§15.1).
 
 import * as time from 'time'
 

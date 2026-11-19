@@ -4,7 +4,7 @@
 # error: 1003 at 16:10
 # error: 1011 at 18:16
 # A docstring stands only first in a declaration's body or a module, or below a declaration
-# without a body (§2). A backslash ending a template's line escapes nothing, and a template left
+# without a body (§2.3). A backslash ending a template's line escapes nothing, and a template left
 # open runs to the end of the file.
 fn main():
   drop(1)

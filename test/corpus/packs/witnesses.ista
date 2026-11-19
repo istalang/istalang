@@ -1,5 +1,5 @@
 # outcome: ["A","B",2,[],1,["c","d"]]
-# A witness whose rest parameter is a pack meets a requirement (§3.5, §3.10): a call through the
+# A witness whose rest parameter is a pack meets a requirement (§8.1, §8.2): a call through the
 # requirement passes the witness what it gave each required parameter, named arguments by name and
 # a required rest parameter as the one array it collects, empty or not.
 

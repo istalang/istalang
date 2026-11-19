@@ -1,14 +1,14 @@
 /**
- * The built-in `==` and map keys (§3.8, §3.9) over the runtime's values: the rules are
+ * The built-in `==` and map keys (§19.3, §10.2) over the runtime's values: the rules are
  * foundation/language/values.ts's, shared with compile time's constants; this module shows them the
- * runtime's values. Handles compare by identity (§3.1), an extern value by its payload's JSON, a
- * closure by the body its entry runs (§3.14, `bodyOf`), so two instances of one function, or of a
+ * runtime's values. Handles compare by identity (§7.2), an extern value by its payload's JSON, a
+ * closure by the body its entry runs (§6.4, `bodyOf`), so two instances of one function, or of a
  * lambda in it, with equal captures are equal. Everything that compares values or builds maps at
  * run time, the run and the std natives alike, uses the semantics of its program's function table.
  *
  * A head never compares a value's type: two values compared are of one static type, so their
  * declarations agree, and only their instantiation may differ, as a value converted part by part
- * keeps its own where its layout stays (§3.5): a `Box<"s">` taken as a `Box<String>` equals one
+ * keeps its own where its layout stays (§8.1): a `Box<"s">` taken as a `Box<String>` equals one
  * built as a `Box<String>`. A union's or an `any` type's value is a variant of its enum, so the
  * variant tells its members apart.
  */

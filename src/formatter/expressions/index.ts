@@ -28,7 +28,7 @@ const { group, indent, join, line, softline } = builders;
 
 /**
  * A lambda's parameters: one bare untyped name as `fn x:`, the form the parser reads as that
- * parameter (§3.14), unless a comment needs the parentheses; else the list in parentheses.
+ * parameter (§6.4), unless a comment needs the parentheses; else the list in parentheses.
  */
 function lambdaParameters(printer: Printer, node: Lambda): builders.Doc {
   const [only, ...rest] = node.parameters;
@@ -76,7 +76,7 @@ type ExpressionKind = Exclude<
 >;
 
 /**
- * A member link's `.`, or `?.` through an optional (§4); nothing after `->`, which is its own link.
+ * A member link's `.`, or `?.` through an optional (§10.4); nothing after `->`, which is its own link.
  */
 function memberLink(target: Expression, isOptional: boolean): string {
   return target.kind === 'Dereference' && target.operator === '->'
@@ -129,7 +129,7 @@ function laysOutLines(tree: SyntaxTree, node: SyntaxNode): boolean {
 /**
  * Operands and their operators. In brackets a line break may follow an operator, one operand per
  * line once the run doesn't fit. Outside them nothing may break the run, and a line an operand
- * breaks onto keeps the indentation of the run's line, where an `else` must stand (spec §4). A
+ * breaks onto keeps the indentation of the run's line, where an `else` must stand (spec §10.1). A
  * run of plain operands there stays whole on its line rather than breaking one's brackets in the
  * middle of it, which would only move its end; one holding an `if` or a block lets them break.
  */
@@ -298,7 +298,7 @@ export const expressionPrinters: Printers<ExpressionKind> = {
     angled(printer, node.typeArguments),
   ],
   NamedArgument: (printer, node) => [printer.print(node.name), ': ', printer.print(node.value)],
-  // The call stays on its taker's line, where alone it is the taker's (§3.14).
+  // The call stays on its taker's line, where alone it is the taker's (§6.5).
   DeferredCall: (printer, node) => [printer.print(node.taker), ' ', printer.print(node.call)],
   Reference: (printer, node) => ['&', printer.print(node.expression)],
   MemberAccess: (printer, node) => [

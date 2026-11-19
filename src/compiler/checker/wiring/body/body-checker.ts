@@ -1,19 +1,19 @@
 /**
- * Checking one function body (§2–§4): the BodyContext every expression and statement handler
+ * Checking one function body (§2–§11): the BodyContext every expression and statement handler
  * works through, and the CheckedBody lowering reads afterwards.
  *
  * - Types flow both ways: a handler receives the type its context expects (bidirectional
  *   inference), and reports against it only where the spec says a value must fit (`expect`, or
  *   `fit` for a type already checked). Every type mismatch is reported through `fit`.
  * - What lowering needs is recorded as checking goes: every expression's type, every call's target,
- *   and every value's implicit conversions (§2, types/fitting/fit/index.ts), which `fit` finds: on
+ *   and every value's implicit conversions (§4.1, types/fitting/fit/index.ts), which `fit` finds: on
  *   the node giving the value, or, for a value an assignment writes, on its part
  *   (constructs/statements/assignments.ts). Nothing is recomputed later, so lowering sees what was
  *   checked.
  * - An expression checked in a constraint scope (wiring/body/constraint-scope.ts, body-scopes.ts)
  *   is recorded again once the scope settles, its type solved; one the scope postpones is its
  *   placeholder until then (constructs/expressions/postponed.ts). A value where a union is expected
- *   is checked as the member it is built as when that is decided before it is checked (§2,
+ *   is checked as the member it is built as when that is decided before it is checked (§4.2,
  *   `memberBuilt`); otherwise it goes in as fitting puts it, converted where its parts need.
  * - The facts the body's rules gather (variables, the functions it nests, struct literals) are
  *   units of their own, beside those rules; this class only composes them. What they record of a
@@ -186,7 +186,7 @@ export class BodyChecker implements BodyContext {
     return this.#finished([{ root: node, parameters: [] }], declared ?? type);
   }
 
-  /** Checks a top-level constant (§3): its initializer as `checkValue` does, then its targets. */
+  /** Checks a top-level constant (§5.1): its initializer as `checkValue` does, then its targets. */
   checkConstant(declaration: VariableDeclaration): CheckedBody {
     const { declared } = this.#result;
     const type = this.expect(declaration.initializer, declared);

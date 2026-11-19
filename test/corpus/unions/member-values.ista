@@ -1,5 +1,5 @@
 # outcome: "draft|SENT|failed:failed:failed|1:one"
-# A member parameter's values (§3.5) fit where its union's do: into the union as the member each
+# A member parameter's values (§8.1) fit where its union's do: into the union as the member each
 # instantiation stands for, into a wider union through a literal's base, into its base, and into
 # an optional of either. A literal argument fills it with its literal type, or its base's member.
 

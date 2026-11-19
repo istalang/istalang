@@ -1,5 +1,5 @@
 # outcome: [0,["0"]]
-# A `select` lets go of its losers' holdings before the winner's body runs (§8): at the `else` of one
+# A `select` lets go of its losers' holdings before the winner's body runs (§15.4): at the `else` of one
 # that doesn't wait, and at a `disposing()` case resuming as cleanup, a revertible message a losing
 # case sent is already retracted.
 

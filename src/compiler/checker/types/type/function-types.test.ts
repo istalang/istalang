@@ -1,5 +1,5 @@
 /**
- * One function type for both spellings of an async one (§3.14): `ista async fn(A) -> R` and
+ * One function type for both spellings of an async one (§6.4): `ista async fn(A) -> R` and
  * `fn(A) -> Future<R, "ista">` resolve to one type, one key and one text, whatever `A` and `R` are.
  */
 
@@ -62,7 +62,7 @@ describe('the two spellings of an async function type', () => {
     );
   });
 
-  it('checks a plain lambda body and its returns against the future or its value where async fn(A) -> R is expected (§3.5, §3.14)', () => {
+  it('checks a plain lambda body and its returns against the future or its value where async fn(A) -> R is expected (§8.1, §6.4)', () => {
     expect(
       reported(`
 ista async fn later(x: Int) -> Int: x + 1
@@ -111,7 +111,7 @@ ista async fn _main():
     ).toEqual(reportedNothing);
   });
 
-  it('refuses passing an element or shared-struct accessor by & to any call returning a future (§3.7, §3.14)', () => {
+  it('refuses passing an element or shared-struct accessor by & to any call returning a future (§7.3, §6.4)', () => {
     expect(
       reported(`
 ista async fn later(x: &Int) -> Int:
@@ -148,7 +148,7 @@ ista async fn _main():
     ).toEqual(reportedOnce(checkerDiagnostics.accessorToAsync.code, 'xs[0]'));
   });
 
-  it('refuses a collection setIndex returning Future<Unit> even when declared with plain fn (§3.9, §3.14)', () => {
+  it('refuses a collection setIndex returning Future<Unit> even when declared with plain fn (§10.2, §6.4)', () => {
     expect(
       reported(`
 struct Bag { values: Map<String, Int> }
@@ -172,7 +172,7 @@ ista async fn _main():
     ).toEqual(reportedOnce(checkerDiagnostics.asyncCollectionFunction.code, 'bag["a"]'));
   });
 
-  it('fits async fn(...A) -> Never where async fn(...A) -> R is expected on packs and constants (§2, §3.5, §3.14)', () => {
+  it('fits async fn(...A) -> Never where async fn(...A) -> R is expected on packs and constants (§4.1, §8.1, §6.4)', () => {
     expect(
       reported(`
 const diverged: sendable ista async fn(Int) -> Int = async fn(x: Int) -> Never: panic("no")
@@ -183,7 +183,7 @@ fn main():
     ).toEqual(reportedNothing);
   });
 
-  it('prefers an overload taking a plain function as-is over one making it async for a plain lambda with written parameter types (§3.7, §3.14)', () => {
+  it('prefers an overload taking a plain function as-is over one making it async for a plain lambda with written parameter types (§6.3, §6.4)', () => {
     expect(
       reported(`
 fn run(f: fn(Int) -> Int, y: Int?) -> String: "sync"

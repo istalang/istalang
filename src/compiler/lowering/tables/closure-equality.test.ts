@@ -1,5 +1,5 @@
 /**
- * Function values are equal when they run the same body with equal captures (§3.14): a body is a
+ * Function values are equal when they run the same body with equal captures (§6.4): a body is a
  * declared function, lambda or local function, whatever its instantiation, whether lowering shared
  * that instance across types or made one per type (tables.ts `body`, definition/values/equality.ts).
  */

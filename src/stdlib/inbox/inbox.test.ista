@@ -1,4 +1,4 @@
-# The inbox module's `pending` and its receivers' order (spec §6); the rest of the module is the
+# The inbox module's `pending` and its receivers' order (spec §15.3); the rest of the module is the
 # corpus's.
 
 import * as futures from 'futures'

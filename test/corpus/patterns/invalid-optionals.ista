@@ -10,11 +10,11 @@
 # error: 5406 at 50:19
 # error: 5406 at 51:19
 # error: 5220 at 52:20
-# `?.` and `??` work on optionals (§4). A value read through `?.` is a copy, so a chain is never
+# `?.` and `??` work on optionals (§10.4). A value read through `?.` is a copy, so a chain is never
 # assigned to, not even an element of it, and calls no method taking `&self`. A `?.` or `?->`
 # reaches inside one optional only: an optional read further along the chain needs its own. A
 # function's name before `?.(` or `->` is its value, never the call of an enclosing async fn,
-# which only a `.` reads (§7).
+# which only a `.` reads (§16).
 
 struct Address { city: String, tags: Array<String> }
 

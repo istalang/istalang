@@ -1,5 +1,5 @@
 # outcome: 3
-# A field's default may read the struct it belongs to (§3.1): a lambda reading a field whose type
+# A field's default may read the struct it belongs to (§5.2): a lambda reading a field whose type
 # is written needs no other field typed, so the field it defaults takes its type from it.
 
 import * as runtime from 'runtime'

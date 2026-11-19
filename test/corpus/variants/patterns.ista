@@ -1,5 +1,5 @@
 # outcome: "approved|legal|ops: late|x|t|a +2|u 0|2 Empty|t: 3|2|oops|s|1|yes|no|1 2|starts with a|7"
-# A call pattern takes a variant apart as a call builds it (§3.11): its arguments bind to the
+# A call pattern takes a variant apart as a call builds it (§11.3): its arguments bind to the
 # fields by position, then by name, a field a call may leave out matching anything, and a last
 # `...` leaving the others. A spread takes the rest field whole; arguments past the fixed fields
 # match its items as an array pattern's do, and a last `...` leaves the items past them. Call

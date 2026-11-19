@@ -1,5 +1,5 @@
 /**
- * Which type `match` reductions never end (§3.5, §3.17). An `infer` variable is a part of the
+ * Which type `match` reductions never end (§8.1, §4.6). An `infer` variable is a part of the
  * subject its case matched, so a use whose argument rebuilds the subject from those parts (`case
  * Node<infer T>: Data<Node<T>>`) is the subject again, a finite recursion, while one nesting the
  * subject deeper than it came in (`Box<Box<T>>` from `Box<infer T>`, `Array<T>` from `T`) grows

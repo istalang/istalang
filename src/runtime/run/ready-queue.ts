@@ -1,11 +1,11 @@
 /**
- * The ready queue (§6): what runs next, one at a time, in the order it was readied.
+ * The ready queue (§15.1): what runs next, one at a time, in the order it was readied.
  *
  * - A **resume** unparks an execution with its wait's decision. An execution is readied once: a
  *   decision taken anew as its call is disposed replaces the first, keeping its place.
  * - A **call** runs a closure readied as a call of its own (a `Resolver.of` callback, an
  *   `onCancel`).
- * - An **invoke** starts a call into the instance (§9), with what the caller passed. Its answer is
+ * - An **invoke** starts a call into the instance (§17.1), with what the caller passed. Its answer is
  *   the caller's, which no snapshot keeps, so an instance commits only once none waits: one made
  *   after a call parked starts before that segment commits (`nextInvocation`).
  */

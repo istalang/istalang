@@ -1,5 +1,5 @@
 /**
- * How a parameter reads as written (§3.3): what a diagnostic about it points at, and the type its
+ * How a parameter reads as written (§6.1): what a diagnostic about it points at, and the type its
  * pattern names. A parameter binds a name, a pattern, or both (expressions/index.ts); the checker,
  * the binder and the tools all read those two through here, so a pattern parameter has one reading.
  *
@@ -60,7 +60,7 @@ export function typingPattern(parameter: Parameter): StructPattern | undefined {
   return pattern?.kind === 'StructPattern' ? pattern : undefined;
 }
 
-/** Whether `node` is written as taking a reference, `&T` (§3.7), parentheses aside. */
+/** Whether `node` is written as taking a reference, `&T` (§7.3), parentheses aside. */
 export function writtenByReference(node: Parameter): boolean {
   return node.type !== undefined && unparenthesizedType(node.type).kind === 'ReferenceType';
 }

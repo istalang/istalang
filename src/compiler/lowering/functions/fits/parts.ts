@@ -1,5 +1,5 @@
 /**
- * A value converted part by part (§3.5), as lowering derives it from the two types an
+ * A value converted part by part (§8.1), as lowering derives it from the two types an
  * instantiation made, never from steps the checker recorded: the checker says only what a value
  * converts into (checker/types/fitting/fit/).
  *
@@ -181,7 +181,7 @@ function rebuiltTuple(
 
 /**
  * A struct's or a shape's value as one of `to`, a struct or a shape of the same fields, field by
- * field in name order (§3.1), so each field's index is its index in `to`: of the same declaration,
+ * field in name order (§5.2), so each field's index is its index in `to`: of the same declaration,
  * or a struct's value as a shape.
  */
 function rebuiltStruct(
@@ -232,7 +232,7 @@ function rebuiltNominal(
 
 /**
  * An array's items, or a map's values, each converted by the prelude's function for it, given the
- * converter of one: the collection's last type argument is what converts (§3.5).
+ * converter of one: the collection's last type argument is what converts (§8.1).
  */
 function mappedWith(
   context: CodeContext,
@@ -256,7 +256,7 @@ function mappedWith(
 
 /**
  * `future`, of a future of `value`, where `type`, a future of `into` of its kind, is expected, as a
- * function widened gives it (§3.14): itself where its value keeps its layout, else the prelude's
+ * function widened gives it (§6.4): itself where its value keeps its layout, else the prelude's
  * `_converted` of it, given the converter of its value.
  */
 export function convertedFuture(
@@ -303,7 +303,7 @@ function preludeConversion(
   );
 }
 
-/** An enum's value as one of `to`, the same enum: each variant's fields converted (§3.11). */
+/** An enum's value as one of `to`, the same enum: each variant's fields converted (§5.3). */
 function rebuiltVariant(
   context: CodeContext,
   { register, type }: TypedValue<NominalType>,

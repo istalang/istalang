@@ -12,21 +12,21 @@
  * - Every key, a table key too, is spelled by one structural walk (`structureKeyOf`), how an
  *   identity is spelled passed in (`IdentitySpelling`), so an attribute a type gains is keyed once
  *   for both.
- * - A shape (§3.1) is its field names and their keys, in name order, as the type keeps its fields:
+ * - A shape (§5.2) is its field names and their keys, in name order, as the type keeps its fields:
  *   `{x:Int,y:Int}` however it was written. The key is the canonical text itself, never a digest,
  *   since a collision would make two types one without any error.
  * - A literal type is its value, a string's quoted as JSON, so no text it holds can end it early.
  * - A union is its members' keys, sorted, since its members are a set.
- * - A type holding a recursive type (§3.17) is the canonical spelling of its minimized term graph
+ * - A type holding a recursive type (§4.6) is the canonical spelling of its minimized term graph
  *   (recursive-terms.ts), its nodes numbered from it with `~` and their structure spelled as here:
  *   equal unfoldings are one key, so a recursive type, what it unfolds to, and the same structure
  *   written out or through another alias are one type; a recursive type `match` use closes into
  *   such a graph too. A key holding `~` is no other type's.
  * - A type computed from types not known yet (`T.Data`, `S["meta"]`, `keyof S`) is its parts' keys:
- *   such a type is opaque, equal only to itself (§3.5). A mapped struct type not reduced yet keys
+ *   such a type is opaque, equal only to itself (§8.1). A mapped struct type not reduced yet keys
  *   its own parameter by how deep it binds, so its spelling's name for it never makes two types; it
  *   starts with `*`, as no other type's key does, so it never keys alike with a shape.
- * - An alias names no type of its own (§3.17), so no key mentions one.
+ * - An alias names no type of its own (§4.6), so no key mentions one.
  * - A canonical key is kept by the type's pre-key: its structure, keyed as here, down to each
  *   recursive type it reaches, spelled by that type's graph and node. A graph is immutable and
  *   minimized, so one pre-key always unfolds alike and has one key; substitution and union
@@ -320,7 +320,7 @@ function functionKeyOf(type: FunctionType, key: (type: Type) => string): string 
   return `${head}(${parameters.join(',')})->${key(type.result)}`;
 }
 
-/** The key of an unreduced use of a type `match` alias (§3.17). */
+/** The key of an unreduced use of a type `match` alias (§4.6). */
 function useKeyOf(use: RecursiveUse, key: (type: Type) => string): string {
   return `match:${identityOf(use.declaration)}<${use.arguments.map(key).join(',')}>`;
 }

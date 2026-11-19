@@ -1,5 +1,5 @@
 # outcome: "true false 8 120 true false"
-# A top-level const may be a lambda (§3, §3.14): it reads other constants and captures nothing,
+# A top-level const may be a lambda (§5.1, §6.4): it reads other constants and captures nothing,
 # so it is one function value, made once, also inside an array; a named lambda calls itself by
 # its own name. A constant's function value equals itself and no other.
 

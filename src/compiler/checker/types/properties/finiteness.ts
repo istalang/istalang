@@ -1,10 +1,10 @@
 /**
- * Finite values (§3.1): no value may hold another value of its own type by value, directly or
+ * Finite values (§5.2): no value may hold another value of its own type by value, directly or
  * through other structs, tuples and anonymous structs, since every value must end. Inside a union,
  * such as an optional, or a collection, a value may be absent, so the chain ends there; so does an
- * enum, an extern type, a shared struct (a handle, §3.18) or a type not known yet.
+ * enum, an extern type, a shared struct (a handle, §5.4) or a type not known yet.
  *
- * The same rule holds a struct declaration's values and a recursive type's (§3.17), whatever it
+ * The same rule holds a struct declaration's values and a recursive type's (§4.6), whatever it
  * unfolds to: a struct declaration is reached by its declaration, whatever its arguments, and a
  * recursive type by its type key, which what it unfolds to shares, so one holding itself through
  * what it unfolds to is found either way. Its guard is a set of what was reached, not `TypeCycle`:

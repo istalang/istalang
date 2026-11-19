@@ -1,5 +1,5 @@
 /**
- * Declaration grammar (§3): imports, structs (indented, braced, bare, with the indented field
+ * Declaration grammar (§5.1): imports, structs (indented, braced, bare, with the indented field
  * sugar, shared or not), enums, traits, type aliases, every extern form, static functions, type
  * parameters with constraints and defaults, and the top-level-only rule for statements.
  */
@@ -237,7 +237,7 @@ describe('externs and functions', () => {
   });
 });
 
-describe('getters (§3.1)', () => {
+describe('getters (§5.2)', () => {
   it.each([
     ['fn get full(self: P) -> Int: 1', '(FunctionDeclaration isGetter _ full '],
     ['fn get get(self: P) -> Int: 1', '(FunctionDeclaration isGetter _ get '],
@@ -264,7 +264,7 @@ describe('getters (§3.1)', () => {
   });
 });
 
-describe('member type parameters (§3.5)', () => {
+describe('member type parameters (§8.1)', () => {
   it.each([
     ['fn describe<S in Status>(s: S): s', `[(TypeParameter _ S ${named('Status')} [] _)]`],
     [
@@ -285,7 +285,7 @@ describe('member type parameters (§3.5)', () => {
   });
 });
 
-describe('member-bounded associated types (§3.10)', () => {
+describe('member-bounded associated types (§8.2)', () => {
   it('reads `type Name in Type` in a trait', () => {
     expect(dumpClean('module', 'trait Waits:\n  type Mode in Persistence')).toContain(
       `(RequiredAssociatedType Mode ${named('Persistence')} [])`,
@@ -299,7 +299,7 @@ describe('member-bounded associated types (§3.10)', () => {
   });
 });
 
-describe('extern struct bodies (§3.6)', () => {
+describe('extern struct bodies (§17.2)', () => {
   it('reports a field, the host having fields of its own', () => {
     expect(reported('module', 'extern struct Zone:\n  name: String\n  type Mode = "live"')).toEqual(
       reportedOnce(parserDiagnostics.externStructField.code, 'name: String'),

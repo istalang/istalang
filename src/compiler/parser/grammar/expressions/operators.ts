@@ -6,7 +6,7 @@
  * prefix operator that binds more loosely than the operand position it stands in (`a == not b`, `a
  * + ..b`) is still parsed, so the tree shows what was written, but it is reported: the reader can't
  * tell how far it reaches. An operand an operator's entry refuses without parentheses, such as
- * `and` under `??`, is reported for the same reason (§3.9). `..` without an end is the open range
+ * `and` under `??`, is reported for the same reason (§10.3). `..` without an end is the open range
  * `a..`; `..=` always needs one.
  */
 
@@ -48,7 +48,7 @@ function advancePrefix(parser: Parser, level: PrecedenceLevel, minLevel: Precede
 
 /**
  * The operand of `prefix`, at the operator's own level, so `- -a` nests; reported when it is an
- * operator a prefix may not stand directly before (§3.9). Only the tight prefixes can be read
+ * operator a prefix may not stand directly before (§10.3). Only the tight prefixes can be read
  * either way: `not a ** b` can only be `not (a ** b)`.
  */
 function prefixOperand(parser: Parser, prefix: Prefix, level: PrecedenceLevel): Expression {
@@ -124,7 +124,7 @@ export function parseReference(parser: Parser): Reference {
   return { kind: 'Reference', span: parser.spanFrom(start), expression };
 }
 
-/** `&x` anywhere a call argument doesn't start (§3.7). */
+/** `&x` anywhere a call argument doesn't start (§7.3). */
 export const parseMisplacedReference: PrefixParselet = (parser) => {
   const reference = parseReference(parser);
   parser.report(parserDiagnostics.misplacedReference(parser.textSpanOf(reference.span)));
@@ -241,7 +241,7 @@ function comparisonsOf(
     : undefined;
 }
 
-/** Reports each operand of `operator` that uses one of `refused` without parentheses (§3.9). */
+/** Reports each operand of `operator` that uses one of `refused` without parentheses (§10.3). */
 function reportMixed(
   parser: Parser,
   operator: BinaryOperator,

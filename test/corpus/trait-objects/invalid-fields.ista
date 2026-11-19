@@ -1,6 +1,6 @@
 # error: 5152 at 14:8
 # error: 5152 at 15:8
-# A field read through an `any` value can't change: only the value's own type has it (§3.10).
+# A field read through an `any` value can't change: only the value's own type has it (§8.3).
 
 import * as runtime from 'runtime'
 

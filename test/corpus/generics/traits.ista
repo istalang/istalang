@@ -1,8 +1,8 @@
 # outcome: "6 30 7 cents 30"
-# Generic code calls what its constraints require (§3.10): an operator, a static function through
+# Generic code calls what its constraints require (§8.2): an operator, a static function through
 # the type parameter, a field, and a function generic in its own right. Each instantiation calls
 # what the type it is made for has. A struct of sendable fields is Sendable without saying so
-# (§3.1).
+# (§7.4).
 
 import * as runtime from 'runtime'
 

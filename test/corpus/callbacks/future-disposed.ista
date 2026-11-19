@@ -1,5 +1,5 @@
 # outcome: -1
-# A `Resolver.of` whose future is disposed first is cancelled, not dropped (§6, §7): its `onCancel`
+# A `Resolver.of` whose future is disposed first is cancelled, not dropped (§15.2, §16): its `onCancel`
 # runs, and its callback never does.
 
 import * as futures from 'futures'

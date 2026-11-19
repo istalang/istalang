@@ -1,14 +1,14 @@
 /**
- * Committing a resident's segment (§5, §6): its snapshot written to the store, then what it did let
+ * Committing a resident's segment (§14, §15.2): its snapshot written to the store, then what it did let
  * out of it.
  *
- * - **A crash at every await** (§10): before committing, the segment runs again on the instance as
+ * - **A crash at every await** (§18): before committing, the segment runs again on the instance as
  *   it last committed, from the same inputs, and that run commits; the first one's effects never
  *   leave it.
  * - **A panic** commits the instance as it stood before the failed segment, with the panic, the
  *   time the segment started and the call it was starting, if any, so a retry runs the segment
- *   again (§3.12) and a termination disposes what it held then (§7).
- * - **Too deep to persist** (§5): what it would commit panics at the await that commits it.
+ *   again (§12) and a termination disposes what it held then (§16).
+ * - **Too deep to persist** (§14): what it would commit panics at the await that commits it.
  * - **Letting out**: its effects on others, its end to what waits on it, and its log records, to
  *   the host advancing it or else the host's reports; a panicked segment's end alone.
  */
@@ -58,7 +58,7 @@ export function commit(resident: Resident, seams: CommitSeams): void {
   try {
     seams.store.writeSnapshot(resident.name, snapshotFormat.write(snapshot));
   } catch (error) {
-    // A write the store fails commits nothing: the instance stands as it last committed (§5).
+    // A write the store fails commits nothing: the instance stands as it last committed (§14).
     backToLastCommit(resident, seams);
     throw error;
   }
@@ -76,7 +76,7 @@ export function commit(resident: Resident, seams: CommitSeams): void {
   letOut(resident, seams.reports);
 }
 
-/** Commits `resident`, terminated (§3.12), holding nothing. */
+/** Commits `resident`, terminated (§12), holding nothing. */
 export function commitTerminated(
   resident: Resident,
   panic: { readonly message: string; readonly trace: string },
@@ -135,7 +135,7 @@ function written(resident: Resident, status: PersistedStatus): Snapshot {
 
 /**
  * What leaves `resident` as it commits: its effects, its end and its log records; of a panicked
- * segment, which never happened (§5), its end alone.
+ * segment, which never happened (§14), its end alone.
  */
 function letOut(resident: Resident, reports: HostReports | undefined): void {
   const { end, status } = resident;
@@ -196,7 +196,7 @@ function backToLastCommit(resident: Resident, seams: CommitSeams): void {
 
 /**
  * Whether `run`'s segment has reached its commit: nothing is ready, or a call parked at an await
- * (§6) and no invocation waits to start, whose answer no snapshot could keep.
+ * (§15.1) and no invocation waits to start, whose answer no snapshot could keep.
  */
 export function atCommit(run: Run): boolean {
   return run.idle || (run.executions.parkedSinceCommit && !run.queue.invoking);

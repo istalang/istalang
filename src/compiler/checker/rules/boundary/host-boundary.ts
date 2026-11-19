@@ -1,12 +1,12 @@
 /**
- * What crosses to the host (§3.6, §9): an extern a host implements takes and gives JSON, converted
+ * What crosses to the host (§17.2, §17.4): an extern a host implements takes and gives JSON, converted
  * by the declared types, so each parameter's type must be `Encodable` and its result, or an extern
  * constant's type, `Decodable`, as must what `main` gives its host. These sites cross to the host,
  * where only codecs matter, so a disposable host type, which isn't sendable, still crosses to its
  * own host (use-site.ts). A result of `Future<T>` is a live future the runtime creates and the host
  * resolves, so it is `T` that is read; that a host's extern is unmarked or live is a kind rule
  * (rules/kinds/signature-kinds.ts). JSON can't be written back, so a host extern takes nothing by
- * `&`. An extern constant is read once and the same value given to every read (§3.6), so it holds
+ * `&`. An extern constant is read once and the same value given to every read (§17.2), so it holds
  * no resource, whose identity each read would share. A std module's externs are the runtime's own
  * and take values as they are.
  */

@@ -1,8 +1,8 @@
 /**
- * Patterns (spec §3.11, §3.15), printed as written: a struct pattern's braces hold a comma list
+ * Patterns (spec §11.3, §4.5), printed as written: a struct pattern's braces hold a comma list
  * like a struct literal's (`Pair{first, second as s}`), and a call pattern's parentheses one like a
  * call's (`Rejected(by: "legal", ...)`), which may break as brackets do; a parameter's `{…}` stays
- * the short form of `struct{…}` it was written as (§3.3).
+ * the short form of `struct{…}` it was written as (§6.1).
  */
 
 import { builders } from 'prettier/doc';

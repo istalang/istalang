@@ -1,9 +1,9 @@
 /**
- * A field a trait requires, read on a value of a type lowering knows (§3.10): the checker records
+ * A field a trait requires, read on a value of a type lowering knows (§8.2): the checker records
  * only the requirement, and what the read becomes is decided here, from the concrete member, for
  * an instance's own read and for each member an `any` value's dispatch reads alike.
  *
- * - A type storing the field is read at its position in the layout (§3.1).
+ * - A type storing the field is read at its position in the layout (§5.2).
  * - Else the getter meeting it is called, found among the witnesses the type meets the trait
  *   with, which the caller names: an instance's, of the constraint the read was checked with; an
  *   `any` member's, at the instantiation it meets in the `any` type's constraint's place.

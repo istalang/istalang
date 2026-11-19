@@ -1,5 +1,5 @@
 /**
- * The traits the compiler derives (§3.1, §3.10): met by a rule over what a type is, where no
+ * The traits the compiler derives (§5.2, §8.2): met by a rule over what a type is, where no
  * function declared for it meets them. Conformance consults this one table for every constraint
  * (conformance.ts) rather than testing for each trait. Each rule decides by the kind of type it is
  * given (types/traits/sendability.ts, rules/boundary/json-forms.ts), so a new kind of type is one

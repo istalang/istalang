@@ -1,5 +1,5 @@
 /**
- * Comparisons (§3.9): a binary whose operator could chain, `a < b`, `x in c`, `a == b`. A chain
+ * Comparisons (§10.2): a binary whose operator could chain, `a < b`, `x in c`, `a == b`. A chain
  * of them is sugar for its links joined by `and` (checker/desugaring/chained-comparisons.ts), so
  * every phase after checking meets them one at a time.
  */

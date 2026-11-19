@@ -1,5 +1,5 @@
 # outcome: "true:3"
-# Inference against a union holding a type parameter (§3.5): the members written without one take
+# Inference against a union holding a type parameter (§8.1): the members written without one take
 # theirs among a union given, whichever order they are written in, and the parameter what is left.
 
 import * as runtime from 'runtime'

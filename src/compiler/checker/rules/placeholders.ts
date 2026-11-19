@@ -36,7 +36,7 @@ export function placeholderOf(
  * `node`, when it is a literal written where the current scope still infers what is expected of
  * it, as an element of a tuple or a branch's value (i2-scope.md §2): a variable bounded below by its
  * literal type, fresh, and above by what is `expected` of it, so it settles to that literal type
- * where what it goes into holds one, else to its base (§2); undefined for anything else. One
+ * where what it goes into holds one, else to its base (§4.3); undefined for anything else. One
  * negated or in parentheses is checked as ever too, so lowering finds what it holds.
  */
 export function freshLiteralOf(

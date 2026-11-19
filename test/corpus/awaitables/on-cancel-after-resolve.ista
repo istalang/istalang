@@ -1,5 +1,5 @@
 # outcome: 10
-# A resolver's `onCancel` never runs once it decided anything (§6): the call `onAwait` started and
+# A resolver's `onCancel` never runs once it decided anything (§15.2): the call `onAwait` started and
 # registered it on resolves it, and committing after cancels nothing.
 
 import * as futures from 'futures'

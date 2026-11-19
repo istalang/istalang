@@ -6,12 +6,12 @@
  * - A declaration's type parameters have their constraints resolved, and so does every member of
  *   a trait: its functions' signatures and its fields' types. A variance written on one is held
  *   to where it may stand (constructs/declarations/variance-markers.ts).
- * - An alias is resolved, which reports one that refers to itself (§3.17), and so is a struct's or
- *   an enum's associated type, an alias too (§3.1).
+ * - An alias is resolved, which reports one that refers to itself (§4.6), and so is a struct's or
+ *   an enum's associated type, an alias too (§5.2).
  * - The defaults of a struct's or a variant's fields are checked as the parameters they read as
- *   (§3.1).
+ *   (§5.2).
  * - An extern a host implements takes and gives only what crosses as JSON
- *   (rules/boundary/host-boundary.ts), and so does `main`, whose outcome its host reads (§9).
+ *   (rules/boundary/host-boundary.ts), and so does `main`, whose outcome its host reads (§17.3).
  * - A `dispose` a program declares makes its type disposable, on its rules
  *   (rules/disposal/disposal.ts).
  * - Every item's annotations are checked where it stands (rules/annotations.ts): a function's, a
@@ -83,7 +83,7 @@ function checkTypeParameters(checker: CheckerContext, declaration: GenericDeclar
   }
 }
 
-/** Reports what a pack breaks of its rules: a function's, with no constraint or default (§3.5). */
+/** Reports what a pack breaks of its rules: a function's, with no constraint or default (§8.1). */
 function checkPack(
   checker: CheckerContext,
   declaration: GenericDeclaration,
@@ -125,7 +125,7 @@ function checkFunction(checker: CheckerContext, node: FunctionDeclaration): void
   }
 }
 
-/** The defaults of a declaration's fields, which read as `fieldsFunction`'s parameters (§3.1). */
+/** The defaults of a declaration's fields, which read as `fieldsFunction`'s parameters (§5.2). */
 function checkFieldDefaults(
   checker: CheckerContext,
   fieldsFunction: FunctionDeclaration | undefined,
@@ -137,7 +137,7 @@ function checkFieldDefaults(
   }
 }
 
-/** `main` gives its host an outcome as JSON (§9), so what it gives must be `Encodable`. */
+/** `main` gives its host an outcome as JSON (§17.4), so what it gives must be `Encodable`. */
 function checkOutcome(checker: CheckerContext, node: FunctionDeclaration, module: ModuleId): void {
   if (checker.isStd(module) || !isMain(node)) {
     return;
@@ -168,7 +168,7 @@ function checkStruct(checker: CheckerContext, node: DeclaredStruct, module: Modu
 
 /**
  * Resolves what a trait's associated type requirement is bounded by, reporting a member bound that
- * stands for one type already (`type Mode in K`), as a member parameter's would be (§3.5).
+ * stands for one type already (`type Mode in K`), as a member parameter's would be (§8.1).
  */
 function checkAssociatedBounds(
   checker: CheckerContext,
@@ -183,7 +183,7 @@ function checkAssociatedBounds(
 }
 
 /**
- * Resolves a struct's or an enum's associated types, which reports one referring to itself (§3.1).
+ * Resolves a struct's or an enum's associated types, which reports one referring to itself (§5.2).
  */
 function checkAssociatedTypes(
   checker: CheckerContext,
@@ -198,7 +198,7 @@ function checkAssociatedTypes(
 
 /**
  * Resolves what an alias or associated type stands for, which reports one referring to itself;
- * a type `match`'s subject, patterns and case types, and whether its reductions end (§3.17).
+ * a type `match`'s subject, patterns and case types, and whether its reductions end (§4.6).
  */
 function checkAlias(checker: CheckerContext, alias: AliasDeclaration): void {
   checker.aliasedType(alias);
@@ -287,7 +287,7 @@ const declarationHandlers: Handlers<CheckerContext, Declaration, [ModuleId], voi
 // biome-ignore-end lint/style/useNamingConvention: the keys are the tree's node kinds.
 
 /**
- * A trait's required function takes no defaults (§3.10): a call through it binds against its own
+ * A trait's required function takes no defaults (§8.2): a call through it binds against its own
  * parameters, and the default each witness would give may differ.
  */
 function refuseRequiredDefaults(
@@ -304,7 +304,7 @@ function refuseRequiredDefaults(
 }
 
 /**
- * A parameter's pattern binds names in its function's own body (§3.3): an extern function has
+ * A parameter's pattern binds names in its function's own body (§6.1): an extern function has
  * none, and a trait's requirement is a signature, whose default body, if any, is one of many a
  * witness could give, so both take their parameters by name.
  */

@@ -1,5 +1,5 @@
 # outcome: 18
-# A context call whose code panics answers with `Err` of the panic (§9): its message,
+# A context call whose code panics answers with `Err` of the panic (§17.1): its message,
 # "no refunds for o/1", is 18 long.
 
 import * as runtime from 'runtime'

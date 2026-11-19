@@ -1,7 +1,7 @@
 # outcome: ["o-3",6,[3,4],[2,null],5,8,[1,null],[{"_type":"Ok","value":2},{"_type":"Ok","value":3}]]
-# `async fn(A) -> R` is `fn(A) -> Future<R>`, one type (§3.14): a plain function giving a future
+# `async fn(A) -> R` is `fn(A) -> Future<R>`, one type (§6.4): a plain function giving a future
 # fits where an async one is expected as it is, and one giving a value fits made async, inside an
-# array too (§3.5), converting what it takes and gives; a generic one, or a variant's, gives the
+# array too (§8.1), converting what it takes and gives; a generic one, or a variant's, gives the
 # future's value. A lambda's body gives the future's value, a plain one's made a future, or
 # the future itself.
 import * as runtime from 'runtime'

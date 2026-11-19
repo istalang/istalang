@@ -1,5 +1,5 @@
 /**
- * Lines that continue a construct across a line break its region would end at (§4): `elif` and
+ * Lines that continue a construct across a line break its region would end at (§10.1): `elif` and
  * `else` lined up with their `if`'s line, and the deeper lines a construct being skipped holds.
  * Layout's other decisions to move past a line break are index.ts's and item-breaks.ts's.
  */
@@ -10,7 +10,7 @@ import type { Parser } from '../parser.ts';
 
 /**
  * Moves to `keyword` if it continues the construct that starts at `constructStart`: next on this
- * line, or first on the next line at the column where the construct's line starts (§4). Returns
+ * line, or first on the next line at the column where the construct's line starts (§10.1). Returns
  * whether it did.
  */
 export function moveToContinuation(

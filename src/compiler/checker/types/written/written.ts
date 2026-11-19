@@ -1,6 +1,6 @@
 /**
- * Where a type is written (§2): the checker resolving it, and its module. Inside the passes of a
- * loop over a type's keys (§4) it is also the pass: the loop's key is bound there (contexts/
+ * Where a type is written (§4.2): the checker resolving it, and its module. Inside the passes of a
+ * loop over a type's keys (§11.2) it is also the pass: the loop's key is bound there (contexts/
  * passes.ts), so a written type depending on it resolves as that pass reads it, from its leaves up,
  * never resolved first with the key unbound; what it gets wrong is reported in the pass, which
  * reports a mistake several passes make once, and each node it resolves is recorded there for tools.

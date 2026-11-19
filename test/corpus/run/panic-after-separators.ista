@@ -1,6 +1,6 @@
 # panic: boom
 # disable-ista-formatter
-# A panic's trace names the frame it stands in (§3.12), whatever the program's text holds: a
+# A panic's trace names the frame it stands in (§12), whatever the program's text holds: a
 # string with line and paragraph separators counts as no line breaks for where frames stand.
 
 const separators = "\u{2028}\u{2029}"

@@ -1,5 +1,5 @@
 /**
- * Places as written (§3.7, §3.9): what an assignment, `&` or a compound operator writes, read off
+ * Places as written (§7.3, §10.2): what an assignment, `&` or a compound operator writes, read off
  * the syntax alone.
  */
 
@@ -7,7 +7,7 @@ import { isOptionallyChained } from './chains.ts';
 import type { Expression, Index, MemberAccess, TupleElement } from './index.ts';
 import { unparenthesized } from './readings.ts';
 
-/** A field, a tuple element or an indexed element read off a place (§3.7, §3.9). */
+/** A field, a tuple element or an indexed element read off a place (§7.3, §10.2). */
 export type PlaceStep = MemberAccess | TupleElement | Index;
 
 /**
@@ -21,9 +21,9 @@ interface PlacePath {
 }
 
 /**
- * Whether `node` names a place (§3.7, §3.9): a variable or a handle's value, with fields, tuple
+ * Whether `node` names a place (§7.3, §10.2): a variable or a handle's value, with fields, tuple
  * elements and indexed elements read off it. A handle's value read in an optional chain is a copy
- * (§4), so it is none. A missing expression counts, being reported already.
+ * (§10.4), so it is none. A missing expression counts, being reported already.
  */
 export function isPlace(node: Expression): boolean {
   const { root } = placePath(node);

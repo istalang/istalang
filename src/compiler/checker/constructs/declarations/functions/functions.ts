@@ -1,5 +1,5 @@
 /**
- * Functions as checked (§2): what each declares its body produces, what calling it yields, and its
+ * Functions as checked (§4.4): what each declares its body produces, what calling it yields, and its
  * checked body, each an entry of its own, so a body checked again to the same result cuts off at
  * the result (incremental-checking.md §1).
  *

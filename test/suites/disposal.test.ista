@@ -1,4 +1,4 @@
-# Disposal order (spec §7): values losing their last holder together are disposed last made first,
+# Disposal order (spec §16): values losing their last holder together are disposed last made first,
 # each holder before what it holds. Each rule is its own function, and its test asserts what the old
 # runtime's unit test did.
 

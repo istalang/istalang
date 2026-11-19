@@ -1,5 +1,5 @@
 /**
- * A recursive type `match` use is a recursive type like any other (§3.17,
+ * A recursive type `match` use is a recursive type like any other (§4.6,
  * docs/work/done/proposals/p5-equi-recursive-identity.md, stage 2): closed through the one constructor,
  * it is one type with a recursive alias of its structure, and with another use reducing alike.
  */

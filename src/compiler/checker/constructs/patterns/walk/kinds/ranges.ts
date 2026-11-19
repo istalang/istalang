@@ -1,5 +1,5 @@
 /**
- * Range patterns (§3.11): a range compares its `Int` part with each bound it has, through the
+ * Range patterns (§11.3): a range compares its `Int` part with each bound it has, through the
  * `compare` made at that bound, and acts as a guard for exhaustiveness; an empty range is reported.
  */
 
@@ -63,5 +63,5 @@ function intValueOf(bound: LiteralPattern): bigint | undefined {
   return number?.kind === 'IntegerLiteral' ? number.value : undefined;
 }
 
-/** The function every ordering calls (§3.9). */
+/** The function every ordering calls (§10.2). */
 export const compareFunction = binaryOperators['<'].meaning.function;

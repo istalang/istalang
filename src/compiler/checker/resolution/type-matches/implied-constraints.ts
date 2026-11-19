@@ -1,5 +1,5 @@
 /**
- * What an `infer` variable carries from where it stands (§3.17): a case's pattern is a type, so the
+ * What an `infer` variable carries from where it stands (§4.6): a case's pattern is a type, so the
  * part it binds is a type argument some declaration constrains, and it meets those constraints in
  * any type the case matches. `Field<infer T>`, with `struct Field<T is Encodable>`, gives `T` the
  * constraint `Encodable` in the case's type, beside any written `infer T is C`.

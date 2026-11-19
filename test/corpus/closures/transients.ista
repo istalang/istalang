@@ -1,5 +1,5 @@
 # outcome: 33
-# A function's transients are one cell each (§3.4): the outermost call makes every one of them, and
+# A function's transients are one cell each (§7.1): the outermost call makes every one of them, and
 # the calls nested in it share each, apart from the others.
 
 fn counted<T>(item: T, rest: Array<T>) -> Int:

@@ -19,11 +19,11 @@ Ideas and their notes, not a plan: nothing here is scheduled. One doc per execut
 
 ## What every executor keeps
 
-Durability is the language's core promise (spec §5). An executor is another way to run a Definition, never another lowering:
+Durability is the language's core promise (spec §14). An executor is another way to run a Definition, never another lowering:
 
 - **The Definition stays the deployed unit.** It is kept by content hash and validated when loaded, and every instance is pinned to it for life (docs/arch/definition.md).
 - **Frames stay data:** `(function, pc, registers)`. A stopped execution's pc is its `await` or `select`, and each commit writes the snapshot through the `InstanceStore` (`runtime/store.ts`, `runtime/scheduler/wake.ts`).
-- **A segment re-run computes the same.** `now()` is the segment's start, random draws are counted in the snapshot and extern constants are pinned (spec §3.6, §3.8). `crashEveryAwait` checks this (§10).
+- **A segment re-run computes the same.** `now()` is the segment's start, random draws are counted in the snapshot and extern constants are pinned (spec §17.2, §19.2). `crashEveryAwait` checks this (§18).
 - **Released objects are collected after every instruction.** The segment loop runs one instruction per step and collects before the next (`scheduler/segment/index.ts` `#drive`, `#step`). A disposal that runs code is a call on the run stack, made before the execution goes on (definition.md, Holders).
 
 Keep these, and a snapshot one executor commits is one any other resumes.
@@ -63,7 +63,7 @@ Speed only matters when CPU time between commits outweighs a commit's cost. For 
 
 1. **An executor contract.** The frame helpers in `runtime/interpreter/machine.ts` (`readRegister`, `writeRegister`, cells, `releaseFrame`, `storeAt`) are what a handler may do to a frame. Every executor implements them, or calls them.
 2. **A conformance suite.** Run `test/corpus/`, the runtime tests and the std `.test.ista` suites against every executor. Add golden vectors for `language/values.ts` (`==`, map keys, order), canonical JSON, and the text of `Int`, `Float`, `String` and `Decimal`.
-3. **Std semantics defined by JavaScript, settled in the spec.** The `strings` module takes "JavaScript's names", `regex` expands `$1` "as JavaScript does", `strings.utf16Length` counts as JavaScript does, JSON keys sort in UTF-16 order (§9), and a primitive's text is JavaScript's `String(value)` (`stdlib/prelude/text-forms.ts`). A non-JS executor must match them bit for bit.
+3. **Std semantics defined by JavaScript, settled in the spec.** The `strings` module takes "JavaScript's names", `regex` expands `$1` "as JavaScript does", `strings.utf16Length` counts as JavaScript does, JSON keys sort in UTF-16 order (§17.4), and a primitive's text is JavaScript's `String(value)` (`stdlib/prelude/text-forms.ts`). A non-JS executor must match them bit for bit.
 4. **Delta snapshots,** for executors that make segments compute more. Each commit encodes and writes the whole snapshot (`wake.ts` `commit`), so large state makes every `await` costly whatever runs the code.
 
 ## Suggested order

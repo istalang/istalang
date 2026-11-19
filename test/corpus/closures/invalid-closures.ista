@@ -14,7 +14,7 @@
 # error: 5001 at 54:26
 # error: 5502 at 62:54
 # error: 5001 at 69:5
-# A lambda or local function is one value (§3.14): no default values, rest parameters or type
+# A lambda or local function is one value (§6.4): no default values, rest parameters or type
 # parameters. A parameter's type must be written or come from the expected function type; a
 # local function calling itself declares its result. A closure can't capture a reference, written
 # or taken from the expected function type, and `break`, `continue` and `await` belong to the

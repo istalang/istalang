@@ -1,9 +1,9 @@
 /**
- * Struct constraints (§3.5): `struct { title: String, [_] is FormNode }` after `is`, resolved
+ * Struct constraints (§8.1): `struct { title: String, [_] is FormNode }` after `is`, resolved
  * where it is written into what it asks of a struct's fields (types/type/struct-constraint.ts).
  *
  * - A constraint is open: it states the fields its entries name, in name order as every struct's
- *   fields are (§3.1), and what every other field must be (`others`), or nothing.
+ *   fields are (§5.2), and what every other field must be (`others`), or nothing.
  * - An entry's rule is exact (`title: String`, after aliases) or the constraints a field's type
  *   meets (`meta is struct { tag: String } & Sendable`). Its traits are resolved as `any` takes
  *   them, `Self` the trait's own, since each field it constrains is its own type: they are applied

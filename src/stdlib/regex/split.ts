@@ -1,5 +1,5 @@
 /**
- * `regex.split` (§3.8), JavaScript's algorithm without capture groups. re2js's own `split` follows
+ * `regex.split` (§19.2), JavaScript's algorithm without capture groups. re2js's own `split` follows
  * Java's, which drops trailing empty strings; JavaScript's keeps them, as `strings.split` does.
  */
 

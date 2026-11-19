@@ -1,5 +1,5 @@
 # outcome: "1 2 3|4|legal: late|ops: no reason given|2 t|true false|5 6|x: no reason given|function a: b 2|x: no reason given z: no reason given|value result|oops 0 l"
-# A variant with fields is a function value (§3.14) named as a static function is: qualified, as
+# A variant with fields is a function value (§6.4) named as a static function is: qualified, as
 # `Result.Ok` passed to `map`, whose result it infers as a lambda's would, or bare where the
 # expected function type's result is its enum, also as a member of an expected union or a
 # parameter of one overload of several, which its result tells apart. It fits a function type

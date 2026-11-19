@@ -1,5 +1,5 @@
 # The endings module: how a call the runtime ran apart ended, as the code waiting on it reads it.
-# An instance's end (§9) and a call into a context (§9) both reach their waiter as the run tells
+# An instance's end (§17.1) and a call into a context (§17.1) both reach their waiter as the run tells
 # it, so the one reading of that lives here, outside the prelude, where no program sees it unasked.
 
 # The `Result` an ending gives: `Ok` of what the call gave, alone in `given`; or, with nothing

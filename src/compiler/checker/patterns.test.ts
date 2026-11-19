@@ -1,5 +1,5 @@
 /**
- * Patterns and the operators on optionals and results (§3.11, §3.12, §4), as checking a program
+ * Patterns and the operators on optionals and results (§11.3, §12, §10.4), as checking a program
  * reports them: what the corpus (test/corpus/patterns/) can't state, such as warnings, and each
  * rule's cases one by one. Running them is the corpus's job.
  */
@@ -97,7 +97,7 @@ describe('exhaustiveness', () => {
     ],
     ['a struct', 'Point', 'case Point{x == 0}: "axis"', 'Point{…}'],
   ])(
-    'writes the value it misses as a pattern would, a variant as its call (§3.11): %s',
+    'writes the value it misses as a pattern would, a variant as its call (§5.3): %s',
     (_case, type, cases, missing) => {
       const { diagnostics } = diagnosedAt(
         stdProgramOf({ 'main.ista': matching(type, cases) }),
@@ -185,7 +185,7 @@ describe('a Result that must be used', () => {
   });
 });
 
-describe('a variant written as it is built (§3.11)', () => {
+describe('a variant written as it is built (§5.3)', () => {
   const declared = [
     'enum Verdict:',
     '  Approved',
@@ -326,7 +326,7 @@ describe('comparison and membership resolution', () => {
     ['a pattern field ordering', '  h is Holder{item < p}', 'item < p'],
   ])('reports an ambiguous compare on %s', (_case, line, spanText) => {
     const { codes, spanTexts } = reported([...ambiguous, line].join('\n'));
-    // The two `compare`s clash where declared too, as any two a call fits alike do (§3.7).
+    // The two `compare`s clash where declared too, as any two a call fits alike do (§6.3).
     expect(codes.slice(0, 2)).toEqual([reports.overloadClash.code, reports.ambiguousCall.code]);
     expect(spanTexts[1]).toBe(spanText);
   });

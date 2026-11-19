@@ -1,5 +1,5 @@
 /**
- * Choosing among overloads (§3.7), seen through which result a call gets: each overload of `f`
+ * Choosing among overloads (§6.3), seen through which result a call gets: each overload of `f`
  * returns a type of its own. The choice follows the rules case by case, and never depends on the
  * order the overloads are declared in.
  */
@@ -19,7 +19,7 @@ interface ChoiceCase {
   readonly setup?: string;
   /** The result type of the overload the call must choose; undefined when it is ambiguous. */
   readonly chosen: string | undefined;
-  /** Whether the overloads clash where declared, as two some call fits alike do (§3.7). */
+  /** Whether the overloads clash where declared, as two some call fits alike do (§6.3). */
   readonly clash?: boolean;
 }
 

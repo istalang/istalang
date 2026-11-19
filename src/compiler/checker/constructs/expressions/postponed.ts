@@ -3,7 +3,7 @@
  * (docs/work/done/variance-inference/i2-scope.md §3, wiring/body/constraint-scope.ts): a lambda whose
  * result or a parameter isn't written, a function or a variant named as a value, a bare variant
  * called, `[]` or `[:]`, which build what they go into, and a `struct{…}` with a comprehension,
- * whose fields may be known only once what it builds is (§3.1). Checked in an open scope with
+ * whose fields may be known only once what it builds is (§5.2). Checked in an open scope with
  * nothing settled expected of it, each is a placeholder of the scope, which refuses a bound it
  * can't be a value of (`admits`), so a candidate a call probes that gives it one fails.
  *
@@ -12,7 +12,7 @@
  *   recursive type is taken as what it unfolds to, and a union when one of its members is taken.
  * - A lambda is checked with its parameters as settled and what is known of its result guiding its
  *   body as its expected type (`Scopes.guided`), never as its declared result, so it gives what its
- *   body does (§3.14), as `xs.map(fn x: x * 2)` gives `Int`; where its result is settled, it is
+ *   body does (§6.4), as `xs.map(fn x: x * 2)` gives `Int`; where its result is settled, it is
  *   declared so.
  * - A function named where what it gives is still open is chosen by the parameters it is expected
  *   to take, settled, and joins the scope as a call does, its type parameters variables of the
@@ -108,7 +108,7 @@ export function postponedAdmits(context: BodyContext, node: Expression): Admits 
 }
 
 /**
- * What `node` is checked expecting where `expected` is: of a union, the member it is built as (§2),
+ * What `node` is checked expecting where `expected` is: of a union, the member it is built as (§4.2),
  * by what it can be a value of (`admits`) or by its form (`formAdmits`); else `expected` itself.
  */
 export function memberBuilt(
@@ -125,7 +125,7 @@ export function memberBuilt(
 }
 
 /**
- * The member of `expected`, a union, a value of `node` is built as (§2), as `admits`, what it can
+ * The member of `expected`, a union, a value of `node` is built as (§4.2), as `admits`, what it can
  * be a value of, takes: the one member it takes, at any depth, so a lambda against an optional
  * function is the function, and a bare variant the enum having it; of several, an empty `[]` takes
  * the arrays. `expected` itself where none or several are taken, which fitting then judges.
@@ -153,7 +153,7 @@ function memberAdmitted(
 
 /**
  * What a literal of items can be built as by its form, as a member of an expected union is chosen
- * for it (§2, `memberAdmitted`): an array literal an array, a map literal a map, a tuple a tuple of
+ * for it (§4.2, `memberAdmitted`): an array literal an array, a map literal a map, a tuple a tuple of
  * as many elements; undefined for any other expression, and for a union an `any` type is a member
  * of, which may take the literal's own type whole.
  */

@@ -1,9 +1,9 @@
 /**
  * What a chosen, instantiated function becomes as a call (check.ts `ResolvedCall`), the one place
- * every call is made, whether written in a body or found as a witness of a constraint (§3.10). The
+ * every call is made, whether written in a body or found as a witness of a constraint (§8.2). The
  * rules every call obeys live here, so no path that makes calls can skip them.
  *
- * Refusing to call `dispose` (§7) is a rule about calls written in code
+ * Refusing to call `dispose` (§16) is a rule about calls written in code
  * (resolution/calls/resolve/index.ts): a witness of `Disposable` is `dispose` itself, and is only
  * ever called by such a call.
  */

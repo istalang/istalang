@@ -1,5 +1,5 @@
 /**
- * What the std's externs hold and keep (§3.16): `@Holds` read by everything asking what a value
+ * What the std's externs hold and keep (§5.5): `@Holds` read by everything asking what a value
  * holds, `@Keeps` read by parameter position, and either refused off the std's externs.
  */
 

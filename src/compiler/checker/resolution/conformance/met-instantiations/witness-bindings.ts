@@ -36,7 +36,7 @@ export function candidateBindings(
 
 /**
  * What each of `candidates`, witnesses of a requirement, finds its trait's open parameters to be:
- * a required function's, or the getters of a field a type stores none of (§3.10).
+ * a required function's, or the getters of a field a type stores none of (§8.2).
  */
 export function bindingsAmong(
   checker: CheckerContext,
@@ -149,7 +149,7 @@ function bindingAs(
       return true;
     }
     const passed = substitute(byValue(slot), openFound, checker.typeRules);
-    // The receiver binds exactly, as a method's does wherever it is called (§3.5).
+    // The receiver binds exactly, as a method's does wherever it is called (§8.1).
     return slot.isReceiver
       ? instantiating.matchReceiver(given.type, passed, slot.reference)
       : instantiating.match(given.type, passed);

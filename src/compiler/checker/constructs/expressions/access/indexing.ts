@@ -1,12 +1,12 @@
 /**
- * Indexing and slicing (§3.9): `x[k]` calls `index(x, k)`, found like an operator's function and
- * chosen as the method call `x.index(k)` is, `x` giving its type parameters exactly (§3.5), as the
+ * Indexing and slicing (§10.2): `x[k]` calls `index(x, k)`, found like an operator's function and
+ * chosen as the method call `x.index(k)` is, `x` giving its type parameters exactly (§8.1), as the
  * keyed read `x.k` is (rules/getters.ts), among the `index` functions taking both by value, as the
  * brackets pass them; so any type with an `index` can be indexed, and slicing is indexing with a
  * `Range`. Writing an element is the rule of places (resolution/calls/places.ts). An index can be
  * a link of an optional chain (constructs/expressions/access/optionals.ts), as in `a?.items[0]`.
  *
- * A struct is indexed by its keys first (§3.1, §3.9): `s[k]` with `k` within `keyof S` reads the
+ * A struct is indexed by its keys first (§5.2, §10.2): `s[k]` with `k` within `keyof S` reads the
  * field `k` names, typed `S[K]`, before any `index`. Where `S` declares no `index` of its own, the
  * brackets expect a key, so a literal there is one (`s["region"]`); where it does, a key is what
  * a key's type makes one, and anything else calls `index`: a literal key has its literal type
@@ -77,7 +77,7 @@ export function checkIndex(context: BodyContext, node: Index, expected: Type | u
   return context.chains.continues(node) ? context.scopes.isolated(resolve) : resolve();
 }
 
-/** Whether a struct type declares an `index` taking its value, which a key gives way to (§3.9). */
+/** Whether a struct type declares an `index` taking its value, which a key gives way to (§10.2). */
 function declaresIndex(context: BodyContext, container: Type): boolean {
   const { checker, module } = context;
   return topLevelCandidates(checker, module, collectionFunctions.index, [container]).some(

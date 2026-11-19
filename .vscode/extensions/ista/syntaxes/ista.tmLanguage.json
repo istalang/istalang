@@ -86,7 +86,7 @@
           }
         },
         {
-          "comment": "Only `fn name(` and `fn name<` declare: `fn x: x > 0` is a lambda. `get` before a name makes a getter (spec §3.1): `fn get(` names a function `get`.",
+          "comment": "Only `fn name(` and `fn name<` declare: `fn x: x > 0` is a lambda. `get` before a name makes a getter (spec §5.2): `fn get(` names a function `get`.",
           "match": "\\b(fn)\\s+(?:(get)\\s+(?=[A-Za-z_]))?(?:([A-Za-z_][A-Za-z0-9_]*)(\\.))?([A-Za-z_][A-Za-z0-9_]*)(?=\\s*[(<])",
           "captures": {
             "1": { "name": "storage.type.function.ista" },
@@ -99,12 +99,12 @@
       ]
     },
     "modifier": {
-      "comment": "A head's contextual modifiers, before its other modifiers and its `fn`, `struct` or `const`, in any order (spec §2); test/vscode-grammar.test.ts holds them to the parser's.",
+      "comment": "A head's contextual modifiers, before its other modifiers and its `fn`, `struct` or `const`, in any order (spec §2.2); test/vscode-grammar.test.ts holds them to the parser's.",
       "match": "\\b(shared|sendable|inert|live|ista)\\b(?=(?:\\s+(?:extern|async|shared|sendable|inert|live|ista))*\\s+(?:fn|struct|const)\\b)",
       "captures": { "1": { "name": "storage.modifier.ista" } }
     },
     "contextual": {
-      "comment": "Keywords only in one position each (spec §2), ordinary names everywhere else.",
+      "comment": "Keywords only in one position each (spec §2.2), ordinary names everywhere else.",
       "patterns": [
         {
           "match": "^\\s*(type)\\s+([A-Za-z_][A-Za-z0-9_]*)(?=\\s*(<[^=]*>)?\\s*=)",
@@ -114,7 +114,7 @@
           }
         },
         {
-          "comment": "A trait's associated type requirement, `type Key` or `type Key is C` (spec §3.10).",
+          "comment": "A trait's associated type requirement, `type Key` or `type Key is C` (spec §8.2).",
           "match": "^\\s*(type)\\s+([A-Z][A-Za-z0-9_]*)(?=\\s*(\\bis\\b.*)?$)",
           "captures": {
             "1": { "name": "storage.type.alias.ista" },
@@ -122,7 +122,7 @@
           }
         },
         {
-          "comment": "A struct's keys, `keyof S`, and a type `match` case's type variable, `infer T` (spec §3.1, §3.17).",
+          "comment": "A struct's keys, `keyof S`, and a type `match` case's type variable, `infer T` (spec §5.2, §4.6).",
           "match": "\\b(keyof|infer)\\s+(?=[A-Za-z_(])",
           "captures": { "1": { "name": "keyword.operator.type.ista" } }
         },
@@ -135,7 +135,7 @@
           "captures": { "1": { "name": "keyword.control.import.ista" } }
         },
         {
-          "comment": "`gives` and `takes` before a type parameter's name or `...` (§3.5).",
+          "comment": "`gives` and `takes` before a type parameter's name or `...` (§8.1).",
           "match": "\\b(gives|takes)\\s+(?=(?:\\.\\.\\.)?[A-Z])",
           "captures": { "1": { "name": "storage.modifier.ista" } }
         },
@@ -148,7 +148,7 @@
           }
         },
         {
-          "comment": "`transient` before the `let` it modifies (§3.4).",
+          "comment": "`transient` before the `let` it modifies (§7.1).",
           "match": "^\\s*(transient)(?=\\s+let\\b)",
           "captures": { "1": { "name": "storage.modifier.ista" } }
         },
@@ -194,7 +194,7 @@
           "match": "\\b(Int|Float|Bool|String|Unit|Never|None)\\b"
         },
         {
-          "comment": "Every type name, primitives included, and every variant is PascalCase (spec §2); the primitives match first.",
+          "comment": "Every type name, primitives included, and every variant is PascalCase (spec §4.1); the primitives match first.",
           "name": "entity.name.type.ista",
           "match": "\\b[A-Z][A-Za-z0-9_]*\\b"
         }
@@ -221,7 +221,7 @@
       ]
     },
     "item": {
-      "comment": "An indented value's item (spec §2): a `-` first on its line, then a space or the line's end; `-1` there is a number.",
+      "comment": "An indented value's item (spec §3.2): a `-` first on its line, then a space or the line's end; `-1` there is a number.",
       "match": "^\\s*(-)(?=\\s|$)",
       "captures": { "1": { "name": "punctuation.definition.list.begin.ista" } }
     },

@@ -1,5 +1,5 @@
 # outcome: "true false true true true"
-# Enums are declared and built by their variants (§3.11): bare where the enum type is expected,
+# Enums are declared and built by their variants (§5.3): bare where the enum type is expected,
 # qualified elsewhere, called for a variant with fields. A generic enum's type arguments come
 # from the expected type, the fields, or the defaults (`Result<T, E = Error>`).
 

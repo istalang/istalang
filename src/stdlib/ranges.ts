@@ -1,12 +1,12 @@
 /**
- * A prelude `Range`'s values (§3.8): which ints it reaches, for iteration, membership, slicing
+ * A prelude `Range`'s values (§19.3): which ints it reaches, for iteration, membership, slicing
  * (positions.ts) and random draws alike. One home, so they can't disagree.
  *
  * - A range is read through its declaration, by its fields' names (values/arguments.ts).
  * - The step's sign is the direction, and the end is never reached: `..=` stored its end one past
  *   the written one in that direction. A range whose end lies the other way reaches nothing, as
  *   Python's `range` does. A step of 0 would reach its start forever, which is a bug in the
- *   program, so it panics (§3.12).
+ *   program, so it panics (§12).
  * - An open start or end reaches without bound that way; only a range with both ends can be
  *   counted, and only one with a start can step by more than 1.
  */

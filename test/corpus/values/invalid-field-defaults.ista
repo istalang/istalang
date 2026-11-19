@@ -8,7 +8,7 @@
 # error: 5410 at 50:21
 # error: 2004 at 61:6
 # error: 5101 at 65:3
-# A field's default must fit its field (§3.1), sees only the fields before it, and can't reach its
+# A field's default must fit its field (§5.2), sees only the fields before it, and can't reach its
 # own field when that field takes its type from it. A constant runs a default only when compile
 # time computes it, which arithmetic it doesn't, and one whose default builds a value needing that
 # default again would never be finished. Only a function returns, so a default has no `return`, as

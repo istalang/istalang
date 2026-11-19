@@ -1,5 +1,5 @@
 /**
- * Enum values built by their variant (§3.11): `variant` of an enum type by the index of the variant
+ * Enum values built by their variant (§5.3): `variant` of an enum type by the index of the variant
  * named, its fields in declaration order, which a call of a variant's constructor, the
  * constructor's own entry and code the compiler writes (a propagated error, a decoded value) all
  * build through, so none of them imports another to build one. A union's or an `any` type's value
@@ -116,7 +116,7 @@ export function branchOnVariants(
   context.code.switch(register, targets, span, otherwise);
 }
 
-/** Borrows the one field of the variant `tested` holds, an `Ok`'s or `Err`'s (§3.11, §3.12). */
+/** Borrows the one field of the variant `tested` holds, an `Ok`'s or `Err`'s (§5.3, §12). */
 export function payloadOf(
   context: CodeContext,
   { register, type, name }: VariantCase,

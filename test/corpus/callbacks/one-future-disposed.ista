@@ -1,5 +1,5 @@
 # outcome: 19
-# A `Resolver.of` is cancelled once one of the futures it is registered on is disposed (§6): its
+# A `Resolver.of` is cancelled once one of the futures it is registered on is disposed (§15.2): its
 # `onCancel` runs once, and the surviving future's value later reaches no callback.
 
 import * as futures from 'futures'

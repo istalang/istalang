@@ -28,7 +28,7 @@ import { completionsAt } from '../index.ts';
  * What a call taking its receiver reports when its arguments, each `panic("")`, decide nothing:
  * several overloads take them (5003), or a type parameter only they give is left open (5100), or
  * is given `Never`, which meets none of its constraints (5101) and is no member of the union a
- * member parameter stands for one of (5131), as a keyed `index`'s key is (§3.9).
+ * member parameter stands for one of (5131), as a keyed `index`'s key is (§10.2).
  */
 const undecided = new Set([5003, 5100, 5101, 5131]);
 

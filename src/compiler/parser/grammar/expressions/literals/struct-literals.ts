@@ -1,5 +1,5 @@
 /**
- * Struct literals (§3.1): `Pair{first: 1}`, `Pair{first}`, `UserId{"u-1"}`,
+ * Struct literals (§5.2): `Pair{first: 1}`, `Pair{first}`, `UserId{"u-1"}`,
  * `Req{...r, a: 0}`, `struct{id, for k, v in ...rest: [k]: f(v)}`.
  *
  * The item forms are told apart by their first two tokens alone, without knowing the struct's
@@ -11,7 +11,7 @@
  *   hold the loop's key, so the entry never reads as a field's declaration
  * - anything else is a positional value, which must be the only item. `UserId{(x)}` is how a
  *   variable is passed positionally. Braces after a variant's name read as any literal does, and
- *   the checker refuses them, naming the call (§3.11).
+ *   the checker refuses them, naming the call (§5.3).
  */
 
 import type {
@@ -45,8 +45,8 @@ export function parseStructLiteralBody(
 }
 
 /**
- * `new Name<T>{…}`, from `new`, a keyword only before a name (§2): a shared struct's literal
- * (§3.18). Only the literal is its operand, so `new Inbox<T>{…}.send(m)` sends to the new inbox.
+ * `new Name<T>{…}`, from `new`, a keyword only before a name (§2.2): a shared struct's literal
+ * (§5.4). Only the literal is its operand, so `new Inbox<T>{…}.send(m)` sends to the new inbox.
  */
 export function parseNew(parser: Parser): Expression {
   const { start } = parser.cursor.advance().span;
@@ -81,7 +81,7 @@ function parseItems(parser: Parser): FieldsLiteral['items'] {
 
 /**
  * Reports what stands after a struct comprehension, or as a spread beside it: the comprehension
- * gives the literal's other fields itself, in braces and in an indented value alike (§3.1).
+ * gives the literal's other fields itself, in braces and in an indented value alike (§5.2).
  */
 export function reportAfterComprehension(
   parser: Parser,

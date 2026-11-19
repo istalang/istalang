@@ -13,7 +13,7 @@ import type { CodeWriter } from './code-writer.ts';
 export interface CodeEntryShape {
   readonly header: EntryHeader;
   readonly mode: CodeMode;
-  /** Whether each parameter has a default, which the entry's prologue computes (§3.3). */
+  /** Whether each parameter has a default, which the entry's prologue computes (§6.1). */
   readonly parameters: readonly { readonly hasDefault: boolean }[];
   readonly captures: number;
   /** The tree of the entry's module, which its instructions' spans point into. */

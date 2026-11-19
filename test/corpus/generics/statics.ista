@@ -1,7 +1,7 @@
 # outcome: "255 3.0 3 -3 12.5 true"
-# Static functions are called through their type, a conversion `T(x)` calls `T.from` (§3.7,
-# §3.10), and an operator on a declared type finds its function where the type is declared or in
-# scope (§3.9, §3.13).
+# Static functions are called through their type, a conversion `T(x)` calls `T.from` (§6.2,
+# §8.4), and an operator on a declared type finds its function where the type is declared or in
+# scope (§10.2, §13.1).
 
 import * as runtime from 'runtime'
 

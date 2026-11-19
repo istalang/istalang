@@ -1,11 +1,11 @@
 /**
- * Where a type parameter is met, as a lattice (§3.5): `unused ⊏ covariant, contravariant ⊏
+ * Where a type parameter is met, as a lattice (§8.1): `unused ⊏ covariant, contravariant ⊏
  * invariant`, joined where it is met twice, flipped across a function type's parameter, and
  * composed through a declaration's own variance where it stands in that declaration's type
  * arguments. `unused` flips to itself, so a fixpoint rising from it ends (variance.ts).
  */
 
-/** How a declaration's instantiations relate at one of its type parameters (§3.5). */
+/** How a declaration's instantiations relate at one of its type parameters (§8.1). */
 export type Variance = 'covariant' | 'contravariant' | 'invariant';
 
 /** Where a parameter was met so far: nowhere, or as a variance. */

@@ -1,6 +1,6 @@
 # outcome: "3 built, 3 appended, 3 linked, 3 counted down"
 # Static lifetimes accepts what builds structures without closing a cycle through a disposable
-# (§7): a list built in a loop, each node holding the one before it; appending at the tail
+# (§16): a list built in a loop, each node holding the one before it; appending at the tail
 # through a fresh node, which nothing reaches yet; a generic link used with a value, which reaches
 # nothing; and a closure calling itself through its captured `let`, a cycle that reaches no
 # disposable.

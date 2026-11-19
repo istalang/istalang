@@ -1,8 +1,8 @@
 # outcome: "[3, 2] 3 1 5 [5, 2] [[0, 9]]"
 # An element passed by `&` is copied in: read with `index` before the call, and written back with
-# `setIndex` when it returns (§3.7). Elements of two containers swap; changes made during the
+# `setIndex` when it returns (§7.3). Elements of two containers swap; changes made during the
 # call reach the container only at its end, so a closure sharing the container still sees the old
-# element then. A shared struct's value and its elements are copied in the same way (§3.9).
+# element then. A shared struct's value and its elements are copied in the same way (§10.2).
 
 import * as runtime from 'runtime'
 

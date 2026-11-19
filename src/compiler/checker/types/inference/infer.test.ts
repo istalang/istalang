@@ -1,5 +1,5 @@
 /**
- * Inferring type arguments (§3.5) doesn't depend on the order the arguments come in: whatever the
+ * Inferring type arguments (§8.1) doesn't depend on the order the arguments come in: whatever the
  * order, a call either infers the same type or reports the same thing. A type found where a value
  * must have it exactly is the parameter's own, which a convertible argument can't widen.
  */
@@ -12,7 +12,7 @@ import { binderDiagnostics } from '../../../binder/diagnostics.ts';
 import { diagnosedAt } from '../../../compile.test-kit.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 
-/** Arguments of different types, some fitting each other only by the implicit wrap (§2). */
+/** Arguments of different types, some fitting each other only by the implicit wrap (§4.1). */
 const argumentTexts = ['1', 'maybe', '2', '"x"', 'none'];
 
 function reportedCodes(argumentsText: readonly string[]): readonly number[] {
@@ -134,7 +134,7 @@ describe('a parameter only never gives', () => {
   });
 });
 
-describe('member parameters (§3.5)', () => {
+describe('member parameters (§8.1)', () => {
   const declarations = [
     'type Status = "draft" | "sent" | "failed"',
     'fn describe<S in Status>(s: S) -> S: s',

@@ -7,7 +7,7 @@
  *   a heap write like any (design.md §2), and declaring one makes the cell.
  * - **A read** of a variable's or path's part reads that path, so reading it again names one value
  *   (nodes.ts); a read of any other value reaches what it reaches. A field a trait requires is
- *   read as the getter's call it may be (§3.10).
+ *   read as the getter's call it may be (§8.2).
  * - **A closure** is analysed as its own function, once; it holds what it captures, which escapes,
  *   since the closure may be called by code nobody sees, and its requirements are checked for any
  *   values of its inputs' types where it is made (design.md §5.5). So are a function's named as a
@@ -283,7 +283,7 @@ function copied({ analysis, state }: At, { into, from }: Of<'copy'>): void {
 }
 
 /**
- * A read of a field a trait requires, which the value's own type may meet with a getter (§3.10):
+ * A read of a field a trait requires, which the value's own type may meet with a getter (§8.2):
  * the call it may be, of code this body doesn't see, given the value read. The getters themselves
  * are checked as the witnesses they are: by the call instantiating this function, where a value
  * goes into an `any`, and here, as its value put into the trait's `any`, on a computed type, whose

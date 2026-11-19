@@ -1,10 +1,10 @@
 /**
- * Indented values (spec §2), printed as written, but for a struct value, whose form its width
+ * Indented values (spec §3.2), printed as written, but for a struct value, whose form its width
  * picks (struct-values.ts): a map or an array stays a block, as do the lines its entries stand on.
  *
  * - The block stands below its opening, `T:`, `new T:`, or the `=`, `return`, key or `-` its parent
  *   prints (`opened`), with nothing after the opening on its line but a comment. Its entries keep
- *   the lines they were written on, `, ` between those sharing one (§2), and one blank line where
+ *   the lines they were written on, `, ` between those sharing one (§3.2), and one blank line where
  *   the source had any between two lines.
  * - An item's value written as `- key: value`, its other entries lined up with `key`, keeps that
  *   form; a block below a lone `-` stands one level deeper than the `-`; any other value, `- T:`'s

@@ -14,9 +14,9 @@
 # error: 5087 at 50:26
 # error: 5087 at 50:44
 # A pack is a function's, with no constraint or default, and stands only where a tuple of types
-# can (§3.5): a function type's rest is a pack, a pack's arguments come by position or as one
+# can (§8.1): a function type's rest is a pack, a pack's arguments come by position or as one
 # spread of its own pack's value, and a written pack is a tuple type. A pack's items are any type
-# to overload clashes (§3.7).
+# to overload clashes (§6.3).
 struct Boxed<...A> { value: A }
 
 fn constrained<...A is Sendable>(...args: A): ()

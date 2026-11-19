@@ -1,5 +1,5 @@
 # outcome: "1 222 34"
-# A slot (§6): an operation that can complete when it is called does so at once, and the others
+# A slot (§15.1): an operation that can complete when it is called does so at once, and the others
 # wait in one queue, served in the order they came. When a value arrives, every waiting read
 # before the first waiting take yields it, and that take empties the slot; a put waiting on a full
 # slot fills it once a take empties it.

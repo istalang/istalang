@@ -1,5 +1,5 @@
 /**
- * An ista instance of a host's world, resident in memory while the world holds it (§5): its run,
+ * An ista instance of a host's world, resident in memory while the world holds it (§14): its run,
  * the snapshot it last committed, and what its segment since then did, which leaves it only at its
  * next commit (commits.ts).
  */
@@ -24,7 +24,7 @@ export interface WorldProgram extends KeyedDefinition {
 /**
  * What makes a resident: a new one, active, of the seed of its random source (derived from the
  * host's for a context, a draw of its parent's for one spawned), the instances it was spawned
- * from, nearest first, and whether it crashes at every await (§10); or one read back from the
+ * from, nearest first, and whether it crashes at every await (§18); or one read back from the
  * store, as the snapshot it last committed says it all.
  */
 export type ResidentMade =
@@ -44,12 +44,12 @@ export class Resident {
   readonly name: string;
   readonly program: WorldProgram;
   readonly seed: Uint8Array;
-  /** The instances it was spawned from, nearest first (§9). */
+  /** The instances it was spawned from, nearest first (§17.1). */
   readonly lineage: readonly string[];
   crashEveryAwait: boolean;
-  /** The entry encoding its outcome, a spawned instance's whose type a codec writes (§9). */
+  /** The entry encoding its outcome, a spawned instance's whose type a codec writes (§17.4). */
   encoder: number | undefined;
-  /** Whether its panic terminates it at once, as an isolated instance's does (§9). */
+  /** Whether its panic terminates it at once, as an isolated instance's does (§17.1). */
   terminatesOnPanic = false;
   status: PersistedStatus;
   run: Run;
@@ -64,14 +64,14 @@ export class Resident {
   inputs: Input[] = [];
   /**
    * The call that started its segment since its last commit, which a retry of that segment runs
-   * again (§3.12); none for a segment a timer or another instance started.
+   * again (§12); none for a segment a timer or another instance started.
    */
   replay: Replay | undefined;
   /** When its segment started: the time its clock reads all segment long. */
   startedAt = 0n;
   /**
    * What leaves it at its next commit: what its segment did to others and its log records, which a
-   * failed segment never did (§5), and what its end tells the calls still waiting on it, which leaves
+   * failed segment never did (§14), and what its end tells the calls still waiting on it, which leaves
    * it all the same.
    */
   effects: (() => void)[] = [];
@@ -81,7 +81,7 @@ export class Resident {
   heardBy: ((records: readonly LogRecord[]) => void) | undefined;
   /** The answers of the calls into it running as it last committed, by their futures' ids. */
   answers = new Map<number, Invocation>();
-  /** What waits on its end, told as it commits one (§9). */
+  /** What waits on its end, told as it commits one (§17.1). */
   readonly endWatchers: ((end: InstanceEnd) => void)[] = [];
   /** The instances it spawned in the segment committing next. */
   spawned: string[] = [];
@@ -165,7 +165,7 @@ export class Resident {
 /**
  * A call into an instance: the closure it calls and what it passes, and whether its caller hears
  * the instance's panic: not once it let go of the call, and never the loop serving jobs, which
- * leaves it to the host (§9).
+ * leaves it to the host (§17.3).
  */
 export interface CallInto {
   readonly closure: Value;
@@ -202,7 +202,7 @@ function endOf(status: PersistedStatus): InstanceEnd | undefined {
 
 /**
  * Which of `residents` runs next: the one whose waiting turn arrived first among every run's, so
- * what settles first runs first, whichever instance waits on it (§6); else the first made.
+ * what settles first runs first, whichever instance waits on it (§15.2); else the first made.
  */
 export function firstArrived(residents: ReadonlySet<Resident>): Resident | undefined {
   let first: Resident | undefined;

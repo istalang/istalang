@@ -1,5 +1,5 @@
 /**
- * Variant names (§3.11): what a module reports of a bare variant no enum is expected of is its
+ * Variant names (§5.3): what a module reports of a bare variant no enum is expected of is its
  * own, so what a module it imports declares beside what it imports changes nothing it reports, and
  * a revision adding such an enum there checks none of its bodies again.
  */

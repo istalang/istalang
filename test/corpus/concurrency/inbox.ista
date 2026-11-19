@@ -1,5 +1,5 @@
 # outcome: "a:1 b:2 c:3 | x y z | first second"
-# An inbox (§6) delivers each message to exactly one receiver, the one that has waited longest,
+# An inbox (§15.3) delivers each message to exactly one receiver, the one that has waited longest,
 # and in commit order: sends within one segment keep their program order, and a segment that
 # commits first is received first. `send` never waits.
 

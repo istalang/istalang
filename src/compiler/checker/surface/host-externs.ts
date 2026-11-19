@@ -1,5 +1,5 @@
 /**
- * Externs a host implements (§3.6, §9), as the checker's surface (check.ts) and lowering read
+ * Externs a host implements (§17.2, §17.3), as the checker's surface (check.ts) and lowering read
  * them: which externs and extern types are the host's rather than the runtime's, the one rule
  * being who declares them, a program's module or a std one. Whether what they take and give can
  * cross is rules/boundary/host-boundary.ts's.
@@ -23,7 +23,7 @@ export function isHostExtern(
   );
 }
 
-/** Whether `type` is one its host provides (§3.6): an extern type no std module declares. */
+/** Whether `type` is one its host provides (§17.2): an extern type no std module declares. */
 export function isHostType(
   checker: Pick<Checker, 'isStd' | 'bindings'>,
   type: Type,

@@ -1,5 +1,5 @@
 /**
- * A struct literal's items (§3.1): which field each gives, checked against its type where it is
+ * A struct literal's items (§5.2): which field each gives, checked against its type where it is
  * known or else on its own and matched for inference, and what the items leave out: a field
  * missing, or one its default gives. The literal is completed with them in index.ts.
  */
@@ -36,11 +36,11 @@ import { writtenLiteral } from '../../../../types/unions/unions.ts';
 /**
  * What a literal builds: its fields as declared, how to name its type from type arguments, and
  * the generic declaration they belong to: a struct, an alias of a shape for a shape it names
- * (§3.17), absent for any other shape.
+ * (§4.6), absent for any other shape.
  */
 export interface LiteralShape {
   readonly owner: DeclaredStruct | TypeAliasDeclaration | undefined;
-  /** The function the declaration's fields read as when one has a default (§3.1). */
+  /** The function the declaration's fields read as when one has a default (§5.2). */
   readonly defaults?: FunctionDeclaration | undefined;
   /** The type arguments already decided: written, or a struct's own where one is expected. */
   readonly known: readonly Type[] | undefined;
@@ -52,7 +52,7 @@ export interface LiteralShape {
   readonly expected?: Type | undefined;
   readonly fields: readonly FieldMember[];
   readonly typeOf: (typeArguments: readonly Type[]) => Type;
-  /** The type a spread gives when not the literal's own: a shared struct's value (§3.18). */
+  /** The type a spread gives when not the literal's own: a shared struct's value (§5.4). */
   readonly spreadOf?: (typeArguments: readonly Type[]) => Type;
 }
 
@@ -91,7 +91,7 @@ export interface LiteralItems {
  * Checks one item of a literal: its value against its field's type when that is already known,
  * else in the literal's constraint scope, which postpones one that needs what is expected of it to
  * its placeholder, matched for inference, a literal with its literal type where the field expects
- * one, as a member parameter's does (§2, §3.5).
+ * one, as a member parameter's does (§4.2, §8.1).
  */
 export function checkItem(
   context: BodyContext,
@@ -154,7 +154,7 @@ interface FieldValue {
 /**
  * Checks a field's value: against the field's type when that is known, naming no variable of the
  * constraint scope; else in the literal's scope, expected to be what that type is so far, and
- * matched, a literal with its literal type where the field expects one (§2, §3.5).
+ * matched, a literal with its literal type where the field expects one (§4.3, §8.1).
  */
 function checkFieldValue(
   context: BodyContext,
@@ -221,7 +221,7 @@ function reportMisfit(
 /**
  * With names alone, a field no item names is missing, unless it has a default: one that can't be
  * called for these type arguments is reported where they are checked, not as a missing field. A
- * struct comprehension gives the fields at `comprehended` and leaves none to a default (§3.1).
+ * struct comprehension gives the fields at `comprehended` and leaves none to a default (§5.2).
  */
 export function reportMissing(
   context: BodyContext,

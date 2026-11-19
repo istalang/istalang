@@ -8,7 +8,7 @@
 # error: 5100 at 33:7
 # error: 5222 at 34:21
 # error: 5405 at 38:6
-# Conversions into a union (§2, §4): inside a value type as its variance allows (§3.5), never inside
+# Conversions into a union (§4.2, §11.1): inside a value type as its variance allows (§8.1), never inside
 # a handle or through &, never from a base type into a literal type, never into several members,
 # never inferred unprompted for branches or arrays, and ? refuses an error not in the union.
 type Status = "draft" | "sent"

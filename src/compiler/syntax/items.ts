@@ -1,11 +1,11 @@
 /**
- * Items (§3): where each may stand, and the annotations it carries (§3.16).
+ * Items (§5.1): where each may stand, and the annotations it carries (§5.5).
  *
- * An item stands at the top level of a module, in a block, or both (spec §3, §3.4, §3.6, §3.7,
- * §3.13). The parser rejects an item in the wrong place, and the binder relies on the same answer,
+ * An item stands at the top level of a module, in a block, or both (spec §5.1, §7.1, §17.2, §6.2,
+ * §13.1). The parser rejects an item in the wrong place, and the binder relies on the same answer,
  * so it is one function of the item. A module holds declarations and a block holds statements.
  * Functions and `const` values are both, with two exceptions:
- * - an extern, static (`fn Duration.zero()`) or getter (`fn get full(…)`, §3.1) function declares
+ * - an extern, static (`fn Duration.zero()`) or getter (`fn get full(…)`, §5.2) function declares
  *   something the whole program sees, so it stays at the top level
  * - a mutable or function-held variable lives in a function, so it stays in blocks.
  *
@@ -55,7 +55,7 @@ const statementWordPlaces = {
   transient: 'block',
 } as const satisfies Record<StatementWord, Exclude<Place, 'module'>>;
 
-/** What a module's item may start with (§3, §3.13). */
+/** What a module's item may start with (§5.1, §13.1). */
 export const moduleItemWords: readonly (DeclarationWord | StatementWord)[] = [
   ...declarationWords,
   ...statementWords.filter((word) => statementWordPlaces[word] === 'both'),

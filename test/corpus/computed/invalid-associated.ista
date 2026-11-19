@@ -5,7 +5,7 @@
 # error: 5133 at 33:38
 # error: 5134 at 36:3
 # error: 5100 at 37:7
-# Invalid associated types and struct constraints (§3.1, §3.5): an associated type referring to
+# Invalid associated types and struct constraints (§5.2, §8.1): an associated type referring to
 # itself, one named as a variant, a trait using `Self.Data` after `any`, an associated type a
 # struct lacks, two `[_]` entries, a value meeting no struct constraint, and inference through an
 # associated type.

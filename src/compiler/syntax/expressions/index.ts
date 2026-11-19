@@ -1,5 +1,5 @@
 /**
- * Expression nodes (spec §2–§4).
+ * Expression nodes (spec §2–§11).
  *
  * The parser decides only what the syntax decides; meaning is left to the checker. So `[...m]`
  * is an ArrayLiteral even when `m` is a map, `P{x}` names a field `x` whatever `P` declares, and
@@ -9,12 +9,12 @@
  * Parameter). They are listed in ExpressionPart rather than Expression, so a field typed
  * Expression can't hold them.
  *
- * `if`, `match` and `select` are expressions (§4), and so is a `{…}` block. Their bodies are Blocks
+ * `if`, `match` and `select` are expressions (§10.1), and so is a `{…}` block. Their bodies are Blocks
  * (statements/index.ts), whatever form was written: indented, on the same line, or in braces.
  *
  * Parentheses are kept as Parenthesized nodes: the `??` mixing rule depends on them, and the
  * formatter must not lose them. `&x` is a Reference expression wherever it is written; the parser
- * reports it everywhere except as a whole call argument (§3.7), so the tree still shows what
+ * reports it everywhere except as a whole call argument (§7.3), so the tree still shows what
  * was written.
  */
 
@@ -58,8 +58,8 @@ export interface Comprehension extends NodeOf<'Comprehension'> {
 }
 
 /**
- * `for key, value in ...x`: a field loop's header (§4), visiting each field of the struct `subject`
- * gives, in name order. `key` is a name or `_`, `value` a declaration's target (§3.15); the `...`
+ * `for key, value in ...x`: a field loop's header (§11.2), visiting each field of the struct `subject`
+ * gives, in name order. `key` is a name or `_`, `value` a declaration's target (§4.5); the `...`
  * tells it from iterating an `Iterable`.
  */
 export interface FieldHeader extends NodeOf<'FieldHeader'> {
@@ -69,14 +69,14 @@ export interface FieldHeader extends NodeOf<'FieldHeader'> {
 }
 
 /**
- * What a field loop and both comprehensions run over (§4): a value's fields (`FieldHeader`), or a
- * type's keys, `for K in keyof S`, whose header is the member parameter it declares (§3.5), its
+ * What a field loop and both comprehensions run over (§10.5): a value's fields (`FieldHeader`), or a
+ * type's keys, `for K in keyof S`, whose header is the member parameter it declares (§8.1), its
  * union always `keyof` of a type.
  */
 export type FieldLoopHeader = FieldHeader | TypeParameter;
 
 /**
- * `[for k, v in ...x: e]`: an array of `e`'s value for each field of `x`, in name order (§4), as
+ * `[for k, v in ...x: e]`: an array of `e`'s value for each field of `x`, in name order (§10.5), as
  * the element written out once per field.
  */
 export interface FieldComprehension extends NodeOf<'FieldComprehension'> {
@@ -86,7 +86,7 @@ export interface FieldComprehension extends NodeOf<'FieldComprehension'> {
 
 /**
  * `for k, v in ...x: [k]: e`, the last item of a struct literal: a field of each of `x`'s, named by
- * the loop's key the brackets hold, of `e`'s value in that field's pass (§3.1, §4).
+ * the loop's key the brackets hold, of `e`'s value in that field's pass (§5.2, §11.2).
  */
 export interface StructComprehension extends NodeOf<'StructComprehension'> {
   readonly header: FieldLoopHeader;
@@ -117,7 +117,7 @@ export interface StructLiteral extends NodeOf<'StructLiteral'> {
 }
 
 /**
- * `new Inbox<T>{…}`: a shared struct's literal, whose value is built in a new cell (§3.18). Only a
+ * `new Inbox<T>{…}`: a shared struct's literal, whose value is built in a new cell (§5.4). Only a
  * named struct follows `new`, and nothing takes the literal apart, so it is a kind of its own.
  */
 export interface NewStructLiteral extends NodeOf<'NewStructLiteral'> {
@@ -136,7 +136,7 @@ interface FieldInitializer extends NodeOf<'FieldInitializer'> {
 
 /**
  * The value of a single-field struct given without its name: `UserId{"u-1"}`, `UserId{(id)}`. A
- * variant is built by its call (§3.11).
+ * variant is built by its call (§5.3).
  */
 interface PositionalInitializer extends NodeOf<'PositionalInitializer'> {
   readonly value: Expression;
@@ -146,14 +146,14 @@ interface PositionalInitializer extends NodeOf<'PositionalInitializer'> {
 export type FieldItem = FieldInitializer | PositionalInitializer;
 
 /**
- * `"x-region": "eu"`: an indented value's entry under a quoted key, which only a map takes (§2).
+ * `"x-region": "eu"`: an indented value's entry under a quoted key, which only a map takes (§3.2).
  */
 export interface QuotedEntry extends NodeOf<'QuotedEntry'> {
   readonly key: StringLiteral;
   readonly value: Expression;
 }
 
-/** `- value`, an indented value's item (§2); `- ...xs` spreads another collection's items. */
+/** `- value`, an indented value's item (§3.2); `- ...xs` spreads another collection's items. */
 export interface IndentedItem extends NodeOf<'IndentedItem'> {
   readonly value: Expression | Spread;
 }
@@ -176,7 +176,7 @@ interface IndentedValueOf<Type extends NamedType | undefined> extends NodeOf<'In
 }
 
 /**
- * A struct, map or array value written as an indented block (§2): after `T:` or `new T:`, which
+ * A struct, map or array value written as an indented block (§3.2): after `T:` or `new T:`, which
  * name its type, or after a line ending in `=`, `return`, a key's `:` or an item's `-`, when it
  * takes its type from the expected one. It reads alike whatever it builds: the type it is built as
  * decides that (syntax/expressions/literals/indented-values.ts), so it is one node for every block.
@@ -193,7 +193,7 @@ interface ParameterParts extends NodeOf<'Parameter'> {
 }
 
 /**
- * What a parameter binds (§3.3): a name, the whole argument's, and a pattern that takes the
+ * What a parameter binds (§6.1): a name, the whole argument's, and a pattern that takes the
  * argument apart when the body is entered. A plain parameter is a name alone; `Point{x, y} as p`
  * is both, the `as` name being the parameter's; `Point{x, y}` is a pattern alone, which no named
  * argument reaches. A bare name is never a pattern, so a name has one home.
@@ -214,7 +214,7 @@ export interface Lambda extends NodeOf<'Lambda'> {
 }
 
 /**
- * `t.0`: an element of a tuple, by its position (§3.15). `t.0.1` is two of them, though the
+ * `t.0`: an element of a tuple, by its position (§4.5). `t.0.1` is two of them, though the
  * scanner reads `0.1` as one float.
  */
 export interface TupleElement extends NodeOf<'TupleElement'> {
@@ -248,9 +248,9 @@ export interface Unwrap extends NodeOf<'Unwrap'> {
 }
 
 /**
- * `*x`: the value behind the shared struct `x` (§3.9). `x->f` is `(*x).f`, so the parser reads it
+ * `*x`: the value behind the shared struct `x` (§10.2). `x->f` is `(*x).f`, so the parser reads it
  * as a field of a `Dereference` spanning `x->`, written with the operator `->`; `?->` is the same
- * link reading through an optional (§4), so it `isOptional`, as `?.` makes a member access. A
+ * link reading through an optional (§10.4), so it `isOptional`, as `?.` makes a member access. A
  * prefix `*` is no link, so it never is.
  */
 export interface Dereference extends NodeOf<'Dereference'> {
@@ -313,7 +313,7 @@ interface TemplateText extends NodeOf<'TemplateText'> {
   readonly value: string;
 }
 
-/** `{ a; b }` in an expression: its value is the block's (§4). */
+/** `{ a; b }` in an expression: its value is the block's (§10.1). */
 interface BlockExpression extends NodeOf<'BlockExpression'> {
   readonly block: Block;
 }
@@ -348,7 +348,7 @@ export interface ElseClause extends NodeOf<'ElseClause'> {
 
 /**
  * `await select:`, which waits for a case's future, or `select:` with an `else`, which chooses at
- * once (§8). The two are different constructs, so `await select` is one node, never an Await.
+ * once (§15.4). The two are different constructs, so `await select` is one node, never an Await.
  */
 export interface Select extends NodeOf<'Select'> {
   readonly awaits: boolean;

@@ -1,5 +1,5 @@
 /**
- * What each argument of a call still being written is expected to be (§3.5), for tools to read
+ * What each argument of a call still being written is expected to be (§8.1), for tools to read
  * (editor completion): a call short of an argument takes nothing, so nothing fits its arguments,
  * yet each written one expects what its parameter will be once the call is whole.
  *
@@ -10,7 +10,7 @@
  *   arguments with types of their own are matched, and the type the call is expected to give
  *   advises, so `Rejected(‸` as a `Verdict<Color>` expects a `Color`. An argument whose
  *   parameter's type is still open expects nothing, and so does the function a deferred call
- *   gives, which is no expression written (§3.14).
+ *   gives, which is no expression written (§6.5).
  */
 
 import type { BodyContext } from '../../../contexts/body-context.ts';

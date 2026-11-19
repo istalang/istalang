@@ -1,7 +1,7 @@
 /**
- * Whether a type's values are disposable (§7): one a `dispose` takes as `self`, which
+ * Whether a type's values are disposable (§16): one a `dispose` takes as `self`, which
  * rules/disposal/disposal.ts finds and `checker.disposalOf` keeps, or a type known by its
- * constraints whose traits require a `dispose`, as `Disposable` does (§3.10). It sits with the
+ * constraints whose traits require a `dispose`, as `Disposable` does (§8.4). It sits with the
  * traits derived from a type's form, beneath the rules, so sendability (sendability.ts) and the
  * rules that dispose read one answer.
  */
@@ -15,7 +15,7 @@ import { knownConstraints } from './known-constraints.ts';
 /**
  * Whether values of `type` are disposable: a handle with a `dispose`, or a type parameter or an
  * `any` type whose constraints require one, as `Disposable` does, so every type meeting them has
- * one (§3.10).
+ * one (§8.4).
  */
 export function isDisposable(checker: CheckerContext, type: Type): boolean {
   switch (type.kind) {

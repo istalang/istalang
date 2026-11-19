@@ -13,6 +13,7 @@ import { describe, expect, it } from 'vitest';
 import { brokenText } from '../../../test/broken.ts';
 import {
   isPlaceholder,
+  isSpecDocument,
   type SpecExample,
   specExamples,
 } from '../../../test/corpus/spec-examples.ts';
@@ -64,9 +65,9 @@ describe('spec examples', () => {
     },
   );
 
-  it('count every §12 example as a whole module without placeholders', () => {
+  it('count every §20 example as a whole module without placeholders', () => {
     const sectionTwelve = specExamples.filter(
-      (example) => example.document === 'docs/spec.md' && example.section.startsWith('12.'),
+      (example) => isSpecDocument(example.document) && example.section.startsWith('20.'),
     );
     expect(sectionTwelve.length).toBeGreaterThan(0);
     expect(sectionTwelve.filter((example) => example.form !== 'module' || example.elided)).toEqual(

@@ -1,15 +1,15 @@
 /**
- * `match` and `is` (§3.11, §4).
+ * `match` and `is` (§11.3, §11.1).
  *
  * - A `match` is an expression: its cases' bodies agree on its type, as an `if`'s branches do
  *   (constructs/expressions/control/branches.ts). Each case's pattern is checked against the
  *   subject's type, then its guard, then its body, in source order.
  * - It must be exhaustive: the cases without a guard must cover every value of the subject's type
  *   (constructs/patterns/exhaustiveness/exhaustiveness.ts). A comparison other than `==` against a
- *   literal or variant acts as a guard there (§3.11). A case no value can reach, given the cases
+ *   literal or variant acts as a guard there (§11.3). A case no value can reach, given the cases
  *   before it, is warned of.
  * - A case whose pattern its subject's type can't hold, as a field loop's value or key in another
- *   field's pass (§4), never matches (`cantMatch`, §3.11): it is warned of, and its guard and body
+ *   field's pass (§11.2), never matches (`cantMatch`, §11.3): it is warned of, and its guard and body
  *   are neither checked nor lowered.
  * - `x is Pattern` is a boolean; the binder decides where its bindings are visible, and the names
  *   are declared here with their parts' types.
@@ -69,7 +69,7 @@ export function checkMatch(context: BodyContext, node: Match, expected: Type | u
   return branches.agreedType();
 }
 
-/** `x is P`: a pattern the subject's type rules out decides it false, warned of there (§4). */
+/** `x is P`: a pattern the subject's type rules out decides it false, warned of there (§11.1). */
 export function checkIs(context: BodyContext, node: Is): Type {
   const subject = context.settled(node.subject);
   const { tests } = checkPattern(context, node.pattern, subject);

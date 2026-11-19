@@ -1,5 +1,5 @@
 # outcome: "status:draft|status:sent|d:10|s:ok"
-# Member type parameters T in U (§7): inference from a single member or a literal argument (giving
+# Member type parameters T in U (§16): inference from a single member or a literal argument (giving
 # the literal its literal type), instantiation per member, and building a generic struct with a
 # member parameter from an expected union of its instantiations.
 

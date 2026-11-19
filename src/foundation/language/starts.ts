@@ -1,12 +1,12 @@
 /**
- * What a host may start (§9): the one rule the compiler, the checker, lowering and the
+ * What a host may start (§17.3): the one rule the compiler, the checker, lowering and the
  * Definition's validation read, each over what it knows of a function, its checked signature or
  * its entry. Whether its arguments and outcome can cross as JSON is the checker's codecs' to say.
  *
  * - A host starts a function with a body of its own, declared on no type, and no type parameters,
  *   since it can name no type, taking every argument by value, since it can hand over no reference.
  * - It starts live or simple code only, which runs in memory: ista code runs in an instance, a
- *   context live code calls (§9).
+ *   context live code calls (§17.1).
  * - `main` is one that is async and takes nothing, so a host starts it with nothing to give: live
  *   code, which opens what persists.
  */

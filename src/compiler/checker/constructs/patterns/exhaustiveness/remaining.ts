@@ -1,5 +1,5 @@
 /**
- * The remaining type of a `match` case (§3.11): the subject's type without the members of a union
+ * The remaining type of a `match` case (§11.3): the subject's type without the members of a union
  * that earlier cases without a guard took whole, which a case's binder (`case v:`, `as`) has. The
  * subject keeps its own type; only what a case binds is narrowed.
  *

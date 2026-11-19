@@ -5,8 +5,8 @@
  *
  * - A literal is the constant it writes (`literalForm`).
  * - A name is a copy out of its variable, a global's value, a function named as a value, a variant
- *   without fields, a struct without fields written bare (§3.1), its type arguments given or not,
- *   or a member parameter over literal types, the value its type holds once instantiated (§3.5).
+ *   without fields, a struct without fields written bare (§5.2), its type arguments given or not,
+ *   or a member parameter over literal types, the value its type holds once instantiated (§8.1).
  * - A field read is a `read` of its part; `*x` and `x->` read what is behind the handle.
  * - A lambda is a closure made of what it captures, of a function built of its own.
  */
@@ -77,7 +77,7 @@ export function coreFlow(builder: FlowBuilder, node: Sugar): ValueId {
  * What `name` denotes, read as the value of `read` (the name, or a namespace's member qualifying
  * it): a function named as a value, recorded at `read`, a variable of the body, a global, a
  * variant without fields, or a type that holds one value: a member parameter over literal types,
- * the literal an instantiation makes it (§3.5), or a struct without fields.
+ * the literal an instantiation makes it (§8.1), or a struct without fields.
  */
 function named(builder: FlowBuilder, name: Identifier, read: Identifier | MemberAccess): ValueId {
   const call = builder.body.functionValues.get(read);
@@ -105,14 +105,14 @@ function named(builder: FlowBuilder, name: Identifier, read: Identifier | Member
   return builder.read(builder.named(entity, type), read, type);
 }
 
-/** A struct without fields written bare, with type arguments or not (§3.1): a value of its own. */
+/** A struct without fields written bare, with type arguments or not (§5.2): a value of its own. */
 function bareStruct(builder: FlowBuilder, node: Expression): ValueId {
   const into = builder.temporaryOf(node);
   builder.emit({ op: 'make', site: node, into, made: { kind: 'struct', fields: [] }, parts: [] });
   return into;
 }
 
-/** `a.b`: a field read, a getter's call (§3.1), or what a namespace's or a type's member names. */
+/** `a.b`: a field read, a getter's call (§5.2), or what a namespace's or a type's member names. */
 function memberAccess(builder: FlowBuilder, node: MemberAccess): ValueId {
   const { checker, module } = builder.inputs;
   const member = checker.bindings.entityOf(module, node.member);

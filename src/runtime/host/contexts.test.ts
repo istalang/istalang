@@ -1,5 +1,5 @@
 /**
- * Contexts' host steps (§9): a context commits while the live run calling it waits in memory; one
+ * Contexts' host steps (§17.1): a context commits while the live run calling it waits in memory; one
  * stopped mid-invocation resumes at its store's next open, at once where its timer is due; disposing
  * a `Runtime` stops its work until the next open; a `Call` let go of unawaited still starts; what a
  * call still waiting holds is disposed as its instance finishes; a panic no call hears reaches the
@@ -158,7 +158,7 @@ describe('a context', () => {
   });
 
   it('disposes what a call still waiting holds as its instance finishes, before its constants', async () => {
-    // Program code calls contexts alone, by key (§9); the loop serving jobs calls into any instance
+    // Program code calls contexts alone, by key (§17.1); the loop serving jobs calls into any instance
     // by its name, a spawned one's too, as the world is driven here.
     const program = worldProgram(
       compiledEncoded(
@@ -249,7 +249,7 @@ describe('a context', () => {
 });
 
 describe("a context's key", () => {
-  it("can't name an instance a context spawned: it holds no '/', which spawned names take (§9)", async () => {
+  it("can't name an instance a context spawned: it holds no '/', which spawned names take (§17.1)", async () => {
     const program = compiledEncoded(
       lines(
         "import * as runtime from 'runtime'",
@@ -266,7 +266,7 @@ describe("a context's key", () => {
     );
     expect(await startToEnd(testRuntime(), program)).toMatchObject({
       kind: 'panicked',
-      message: "A context's key 'x/1' holds a '/', which only spawned instances' names do (§9).",
+      message: "A context's key 'x/1' holds a '/', which only spawned instances' names do (§17.1).",
     });
   });
 });

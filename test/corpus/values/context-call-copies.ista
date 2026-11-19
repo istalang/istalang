@@ -1,5 +1,5 @@
 # outcome: [1,2,3,10,20,30,7,8,9]
-# A value crossing a context call is a copy both ways (§9): neither the caller changing what it
+# A value crossing a context call is a copy both ways (§17.1): neither the caller changing what it
 # passed nor the context changing its state afterwards changes what the other side got.
 
 import * as runtime from 'runtime'

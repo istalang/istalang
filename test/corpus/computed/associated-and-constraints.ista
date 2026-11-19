@@ -1,6 +1,6 @@
 # outcome: "bearer:42|user-7|v1->v2|6"
 # Associated types (§1) on structs, braced structs, enums, and traits (with bounds, static calls
-# through K.Key.default(), and contextual `type: X` field), plus struct constraints (§2) across
+# through K.Key.default(), and contextual `type: X` field), plus struct constraints (§8.1) across
 # all 5 table forms and reading/writing named fields in generic code.
 
 import * as runtime from 'runtime'

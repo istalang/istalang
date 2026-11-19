@@ -1,5 +1,5 @@
 /**
- * The types a body writes (§2), resolved where the body is checked. Outside the passes of a loop
+ * The types a body writes (§4.2), resolved where the body is checked. Outside the passes of a loop
  * over a type's keys, a written type is the program's, resolved once; inside them, each pass binds
  * the loop's key (contexts/passes.ts), so a written type is resolved afresh in each pass, from its
  * leaves up, its mistakes reported in the pass, and each node it is built of recorded for the pass

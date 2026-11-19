@@ -72,14 +72,14 @@ fn emit<A is tuple>(self: Signal<A>, ...args: A): for l in self->listeners: l(..
   - **tuple comprehensions,** `(for i, v in ...t: e)`, building one element per pass, as a struct
     comprehension builds a field;
   - **member parameters,** `I in keyof A`;
-  - **type `match`** (§3.17):
+  - **type `match`** (§4.6):
     - `case tuple:` and `case tuple { 0: infer H, [_] is C }:` beside `case struct …:`;
     - `case fn(...infer A) -> infer R:` binds a function's parameters as one tuple.
 - **A comprehension over keys not all known** is the mapping of its subject's keys to its
   expression's type when nothing is expected of it. This holds for structs and tuples alike, so
   `(for _, s in ...each: await enter(s))` is `( [I in keyof A]: Entered<A[I]> )`. Today a struct
   comprehension there reports 5167.
-- **A one-element tuple still converts** (§3.15), so a pack of one reads as its value.
+- **A one-element tuple still converts** (§4.5), so a pack of one reads as its value.
 
 ### 2. A pack is a type parameter constrained to tuples
 
@@ -102,11 +102,11 @@ fn emit<A is tuple>(self: Signal<A>, ...args: A): for l in self->listeners: l(..
   - `A is tuple { [_] is Sendable }` makes `A` itself `Sendable`.
   
   Today a struct constraint gets only one direction of each.
-- **`tuple` and `where` are contextual words** (§2), not reserved.
+- **`tuple` and `where` are contextual words** (§2.2), not reserved.
 
 ### 3. Rests
 
-A call fills parameters as a struct literal fills fields (§3.3). Rests take what's left of the
+A call fills parameters as a struct literal fills fields (§6.1). Rests take what's left of the
 call, in the product their type names:
 
 | Rest | Takes | Builds |
@@ -139,19 +139,19 @@ call, in the product their type names:
 - **A named rest** builds its struct with the literal's rules:
   - **Errors:** a required field left out, or a name the struct doesn't have.
   - **A spread** gives its fields, and later named arguments override them, as
-    `Req{...req, value: "new"}` does. A spread still comes before named arguments (§3.3).
+    `Req{...req, value: "new"}` does. A spread still comes before named arguments (§6.1).
   - **Collisions:** the struct's known fields may not share a name with the function's other
     parameters or the rest itself. For an open `S is struct`, a named argument naming one of the
     function's parameters goes to that parameter.
   - **A generic `S is struct`** is the shape of the named arguments given.
   - **Choosing, clashes and fitting a function type** treat its fields as the function's named
-    parameters, required or defaulted as the struct declares them (§3.3, §3.7, §3.14).
+    parameters, required or defaulted as the struct declares them (§6.1, §6.3, §6.4).
   - **Defaults run where parameters' defaults run,** in the callee's execution, even when the
-    callee is spawned (§3.3, §9).
+    callee is spawned (§6.1, §17.1).
 - **Every rest takes a whole value by its name,** as an array rest does today:
   `get(url, opts: o)`, `call(plus, args: (1, 2))`. Giving `opts: o` beside one of its fields is
   a field given twice.
-- **Function types** have no names (§3.14):
+- **Function types** have no names (§6.4):
   - a named rest is one positional parameter of its struct, `fn(String, RequestOptions)`;
   - tuple rests are spreads at the end of the parameters, `fn(Int, ...A, ...A)`, several only
     with equal keys. A spread before a parameter stays an error (5087).
@@ -221,9 +221,9 @@ type-changing accumulator.
 
 An instance runs its executions on one thread, in a deterministic order:
 - calling an `async fn` runs the callee at once, up to its first `await`, which hands its future
-  back to the caller (§3.3);
-- a slot operation that can complete does so at once (§6);
-- awaiting commits and resumes after every execution that became ready before it (§5, §6).
+  back to the caller (§6.1);
+- a slot operation that can complete does so at once (§15.1);
+- awaiting commits and resumes after every execution that became ready before it (§14, §15.1).
 
 So a bracket can be left suspended inside its own callback, holding its frame and what it
 prepared, while the caller goes on with its value. That is **entering a bracket**, as Haskell's
@@ -265,7 +265,7 @@ fn setups<A is tuple>(...each: ( [I in keyof A]: Setup<A[I]> )) -> Setup<A>:
 - **Failure:** a bracket that never calls its callback ends its run first, and `select` turns
   that into a panic instead of a hang.
 - **Leaving:** a bracket is entered once. An `Entered` released without `leave` releases its
-  run, which is stopped at its `await` (§7): holdings are released, and code after the callback
+  run, which is stopped at its `await` (§16): holdings are released, and code after the callback
   doesn't run.
 - **Commits:** each `enter` and `leave` awaits, so it commits where today's nested `_joined`
   doesn't. Under proposal 8 it is an unmarked function, taking its caller's kind: in `live`
@@ -307,7 +307,7 @@ fn nested<A is tuple>(...each: ( [I in keyof A]: Setup<A[I]> )) -> Setup<A>:
 - **Element tests narrow only binders.** In `case (h, ...t) if h is Awaitable`, `A[0]` may
   become a union, so the test picks members per value.
   - `h` gets the part of `A[0]` the pattern matches: a computed type that an instantiation reduces
-    by today's member selection, the remaining type of §3.11 made lazy.
+    by today's member selection, the remaining type of §11.3 made lazy.
   - `A[0]` itself stays as it was. A result type that follows an element's type needs a test on
     types, a type `match`.
 - **Trait names are patterns.** `h is Awaitable` matches a value whose type, or member, meets the
@@ -334,7 +334,7 @@ fn nested<A is tuple>(...each: ( [I in keyof A]: Setup<A[I]> )) -> Setup<A>:
   `(h, ...t)` cover it.
 - **Still one pass, finitely instantiated.**
   - Each branch is checked once under its facts; a branch that contradicts known keys is ruled out
-    (§3.11).
+    (§11.3).
   - Each instantiation decides a shape test, so lowering emits only the branch that runs; an
     element test on a union runs as member selection does today.
   - The expansion rule accepts a recursive call on a strict tail as shrinking.
@@ -401,19 +401,19 @@ instantiation, and TypeScript falls back to overloads.
 
 ## Spec changes
 
-- §2: `tuple` and `where` as contextual words.
-- §3.1: keys, mapped types and comprehensions over tuples; comprehensions over unknown keys as
+- §2.2: `tuple` and `where` as contextual words.
+- §5.2: keys, mapped types and comprehensions over tuples; comprehensions over unknown keys as
   mappings; derived traits of products.
-- §3.3: rests (§3 above), the split, struct spreads and whole rests at a call.
-- §3.5: packs rewritten as tuple constraints; `where`; inference through mappings; rests relating
+- §6.1: rests (§3 above), the split, struct spreads and whole rests at a call.
+- §8.1: packs rewritten as tuple constraints; `where`; inference through mappings; rests relating
   element by element; variance per element.
-- §3.14: function types' trailing spreads; a named rest as one parameter.
-- §3.15: tuples as products; `t[i]`, `t.0` through keys.
-- §3.17: `case tuple`, `case fn(...infer A) -> infer R`.
-- §3.11 (§7): facts from patterns, trait patterns, complements, opaque tuples' lengths in
-  exhaustiveness; §3.15: spreads inside tuples by segments; §3.3: the split into equal runs.
-- §4: field loops and comprehensions over tuples.
-- §10: `setups` over `enter`, and `enter` itself.
+- §6.4: function types' trailing spreads; a named rest as one parameter.
+- §4.5: tuples as products; `t[i]`, `t.0` through keys.
+- §4.6: `case tuple`, `case fn(...infer A) -> infer R`.
+- §11.3, §11.4 (§7): facts from patterns, trait patterns, complements, opaque tuples' lengths in
+  exhaustiveness; §4.5: spreads inside tuples by segments; §6.1: the split into equal runs.
+- §11.2, §10.5: field loops and comprehensions over tuples.
+- §18: `setups` over `enter`, and `enter` itself.
 - The cheat sheet and `guide.md`.
 
 ## Implementation notes
@@ -476,7 +476,7 @@ inference. Independent of proposal 8; before F28, since change 3 removes `relate
 
 - **Chains** such as `pipe`: a chain type written as a recursive type `match`, and inference
   through one.
-- Relations in `where` beyond key equality, narrowing guarantees (§4), and facts that outlive
+- Relations in `where` beyond key equality, narrowing guarantees (§11.1), and facts that outlive
   their bindings, after an early exit.
 - A struct's first field by name order, for recursion over structs; field loops cover per-field
   work.

@@ -1,6 +1,6 @@
 # outcome: "1 2 3 | 3 | 1 13"
 # disable-ista-formatter
-# A closure shares the `let`s it captures with the code around it (§3.14): `next` counts on the
+# A closure shares the `let`s it captures with the code around it (§6.4): `next` counts on the
 # `count` of the call that made it, a copy of the closure shares that count, and a change made
 # outside after the closure was made is seen inside it. Each call of `makeCounter` has its own.
 

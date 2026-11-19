@@ -1,8 +1,8 @@
-# The log module (spec §3.8): structured log records, which reach the host only when their segment
-# commits, so a segment that is discarded logged nothing (§5, §9).
+# The log module (spec §19.2): structured log records, which reach the host only when their segment
+# commits, so a segment that is discarded logged nothing (§14, §17.3).
 #
 # `write` is the module's one extern; the rest is code over it, so mocking `write` captures every
-# record (§10).
+# record (§18).
 
 import * as json, Encodable from 'json'
 

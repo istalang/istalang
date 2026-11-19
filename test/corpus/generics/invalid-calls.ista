@@ -3,8 +3,8 @@
 # error: 5100 at 27:13
 # error: 5002 at 28:13
 # Written type arguments must fit the function's type parameters, and choose only among generic
-# functions (§3.5, §3.7); two arguments can't give one type parameter types that disagree (§3.5);
-# a call through a namespace looks only in that module (§3.13).
+# functions (§8.1, §6.3); two arguments can't give one type parameter types that disagree (§8.1);
+# a call through a namespace looks only in that module (§13.1).
 import * as runtime from 'runtime'
 import * as time from 'time'
 

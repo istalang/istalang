@@ -1,13 +1,13 @@
 /**
- * Postfix parselets (§3.9, tightest level): calls, indexing, member access, `->`, `?`, `!`, struct
+ * Postfix parselets (§10.3, tightest level): calls, indexing, member access, `->`, `?`, `!`, struct
  * literals after a name, and type arguments.
  *
- * A call's argument is a value, a spread, or `name: value` naming its parameter (§3.3); only a
+ * A call's argument is a value, a spread, or `name: value` naming its parameter (§6.1); only a
  * name directly followed by `:` names one, since nothing else in an argument list starts so.
  *
  * `name<…>` is ambiguous with a comparison. It is read as type arguments, a `TypeApplication`, only
- * when the bracket contents parse as types whose names are all cased as types' (§2), as no
- * variable's is, and what follows can't go on with a comparison (`endsTypeArguments`, §3.5): so
+ * when the bracket contents parse as types whose names are all cased as types' (§4.1), as no
+ * variable's is, and what follows can't go on with a comparison (`endsTypeArguments`, §8.1): so
  * `f(a < b, c > d)` and `f(a < B, C > d)` compare, `xs.map(Result.Ok<Int, String>)` passes a
  * value, and `f<T>(x)` calls it. Literal types are types, so `a < 1 > (b)` is a call; a comparison
  * that looks like type arguments needs parentheses, `(a < B) > c`. Only the type arguments are
@@ -15,12 +15,12 @@
  * arguments are reported rather than turning the whole thing back into a comparison.
  *
  * A struct literal's `{` and type arguments both attach only to a name or a qualified name
- * (§2). Nothing else can stand before them, so the parser never needs to know what a name means.
+ * (§3.1). Nothing else can stand before them, so the parser never needs to know what a name means.
  *
- * `x->f` is `(*x).f` (§3.9), so it is read as that: a member access on a `Dereference` of `x`.
- * `x?->f` reads through an optional the same way, as a link of an optional chain (§4).
+ * `x->f` is `(*x).f` (§10.2), so it is read as that: a member access on a `Dereference` of `x`.
+ * `x?->f` reads through an optional the same way, as a link of an optional chain (§10.4).
  *
- * After `.` or `->`, a number names a tuple element (§3.15). The scanner reads the `0.1` of
+ * After `.` or `->`, a number names a tuple element (§4.5). The scanner reads the `0.1` of
  * `t.0.1` as one float, so that token is split back into its two elements here.
  */
 
@@ -58,7 +58,7 @@ export function parseTypeApplication(parser: Parser, left: Expression): Expressi
 
 /**
  * `name<…>` or `name<…>{…}` where a `<` after a name is never a comparison, whatever follows its
- * `>`: an annotation's (§3.16), which may stand before its item on one line, `@Tag<Int> fn f()`;
+ * `>`: an annotation's (§5.5), which may stand before its item on one line, `@Tag<Int> fn f()`;
  * undefined after anything but a name, or with no `<` on its line.
  */
 export function parseCommittedTypeApplication(
@@ -130,7 +130,7 @@ function typeNamesOf(node: SyntaxNode): readonly Identifier[] {
 /**
  * Whether what follows type arguments just parsed ends them, rather than going on with a
  * comparison: a `(` or `{` on their line, their call or struct literal; the next item of a list
- * broken over lines (§2); or a token no expression starts with, `)`, `,` or the line's end among
+ * broken over lines (§2.1); or a token no expression starts with, `)`, `,` or the line's end among
  * them, but not what is left of a `>>` or `>=` whose `>` closed them.
  */
 function endsTypeArguments(parser: Parser): boolean {
@@ -167,7 +167,7 @@ function parseArgument(parser: Parser): CallArgument {
   return parseArgumentValue(parser);
 }
 
-/** An argument's value; `&` is allowed only on a whole value (§3.7), and passes a place. */
+/** An argument's value; `&` is allowed only on a whole value (§7.3), and passes a place. */
 function parseArgumentValue(parser: Parser): Expression {
   const { cursor } = parser;
   if (!cursor.at('&')) {

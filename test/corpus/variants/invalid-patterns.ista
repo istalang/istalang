@@ -15,7 +15,7 @@
 # error: 5001 at 100:22
 # error: 5429 at 106:28
 # error: 2050 at 111:30
-# A call pattern binds its arguments as a call binds them (§3.11): a field no default or rest lets
+# A call pattern binds its arguments as a call binds them (§11.3): a field no default or rest lets
 # a call leave out must be given, or left with a last `...`; arguments past the fields, a name no
 # field has, a field given twice and a spread with no rest field to take it are refused, as are a
 # second spread, a `...` anywhere but last and an argument by position after one by name; what

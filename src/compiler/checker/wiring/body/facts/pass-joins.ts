@@ -1,6 +1,6 @@
 /**
  * How a field loop's passes join each fact of a body, for tools reading a node inside the loop
- * (§4, contexts/pass-views.ts); each fact's entry in the table (index.ts) names its join.
+ * (§11.2, contexts/pass-views.ts); each fact's entry in the table (index.ts) names its join.
  *
  * - A type joins every pass's: a key is each field's name, a value each field's type. Tools show
  *   what the text means across the loop, as a hover over the loop's value shows the union of its
@@ -99,7 +99,7 @@ export function distinctCallees<Node>(answers: readonly PassRecords<Node, Resolv
 
 /**
  * Whether two calls call one function: a call's target, as tools name it. A variant's constructor
- * is named by the enum type it makes (§3.11), so its calls making two are two.
+ * is named by the enum type it makes (§5.3), so its calls making two are two.
  */
 function sameCallee(one: ResolvedCall, other: ResolvedCall): boolean {
   return (

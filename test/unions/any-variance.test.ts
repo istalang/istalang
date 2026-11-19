@@ -2,7 +2,7 @@
  * Behavioural and end-to-end verification of Phase V2: trait variance derivation (`any Trait<T>`),
  * meeting `any Trait<B>` through a fitting `Trait<A>`, dispatch and required-field conversions,
  * downcasts, prelude generic traits (`Iterable`, `Container`, `Indexable`), and exact `self` on
- * witnesses and `is` constraints (docs/spec.md §2, §3.5, §3.10).
+ * witnesses and `is` constraints (docs/spec/ §4.2, §8.1, §8.3).
  */
 
 import { describe, expect, it } from 'vitest';
@@ -21,7 +21,7 @@ const baseTraits = [
   '  size: T',
 ];
 
-describe('design.md §9 acceptance anchors and exact `self` on witnesses (§3.10)', () => {
+describe('design.md §9 acceptance anchors and exact `self` on witnesses (§8.2)', () => {
   it('widens `any Source<Int>` to `any Source<Int?>` and converts `next()` to `Int?`', async () => {
     const decls = [
       ...baseTraits,
@@ -149,7 +149,7 @@ describe('design.md §9 acceptance anchors and exact `self` on witnesses (§3.10
   });
 });
 
-describe('trait variance derivation and composition (§3.5, §3.10)', () => {
+describe('trait variance derivation and composition (§8.3, §8.2)', () => {
   it('derives variance from callback parameters, futures however a head gives them, `&`, and unused parameters', () => {
     const decls = [
       'trait GivesViaCallback<T> { fn subscribe(self: Self, cb: fn(T) -> Unit) }',
@@ -170,7 +170,7 @@ describe('trait variance derivation and composition (§3.5, §3.10)', () => {
         'fn ok2(x: any TakesViaCallback<Int?>) -> any TakesViaCallback<Int>: x',
         'fn ok3(x: any AsyncGives<Int>) -> any AsyncGives<Int?>: x',
         'fn ok4(x: any PhantomTrait<Int>) -> any PhantomTrait<Int?>: x',
-        // A plain function giving a future is an async one (§3.14), awaited where it converts.
+        // A plain function giving a future is an async one (§6.4), awaited where it converts.
         'fn ok5(x: any SyncFutureHandle<Int>) -> any SyncFutureHandle<Int?>: x',
       ),
     ).toEqual([]);
@@ -220,7 +220,7 @@ describe('trait variance derivation and composition (§3.5, §3.10)', () => {
     ).toEqual([27, 12, 5, 13]);
   });
 
-  it('absorbs a union member into an `any` member only when it meets the written constraint exactly (§2, §3.10)', () => {
+  it('absorbs a union member into an `any` member only when it meets the written constraint exactly (§4.2, §8.3)', () => {
     const decls = [
       ...baseTraits,
       'struct IntSource { n: Int }',
@@ -233,7 +233,7 @@ describe('trait variance derivation and composition (§3.5, §3.10)', () => {
   });
 });
 
-describe('prelude generic traits (`Iterable`, `Container`, `Indexable`) through `any` (§3.8, §3.10)', () => {
+describe('prelude generic traits (`Iterable`, `Container`, `Indexable`) through `any` (§19.1, §8.4)', () => {
   it('converts `Array<Int>` and `any Iterable<Int>` into `any Iterable<Int?>`, `any Container<Int>`, and `any Indexable<Int, Int?>`', async () => {
     expect(
       await runMain(
@@ -261,7 +261,7 @@ describe('prelude generic traits (`Iterable`, `Container`, `Indexable`) through 
   });
 });
 
-describe('witnesses with defaults, generic requirements, generic witnesses, and literal receivers (§2, §3.10)', () => {
+describe('witnesses with defaults, generic requirements, generic witnesses, and literal receivers (§4.2, §8.2)', () => {
   it('supports witnesses with trailing default parameters in both direct and indirect `any` conversions', async () => {
     const decls = [
       ...baseTraits,
@@ -303,7 +303,7 @@ describe('witnesses with defaults, generic requirements, generic witnesses, and 
     ).toEqual([[5], [12]]);
   });
 
-  it('allows a literal type to meet `any Source<Int?>` through its base type’s by-value witness (§2)', async () => {
+  it('allows a literal type to meet `any Source<Int?>` through its base type’s by-value witness (§4.3)', async () => {
     const decls = [...baseTraits, 'fn next(self: String) -> Int: self.length()'];
     expect(
       await runMain(
@@ -317,7 +317,7 @@ describe('witnesses with defaults, generic requirements, generic witnesses, and 
   });
 });
 
-describe('constrained and computed types meeting `any` through variance (§3.5, §3.10)', () => {
+describe('constrained and computed types meeting `any` through variance (§8.1, §8.3)', () => {
   it('converts associated types and keyed fields with trait bounds into `any` through variance', async () => {
     const decls = [
       ...baseTraits,
@@ -363,7 +363,7 @@ describe('constrained and computed types meeting `any` through variance (§3.5, 
   });
 });
 
-describe('several instantiations fitting, none closer (§3.10)', () => {
+describe('several instantiations fitting, none closer (§8.2)', () => {
   const either = (first: string, second: string) => [
     ...baseTraits,
     'struct Either { k: Int }',

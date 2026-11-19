@@ -1,6 +1,6 @@
 /**
- * How a value's type fits the type a body expects of it (§2), reported where it doesn't: a closure
- * by what it captures where that is why (§3.14), as a trait it doesn't meet when an `any` type is
+ * How a value's type fits the type a body expects of it (§4.1), reported where it doesn't: a closure
+ * by what it captures where that is why (§6.4), as a trait it doesn't meet when an `any` type is
  * expected, else as a misfit, which also says when it converts into several members of a union. What doesn't fit then counts as fitting as it is, so
  * one mistake is reported once.
  */

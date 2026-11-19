@@ -1,5 +1,5 @@
 # outcome: "cleaned up | job unhandled"
-# The `disposing()` case wins (§7): the job arrives first, readying the worker on its receive, but
+# The `disposing()` case wins (§16): the job arrives first, readying the worker on its receive, but
 # the worker's last holder lets go of it before it runs, so it resumes on its `disposing()` case,
 # though that case comes later in the `select`.
 

@@ -1,5 +1,5 @@
 /**
- * A type argument judged against every bound on its type parameter (§3.5), in one place for each
+ * A type argument judged against every bound on its type parameter (§8.1), in one place for each
  * place one is given: a call's instantiation (conformance.ts), a written type's noted check
  * (constructs/declarations/type-parameters.ts) and a receiver probe (choosing/receivers.ts).
  *
@@ -31,7 +31,7 @@ import {
 import type { ArgumentGoals } from './root-goals.ts';
 import { type Failure, isFailure } from './witness-outcomes.ts';
 
-/** What bounds a type parameter (§3.5), read with the arguments given its other parameters. */
+/** What bounds a type parameter (§8.1), read with the arguments given its other parameters. */
 export interface ParameterBounds {
   readonly parameter: TypeParameter;
   readonly memberOf: Type | undefined;

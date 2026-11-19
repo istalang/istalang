@@ -1,5 +1,5 @@
 # outcome: "replied 42, 2 registered, 8 leaves"
-# Static lifetimes accepts what talks without closing a cycle through a disposable (§7): a reply
+# Static lifetimes accepts what talks without closing a cycle through a disposable (§16): a reply
 # channel, a fresh inbox sent in a request to a server holding the requests; a registry of
 # workers through weak references, each worker given the registry, which holds only a `WeakRef`
 # to its future; and a recursive fan-out whose calls hold their children's futures.

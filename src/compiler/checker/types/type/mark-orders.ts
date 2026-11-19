@@ -88,7 +88,7 @@ export const sendabilityOrder: QualifierOrder = {
 
 /**
  * Whether two marks are one, as written apart from any order: the same literal, the same mark
- * parameter, or the same associated type bounded to marks (`W.Mode`, §3.10). What the type-level
+ * parameter, or the same associated type bounded to marks (`W.Mode`, §8.2). What the type-level
  * readers that can't reach identity compare marks by.
  */
 export function sameMark(first: Type, second: Type): boolean {

@@ -1,6 +1,6 @@
 /**
- * Who has an associated type, and what one meets (docs/proposals/4-computed-types.md §1, spec §3.1,
- * §3.10): only a type's own declaration declares one, so a union or an `any` type has none and
+ * Who has an associated type, and what one meets (docs/proposals/4-computed-types.md §1, spec §5.2,
+ * §8.2): only a type's own declaration declares one, so a union or an `any` type has none and
  * never meets a trait requiring one where a type must meet it, while a call through such a trait
  * on a union value still runs its member's function; `T.Data` is one type, meeting the bound of
  * every trait of `T` requiring `Data`; a shared struct declares them as any struct does.

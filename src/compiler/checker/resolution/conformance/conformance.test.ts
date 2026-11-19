@@ -1,8 +1,8 @@
 /**
- * Meeting constraints (§3.5, §3.10): a required field is met by a struct's field of the same name
+ * Meeting constraints (§8.1, §8.2): a required field is met by a struct's field of the same name
  * and type, a required function by a function declared beside the type or the trait, with the
  * required result, the same wherever the constraint is met, Sendable is derived from what a type
- * holds (§3.1), and a recursive struct or union meets a struct constraint or member trait
+ * holds (§7.4), and a recursive struct or union meets a struct constraint or member trait
  * coinductively while non-contractive witness cycles report 5114.
  */
 

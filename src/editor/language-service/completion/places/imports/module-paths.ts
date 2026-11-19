@@ -1,5 +1,5 @@
 /**
- * The module paths an import's path may go on with (§3.13), one name at a time: the modules in the
+ * The module paths an import's path may go on with (§13.1), one name at a time: the modules in the
  * folder written so far, and the folders holding more, named with their `/`, so a folder never
  * reads as a module of its name and accepting one goes on to the modules inside. Text out of the
  * path syntax (foundation/language/import-paths.ts) goes on with nothing.
@@ -9,7 +9,7 @@
  * folder, which can't climb above the root, where no project module is. The editor loads every
  * project file into the program, so the program's modules are the project's; a module no path
  * names (an editor's unsaved buffer, of an empty name) is none, and has no folder to climb from.
- * Std modules have one-name paths and no folders; `testing` is a test module's alone (§10).
+ * Std modules have one-name paths and no folders; `testing` is a test module's alone (§18).
  */
 
 import {

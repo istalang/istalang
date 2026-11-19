@@ -80,7 +80,7 @@ function valueText(shape: Shape): fc.Arbitrary<string> {
           .array(entry, { minLength: 1, maxLength: 2 })
           .map((entries) => `...[${entries.join(', ')}]`),
       );
-      // A literal with no `key: value` entry is an array (§2), so a map has at least one, or none.
+      // A literal with no `key: value` entry is an array (§3.3), so a map has at least one, or none.
       return fc
         .tuple(fc.array(part, { maxLength: 3 }), entry, fc.nat({ max: 3 }))
         .map(([parts, first, at]) => [...parts.slice(0, at), first, ...parts.slice(at)])

@@ -6,7 +6,7 @@ import { startToEnd, testRuntime } from '../../runtime/runtime.test-kit.ts';
 
 /**
  * What `main` finishes with, read from JSON, the ended state when it doesn't finish, where a live
- * `main` runs in a context (§9) an ista `_main` giving a `result` with `block` beside
+ * `main` runs in a context (§17.1) an ista `_main` giving a `result` with `block` beside
  * `declarations`. `block` is `_main`'s body as written under its head: its lines past the first
  * indented already.
  */

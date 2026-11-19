@@ -2,7 +2,7 @@
 # error: 5001 at 29:22
 # error: 5001 at 30:24
 # error: 5001 at 34:21
-# A method call whose receiver gives its type parameters (§3.5) opens a result computed from the
+# A method call whose receiver gives its type parameters (§8.1) opens a result computed from the
 # rest, `Person[K].Scope` or `keyof Outer[K]`, which stays what it is until `K` is found, so an
 # optional chain reading it reports what it gives.
 

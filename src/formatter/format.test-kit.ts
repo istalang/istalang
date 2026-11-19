@@ -130,7 +130,7 @@ function linesOf(tree: SyntaxTree, start: number, end: number): readonly number[
 /**
  * The lines of `tree`'s text longer than the width with nothing to say why: a line may be long
  * because one comment or literal token is, or because it holds an import's names or an operator
- * run outside brackets, neither of which a line break may part (spec §2).
+ * run outside brackets, neither of which a line break may part (spec §2.1).
  */
 export function unexplainedLongLines(tree: SyntaxTree): readonly string[] {
   const inBrackets = nodesInBrackets(tree);

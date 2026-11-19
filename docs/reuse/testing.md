@@ -66,7 +66,7 @@ tags: [reuse, testing, test-kit, arbitraries, fast-check, corpus]
 - generate canonical JSON values or non-canonical JSON texts → `exactJson`, `reverseKeys`, `looseText` (`src/definition/formats/codec.test-kit.ts`)
 - a compiled Definition's text edited into one a compiler never writes, a code entry's mode changed → `withModeChanged` (`src/definition/definition.test-kit.ts`)
 - generate programs of writes through arrays, maps, structs, closures and `&` paths, each with what value semantics says it gives → `caseSteps`, `aliasingProgram` (`src/runtime/run/aliasing.test-kit.ts`)
-- read fenced code examples from `docs/spec.md` and `docs/guide.md`, or from a document's text in hand with where each code line stands → `specExamples`, `specCode`, `isPlaceholder`, `extractExamples`, `documentPaths` (`test/corpus/spec-examples.ts`)
+- read fenced code examples from the chapters of `docs/spec/` and `docs/guide.md`, or from a document's text in hand with where each code line stands → `specExamples`, `specCode`, `isPlaceholder`, `extractExamples`, `documentPaths`; whether a document is a spec chapter, and an example's section key (the spec as one document) → `isSpecDocument`, `sectionKey` (`test/corpus/spec-examples.ts`)
 - load `test/corpus/` valid/invalid programs → `runPrograms`, `invalidPrograms`, `corpusDirectory` (`test/corpus/programs.ts`)
 - use the M2.4 subset program and its outcome → `subsetSource`, `subsetOutcome` (`test/subset.ts`)
 

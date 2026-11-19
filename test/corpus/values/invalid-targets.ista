@@ -9,9 +9,9 @@
 # error: 5217 at 31:37
 # error: 5217 at 36:9
 # error: 5217 at 38:7
-# A declaration's targets are irrefutable (§3.15): no literal, comparison or variant; a struct
+# A declaration's targets are irrefutable (§4.5): no literal, comparison or variant; a struct
 # target names a struct of the value's own type, and fields it has. An assignment writes each
-# place once: not twice, nor whole and in part, through a handle as on a variable (§3.18).
+# place once: not twice, nor whole and in part, through a handle as on a variable (§5.4).
 
 struct Point { x: Int, y: Int }
 struct Pair { first: Int, second: Int }

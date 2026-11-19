@@ -1,9 +1,9 @@
 /**
- * The parameter list lambdas and function declarations share (§3.3, §3.14): defaults, rest
- * parameters, reference types, which only a parameter's type may have (§3.7), and patterns that
+ * The parameter list lambdas and function declarations share (§6.1, §6.4): defaults, rest
+ * parameters, reference types, which only a parameter's type may have (§7.3), and patterns that
  * take an argument apart. Their heads are read by ./heads.ts.
  *
- * A parameter is a name, or a declaration target (§3.15) read by the pattern grammar, whose
+ * A parameter is a name, or a declaration target (§4.5) read by the pattern grammar, whose
  * `as name` names the whole. A bare name stays a name, never a one-name pattern: the parameter's
  * name has one home (syntax/expressions/index.ts). Whether a pattern can fail, and where a pattern
  * may stand at all, is the checker's to judge; only a rest parameter is a name by its syntax, as

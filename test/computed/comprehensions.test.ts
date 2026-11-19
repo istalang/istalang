@@ -1,5 +1,5 @@
 /**
- * Comprehensions over a struct's fields (docs/proposals/4-computed-types.md §5, §6; spec §3.1, §4):
+ * Comprehensions over a struct's fields (docs/proposals/4-computed-types.md §5, §6; spec §5.2, §10.5):
  * `[for k, v in ...x: e]` builds an array of one element per field, in name order, the elements
  * agreeing on one type; `struct{id, for k, v in ...x: [k]: e}` builds a struct whose fields are the
  * named ones and each of `x`'s, typed from the expected type or else from each pass, evaluating the

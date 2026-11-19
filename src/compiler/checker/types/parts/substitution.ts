@@ -1,11 +1,11 @@
 /**
- * Substitution (§3.5): type parameters replaced by the types given for them, through every type
+ * Substitution (§8.1): type parameters replaced by the types given for them, through every type
  * they appear in. A type parameter is keyed by its declaration, and a trait's `Self` by the trait's
  * (type/index.ts), so instantiating a generic declaration and applying a constraint are one
  * operation. An `any` type binds its traits' `Self`, so a substitution from outside never reaches
  * it. A type written through an alias stays written through it, its arguments substituted alike
  * (type/index.ts). One written as an associated type is that associated type of its owner
- * substituted, built by the rules as every one is (§3.1), never its body substituted apart:
+ * substituted, built by the rules as every one is (§5.2), never its body substituted apart:
  * expanding one that reaches itself then stops alike however it is reached. The types substitution
  * builds are built by the program's rules (type/type-rules.ts), so a union reached through it is
  * normalized as one written with its arguments in place: `T | any Stringable` with `T = String` is
@@ -78,7 +78,7 @@ export function substitute(type: Type, substitution: Substitution, rules: TypeRu
 }
 
 /**
- * A mapped struct type with `substitution` applied, never to the parameter it binds (§3.1): its
+ * A mapped struct type with `substitution` applied, never to the parameter it binds (§5.2): its
  * keys and named fields first, then its value together with each key, once its keys are known
  * (type/type-rules.ts `mappedType`).
  */

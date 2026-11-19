@@ -8,7 +8,7 @@
 # error: 5125 at 64:3
 # error: 5125 at 65:3
 # A generic type is compiled per instantiation, so one that refers to itself, directly or through
-# others, with a type argument built from its own would need endlessly many of them (§3.5): it is
+# others, with a type argument built from its own would need endlessly many of them (§8.1): it is
 # reported at the field that grows the argument. A field that passes its parameter on whole, or
 # reaches the type again only through other parameters, ends.
 

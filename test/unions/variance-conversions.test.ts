@@ -2,7 +2,7 @@
  * Behavioural and end-to-end verification of Phase V1: variance derivation and markers (`gives`,
  * `takes`), conversions composing part by part through variance, recursive types (`Json`, `Tree`,
  * `List`), runtime equality and map keys by declaration, persistence across commits, and JSON
- * round-trips (docs/spec.md §2, §3.1, §3.5, §3.6, §3.8, §3.14, §3.15, §3.18).
+ * round-trips (docs/spec/ §4.1, §5.2, §8.1, §17.2, §19.2, §6.4, §4.5, §5.4).
  */
 
 import { describe, expect, it } from 'vitest';
@@ -12,7 +12,7 @@ import { parserDiagnostics } from '../../src/compiler/parser/diagnostics.ts';
 import { startToEnd, testRuntime } from '../../src/runtime/runtime.test-kit.ts';
 import { codesOf, runMain } from '../written-types.test-kit.ts';
 
-describe('contextual variance words `gives` and `takes` (§2, §3.5)', () => {
+describe('contextual variance words `gives` and `takes` (§2.2, §8.1)', () => {
   it('allows `gives` and `takes` as ordinary identifiers outside type parameter prefixes', async () => {
     const decls = [
       'struct Holder { takes: Int }',
@@ -96,7 +96,7 @@ describe('contextual variance words `gives` and `takes` (§2, §3.5)', () => {
   });
 });
 
-describe('variance derivation across positions and recursive declarations (§3.5, §3.18)', () => {
+describe('variance derivation across positions and recursive declarations (§8.1, §5.4)', () => {
   it('keeps handles, `&`, map keys, an invariant trait’s `any` constraints, member parameters and computed positions invariant', () => {
     expect(
       codesOf(
@@ -192,7 +192,7 @@ describe('variance derivation across positions and recursive declarations (§3.5
   });
 });
 
-describe('conversions composing inside types (§2, §3.1, §3.5, §3.14, §3.15)', () => {
+describe('conversions composing inside types (§4.1, §5.2, §8.1, §6.4, §4.5)', () => {
   it('converts `Array<Int>` into `Array<Int?>`, persists across a commit, and round-trips through JSON', async () => {
     const decls = ['import * as json from "json"', 'import * as time from "time"'];
     const body = [
@@ -343,7 +343,7 @@ describe('conversions composing inside types (§2, §3.1, §3.5, §3.14, §3.15)
   });
 });
 
-describe('runtime equality (`==`) and `Map` keys by declaration (§3.5, §3.8, §3.9)', () => {
+describe('runtime equality (`==`) and `Map` keys by declaration (§8.1, §19.3, §10.2)', () => {
   it('compares structs, variants, and collections widened without layout change equal to freshly built ones', async () => {
     const decls = ['struct Box<T> { value: T }', 'enum Choice<T> { Pick(value: T), Empty }'];
     expect(

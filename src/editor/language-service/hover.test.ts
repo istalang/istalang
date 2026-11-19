@@ -80,7 +80,7 @@ describe('hover', () => {
     expect(hover(...counter, 'fn f(c: Counter?) -> Int?: c?‸->count')?.code).toEqual(['Int?']);
   });
 
-  it('shows the function a deferred call gives its taker to, and the call it defers (§3.14)', () => {
+  it('shows the function a deferred call gives its taker to, and the call it defers (§6.5)', () => {
     const declared = [
       'fn shown(f: fn() -> Int, times: Int = 3) -> String: String(f())',
       'fn shown(f: fn() -> String, label: String) -> String: f() + label',
@@ -155,7 +155,7 @@ describe('hover', () => {
     ).toEqual([shown]);
   });
 
-  it("shows a variant with fields by its constructor's signature, then its enum (§3.11)", () => {
+  it("shows a variant with fields by its constructor's signature, then its enum (§5.3)", () => {
     const opt = ['enum Opt<T>:', '  Some(value: T)', '  None', ''];
     const signature = 'fn Opt.Some<T>(value: T) -> Opt<T>';
     expect(hover('enum Opt<T> { So‸me(value: T), None }')?.code).toEqual([

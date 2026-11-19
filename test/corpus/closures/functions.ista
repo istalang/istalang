@@ -1,6 +1,6 @@
 # outcome: "8 6 7 120 15 0 1 9 3 100 5 0 20 7 hi x 9"
-# Functions are values (§3.14): a lambda takes its parameter types from the function type it is
-# passed as, and a generic function infers its type arguments from the lambda's result (§3.5), or
+# Functions are values (§6.4): a lambda takes its parameter types from the function type it is
+# passed as, and a generic function infers its type arguments from the lambda's result (§8.1), or
 # from that of a generic or overloaded function named as a value, chosen by the other arguments,
 # a lambda's result among them; a named lambda calls itself, its result given by the expected
 # type; a local `fn` calls itself with a declared result; a top-level, static or overloaded

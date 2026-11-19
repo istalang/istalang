@@ -1,6 +1,6 @@
 # outcome: [3,5,7]
 # A field of a function type a trait requires is called as `x.f(…)` through a type parameter or an
-# `any` value, as a struct's own is (§3.10, §3.14).
+# `any` value, as a struct's own is (§8.3, §6.4).
 
 import * as runtime from 'runtime'
 

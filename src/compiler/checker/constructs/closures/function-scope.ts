@@ -1,5 +1,5 @@
 /**
- * One function being checked within a body (§3.14): the body's own, or a lambda or local `fn`
+ * One function being checked within a body (§6.4): the body's own, or a lambda or local `fn`
  * nested in it, with what is the function's own while checking it: its result, its loops and
  * labelled blocks, whether it may `await`, the kind of code it is (proposal 8, Rule 2), and what
  * it captures (functions.ts): the variables it uses from around it.

@@ -126,7 +126,7 @@ describe('call argument completion', () => {
     expect(offered(plus, 'fn f() -> Int: plus(‸, 2)')).not.toContain('b:');
   });
 
-  it('offers names alone once an argument is named, for positional ones go first (§3.3)', () => {
+  it('offers names alone once an argument is named, for positional ones go first (§6.1)', () => {
     expect(offered(plus, 'fn f(n: Int) -> Int: plus(b: 2, ‸')).toEqual(['a:']);
   });
 

@@ -1,5 +1,5 @@
 # panic: Division by zero.
-# `%` by zero is a bug like `//` by zero (§2, §3.12), unlike `/`, which gives an infinity or NaN.
+# `%` by zero is a bug like `//` by zero (§3.4, §12), unlike `/`, which gives an infinity or NaN.
 
 import * as runtime from 'runtime'
 

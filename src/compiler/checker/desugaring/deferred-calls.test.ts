@@ -1,5 +1,5 @@
 /**
- * Deferred calls (§3.14), held to their meaning by the commute law: over generated nests of takers
+ * Deferred calls (§6.5), held to their meaning by the commute law: over generated nests of takers
  * and calls, `g f(args)` runs as the closure it stands for, `g((fn(x): fn(): f(x))(args))`, giving
  * the same value and logging the same effects in the same order, so what runs now, what runs later,
  * and how often, all agree.
@@ -214,7 +214,7 @@ describe('a deferred call', () => {
     expect(await outcomeOf(text)).toBe(12_005);
   });
 
-  it('runs a receiver that never gives now, before any function is built (§2)', async () => {
+  it('runs a receiver that never gives now, before any function is built (§4.1)', async () => {
     const text = [
       'fn never(f: fn() -> Int) -> Int:',
       '  0',
@@ -226,7 +226,7 @@ describe('a deferred call', () => {
     expect(await outcomeOf(text)).toMatchObject({ kind: 'panicked', message: 'now' });
   });
 
-  it('leaves before any function is built where its call stops before it is made (§2)', async () => {
+  it('leaves before any function is built where its call stops before it is made (§4.1)', async () => {
     const text = [
       'fn later(f: fn() -> Int) -> Int:',
       '  f()',
@@ -238,7 +238,7 @@ describe('a deferred call', () => {
     expect(await outcomeOf(text)).toMatchObject({ kind: 'panicked', message: 'now' });
   });
 
-  it('allows spreading a non-sendable iterable whose items are sendable, since the items are collected now (§3.3, §3.14)', async () => {
+  it('allows spreading a non-sendable iterable whose items are sendable, since the items are collected now (§6.1, §6.4)', async () => {
     const text = [
       'struct SharedIter:',
       '  s: Shared<Int>',
@@ -262,7 +262,7 @@ describe('a deferred call', () => {
     expect(await outcomeOf(text)).toBe(42);
   });
 
-  it("refuses spreading a sendable iterable whose items aren't sendable when a sendable function is taken (§3.3, §3.14)", () => {
+  it("refuses spreading a sendable iterable whose items aren't sendable when a sendable function is taken (§6.1, §6.4)", () => {
     const text = [
       'struct BadIter:',
       '  n: Int',

@@ -1,5 +1,5 @@
 # outcome: [3,2,true]
-# A program's own type takes the bitwise operators through `Bitwise` (§3.9), as a set of flags.
+# A program's own type takes the bitwise operators through `Bitwise` (§10.2), as a set of flags.
 
 import * as runtime from 'runtime'
 

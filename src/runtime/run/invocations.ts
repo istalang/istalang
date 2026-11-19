@@ -1,5 +1,5 @@
 /**
- * Calls into an instance (§9): each an invocation of a closure, answered with what its call gave or
+ * Calls into an instance (§17.1): each an invocation of a closure, answered with what its call gave or
  * how the instance ended first.
  *
  * - The **root** invocation is an instance's spawned call: its end is the instance's, which a
@@ -8,7 +8,7 @@
  *   panic answers every call still running in it, and no call that already returned.
  * - **Holding.** A call's result is held by its invocation until answered: the root's answer lets
  *   go of it as the instance finishes; any other's is let go of here, once told, its answer having
- *   taken what it needs (a context's copies the value out, §9). Not in the answer itself, since an
+ *   taken what it needs (a context's copies the value out, §17.1). Not in the answer itself, since an
  *   invocation outlives the run it started in when a segment runs again.
  */
 
@@ -20,7 +20,7 @@ import type { Future } from './objects/future.ts';
 /**
  * An invocation's answer: told how the call into the instance ended. Its caller hears the
  * instance's panic (`hears`), but for the loop serving jobs, whose instance's panic stays the
- * host's to hear (§9), and the root's, whose end is the instance's own.
+ * host's to hear (§17.3), and the root's, whose end is the instance's own.
  */
 export interface Invocation {
   readonly answer: (end: InvocationEnd) => void;

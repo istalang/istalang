@@ -1,5 +1,5 @@
 # outcome: [["email a","sms 1","email w"],"sms 9/sms 9",true,false,1,"42","n=42",7]
-# Values of any type meeting a trait, called through it (§3.10): each call runs the function its
+# Values of any type meeting a trait, called through it (§8.2): each call runs the function its
 # value's own type meets the trait with, across a wait, through a generic function, a widening,
 # a map key, `String(x)` and an async requirement.
 import * as runtime from 'runtime'

@@ -1,5 +1,5 @@
 /**
- * The variant a pattern names (§3.11), alone, braced or called, tested before its fields are taken
+ * The variant a pattern names (§11.3), alone, braced or called, tested before its fields are taken
  * apart. The part's enum is the expected type, so a bare variant name is enough.
  */
 

@@ -1,4 +1,4 @@
-# The math module (spec §3.8), as tables of cases: rounding in every mode, roots, and the order
+# The math module (spec §19.2), as tables of cases: rounding in every mode, roots, and the order
 # functions on every ordered type.
 
 import * as math, abs, clamp, max, min, round, Rounding, sqrt from 'math'

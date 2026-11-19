@@ -1,7 +1,7 @@
 # outcome: "0 4 6 1 2 3 0 2 array map tuple 0 1 2 6 4 9 0 0"
-# An argument with no type of its own has the type its parameter gives (§3.5), as any value has
+# An argument with no type of its own has the type its parameter gives (§8.1), as any value has
 # where a type is expected: an empty `[]` or `[:]`, and a tuple, a collection literal or a branch
-# holding `none` or a lambda with an untyped parameter, each element fitting its own type (§2). A
+# holding `none` or a lambda with an untyped parameter, each element fitting its own type (§4.2). A
 # literal whose first item has a type of its own has that type, as without a call. Choosing among
 # overloads asks what such an argument can take; a generic function's type arguments it leaves
 # open come from the type the call is expected to have, and a conversion's from those written.

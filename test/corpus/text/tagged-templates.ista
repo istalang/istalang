@@ -1,7 +1,7 @@
 # outcome: ["select ? from ?|2","hi x!",">a$b$","[1, 2]"]
 # disable-ista-formatter
 # A tagged template is the call it stands for: `tag(texts, values…)` through a function, a method or
-# a function value, so the tag's parameters decide what its values must be (§2).
+# a function value, so the tag's parameters decide what its values must be (§3.1).
 struct Query:
   text: String
   count: Int

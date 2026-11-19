@@ -1,24 +1,24 @@
 /**
- * Which functions a call may mean (§3.7, §3.10, §3.13), before its arguments choose one:
+ * Which functions a call may mean (§6.2, §8.2, §13.1), before its arguments choose one:
  *
  * - the functions its name denotes where it is written, the prelude's joined (the binder's set);
  * - argument-dependent lookup: the exported functions of that name in the modules declaring the
  *   arguments' own types, not their type arguments' (a primitive's is the prelude);
  * - the functions the constraints on a type parameter require, for every type parameter the
  *   arguments mention, so generic code calls `add(x, y)` on `T is Addable` like any other; and so
- *   for every `any` type they mention, whose value's own type decides the function (§3.10);
+ *   for every `any` type they mention, whose value's own type decides the function (§8.3);
  * - for a call written in a module on a union, the functions of its name that the traits visible
  *   there require (../conformance/union-traits.ts), which choosing tries only where no function
- *   takes the union whole (§6): a union has no module, so argument-dependent lookup finds nothing
+ *   takes the union whole (§8.2): a union has no module, so argument-dependent lookup finds nothing
  *   for it.
  *
  * A static function (`Duration.zero()`, `T.zero()`) is chosen among those declared on its type and
  * visible where it is called: in the calling module, the type's module, the prelude, or a module
- * the caller imports (§3.7); on a type parameter, among its constraints' static requirements. A
- * shape has no module (§3.13), so argument-dependent lookup finds nothing for it, and its static
- * functions are those the caller sees (§3.17).
+ * the caller imports (§6.2); on a type parameter, among its constraints' static requirements. A
+ * shape has no module (§13.1), so argument-dependent lookup finds nothing for it, and its static
+ * functions are those the caller sees (§4.6).
  *
- * A witness of a trait's requirement (§3.10), and a getter meeting a field it requires, is chosen
+ * A witness of a trait's requirement (§8.2), and a getter meeting a field it requires, is chosen
  * among the functions declared beside the types it takes, which argument-dependent lookup finds,
  * or beside the trait, never among what the
  * use site sees, so a type meets a trait with the same functions in every module that uses it: the
@@ -30,7 +30,7 @@
  * offers is what a call may choose.
  *
  * Through a receiver, a function is reached as a method, called `x.f(…)`, or as a getter, read
- * `x.f` (§3.1, §3.7): `receiverMembers` tells them apart once, for reading, calling and listing.
+ * `x.f` (§5.2, §6.2): `receiverMembers` tells them apart once, for reading, calling and listing.
  */
 
 import type { ModuleId } from '../../../program/program.ts';
@@ -60,7 +60,7 @@ export interface Candidate {
 /**
  * What a static call is made through: a declared type, a primitive or a shape, with the module
  * declaring it, which a shape has none of; or a type known only per instantiation, a type
- * parameter or a type computed from one (`R.Data`, §3.1), through its constraints.
+ * parameter or a type computed from one (`R.Data`, §5.2), through its constraints.
  */
 type StaticTarget =
   | {
@@ -192,7 +192,7 @@ function candidatesWith(
 
 /**
  * The methods of `methods` a call through `callee`, a member access, may mean: one taking `&self`
- * only when the access is a place (§3.7), since what it changes must be the caller's own. Whether
+ * only when the access is a place (§7.3), since what it changes must be the caller's own. Whether
  * that place may change is judged once one is chosen (resolution/calls/places.ts).
  */
 export function callableThrough(
@@ -207,9 +207,9 @@ export function callableThrough(
 
 /** The functions a receiver reaches among some candidates, by how it reaches them. */
 export interface ReceiverMembers {
-  /** Called on the receiver, `x.f(…)` (§3.7). */
+  /** Called on the receiver, `x.f(…)` (§6.2). */
   readonly methods: readonly Candidate[];
-  /** Read on the receiver as fields are, `x.f` (§3.1). */
+  /** Read on the receiver as fields are, `x.f` (§5.2). */
   readonly getters: readonly Candidate[];
 }
 
@@ -222,7 +222,7 @@ export function receiverMembers(candidates: readonly Candidate[]): ReceiverMembe
   };
 }
 
-/** The functions a top-level name denotes in `module`, the prelude's joined (§3.9, §3.13). */
+/** The functions a top-level name denotes in `module`, the prelude's joined (§10.2, §13.1). */
 export function namedInModule(
   checker: CheckerContext,
   module: ModuleId,
@@ -279,7 +279,7 @@ export function witnessCandidates(
 }
 
 /**
- * The candidates of a getter meeting the field `name` `trait` requires, for `type` (§3.10): the
+ * The candidates of a getter meeting the field `name` `trait` requires, for `type` (§8.2): the
  * getters declared beside `type` or the trait, as a witness's are.
  */
 export function fieldGetterCandidates(
@@ -348,7 +348,7 @@ function staticFunctionsAmong(
   );
 }
 
-/** The functions `wanted` the modules declaring `argumentTypes` export (§3.13). */
+/** The functions `wanted` the modules declaring `argumentTypes` export (§13.1). */
 function argumentDependent(
   checker: CheckerContext,
   wanted: Wanted,
@@ -376,14 +376,14 @@ function exportedFunctions(
 
 /**
  * The module declaring `type`: a nominal type's own, a primitive's the prelude; none for others,
- * a shape among them (§3.13).
+ * a shape among them (§13.1).
  */
 function declaringModule(checker: CheckerContext, type: Type): ModuleId | undefined {
   const target = staticTargetOf(checker, type);
   return target?.kind === 'owner' ? target.module : undefined;
 }
 
-/** What brings the functions its constraints require as candidates (§3.10). */
+/** What brings the functions its constraints require as candidates (§8.2). */
 type RequirementHolder = TypeParameter | AnyType | ComputedType;
 
 /** The type parameters, `any` types and computed types `type` mentions. */

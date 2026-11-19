@@ -1,14 +1,14 @@
 /**
- * What a value lets a function capturing it be (§3.14), and so which types are Sendable (§3.1) and
- * which are Inert, reaching no disposable at any depth (§3.10, §7): derived, never declared, save
- * that an extern type says which handle it is (§3.6). One level per part a value holds, a
+ * What a value lets a function capturing it be (§6.4), and so which types are Sendable (§7.4) and
+ * which are Inert, reaching no disposable at any depth (§8.4, §16): derived, never declared, save
+ * that an extern type says which handle it is (§17.2). One level per part a value holds, a
  * `Sendability` member or a variable of it, joined by `Sendability`'s order (type/mark-orders.ts),
  * is the one answer every reader takes, the lifetime rule's relevance included, so none classifies
  * parts again.
  *
  * - A part's own level (`ownSendability`), apart from what it holds: a disposable's is `plain`; a
  *   function's is its `Send`; a handle's whose identity stays in its instance or process is
- *   `inert` (§3.18, properties/handles.ts); a type known by its constraints is what they imply
+ *   `inert` (§5.4, properties/handles.ts); a type known by its constraints is what they imply
  *   (constraint-implication.ts); anything else's is `sendable`.
  * - A type's level joins its held parts' (properties/held.ts): a struct, enum, tuple or extern
  *   value by its parts (an extern value's type arguments, since it crosses as JSON), a `sendable`

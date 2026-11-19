@@ -1,5 +1,5 @@
 /**
- * What crosses the host boundary spelled (§9, docs/arch/definition.md, "Externs"): the key binding
+ * What crosses the host boundary spelled (§17.4, docs/arch/definition.md, "Externs"): the key binding
  * an extern to its native or a startable function to what a host starts it by, and the type a host
  * extern provides as declared, both persisted by stores and host tables across deploys. So their
  * spelling is stored, the std's keys in test/golden/extern-keys.txt, held from 1.0 on (its test),
@@ -50,7 +50,7 @@ interface KeyedParameter {
 }
 
 /**
- * The key binding `declaration`, taking `parameters`, across the host boundary (§9): an extern to
+ * The key binding `declaration`, taking `parameters`, across the host boundary (§17.4): an extern to
  * its native, or a startable function to what a host starts it by. Both are spelled alike: module,
  * name, and the declared parameter types.
  */
@@ -105,7 +105,7 @@ function recursiveKeyType(checker: Checker, type: Type, part: PartKeyType): KeyT
     : aliasKeyType(checker, alias, part);
 }
 
-/** A type through `alias`, as `prelude.Optional<T>` is spelled (§3.17). */
+/** A type through `alias`, as `prelude.Optional<T>` is spelled (§4.6). */
 function aliasKeyType(checker: Checker, alias: DeclaredAliasUse, part: PartKeyType): KeyType {
   return {
     kind: 'named',

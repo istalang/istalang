@@ -2,7 +2,7 @@
 # error: 5307 at 22:9
 # error: 5307 at 23:16
 # An element passed by `&` is written back when its call returns, and an async call returns its
-# future before its callee ends, so no element may be passed by `&` to an async function (§3.7),
+# future before its callee ends, so no element may be passed by `&` to an async function (§7.3),
 # whether written `&`, taken as `&self`, or passed to an async function value.
 
 import * as runtime from 'runtime'

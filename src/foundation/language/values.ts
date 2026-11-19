@@ -1,5 +1,5 @@
 /**
- * The built-in `==` and map keys (§3.8, §3.9), written once for every representation of values: the
+ * The built-in `==` and map keys (§19.3, §10.2), written once for every representation of values: the
  * runtime's (definition/values/equality.ts) and compile time's constant forms
  * (checker/surface/constant-form.ts). A representation shows its values through a `ValueView`; the
  * rules live here alone, so compile time and run time can't disagree on them.

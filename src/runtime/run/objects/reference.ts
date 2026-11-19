@@ -1,4 +1,4 @@
-/** A `&` parameter's value (§3.14): no object, but a cell and a path of steps into its value. */
+/** A `&` parameter's value (§7.3): no object, but a cell and a path of steps into its value. */
 
 import type { Cell } from './cell.ts';
 

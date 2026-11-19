@@ -1,17 +1,17 @@
 /**
- * Getters (§3.1): a method declared `fn get name`, read as a field is, `x.g`, which is the call `g(x)`.
+ * Getters (§5.2): a method declared `fn get name`, read as a field is, `x.g`, which is the call `g(x)`.
  *
  * - A read is resolved as a method call is, its receiver passed as its `self` and fitted to it, at
- *   the member access, which no function named as a value is recorded at (§3.14), so a recorded
+ *   the member access, which no function named as a value is recorded at (§6.4), so a recorded
  *   member access is a call wherever it is read; nothing past the checker knows getters exist.
  * - Its candidates are the receiver's getters of that name, those taking it as `self`, found as its
  *   methods are (resolution/choosing/member-meaning.ts `membersNamed`). A read continuing
  *   an optional chain is resolved in a scope of its own, as a call continuing one is.
  * - A getter takes nothing beyond `self`, by value, and isn't async, since a read passes it
  *   nothing else and gives a value, not a future. Only a module's own function is one, which the
- *   parser holds: a trait requires a field instead, which a getter meets (§3.10), an extern's code
+ *   parser holds: a trait requires a field instead, which a getter meets (§8.2), an extern's code
  *   is the host's, and a local function is no method.
- * - A keyed read (§3.9), `x.k` through an `index` whose key is a member parameter, is read alike:
+ * - A keyed read (§10.2), `x.k` through an `index` whose key is a member parameter, is read alike:
  *   the call `index(x, "k")`, its key the member's name, typed as its literal type: a name, which
  *   nothing checks as an expression. Only a key the index serves is read so
  *   (resolution/choosing/keyed-indexes.ts). Each key is its own instantiation, so
@@ -50,7 +50,7 @@ export function readGetter(
 }
 
 /**
- * The value `read.access` reads by calling one of `indexes`, keyed, as `x["k"]` calls it (§3.9): a
+ * The value `read.access` reads by calling one of `indexes`, keyed, as `x["k"]` calls it (§10.2): a
  * method call on its receiver, as a getter's read is, its name the key.
  */
 export function readKeyed(

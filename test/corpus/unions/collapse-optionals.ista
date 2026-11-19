@@ -1,5 +1,5 @@
 # outcome: "true|true|5|true|true|true|true|true|1"
-# An optional an instantiation collapses (§2, §3.5): `T?` with `T = None` is `None`, whose one value
+# An optional an instantiation collapses (§4.2, §8.1): `T?` with `T = None` is `None`, whose one value
 # is `none`, so `??` and a chain read it as absent and natives give it back as it is; and `T?` with
 # `T = Int?` is `Int?`, which a chain ending in a `T` never wraps again.
 

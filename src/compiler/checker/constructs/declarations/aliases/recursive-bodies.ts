@@ -1,5 +1,5 @@
 /**
- * The types recursive aliases close to (§3.17): each alias's group (alias-recursion.ts) closes
+ * The types recursive aliases close to (§4.6): each alias's group (alias-recursion.ts) closes
  * together, so mutually recursive aliases are one graph (types/identity/recursive-types.ts).
  *
  * - A body is resolved for closing apart from the checker's own resolution of its nodes, each use

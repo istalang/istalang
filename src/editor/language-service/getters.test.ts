@@ -1,5 +1,5 @@
 /**
- * A getter in the editor (§3.1): offered and shown as the field it reads as, while hover, going to
+ * A getter in the editor (§5.2): offered and shown as the field it reads as, while hover, going to
  * its definition and renaming reach the function it is.
  */
 

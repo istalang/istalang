@@ -1,5 +1,5 @@
 /**
- * The type a pattern being written is matched against (§3.11), and the fields a struct or call
+ * The type a pattern being written is matched against (§11.3), and the fields a struct or call
  * pattern names, as checking the placeholder parse records them (placeholder-check.ts): the parse
  * holds the pattern being written whole, and the checker's one pattern walk records what each
  * pattern and part was matched against, read down from the `match` subject, the `is` operand or the
@@ -7,7 +7,7 @@
  *
  * Two places nothing records, both read by the checker's own rules:
  * - A parameter's pattern of a function with no body yet, which no body walks: it matches the
- *   parameter's type, which its head names (§3.3), and names that type's fields.
+ *   parameter's type, which its head names (§6.1), and names that type's fields.
  * - A `struct{…}` pattern against a union, which selects the shape member having its items' fields
  *   (`kindMembers`): the walk counts the item being written, whose name no member has yet, so it
  *   selects none; its other items select the member whose fields it names.

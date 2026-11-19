@@ -1,14 +1,14 @@
 /**
- * Instances (§5, §9): what one run drives. Every execution belongs to one, and what code asks of
- * "itself" — its name, its context constants (§3.4), its random draws (§3.8) — is its instance's.
+ * Instances (§14, §17.1): what one run drives. Every execution belongs to one, and what code asks of
+ * "itself" — its name, its context constants (§7.1), its random draws (§19.2) — is its instance's.
  *
  * - The **root** is the live run a host started (proposal 8): it never commits, and its panic ends
  *   the run.
- * - A **context** is an ista instance named by key in a store (§9), made by the first call into
+ * - A **context** is an ista instance named by key in a store (§17.1), made by the first call into
  *   it; each call is an invocation running a function in it, answered with `Ok` of what it gave or,
  *   once the context panics, `Err` of its panic. Its panic ends it and every call still waiting, and
  *   no other instance.
- * - A **spawned** instance (§9) runs a function of its parent's as an instance of its own, named
+ * - A **spawned** instance (§17.1) runs a function of its parent's as an instance of its own, named
  *   after its parent; its end settles what waits on its `result()`.
  */
 
@@ -23,7 +23,7 @@ export type InstanceEnd =
   | { readonly kind: 'panicked'; readonly message: string; readonly trace: string };
 
 /**
- * What waits on an instance's end, told how it ended; whether its panic is heard there (§9), which
+ * What waits on an instance's end, told how it ended; whether its panic is heard there (§17.1), which
  * stops once its caller lets go of the call.
  */
 interface EndWatcher {
@@ -35,15 +35,15 @@ export class Instance {
   readonly name: string;
   /** Whether it commits at every wait: ista code's instance, not the live run. */
   readonly durable: boolean;
-  /** The instances it was spawned from, nearest first (§9); none for a live run or a context. */
+  /** The instances it was spawned from, nearest first (§17.1); none for a live run or a context. */
   readonly lineage: readonly string[];
   readonly contextConstants = new ContextConstants();
-  /** How many random draws it has made (§3.8). */
+  /** How many random draws it has made (§19.2). */
   draws = 0;
   /** How many instances it spawned, which names the next. */
   spawned = 0;
   end: InstanceEnd | undefined;
-  /** Whether a call into it was waiting as it ended, to hear its panic (§9). */
+  /** Whether a call into it was waiting as it ended, to hear its panic (§17.1). */
   heard = false;
   /** What waits on its end: the calls into it still waiting. */
   readonly endWatchers: EndWatcher[] = [];
@@ -56,7 +56,7 @@ export class Instance {
     this.lineage = lineage;
   }
 
-  /** The kind of async code it runs (§9): ista code in an ista instance, live code in a live run. */
+  /** The kind of async code it runs (§17.1): ista code in an ista instance, live code in a live run. */
   get kind(): Persistence {
     return this.durable ? 'ista' : 'live';
   }
@@ -68,7 +68,7 @@ export class Instance {
     }
     this.end = end;
     this.heard = this.endWatchers.some((watcher) => watcher.hears());
-    // A call still waiting as its instance finishes is answered by nothing it gave (§9).
+    // A call still waiting as its instance finishes is answered by nothing it gave (§17.1).
     const told: InvocationEnd =
       end.kind === 'finished' ? { kind: 'unanswered', instance: this.name } : end;
     for (const watcher of this.endWatchers.splice(0)) {
@@ -78,7 +78,7 @@ export class Instance {
 }
 
 /**
- * How an instance or a call into it ended, as a wait on it is told (§9): what it gave alone, or none
+ * How an instance or a call into it ended, as a wait on it is told (§17.1): what it gave alone, or none
  * with its panic's message and trace, which the std's Istalang makes the `Result` code reads.
  */
 export function instanceEnding(end: InvocationEnd): Value {

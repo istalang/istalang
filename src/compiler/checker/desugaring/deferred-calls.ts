@@ -1,5 +1,5 @@
 /**
- * Deferred calls, `g f(args)` (§3.14): `g` is given a function making the call `f(args)` later, with
+ * Deferred calls, `g f(args)` (§6.5): `g` is given a function making the call `f(args)` later, with
  * everything written in it computed now. It is checked as `g` called with that function given after
  * its own arguments (`Call.given`, which binding places), a closure over constants:
  * `g(…, given: { const v… = <what runs now>; fn(): f(v…) })`, so its mark, sendability and captures

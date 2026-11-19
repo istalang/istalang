@@ -1,5 +1,5 @@
 /**
- * Enum values by their variant's name (§3.11): what `?` tests a `Result` for and the `Err` it
+ * Enum values by their variant's name (§5.3): what `?` tests a `Result` for and the `Err` it
  * returns, what a loop tests a cursor's step for, and a variant without fields named or called.
  * Each is the variant at its position among the enum's variants (`variantNamedIn`); in code
  * checking found a mistake in, where the type is no such enum, the test may go either way and the

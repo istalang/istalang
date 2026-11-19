@@ -1,7 +1,7 @@
 /**
- * A function's own call (§7): a name before a `.` that names the functions of an enclosing async
+ * A function's own call (§16): a name before a `.` that names the functions of an enclosing async
  * function denotes that function's call, held in a variable of it; `main`'s call nothing holds,
- * a transient's initializer reads no variable of its function (§3.4), and a name naming no
+ * a transient's initializer reads no variable of its function (§7.1), and a name naming no
  * enclosing async function denotes no call, which is reported.
  */
 
@@ -22,7 +22,7 @@ export function holdsOwnCall(node: FunctionDeclaration | Lambda): boolean {
 }
 
 /**
- * Why `name`, naming the functions of `enclosing` before a `.`, denotes no call (§7): it stands in
+ * Why `name`, naming the functions of `enclosing` before a `.`, denotes no call (§16): it stands in
  * a transient's initializer of a function holding its call, or what it names encloses it as the
  * program's `main`, whose call nothing holds, or doesn't enclose it as an async function at all.
  */

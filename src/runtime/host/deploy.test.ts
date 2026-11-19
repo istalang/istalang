@@ -1,5 +1,5 @@
 /**
- * Deploying a Definition (§5): it is stored once by hash, however many times a runtime deploys it,
+ * Deploying a Definition (§14): it is stored once by hash, however many times a runtime deploys it,
  * and a fresh runtime on the same store still gets it written when its store lacks it. A deploy
  * failing before it stored the Definition stores it when tried again, and a runtime reads a stored
  * Definition once, however many of its instances it reads back.

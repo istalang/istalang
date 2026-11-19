@@ -1,5 +1,5 @@
 /**
- * Dropped variables (§7): `drop x` releases `x`, which can't be used afterwards. A use that some
+ * Dropped variables (§16): `drop x` releases `x`, which can't be used afterwards. A use that some
  * path reaches from a drop, with no assignment to `x` between, is an error; assigning a `let`
  * again makes it usable, and a declaration run again, as in a loop's next iteration, is a fresh
  * variable.

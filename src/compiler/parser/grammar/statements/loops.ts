@@ -1,12 +1,12 @@
 /**
- * Loops (§4): `for x in xs: …`, whose targets destructure as a declaration's do, a field loop
+ * Loops (§11.1): `for x in xs: …`, whose targets destructure as a declaration's do, a field loop
  * `for key, value in ...x: …` or `for K in keyof S: …`, which what follows `in` tells apart
  * (parts/field-headers.ts), and `while c: …`,
  * each maybe after a label, `outer: for …`, which `break outer` and `continue outer` name. All
  * are statements of type unit, so they are not expressions.
  *
  * A label also stands before an indented block, `batch:` at the end of its line, which only
- * `hold(batch)` names (§3.4). The line break tells it from anything else a name and `:` start.
+ * `hold(batch)` names (§7.1). The line break tells it from anything else a name and `:` start.
  * A name and `:` before anything else is a label in the wrong place: nothing else at the start of
  * a statement reads so. It is reported, and the statement after it parsed as if it weren't there.
  */

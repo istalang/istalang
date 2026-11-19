@@ -1,5 +1,5 @@
 /**
- * The parts a value converted part by part (§3.5) converts, each paired with the part of the type
+ * The parts a value converted part by part (§8.1) converts, each paired with the part of the type
  * it goes into. Lowering rebuilds a value by them (lowering/functions/fits/parts.ts), and the
  * lifetime rule reads by them which values go into an `any` (rules/lifetimes/dispatch.ts), so the
  * two never disagree on what goes where.
@@ -8,7 +8,7 @@
  * - A struct's or a shape's value into a shape, field by field, by index in the one name order
  *   every struct lays its fields out in (types/type/field-order.ts).
  * - A function: what the other takes into what it takes, but a `&`, passed on as it is; what it
- *   gives into what the other gives, or into the value of the future the other gives (§3.14).
+ *   gives into what the other gives, or into the value of the future the other gives (§6.4).
  * - Tuples element by element; an array's items, a map's values; another nominal type's fields,
  *   every variant's for an enum, and none of a host's, whose JSON a wider type reads alike.
  */

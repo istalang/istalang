@@ -1,5 +1,5 @@
 # outcome: "done 1, done 3 | end 1, end 3, end 2, returned"
-# §7's processAll, taking only the first results: each job it starts with `hold _` runs concurrently
+# §16's processAll, taking only the first results: each job it starts with `hold _` runs concurrently
 # until it returns. Returning releases what it kept, so the job still waiting is disposed, stopped
 # at its await with its defers run, and so is the inbox it gave the jobs, before the caller goes on.
 

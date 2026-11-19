@@ -1,5 +1,5 @@
 # outcome: "start 1, end 1, start 0, end 0"
-# A `dispose` runs to its end before any other (§7): disposing the call holding `l0` releases it
+# A `dispose` runs to its end before any other (§16): disposing the call holding `l0` releases it
 # within the round, and `l0` is disposed only after `l1`'s disposal, already running, is done.
 
 import * as runtime from 'runtime'

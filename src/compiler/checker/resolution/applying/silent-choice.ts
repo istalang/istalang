@@ -1,5 +1,5 @@
 /**
- * Calls the toolchain makes on its own to plain functions it knows (§3.9, §3.10), with no written
+ * Calls the toolchain makes on its own to plain functions it knows (§10.2, §8.2), with no written
  * call to report at: a type's `dispose` (rules/disposal/disposal.ts), a json-module helper a codec
  * calls (rules/boundary/json-forms.ts), or the defaults a struct literal leaves fields to
  * (constructs/expressions/structs/literal-fields/index.ts). Each is chosen, instantiated and made

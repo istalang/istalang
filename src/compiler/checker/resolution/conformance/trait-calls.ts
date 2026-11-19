@@ -1,5 +1,5 @@
 /**
- * Calls on a union through a trait (§6, union-traits.ts), kept only where the union meets the
+ * Calls on a union through a trait (§8.2, union-traits.ts), kept only where the union meets the
  * trait: through its members, as such a call dispatches, or through a function declared for the
  * union whole, which is called in its place. Choosing a call (../applying/applied-call.ts) and what
  * tools offer after a union (lookup/members.ts) read candidates through here, so they agree on what

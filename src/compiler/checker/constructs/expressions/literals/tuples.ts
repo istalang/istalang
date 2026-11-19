@@ -1,13 +1,13 @@
 /**
- * Tuples (§3.15): `(a, b)` builds one, `()` is `Unit`, and `t.0` reads an element by position,
+ * Tuples (§4.5): `(a, b)` builds one, `()` is `Unit`, and `t.0` reads an element by position,
  * also as a link of an optional chain (access/optionals.ts).
  *
  * An expected tuple of the same size guides each element, and an element that fits its guide,
- * by the implicit wrap into `T?` included (§2), takes the guide's type: `(1, none)` is an
+ * by the implicit wrap into `T?` included (§4.2), takes the guide's type: `(1, none)` is an
  * `(Int?, Int?)` where one is expected. Whether the whole fits is the receiver's to judge, as for
  * any value, so an element that doesn't fit keeps its own type. A tuple holding an element a call
- * decides (§3.5) is decided with it; one whose elements each have a type of their own is built as
- * the parameter's type where they fit it and its own type doesn't (§3.7).
+ * decides (§8.1) is decided with it; one whose elements each have a type of their own is built as
+ * the parameter's type where they fit it and its own type doesn't (§6.2).
  */
 
 import type { Tuple, TupleElement } from '../../../../syntax/expressions/index.ts';

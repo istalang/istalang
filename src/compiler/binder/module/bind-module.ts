@@ -51,7 +51,7 @@ const bound = new WeakMap<SyntaxTree, ModuleBindings>();
 
 const transients = new WeakMap<ModuleBindings, readonly VariableEntity[]>();
 
-/** The transients `bindings`' scopes defined (§3.4), which its tree alone decides. */
+/** The transients `bindings`' scopes defined (§7.1), which its tree alone decides. */
 export function transientsOf(bindings: ModuleBindings): readonly VariableEntity[] {
   return memo(transients, bindings, () => [...bindings.defined].filter(isTransient));
 }

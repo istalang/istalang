@@ -1,8 +1,8 @@
 /**
- * The type a type node denotes (§2, §3.5, §3.17): names resolve through the binder, and the type
+ * The type a type node denotes (§4.2, §8.1, §4.6): names resolve through the binder, and the type
  * node kinds each have a handler.
  *
- * - A generic declaration's missing trailing type arguments take their declared defaults (§3.5),
+ * - A generic declaration's missing trailing type arguments take their declared defaults (§8.1),
  *   whatever the declaration: a struct, enum, trait, alias or function (type-arguments.ts).
  * - Every argument given for a constrained parameter must meet its constraints. Meeting one looks
  *   at function signatures, which may still be resolving their own types, so the check is noted
@@ -11,8 +11,8 @@
  *   node it has, defaults of type parameters included, so every check is noted by then, whichever
  *   module asked first.
  * - An alias is the type it stands for, its own parameters replaced by the arguments, written
- *   through the alias so it reads as written (§3.17).
- * - `T?` is the prelude's `Optional<T>` (§2), and `Self` inside a trait is the trait's implicit
+ *   through the alias so it reads as written (§4.6).
+ * - `T?` is the prelude's `Optional<T>` (§4.2), and `Self` inside a trait is the trait's implicit
  *   parameter (types/type/index.ts).
  * - `&T` is a parameter's type, or an item of the tuple of an `Fn`'s parameters; here it denotes
  *   `T`, and the signature, or `fnType`, records the reference. The parser lets a tuple's item be
@@ -22,10 +22,10 @@
  * - Fields, of a struct, an enum's variant or an anonymous struct type, resolve in the module
  *   writing them (declared-fields.ts).
  * - A path past the type it names reaches its associated types, `T.Data`, and so does `.Name` after
- *   type arguments, `Field<Int>.Data` (§3.1); either reduces through `TypeRules`.
- * - A `{…}` type is a shape (§3.1), or a mapped struct type, and `keyof S` and `S[K]` are key
+ *   type arguments, `Field<Int>.Data` (§5.2); either reduces through `TypeRules`.
+ * - A `{…}` type is a shape (§5.2), or a mapped struct type, and `keyof S` and `S[K]` are key
  *   types (key-types.ts).
- * - A trait names no type of its own; after `any` it names the traits of one (§3.10).
+ * - A trait names no type of its own; after `any` it names the traits of one (§8.2).
  * - A recursive alias's group closes from its bodies resolved apart (`resolveClosing`): a node
  *   writing a use of the group resolves afresh, that use a placeholder, and reports and notes
  *   nothing its own resolution doesn't again; any other node resolves as the checker resolves it.
@@ -201,7 +201,7 @@ function writtenFunctionType(resolution: Resolution, node: FunctionTypeNode): Ty
   });
 }
 
-/** The pack a function type's rest names (§3.5); the error type, reported, for anything else. */
+/** The pack a function type's rest names (§8.1); the error type, reported, for anything else. */
 function packOf(resolution: Resolution, rest: RestType): PackType {
   const type = resolve(resolution, rest.type);
   if (type.kind === 'error' || isPack(type)) {
@@ -218,7 +218,7 @@ function isTypeNode(parameter: TypeNode | RestType): parameter is TypeNode {
 
 /**
  * The type a named type names. A path past the type it names goes on with that type's associated
- * types (`T.Data`, §3.1), which the binder leaves unresolved: the type arguments then belong to
+ * types (`T.Data`, §5.2), which the binder leaves unresolved: the type arguments then belong to
  * the last of them, which takes none.
  */
 function namedType(resolution: Resolution, node: NamedType): Type {
@@ -267,7 +267,7 @@ function namedType(resolution: Resolution, node: NamedType): Type {
   return members.reduce((owner, member) => associatedAt(resolution, owner, member), type);
 }
 
-/** The associated type `name` names on `owner` (§3.1), reported when it has none. */
+/** The associated type `name` names on `owner` (§5.2), reported when it has none. */
 function associatedAt(resolution: Resolution, owner: Type, name: Identifier): Type {
   const { checker } = resolution;
   const unreduced = unreducedAssociated(resolution, owner, name);
@@ -292,7 +292,7 @@ function associatedAt(resolution: Resolution, owner: Type, name: Identifier): Ty
  * The type `entity` names, given the arguments `typeArgumentsOf` finds for a generic declaration: a
  * primitive, `Self` or a type parameter, a nominal type, the prelude's `Fn` as the function type it
  * is (`fnType`), its parameters taken by `&` as `byReference` says, or an alias as the type it
- * stands for, written through it (§3.17); the error type when `typeArgumentsOf` finds none, and
+ * stands for, written through it (§4.6); the error type when `typeArgumentsOf` finds none, and
  * undefined for what names no type, a trait among them. The one dispatch from a name to its type,
  * whether written in a type (`namedType`) or in a value's place (named-types.ts).
  */
@@ -316,7 +316,7 @@ export function typeOfEntity(
           return parameterType(declaration);
         case 'TraitDeclaration':
         case 'RequiredAssociatedType':
-          // A requirement names a type only on what meets its trait (`T.Key`, §3.10).
+          // A requirement names a type only on what meets its trait (`T.Key`, §8.2).
           return undefined;
         case 'TypeAliasDeclaration': {
           const typeArguments = typeArgumentsOf(declaration);
@@ -333,7 +333,7 @@ export function typeOfEntity(
           return aliasedAs(type, { kind: 'alias', declaration, arguments: typeArguments });
         }
         case 'AssociatedType':
-          // Named bare inside its own declaration, it is the type it stands for there (§3.1).
+          // Named bare inside its own declaration, it is the type it stands for there (§5.2).
           return aliasInstance(
             declaration,
             checker.aliasedType(declaration),
@@ -384,7 +384,7 @@ function argumentsOf(
 }
 
 /**
- * The union `node` writes (§2), normalized: a member another one holds whole merges into it, an
+ * The union `node` writes (§4.2), normalized: a member another one holds whole merges into it, an
  * `any` member taking every type meeting its traits.
  */
 function unionTypeOf(resolution: Resolution, node: UnionType): Type {
@@ -404,7 +404,7 @@ function checkFnArguments(resolution: Resolution, node: NamedType, type: Type): 
   }
 }
 
-/** Whether `entity` is the prelude's `Fn`, the one function type (§3.14). */
+/** Whether `entity` is the prelude's `Fn`, the one function type (§6.4). */
 function isFnType(
   checker: Pick<CheckerContext, 'wellKnownEntity'>,
   entity: Entity | undefined,
@@ -423,7 +423,7 @@ function referenceItems(node: NamedType): readonly boolean[] {
 
 /**
  * The type `&T` denotes: `T`, the reference recorded by what takes it. The parser lets one stand on
- * a parameter's type and on a tuple's item (§3.7); a tuple's is reported here unless the tuple is
+ * a parameter's type and on a tuple's item (§7.3); a tuple's is reported here unless the tuple is
  * an `Fn`'s parameters (`fnType`).
  */
 function referent(resolution: Resolution, node: ReferenceType): Type {

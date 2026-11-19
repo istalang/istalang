@@ -1,5 +1,5 @@
 # outcome: "true|true|true|draft:sent"
-# A literal type's value is its base's (§2), so a value of a literal type, or of a union of
+# A literal type's value is its base's (§4.3), so a value of a literal type, or of a union of
 # literals, converted into an `any` type holds its base's value: a downcast to the base finds it.
 
 import * as runtime from 'runtime'

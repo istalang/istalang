@@ -1,6 +1,6 @@
 # error: 5025 at 14:3
 # error: 5644 at 16:18
-# A revertible send's holder must be kept (§6, §7): left bare, it would retract the message at
+# A revertible send's holder must be kept (§15.3, §16): left bare, it would retract the message at
 # once. Only a disposable has a weak reference, and a weak reference isn't sendable.
 
 import * as runtime from 'runtime'

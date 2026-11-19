@@ -1,5 +1,5 @@
 /**
- * A union and the traits it meets (§6): through functions declared for it, or through its members
+ * A union and the traits it meets (§8.2): through functions declared for it, or through its members
  * when every member meets an object-safe trait no rule derives; and a call on a union going
  * through the one visible trait it meets that requires the function, where no function takes the
  * union whole.

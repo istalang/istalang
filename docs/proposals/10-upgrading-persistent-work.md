@@ -1,5 +1,5 @@
 ---
-description: proposal 10 of docs/proposals, for moving running persistent work to new releases — a build holds every release and each frame runs its own release's code; frames move to a newer release at named `checkpoint`s and at a boundary `ista async fn`'s entry, their state moved by name and checked at compile time; `inline ista async fn`, a plain `ista fn` and an unmarked `async fn` run at their caller's release; `x is unassigned` for state an older release lacks, decided per compiled entry; migration files, diffs kept like SQL migrations from any release to a later one, that add checkpoints to old code, fill state, `restart` or `keep` a function; a committing `await` stands at statement level; replaces proposal 9's Versions and §5's Versioning; read before designing releases, deploys, frames, checkpoints, migration files or their tooling
+description: proposal 10 of docs/proposals, for moving running persistent work to new releases — a build holds every release and each frame runs its own release's code; frames move to a newer release at named `checkpoint`s and at a boundary `ista async fn`'s entry, their state moved by name and checked at compile time; `inline ista async fn`, a plain `ista fn` and an unmarked `async fn` run at their caller's release; `x is unassigned` for state an older release lacks, decided per compiled entry; migration files, diffs kept like SQL migrations from any release to a later one, that add checkpoints to old code, fill state, `restart` or `keep` a function; a committing `await` stands at statement level; replaces proposal 9's Versions and §14's Versioning; read before designing releases, deploys, frames, checkpoints, migration files or their tooling
 owner: tech-lead
 status: active
 applies_to: istalang
@@ -10,7 +10,7 @@ tags: [proposal, runtime, persistence, versions, upgrade, migration]
 
 # Proposal: upgrading persistent work
 
-A workflow may wait for weeks, and a fix may ship meanwhile. Today an instance finishes on the build that started it (§5 *Versioning*), so a fix never reaches it. This proposal lets running work move to a new release at points the code names, checked by the compiler, with migration code only where a developer wants control.
+A workflow may wait for weeks, and a fix may ship meanwhile. Today an instance finishes on the build that started it (§14 *Versioning*), so a fix never reaches it. This proposal lets running work move to a new release at points the code names, checked by the compiler, with migration code only where a developer wants control.
 
 **The model is Erlang's hot code loading, made static.**
 - A build holds every release, and each frame runs the code of its own release.
@@ -18,7 +18,7 @@ A workflow may wait for weeks, and a fix may ship meanwhile. Today an instance f
 - For every older release, the compiler checks that each checkpoint's state fits the newer code. A mismatch is a compile error.
 - A **migration file** adds checkpoints to code that had none, fills in state, or decides a function's fate: `restart` or `keep`.
 
-It builds on proposals 8 and 9. The human chose the design and the decisions at the end; the other rules close gaps found while reviewing it. Section numbers refer to `docs/spec.md`.
+It builds on proposals 8 and 9. The human chose the design and the decisions at the end; the other rules close gaps found while reviewing it. Section numbers refer to the spec (`docs/spec/`).
 
 ## Example
 
@@ -88,7 +88,7 @@ Release `r2` adds a tax id. Instances of `r1` wait inside `getLicense`, which ca
   - A crash before the next commit runs the segment again on the older release, which moves again at the same checkpoint.
 - **A frame meeting no checkpoint runs its release's code to its end.**
 - **A moved frame still owes its old caller a result.** That caller expects the old release's result type, so the result converts back (rule 5).
-- **A checkpoint isn't a waypoint.** `@Waypoint` (§10) names a suspension point for tests and operators. A checkpoint is where code may change.
+- **A checkpoint isn't a waypoint.** `@Waypoint` (§18) names a suspension point for tests and operators. A checkpoint is where code may change.
 
 ### 4. A committing `await` stands at statement level
 
@@ -116,7 +116,7 @@ Release `r2` adds a tax id. Instances of `r1` wait inside `getLicense`, which ca
 
 ### 6. `is unassigned`
 
-- **`x is unassigned`** tests a local of the function. It is decided per compiled entry, like §4's conditions decided by types:
+- **`x is unassigned`** tests a local of the function. It is decided per compiled entry, like §11.1's conditions decided by types:
   - it is false at the function's own entry, and wherever `x` is definitely assigned;
   - it is true where an older release's state lacks `x` and nothing has assigned it yet.
 - **The branch it rules out is neither checked nor run,** so the test costs nothing at runtime. A name assigned on only some paths there is a compile error, because the test must be decided.
@@ -147,7 +147,7 @@ Release `r2` adds a tax id. Instances of `r1` wait inside `getLicense`, which ca
 
 - **Above a function's header,** a directive applies to `from`'s frames of that function:
   - **`> restart`** acts when the build first loads the instance, in one commit.
-    - Each such frame is disposed: everything it holds is released as §7 releases it, so pending calls stop, `defer`s run and revertible messages retract.
+    - Each such frame is disposed: everything it holds is released as §16 releases it, so pending calls stop, `defer`s run and revertible messages retract.
     - Then `to`'s function is called again with the same arguments, through its entry, on the future its caller waits on.
     - The new run is a new run: real `now()` and fresh draws. What the function did before its `await` runs again. As after a crash, idempotency is the program's.
   - **`> keep`:** the frames never move, and `from`'s calls of the function run `from`'s function. Its checkpoints pass without moving.
@@ -181,7 +181,7 @@ Release `r2` adds a tax id. Instances of `r1` wait inside `getLicense`, which ca
   - restarts happen at once;
   - later checkpoints and boundary calls go to the newest release.
 
-  With `reaches` (§10), a test drives an instance to a point, upgrades it and asserts on how it ends.
+  With `reaches` (§18), a test drives an instance to a point, upgrades it and asserts on how it ends.
 - **A committing `await` in a loop body with no checkpoint in that loop is warned about:** "frames in this loop run their release's code until it ends."
 
 ## Why
@@ -248,23 +248,23 @@ Release `r2` adds a tax id. Instances of `r1` wait inside `getLicense`, which ca
 ## Spec and proposal changes
 
 - **Guide, principle 8:** "Deploys freeze code" becomes "Deploys move running work at checkpoints".
-- **§2:** grammar words:
+- **§2.2:** grammar words:
   - `checkpoint`, at a statement's start;
   - `inline`, in an `ista async fn`'s head;
   - `unassigned`, as the whole pattern of `is`.
-- **§3.3:** boundary and inline `ista async fn`s. An `inline ista async fn` takes no checkpoint.
-- **§3.8:** `runtime.version()` gives the calling frame's release.
-- **§3.14:** a function value runs at the release that made it, or, naming a boundary function, at the target. This replaces "keeps it from crossing versions".
-- **§4:** the `checkpoint` statement. `x is unassigned` among the conditions decided by types, and a `const` assigned once in its branch.
-- **§5:**
+- **§6.1:** boundary and inline `ista async fn`s. An `inline ista async fn` takes no checkpoint.
+- **§19.2:** `runtime.version()` gives the calling frame's release.
+- **§6.4:** a function value runs at the release that made it, or, naming a boundary function, at the target. This replaces "keeps it from crossing versions".
+- **§11.1:** the `checkpoint` statement. `x is unassigned` among the conditions decided by types, and a `const` assigned once in its branch.
+- **§14:**
   - *Versioning* is rewritten as this proposal's rules.
   - A committing `await` stands at statement level.
   - Frames are persisted by meaning.
-- **§9:**
+- **§17.1:**
   - Work a context starts runs on the newest release.
   - The operator's view shows each frame's release.
   - `ista release`, `ista upgrade check` and `ista migration new`.
-- **§10:** `testing.spawnOn` and `upgrade`, and the loop warning.
+- **§18:** `testing.spawnOn` and `upgrade`, and the loop warning.
 - **Proposal 8:** the statement-level rule for a committing `await`. In Rule 4's modifier order, `inline` stands before `live` or `ista`, which stand before `async`: `inline ista async fn`.
 
 ## Implementation notes
@@ -308,7 +308,7 @@ Release `r2` adds a tax id. Instances of `r1` wait inside `getLicense`, which ca
 ## Left for later
 
 - **Converting a handle whose type changed.**
-- **Packages:** a library shipping migration files for its own functions (§11).
+- **Packages:** a library shipping migration files for its own functions (§13.2).
 - **Upgrading at every commit,** as `spawnCrashingEveryAwait` crashes at every one: a sweep that moves a test's instance at each point in turn.
 - **What the generator suggests beyond holes,** such as a checkpoint after each `await` whose state already fits.
 - **Several processes on one store** running different builds.

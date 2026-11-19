@@ -1,5 +1,5 @@
 /**
- * Operators at their §3.9 levels: grouping and associativity spot checks, `is`, ranges, and the
+ * Operators at their §10.3 levels: grouping and associativity spot checks, `is`, ranges, and the
  * reports for `??` mixed with `and`/`or` and for loose prefix operators in tight positions.
  */
 

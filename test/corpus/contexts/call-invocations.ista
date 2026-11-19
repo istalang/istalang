@@ -1,5 +1,5 @@
 # outcome: 24
-# Every call to a context starts an invocation of its own (§9): two calls in flight on one context
+# Every call to a context starts an invocation of its own (§17.1): two calls in flight on one context
 # answer each with its own result.
 
 import * as runtime from 'runtime'

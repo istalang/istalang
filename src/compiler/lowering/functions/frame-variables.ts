@@ -2,18 +2,18 @@
  * The variables an entry declares before its body runs, in its frame's layout order (frames.ts;
  * docs/arch/definition.md, "Frames"): the parameters, each in a register of its own and a
  * pack's elements in one each (packs.ts), then the captures; then, in order, each parameter the
- * call may leave out, computed from its default (§3.3) where it did, then a nested function's own
+ * call may leave out, computed from its default (§6.1) where it did, then a nested function's own
  * name and an async function's own call, then each pack's tuple. A pattern's names are its flow's
  * to take apart.
  *
- * - **Parameters and captures are borrowed** (§3.3: a by-value parameter is immutable): the call
+ * - **Parameters and captures are borrowed** (§6.1: a by-value parameter is immutable): the call
  *   and the closure hold them. A `&` parameter's register holds a reference to the caller's place.
  * - **A parameter a call may leave out** is the callee's own (the prologue): its variable owns a
  *   copy of what the call gave, or the value its default computes, so it is owned on every path.
  * - Defaults are part of the function, computed at the start of each call leaving them out, in the
  *   function's scope and before its body, never waiting. A default is its flow, as the defaults
  *   were checked apart from the body (`inDefaults`), written inline: it sees the parameters before
- *   it. An array's rest parameter a function value of a shorter type leaves out is empty (§3.14).
+ *   it. An array's rest parameter a function value of a shorter type leaves out is empty (§6.4).
  *   Once it has given its value it lets go of what it made, as a statement does, but what its
  *   `hold`s keep for the function (flow/writer.ts).
  */
@@ -120,7 +120,7 @@ function parameterType(context: EntryContext, parameter: SignatureParameter) {
 
 /**
  * Whether a call may leave `parameter` out, the prologue computing it: one with a default, or an
- * array's rest parameter, empty without its items (§3.3, §3.14).
+ * array's rest parameter, empty without its items (§6.1, §6.4).
  */
 function mayBeLeftOut(parameter: SignatureParameter): boolean {
   return (
@@ -204,7 +204,7 @@ function declareVariable(
 }
 
 /**
- * Declares the variable an async function reads its own call through (§7), when it reads it, where
+ * Declares the variable an async function reads its own call through (§16), when it reads it, where
  * its body begins: a default reads no call, since it runs before the body starts.
  */
 function declareOwnCall(context: EntryContext): void {

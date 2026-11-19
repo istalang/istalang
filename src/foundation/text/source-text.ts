@@ -10,7 +10,7 @@
  * line map is memoized per SourceText object, so a SourceText must never be mutated: an edit is a
  * new SourceText.
  *
- * A byte order mark at the start of a file marks its encoding, not its content (§2). It is removed
+ * A byte order mark at the start of a file marks its encoding, not its content (§2.1). It is removed
  * here, where text enters the toolchain, so no phase ever sees one at offset 0. The brand makes this
  * factory the only way to obtain a SourceText, which is what keeps that guarantee: a host that
  * built one by hand would not compile.

@@ -1,5 +1,5 @@
 # outcome: 0
-# A field loop's variable takes each field's type in its pass (§4), a lease's in one and an `Int`'s in
+# A field loop's variable takes each field's type in its pass (§11.2), a lease's in one and an `Int`'s in
 # another: what it holds in the lease's pass is counted, and disposed once the loop is done with it.
 
 import * as log from 'log'

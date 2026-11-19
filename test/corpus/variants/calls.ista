@@ -1,5 +1,5 @@
 # outcome: "1 2|legal: no reason given|ops: late|approved|3 t true|0|7|5|boom 1|1 a|2 4|t 6|1 2 none 3 4 7"
-# A variant with fields is a function of its enum (§3.11): a call binds its arguments to the fields
+# A variant with fields is a function of its enum (§5.3): a call binds its arguments to the fields
 # as to parameters, by position, then by name, leaving defaults out and a rest collecting the
 # others; the expected enum gives its type arguments, those written give theirs and the arguments
 # infer the rest; a variant without fields is its name alone. A spawned call starts the

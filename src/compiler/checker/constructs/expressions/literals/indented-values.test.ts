@@ -92,7 +92,7 @@ describe('meaning by type: structs, variants, shapes, aliases and shared structs
     expect(await mainGives('String', body, decls)).toBe('58:c');
   });
 
-  it('refuses a variant named before a block, bare or qualified, naming its call (§3.11)', () => {
+  it('refuses a variant named before a block, bare or qualified, naming its call (§5.3)', () => {
     const text = lines(
       'enum Decision { Approved(by: String), Rejected(by: String, reason: String) }',
       'fn f() -> (Decision, Decision):',

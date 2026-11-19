@@ -1,4 +1,4 @@
-# `Resolver.of` callbacks (spec §6, §7): when a callback runs, how long it lives, and when it is
+# `Resolver.of` callbacks (spec §15.2, §16): when a callback runs, how long it lives, and when it is
 # cancelled instead. Each rule is its own function, and its test asserts what the old runtime's unit
 # test did.
 

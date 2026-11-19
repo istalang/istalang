@@ -6,7 +6,7 @@
 # error: 5001 at 24:16
 # error: 5001 at 25:16
 # A rest parameter is the last, an Array<T> with no default; a spread fills only a rest parameter,
-# and a function value takes none (§3.3).
+# and a function value takes none (§6.1).
 fn first(...xs: Array<Int>, y: Int) -> Int: y
 
 fn wrong(...xs: Int) -> Int: xs

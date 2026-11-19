@@ -1,5 +1,5 @@
 /**
- * Which nominal types are handles (§2, §3.6, §3.18), read off their declarations, never their
+ * Which nominal types are handles (§7.2, §17.2, §5.4), read off their declarations, never their
  * names, so a handle a program builds of others (an `Inbox` of a `Slot`) is one by being declared
  * `shared struct`, as the std's own are.
  *
@@ -41,7 +41,7 @@ function identityOf(declaration: NominalDeclaration): Identity {
 /**
  * Whether `declaration`'s values are handles whose identity stays where they were made, an
  * instance or a process, so they never leave it: never sendable, and the only host types a
- * `dispose` may make disposable (§3.6, §7).
+ * `dispose` may make disposable (§17.2, §16).
  */
 export function isConfined(declaration: NominalDeclaration): boolean {
   const identity = identityOf(declaration);

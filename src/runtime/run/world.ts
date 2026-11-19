@@ -1,5 +1,5 @@
 /**
- * The instances one host's run drives (§5, §9): the live run a host started and every ista
+ * The instances one host's run drives (§14, §17.3): the live run a host started and every ista
  * instance its code reaches, each a `Run` of its own, so nothing one holds is ever another's.
  * They meet only through a `World` (host/durable-world.ts): a call into a context, a spawn, a wait
  * on an instance's end, and the runtimes live code opens over the host's store. What crosses is a sendable value, copied, so no composite is shared
@@ -17,12 +17,12 @@ import type { Run } from './run.ts';
 
 /** What one run asks of the instances beside it. */
 export interface World {
-  /** Starts `closure` as a new instance `parent` spawned (§9); the new instance's name. */
+  /** Starts `closure` as a new instance `parent` spawned (§17.1); the new instance's name. */
   readonly spawn: (parent: Run, closure: Value, spawning: Spawning) => string;
-  /** Makes `call` into its context (§9), settling `future`, in `caller`, with how it ended. */
+  /** Makes `call` into its context (§17.1), settling `future`, in `caller`, with how it ended. */
   readonly call: (caller: Run, call: ContextCall, future: Future) => void;
   /**
-   * Opens a runtime over the host's store for `opener`, a live run (§9), and settles `opened`, in
+   * Opens a runtime over the host's store for `opener`, a live run (§17.1), and settles `opened`, in
    * `opener`, with the runtime `made` makes of its number, once the work it resumed ran what it had
    * due by then. Opening one while none is open resumes the instances stored there that haven't
    * ended, which run only while one is open.
@@ -39,7 +39,7 @@ export interface World {
   readonly watchEnd: (watcher: Run, name: string, future: Future) => void;
   /** The run of the instance `name` while it is resident here; undefined where it isn't. */
   readonly runOf: (name: string) => Run | undefined;
-  /** What a test asks of the instances beside it (§10); a world running no test has none. */
+  /** What a test asks of the instances beside it (§18); a world running no test has none. */
   readonly testing?: TestingWorld;
 }
 
@@ -49,7 +49,7 @@ export interface Spawning {
   readonly encoder: number | undefined;
 }
 
-/** What a test's code asks of its world (§10, testing.ista). */
+/** What a test's code asks of its world (§18, testing.ista). */
 export interface TestingWorld {
   /** Where the instance `name` stands and waits; undefined before it exists. */
   readonly inspect: (name: string) => Inspection | undefined;

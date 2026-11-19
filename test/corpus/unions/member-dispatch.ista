@@ -1,5 +1,5 @@
 # outcome: "nobody|p|#3|same|9|email:x|other:y|maybe:1|3|-1"
-# A call on a union through a trait its members meet (§6) runs the function of whichever member the
+# A call on a union through a trait its members meet (§4.2) runs the function of whichever member the
 # value is: a member with one value gets that value, `&self` changes the member in place, a union
 # an instantiation collapses into one type calls that type's function, and a union converted into
 # an `any` type, alone or as a member of a union, is the member it holds, which a type pattern finds.

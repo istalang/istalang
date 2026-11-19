@@ -1,5 +1,5 @@
 /**
- * Why a closure doesn't fit where a sendable or inert function is taken (§3.14, §9): it captures a
+ * Why a closure doesn't fit where a sendable or inert function is taken (§6.4, §17.1): it captures a
  * value that sendability doesn't allow (types/traits/sendability.ts). Where a closure, a lambda or a
  * local `fn` named, doesn't fit the expected function type only for its sendability, each capture
  * of a type beyond the expected one is reported where the function first uses it, rather than the
@@ -70,7 +70,7 @@ function closureOf(context: BodyContext, node: Expression): NestedFunction | und
   return entity?.kind === 'variable' ? localFunctionOf(entity) : undefined;
 }
 
-/** What `node` gives as written: itself, or a block's value (§4), the one a deferred call gives. */
+/** What `node` gives as written: itself, or a block's value (§10.1), the one a deferred call gives. */
 function valueIn(node: Expression): Expression | undefined {
   const value = unparenthesized(node);
   if (value.kind !== 'BlockExpression') {

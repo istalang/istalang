@@ -1,8 +1,8 @@
 # outcome: [0,1,3,6,0,1,4,2,1,2,3,2,2]
 # A rest parameter collects the positional arguments left after the fixed ones into an array, a
-# spread among them spreading anything iterable (§3.3); named, it takes a whole array. Fixed arity
-# beats a rest parameter (§3.7). A function with a rest parameter, named as a value, takes the
-# array as one argument (§3.14).
+# spread among them spreading anything iterable (§6.1); named, it takes a whole array. Fixed arity
+# beats a rest parameter (§6.3). A function with a rest parameter, named as a value, takes the
+# array as one argument (§6.4).
 import * as runtime from 'runtime'
 
 fn sum(...numbers: Array<Int>) -> Int:

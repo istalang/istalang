@@ -1,20 +1,20 @@
 /**
- * `==` and `!=` over types (§3.9): when they compare two values, and what types already decide of
+ * `==` and `!=` over types (§10.2): when they compare two values, and what types already decide of
  * the outcome.
  *
- * - They are built in for every type, and take two values when either fits the other's type (§2),
+ * - They are built in for every type, and take two values when either fits the other's type (§4.1),
  *   or two literals of one base, comparing them as values of that type. So a side may go into a
  *   union the other is, as in `x == none` or `maybe == 5`, or a literal's value be taken as its
  *   base, as in `status == name`; the conversion is recorded on that side's expression. A union's
  *   values compare their members' types, then the values, as an enum's variants do, so a union may
  *   be a map key. A side with no expression of its own, such as the field a pattern compares
- *   (§3.11), is never converted.
- * - What types say of the literals a value may be (§2, §4) decides `==`, `!=` and a literal pattern
+ *   (§11.3), is never converted.
+ * - What types say of the literals a value may be (§4.3, §11.1) decides `==`, `!=` and a literal pattern
  *   before the program runs: a comparison whose sides can't hold a common value is always unequal,
- *   and a pattern whose part can't hold its literal never matches (§3.11). A value's literals are
+ *   and a pattern whose part can't hold its literal never matches (§11.3). A value's literals are
  *   known when it is written as one, or its type is a literal, a union of literals, or a member
- *   parameter (§3.5) ranging over some: each instantiation makes it one of them. The keys of a
- *   struct not known yet may be any name but those its constraint names (§3.1).
+ *   parameter (§8.1) ranging over some: each instantiation makes it one of them. The keys of a
+ *   struct not known yet may be any name but those its constraint names (§5.2).
  * - Two sides of known literals are equal when both are one literal, and unequal when one is a
  *   literal the other can't hold. A literal, or `none`, against a side whose type is known but
  *   holds no literal set, such as `Int` against `"x"`, is unequal when the two don't compare at
@@ -34,9 +34,9 @@ import { baseOf } from './union-members.ts';
 import { writtenLiteral } from './unions.ts';
 
 /**
- * Whether `==` and `!=` compare values of these types as they are (§3.9): one type on both sides,
+ * Whether `==` and `!=` compare values of these types as they are (§10.2): one type on both sides,
  * or two literal types of one base, a constant comparison, as a field loop's key, each pass the
- * literal of its field, is compared with another field's name (§4). The error type compares with
+ * literal of its field, is compared with another field's name (§11.2). The error type compares with
  * anything, so one mistake is reported once, and so does `Never`, which a side that doesn't
  * produce a value has.
  */
@@ -53,14 +53,14 @@ function unchecked(type: Type): boolean {
 
 /**
  * A literal type, or the keys of a struct not known yet, each instantiation a String literal
- * (§3.1).
+ * (§5.2).
  */
 function isLiteralLike(type: Type): boolean {
   return type.kind === 'literal' || type.kind === 'keys';
 }
 
 /**
- * Whether two sides compare as they are where a member parameter stands on either (§3.5): each
+ * Whether two sides compare as they are where a member parameter stands on either (§8.1): each
  * instantiation makes it one member of its union, so every member must compare with every member of
  * the other side as it is, with nothing to convert. Each instantiation is then a comparison of two
  * values of one type, or of two literals, a constant one, so a literal no member equals compares
@@ -92,7 +92,7 @@ export interface EqualitySide {
 
 /**
  * Whether `left` and `right` compare by `==` (the module's banner), a literal pattern's value and
- * its part too (§3.11); a side that goes into the other's type has its conversion recorded.
+ * its part too (§11.3); a side that goes into the other's type has its conversion recorded.
  */
 export function fitEqualSides(
   context: SidesFitting,

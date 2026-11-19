@@ -5,7 +5,7 @@
  * `select` holds without the ones the parser refused. The nodes themselves are in index.ts and
  * calls.ts, which these reads build on.
  *
- * A deferred call calls its taker as a call calls its callee (§3.14), so every read of what a call
+ * A deferred call calls its taker as a call calls its callee (§6.5), so every read of what a call
  * calls takes either, and a taker written as a call is read as the deferred call's parts.
  */
 
@@ -41,7 +41,7 @@ export function qualifiedPath(expression: Expression): QualifiedName | undefined
 }
 
 /**
- * Whether `expression` has a deferred call's taker's shape (§3.14): a path of names, or a call of
+ * Whether `expression` has a deferred call's taker's shape (§6.5): a path of names, or a call of
  * one with its arguments in parentheses, `retry(times: 5)`.
  */
 export function isTakerShaped(expression: Expression): boolean {
@@ -57,8 +57,8 @@ export function takerCallOf(node: DeferredCall): Call | undefined {
 
 /**
  * What `node` calls by name, without the type arguments written after it, which are the call's
- * (§3.5): `f` of `f<Int>(x)`; a deferred call's taker's path, which writes none (`isTakerShaped`).
- * An optional call's callee is a value, type arguments and all (§4).
+ * (§8.1): `f` of `f<Int>(x)`; a deferred call's taker's path, which writes none (`isTakerShaped`).
+ * An optional call's callee is a value, type arguments and all (§10.4).
  */
 export function calledName(node: CallingNode): Expression {
   if (node.kind === 'DeferredCall') {
@@ -114,7 +114,7 @@ export function makerOf(call: Call, holders: readonly SyntaxNode[]): CallingNode
 
 /**
  * The call a deferred call makes later, without parentheses, a call or another deferred call;
- * undefined where it is neither, which the checker refuses (§3.14).
+ * undefined where it is neither, which the checker refuses (§6.5).
  */
 export function deferredOf(node: DeferredCall): CallingNode | undefined {
   const call = unparenthesized(node.call);
@@ -139,7 +139,7 @@ export function selectCasesOf(node: Select): readonly SelectCase[] {
 /**
  * Whether `node` is a literal of items naming no type: a tuple, an array or map literal, a
  * `struct{…}` or an indented value naming no type, maybe parenthesized. Its type is its items',
- * so it converts as they do (§3.5); a literal naming its type is that type.
+ * so it converts as they do (§3.3); a literal naming its type is that type.
  */
 export function isItemsLiteral(node: Expression): boolean {
   switch (node.kind) {

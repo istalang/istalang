@@ -1,18 +1,18 @@
 /**
- * Whether a candidate applies to a call (§3.3, §3.5, §3.7): how a function takes the arguments,
+ * Whether a candidate applies to a call (§6.1, §8.1, §6.2): how a function takes the arguments,
  * which parameter each fills and what inference finds matching them, or why it can't.
  *
  * - The parameters must take the arguments given (binding.ts), each argument passed by value or by
  *   `&` as its parameter is declared, and every argument must fit its parameter. A method's
  *   receiver takes its `&` implicitly, so it is passed either way, whichever its `self` asks for. A
  *   reference names the caller's own variable, so its type must be the parameter's exactly, with no
- *   implicit wrap (§3.7). A generic function's type parameters are inferred from the arguments
- *   meanwhile (types/inference/infer.ts); written type arguments are taken as given (§3.5).
+ *   implicit wrap (§7.3). A generic function's type parameters are inferred from the arguments
+ *   meanwhile (types/inference/infer.ts); written type arguments are taken as given (§8.1).
  * - A rest parameter's items, and a spread's items, are matched against its array's element type.
- *   A pack's (§3.5) are matched together against the pack: single values as the tuple of their
+ *   A pack's (§8.1) are matched together against the pack: single values as the tuple of their
  *   types, or one spread of a value of a pack as that pack, exactly.
- * - A literal written in place has its literal type where its parameter expects one (§2), so it
- *   fits a parameter of a union of literals, and fills a member parameter (§3.5).
+ * - A literal written in place has its literal type where its parameter expects one (§4.3), so it
+ *   fits a parameter of a union of literals, and fills a member parameter (§8.1).
  * - An argument whose type the chosen function decides (`none`, a bare variant, a literal holding
  *   one) takes part with no type: it fits a parameter of a type it can take (an optional, an enum
  *   with that variant), any part of which may be a type parameter still to be inferred.
@@ -88,10 +88,10 @@ export function takenBy(
 }
 
 /**
- * Whether `taken` takes an argument only reshaped: a plain function made async (§3.14), a lambda
+ * Whether `taken` takes an argument only reshaped: a plain function made async (§6.4), a lambda
  * the call decides by the type its written parameters make it among them, converted between a
- * one-element tuple and its element (§3.15) or part by part (§3.5), or a `struct{…}` built as a
- * struct rather than its own shape (§3.1). Choosing asks it only to break a tie, so it isn't part
+ * one-element tuple and its element (§4.5) or part by part (§8.1), or a `struct{…}` built as a
+ * struct rather than its own shape (§5.2). Choosing asks it only to break a tie, so it isn't part
  * of `Taken`.
  */
 export function reshapesArguments(
@@ -107,12 +107,12 @@ export function reshapesArguments(
       return false;
     }
     const fit = checker.fitOf(type, inference.substituted(slot.type));
-    // A `struct{…}`'s shape fitting no parameter builds the struct it is passed as (§3.1).
+    // A `struct{…}`'s shape fitting no parameter builds the struct it is passed as (§5.2).
     return fit === undefined ? type.kind === 'anonymous' : reshapes(fit);
   });
 }
 
-/** The type arguments `written` gives `takes`' type parameters, in order (§3.5). */
+/** The type arguments `written` gives `takes`' type parameters, in order (§8.1). */
 export function writtenFor(
   { typeParameters }: Takes,
   written: readonly Type[] | undefined,
@@ -130,7 +130,7 @@ export function writtenFor(
 
 /**
  * Why the written type arguments don't suit `typeParameters`, if they don't: too few or too many,
- * or one for a pack that isn't a tuple type (§3.5).
+ * or one for a pack that isn't a tuple type (§8.1).
  */
 export function typeArgumentsInapplicability(
   { typeParameters }: Takes,
@@ -237,8 +237,8 @@ function judgedArgument(
  * its parameter's exactly, as an exact argument's is: no wrap into `T?` reaches the caller's place.
  * A method's receiver gives the type parameters it meets as they are, by reference exactly where
  * `&self` takes it (types/inference/infer.ts `matchReceiver`). A written literal is matched as
- * one, its literal type fresh (§2); a literal of items fits a parameter its type converts into
- * (§3.5).
+ * one, its literal type fresh (§4.3); a literal of items fits a parameter its type converts into
+ * (§8.1).
  */
 function typedFits(
   slot: ParameterSlot,

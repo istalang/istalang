@@ -182,7 +182,7 @@ const checkerSurface = [
   'types/type/alias-uses.ts',
   'types/type/computed-types.ts',
   'types/type/function-types.ts',
-  // A function's kind (§3.3), which lowering's entries wait in.
+  // A function's kind (§9.1), which lowering's entries wait in.
   'types/type/function-kinds.ts',
   'types/type/field-order.ts',
   'types/identity/identity.ts',

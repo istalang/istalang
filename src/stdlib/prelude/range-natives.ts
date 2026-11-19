@@ -1,5 +1,5 @@
 /**
- * The prelude's natives for ranges (§3.8, §3.9): what iterating a `Range` and `in` read of one,
+ * The prelude's natives for ranges (§19.3, §10.2): what iterating a `Range` and `in` read of one,
  * through the one reading of its values (stdlib/ranges.ts).
  */
 

@@ -1,5 +1,5 @@
 # outcome: "pong:1 pong:2 | child saw the inbox go"
-# The death signal (§6): the child holds only the weak side of its parent's inbox, so it keeps
+# The death signal (§15.3): the child holds only the weak side of its parent's inbox, so it keeps
 # nothing alive; it answers through `deref()` while the inbox lives, and its `disposed()` resolves
 # once the owner releases the inbox, at the end of the block that holds it.
 

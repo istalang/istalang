@@ -1,22 +1,22 @@
-# The testing module (spec §10): suites, mocks, waits on spawned instances and host handles, and
+# The testing module (spec §18): suites, mocks, waits on spawned instances and host handles, and
 # the test library over them.
 #
-# Only test modules may import it (§10), so production code can never install a mock. The runtime
+# Only test modules may import it (§18), so production code can never install a mock. The runtime
 # provides function slots, the inspection of spawned instances and handles through externs; the
 # rest is written here.
 #
 # A mock binds a replacement recording its calls to its target's slot (run/slots.ts), which the
 # runtime calls in its place, here and in the instances spawned from here, and unbinds it as the
-# mock is let go of. `mock` and `calls` take a pack (§3.5), one declaration for every function, an
+# mock is let go of. `mock` and `calls` take a pack (§8.1), one declaration for every function, an
 # async one's result being its future. A struct takes no pack, so `Mock<F>` can't name its calls'
 # type: each mock keeps an offer of its calls, untyped, which `calls` meets in the transient of
-# `_metCalls` at its own signature (§3.4), the offer of any other signature meeting none.
+# `_metCalls` at its own signature (§7.1), the offer of any other signature meeting none.
 #
 # Setups map each of their types (each test's function takes the setups' environments), which a
 # pack can't say, so `setups` stays one overload per arity, up to six, over one function.
 #
 # `ista test` lists and runs a suite's tests through `_list` and `_run`, the one place a suite's
-# tests are flattened, so the listing and each test's own instance (§10) walk the same list.
+# tests are flattened, so the listing and each test's own instance (§18) walk the same list.
 #
 # The fakes' fields are functions, since a mock's replacement is a function value and a method
 # isn't one: `mock(time.now, clock.now)`. A field default sees the fields before it, so each fake
@@ -30,7 +30,7 @@ import Keeps from 'lifetimes'
 # Marks a function returning a suite's tests: `@Suite{"purchase approval"}`.
 struct Suite { title: String }
 
-# A test, or a group of tests, as the library builds them (§10), marked by `skip` and `only`,
+# A test, or a group of tests, as the library builds them (§18), marked by `skip` and `only`,
 # which a group's marks reach every test of.
 enum Test:
   Case(title: String, body: ista async fn() -> Unit, skipped: Bool = false, only: Bool = false)
@@ -48,7 +48,7 @@ ista fn _list(suite: ista fn() -> Array<Test>, title: String) -> Array<Listed>: 
   for entry in _entries(title, suite(), false, false): entry.listed
 ]
 
-# Runs test `position` of `suite`, once sure its listing still puts `expected` there (§10).
+# Runs test `position` of `suite`, once sure its listing still puts `expected` there (§18).
 ista async fn _run(suite: ista fn() -> Array<Test>, title: String, position: Int, expected: String):
   const entry = _entries(title, suite(), false, false).at(position)
   if entry is _Entry as found and found.listed.title == expected:
@@ -79,7 +79,7 @@ fn _entries(title: String, tests: Array<Test>, skipping: Bool, focusing: Bool) -
         ]
   entries
 
-# A mock's handle (§10): while it is held, calls to its target run its replacement, and the
+# A mock's handle (§18): while it is held, calls to its target run its replacement, and the
 # arguments of each are recorded.
 shared struct Mock<F> { _binding: Int, _offer: fn() -> Unit }
 
@@ -94,7 +94,7 @@ extern fn _unbind(binding: Int)
 # Holding them calls neither, so code of every mark mocks a function of any (proposal 8, Rule 3).
 # It keeps neither: the run's binding holds the replacement until the mock is let go of. The calls
 # the replacement records are kept apart from both, so they hold what they recorded with no cycle
-# through them, which the analysis of lifetimes can't tell from its body (§7).
+# through them, which the analysis of lifetimes can't tell from its body (§16).
 @Keeps{[:]}
 fn mock<...A, R, M in Mark = "simple">(
   target: Fn<A, R, M>
@@ -129,7 +129,7 @@ fn _metCalls<...A, R, M in Mark>(within: fn(Shared<Array<A>?>) -> Unit):
   transient let met = new Shared<Array<A>?>{value: none}
   within(met)
 
-# Where an instance stands, as its last commit says (§10).
+# Where an instance stands, as its last commit says (§18).
 enum InstanceState:
   Running
   Waiting
@@ -137,8 +137,8 @@ enum InstanceState:
   Finished
   Terminated
 
-# Spawns `f` as a new instance once the caller's segment commits (§9), with every segment run,
-# discarded and run again before it commits (§10).
+# Spawns `f` as a new instance once the caller's segment commits (§17.1), with every segment run,
+# discarded and run again before it commits (§18).
 extern ista fn spawnCrashingEveryAwait<T>(f: sendable ista async fn() -> T) -> Instance<T>
 
 # Resolves once every execution of the instance is waiting, or it has finished.
@@ -159,24 +159,24 @@ fn state<R>(self: Instance<R>) -> InstanceState:
 # `terminated`.
 extern fn _stateName<R>(self: Instance<R>) -> String
 
-# A value of extern type `T` equal to no other, for mocks that must return one (§10).
+# A value of extern type `T` equal to no other, for mocks that must return one (§18).
 extern fn handle<T>() -> T
 
-# A test of `body`, run in an instance of its own (§10).
+# A test of `body`, run in an instance of its own (§18).
 fn test(title: String, body: ista async fn() -> Unit) -> Test:
   Case(title: title, body: body)
 
-# A test of `body`, run inside the environment `setup` prepares (§10).
+# A test of `body`, run inside the environment `setup` prepares (§18).
 fn test<E>(title: String, setup: Setup<E>, body: ista async fn(E) -> Unit) -> Test:
   test(title, async fn(): await setup(body))
 
 fn group(title: String, tests: Array<Test>) -> Test:
   Group(title: title, tests: tests)
 
-# `entry`, reported but not run, even if `only` marks it too (§10).
+# `entry`, reported but not run, even if `only` marks it too (§18).
 fn skip(entry: Test) -> Test: _marked(entry, true, false)
 
-# `entry`, which runs while every test of the run `only` doesn't mark is skipped (§10).
+# `entry`, which runs while every test of the run `only` doesn't mark is skipped (§18).
 fn only(entry: Test) -> Test: _marked(entry, false, true)
 
 # `entry` with its own marks, and `skipping` and `focusing` added.
@@ -187,10 +187,10 @@ fn _marked(entry: Test, skipping: Bool, focusing: Bool) -> Test:
     case Group(title, tests, skipped, focused):
       Group(title: title, tests: tests, skipped: skipped or skipping, only: focused or focusing)
 
-# An environment for tests (§10): prepares it, runs the test inside it, and tears it down after.
+# An environment for tests (§18): prepares it, runs the test inside it, and tears it down after.
 type Setup<E> = ista async fn(ista async fn(E) -> Unit) -> Unit
 
-# Several environments as one (§10): the first outermost, the test receiving them as a tuple.
+# Several environments as one (§18): the first outermost, the test receiving them as a tuple.
 fn setups<A, B>(a: Setup<A>, b: Setup<B>) -> Setup<(A, B)>:
   _joined(a, b, fn(x: A, y: B): (x, y))
 
@@ -226,20 +226,20 @@ fn _joined<O, I, J>(outer: Setup<O>, inner: Setup<I>, join: ista fn(O, I) -> J) 
     async fn(o: O): await inner(async fn(i: I): await body(join(o, i)))
   )
 
-# Panics unless `condition` holds (§10).
+# Panics unless `condition` holds (§18).
 fn assert(condition: Bool):
   assert(condition, "The assertion failed.")
 
 fn assert(condition: Bool, message: String):
   if not condition: panic(message)
 
-# Panics unless `actual` equals `expected`, showing both as JSON (§10).
+# Panics unless `actual` equals `expected`, showing both as JSON (§18).
 fn assertEq<T is Encodable>(actual: T, expected: T):
   if actual != expected:
     panic("expected " + json.stringify(expected) + ", found " + json.stringify(actual))
 
-# Spawns `f` as an instance of its own, since a panic freezes the instance it happens in (§5), and
-# waits for its end: the message it panics with. Panics if `f` returns instead (§10).
+# Spawns `f` as an instance of its own, since a panic freezes the instance it happens in (§14), and
+# waits for its end: the message it panics with. Panics if `f` returns instead (§18).
 ista async fn expectPanic<R is Sendable>(f: sendable ista async fn() -> R) -> String:
   await _panicOf(spawn(f))
 
@@ -249,7 +249,7 @@ ista async fn _panicOf<R is Sendable>(instance: Instance<R>) -> String:
     case _:
       panic("expectPanic expected a panic, but the function returned.")
 
-# A clock standing still at `start` until `advance` moves it (§10): `now` and `at` replace
+# A clock standing still at `start` until `advance` moves it (§18): `now` and `at` replace
 # `time.now` and `time.at`.
 struct FakeClock:
   start: Time
@@ -260,7 +260,7 @@ struct FakeClock:
 
 # A fake clock's time, and the deadlines it passes: each a slot every wait for it reads, ordered by
 # deadline, so it passes them earliest first, and the waits due at one instant resolve together, as
-# timers do (§6). Its time is simple data, apart from its deadlines, so `now` fakes a simple extern
+# timers do (§15.2). Its time is simple data, apart from its deadlines, so `now` fakes a simple extern
 # (proposal 8, Rule 2).
 shared struct _Clock:
   time: Shared<Time>
@@ -286,14 +286,14 @@ ista fn _deadlineAt(clock: _Clock, deadline: Time) -> Slot<Unit>:
   ]
   passed
 
-# Moves the clock forward by `by`, passing every deadline it reaches (§10).
+# Moves the clock forward by `by`, passing every deadline it reaches (§18).
 ista fn advance(self: FakeClock, by: Duration):
   if by < Duration{value: 0}:
     panic("A fake clock only moves forward, not by " + by + ".")
   self._time->value = self._time->value + by
   _passDue(self._state)
 
-# A setup installing a `FakeClock` starting at 0 as `time.now` and `time.at` (§10).
+# A setup installing a `FakeClock` starting at 0 as `time.now` and `time.at` (§18).
 ista async fn withClock(body: ista async fn(FakeClock) -> Unit):
   const clock = FakeClock{start: Time{value: 0}}
   hold _ = mock(time.now, clock.now)
@@ -312,7 +312,7 @@ ista fn _splitDue(deadlines: Array<_Deadline>, time: Time) -> (Array<_Deadline>,
   const later = [for each in deadlines if each.at > time: each]
   (due, later)
 
-# A host's queues of type `Q` carrying `T`, one per key, each faked with an inbox (§10). Its fields
+# A host's queues of type `Q` carrying `T`, one per key, each faked with an inbox (§18). Its fields
 # replace the program's functions: `open` a queue factory, `send` a queue's own, and `receive` the
 # program's own ista read of one, since the host's is live and ista code reaches it only through a
 # job. Which queue a key opened is simple data, so `open` fakes a simple extern; a queue's inbox is
@@ -372,7 +372,7 @@ ista fn _inboxOf<Q, T, K>(inboxes: _Inboxes<Q, T>, opened: _Opened<Q, K>, queue:
   inboxes->inboxes.push(made)
   made
 
-# The receipts of a host's revertible sends, of extern type `R` (§3.6, §10): `revertibleSender(queues)`
+# The receipts of a host's revertible sends, of extern type `R` (§17.2, §18): `revertibleSender(queues)`
 # replaces a revertible send into `queues`, and `dispose` replaces `R`'s `dispose`, retracting the
 # message the receipt stood for.
 struct FakeReceipts<R>:

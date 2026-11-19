@@ -4,13 +4,13 @@
  * - a struct's fields build the struct, and a variant's its variant (syntax/declarations/
  *   field-defaults.ts);
  * - a derived codec's body the compiler writes from its type (docs/arch/boundary.md);
- * - a host extern's wrapper encodes and decodes around its native (§9);
+ * - a host extern's wrapper encodes and decodes around its native (§17.4);
  * - a function with a body is that body's code;
  * - a prelude operator's extern standing for a primitive operation (primitive-ops.ts) is that
  *   operation, written inline where called, so it has no native;
  * - any other extern is bound to a native: the one entry that is no code, so it computes no default
  *   a call leaves out, which an entry beside it does instead (tables.ts `leavingOutIndex`).
- * Every one of them but a native's begins with the prologue computing its defaults (§3.3).
+ * Every one of them but a native's begins with the prologue computing its defaults (§6.1).
  */
 
 import {

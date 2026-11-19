@@ -1,5 +1,5 @@
 /**
- * A literal argument of items with types of their own (§3.7): it has its own type when choosing,
+ * A literal argument of items with types of their own (§6.3): it has its own type when choosing,
  * and, where that doesn't fit a parameter whose type is known while its items do, it is built as
  * the parameter's type, as a declaration's expected type builds it: `f(struct{c: 3})` for
  * `f(x: { c: Int? })`, `g((3,))` for `g(x: (Int?,))`, `h([3])` for `h(x: Array<Int?>)`, nested

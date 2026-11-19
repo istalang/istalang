@@ -1,4 +1,4 @@
-# The regex module (spec §3.8): regular expressions in RE2's syntax, run in time linear in the text.
+# The regex module (spec §19.2): regular expressions in RE2's syntax, run in time linear in the text.
 #
 # A regex is its pattern, a plain struct, so it is a value like any other: copied, sent, persisted
 # and compared by its text. `Regex{"\\d+"}` is a literal one, a pattern written in the program,

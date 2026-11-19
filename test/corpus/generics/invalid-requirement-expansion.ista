@@ -1,6 +1,6 @@
 # error: 5111 at 17:50
 # A call to what a constraint requires counts towards endless instantiation as a call to a
-# function does (§3.5): the requirement's witness is chosen where the caller's type is known, and
+# function does (§8.1): the requirement's witness is chosen where the caller's type is known, and
 # its type parameters take the requirement's own. So a generic requirement given a type argument
 # built from the caller's, met by a witness calling back, is reported at the call that grows it.
 

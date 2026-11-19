@@ -1,5 +1,5 @@
 /**
- * The names visible where the name being written starts (§3.4), every one or those a place keeps.
+ * The names visible where the name being written starts (§7.1), every one or those a place keeps.
  *
  * The name's start is the cursor's (cursor.ts), which counts a name spelled as a keyword so far,
  * so `in‸` on the way to `index` sees the scope `index` would.

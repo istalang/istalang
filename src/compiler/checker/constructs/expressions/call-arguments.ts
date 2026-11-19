@@ -1,5 +1,5 @@
 /**
- * A call's arguments as written, as choosing takes them (§3.3, §3.5): each checked now, in the
+ * A call's arguments as written, as choosing takes them (§6.1, §8.1): each checked now, in the
  * call's constraint scope (wiring/body/constraint-scope.ts), which postpones one that needs what the
  * call expects of it to its placeholder.
  */
@@ -18,9 +18,9 @@ import { spreadArgumentType } from './collections/collections.ts';
 
 /**
  * An argument as written: `&x` passes the place `x`, checked as a place that may change; a spread,
- * its items, as an array literal's spread gives them (§2), or a pack's value, as it is (§3.5); any
+ * its items, as an array literal's spread gives them (§3.1), or a pack's value, as it is (§8.1); any
  * other is a value, a literal with its literal type beside, which it has where its parameter
- * expects one (§2). A named argument is its value, named. One whose parameter's type is known before choosing, `known` (a function
+ * expects one (§4.3). A named argument is its value, named. One whose parameter's type is known before choosing, `known` (a function
  * value's, value-calls.ts; a spread's items' type), is checked against it.
  */
 export function writtenArgument(
@@ -86,7 +86,7 @@ function valueArgument(
     }
     return { node: argument, passing: 'value', type, literal };
   }
-  // A literal is matched as one by the call (§2), so it needs no variable of the scope's.
+  // A literal is matched as one by the call (§4.3), so it needs no variable of the scope's.
   const type = literal === undefined ? context.expression(argument) : context.settled(argument);
   return { node: argument, passing: 'value', type, literal };
 }

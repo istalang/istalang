@@ -1,6 +1,6 @@
 # outcome: ["42","1.0","-0.5","true","2026-10-25T12:00:00.000Z","PT1H30M","-7","false","90000","1792929600000","'4x' is not an Int.","parse"]
-# Stringable and Parsable (§3.10): String(x) is toString, a whole float keeps its .0, a Time and a
-# Duration are ISO 8601 (§3.8), and parse reads back what toString writes, failing with a Result
+# Stringable and Parsable (§8.4): String(x) is toString, a whole float keeps its .0, a Time and a
+# Duration are ISO 8601 (§19.2), and parse reads back what toString writes, failing with a Result
 # whose Error has code parse.
 
 import * as runtime from 'runtime'

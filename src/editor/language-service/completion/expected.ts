@@ -1,5 +1,5 @@
 /**
- * The type expected where a cursor writes a value (§2, §3.11): it ranks what fits first, and it
+ * The type expected where a cursor writes a value (§4.2, §11.3): it ranks what fits first, and it
  * alone admits bare variants, those of the enum expected.
  *
  * - The checker stays the one home of expectations: a place read from the placeholder parse
@@ -48,8 +48,8 @@ export function expectedTypeAt(cursor: Cursor, place: Place): Type | undefined {
 /**
  * The variants that may be written bare at `place`: those of the enums a value expected there may
  * be a variant of, its own and those inside its optionals, outermost first, as checking chooses
- * among them (§3.11); a name two of them share is the outermost's. Where a function value is
- * expected, the variants with fields of the enum its result is, their constructors (§3.14). Where a
+ * among them (§11.3); a name two of them share is the outermost's. Where a function value is
+ * expected, the variants with fields of the enum its result is, their constructors (§6.4). Where a
  * type is expected that checking could not tell (an error, reported where it is written), any
  * variant may be the one meant, so the visible ones all stand.
  */
@@ -88,8 +88,8 @@ function variantsOf(
 }
 
 /**
- * The literals of the literal types a value expected at `place` may be (§2), a key naming a field
- * among them (§3.1 Key types): the expected type's own, or its union members', each spelled as
+ * The literals of the literal types a value expected at `place` may be (§4.3), a key naming a field
+ * among them (§5.2 Key types): the expected type's own, or its union members', each spelled as
  * source writes it. `true` and `false` are words already offered.
  */
 export function expectedLiterals(cursor: Cursor, place: Place): readonly Candidate[] {
@@ -101,7 +101,7 @@ export function expectedLiterals(cursor: Cursor, place: Place): readonly Candida
   );
 }
 
-/** Whether `candidate` is a bare variant name, which only an expected enum admits (§3.11). */
+/** Whether `candidate` is a bare variant name, which only an expected enum admits (§5.3). */
 export function isBareVariant({ subject }: Candidate): boolean {
   return subject.kind === 'entity' && isVariantEntity(subject.entity);
 }
@@ -135,7 +135,7 @@ const expecters: Handlers<Cursor, Place, [], Type | undefined> = {
 
 /**
  * After a type's name, where a value is written, what the checker expects of the static or variant
- * named through it, as of a name written alone (§3.14): the program's tree holds that member access
+ * named through it, as of a name written alone (§6.4): the program's tree holds that member access
  * as it stands. A value's member has no expectation of its own to rank by.
  */
 function expectedOfQualified(

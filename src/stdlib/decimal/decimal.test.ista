@@ -1,4 +1,4 @@
-# The decimal module (spec §3.8), as tables of cases: canonical text, exact arithmetic, rounding
+# The decimal module (spec §19.2), as tables of cases: canonical text, exact arithmetic, rounding
 # to places in every mode, the division operators, powers, and the traits a Decimal meets.
 
 import * as decimal, Decimal from 'decimal'

@@ -145,7 +145,7 @@ function checkJoiningMap(context: BodyContext, node: MapLiteral): Type {
 /** `node`, an item, checked in the literal's scope. */
 function joinedItem(context: BodyContext, node: Expression): Item {
   const literal = writtenLiteral(unparenthesized(node));
-  // A literal is matched as one by the literal's parameter (§2), so it needs no variable of its own.
+  // A literal is matched as one by the literal's parameter (§4.3), so it needs no variable of its own.
   const type = literal === undefined ? context.expression(node) : context.settled(node);
   return { produced: producedBy(node, type), literal, node };
 }
@@ -223,7 +223,7 @@ function joinedCollection(
 
 /**
  * What `item` produced once its literal's system settled: a literal written in place checked again
- * against what its parameter settled to, recording its literal type where that holds one (§2);
+ * against what its parameter settled to, recording its literal type where that holds one (§4.3);
  * anything else as solved.
  */
 function settledItem(

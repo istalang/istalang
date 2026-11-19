@@ -1,6 +1,6 @@
 /**
- * Top-level declarations (§3), dispatched on their first token, and the module that holds them
- * (§3.13).
+ * Top-level declarations (§5.1), dispatched on their first token, and the module that holds them
+ * (§13.1).
  *
  * The dispatch tables cover the declarations that have a word of their own (`declarationWords`,
  * syntax/tokens/grammar-words.ts). Functions and `const` are statements as well (a local `fn`, a
@@ -8,7 +8,7 @@
  * (syntax/items.ts, grammar/parts/blocks.ts).
  *
  * `struct` and `type` start a declaration only when a name follows: `struct{…}` is an anonymous
- * struct literal, and `type` is a keyword only before a declared name (§2). An extern's and a
+ * struct literal, and `type` is a keyword only before a declared name (§2.2). An extern's and a
  * shared struct's head start with any of their modifiers, so `shared` and a handle are keywords
  * only before a head's `struct` or `fn` (../parts/heads.ts), and the keyword ending the head, past
  * them, chooses the declaration. A modifier before `const` starts a context constant,
@@ -87,7 +87,7 @@ function parseModified(parser: Parser): Declaration | undefined {
   return modifiers.includes('shared') ? parseSharedStruct(parser) : parseStruct(parser);
 }
 
-/** `ista const name: T = value` (§3.4), at its head, whose kind is `ista` unless reported. */
+/** `ista const name: T = value` (§7.1), at its head, whose kind is `ista` unless reported. */
 function parseContextConstant(parser: Parser): ContextConstantDeclaration {
   const { cursor } = parser;
   const { start } = cursor.token.span;

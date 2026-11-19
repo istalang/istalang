@@ -1,5 +1,5 @@
 /**
- * What checking decides of which code of a body runs (§2, §4), recorded per pass as every record of
+ * What checking decides of which code of a body runs (§4.2, §11.1), recorded per pass as every record of
  * a node is (passes.ts): a branch or case a condition its operands' types decide rules out, the
  * operands an operation runs before one with no value stops it, and the value such a condition
  * always has. Lowering reads them, so nothing ruled out is lowered.

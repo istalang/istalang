@@ -1,4 +1,4 @@
-# The runtime module's `id`, `version` and `isolate` (spec §3.8, §9); `commit` is the corpus's.
+# The runtime module's `id`, `version` and `isolate` (spec §19.2, §17.1); `commit` is the corpus's.
 # `isolate`'s failing case is a panic it gives back as an `Err`.
 
 import * as runtime from 'runtime'

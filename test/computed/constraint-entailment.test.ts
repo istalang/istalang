@@ -1,6 +1,6 @@
 /**
  * A type known only per instantiation meets a struct constraint exactly when its own struct
- * constraints imply it (docs/proposals/4-computed-types.md §2, spec §3.5): each field the expected
+ * constraints imply it (docs/proposals/4-computed-types.md §2, spec §8.1): each field the expected
  * constraint names is named by its own, with a rule implying the entry's; and, when the expected
  * one constrains its other fields, every field its own names beyond that and every field its own
  * leaves to its `[_]` entry meet it. Nested struct constraints imply alike, at any depth.

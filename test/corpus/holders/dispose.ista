@@ -1,5 +1,5 @@
 # outcome: "inner kept, disposed outer, disposed inner, after nesting"
-# A `dispose` declared beside a shared struct makes it disposable (§7, §3.18): it runs as code,
+# A `dispose` declared beside a shared struct makes it disposable (§16, §5.4): it runs as code,
 # with the handle, when nothing holds it any more. A value held by another one being disposed
 # loses its last holder only once that disposal is done, so a lease is disposed after the lease
 # holding it, however old it is.

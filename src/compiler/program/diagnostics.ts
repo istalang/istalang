@@ -1,6 +1,6 @@
 /**
  * Diagnostics of loading a program, codes 3000–3999: import paths that name no module, or more than
- * one (§3.13). Each points at the import's path string.
+ * one (§13.1). Each points at the import's path string.
  */
 
 import { defineDiagnostics } from '../../foundation/diagnostics/catalog.ts';

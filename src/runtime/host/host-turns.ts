@@ -1,5 +1,5 @@
 /**
- * Host calls on turns of their own (§9). The world's work runs synchronously to its end once begun
+ * Host calls on turns of their own (§17.3). The world's work runs synchronously to its end once begun
  * (durable-world.ts), and a host's extern runs inside it, halfway through the segment calling it.
  * So every host call that runs code starts on a turn of its own: never inside the world's work, a
  * call an extern makes starts once the call it was made in ended, and calls on one instance run one

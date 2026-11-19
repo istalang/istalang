@@ -1,5 +1,5 @@
 # outcome: ["job 1","job 2","alive","worker disposing","defer2","defer1","scope 3"]
-# QA M3 (§3.4, §6, §7, §8): a worker held by `hold _` sees `disposing()` when `scope` returns, ahead of the defers (reverse creation order); the watcher held by a `_` of the same block dies with it, so `disposed()` never logs. `scope` waits for the worker to report both jobs, not for a time, so a slow machine can't reorder them.
+# QA M3 (§7.1, §15.2, §16, §15.4): a worker held by `hold _` sees `disposing()` when `scope` returns, ahead of the defers (reverse creation order); the watcher held by a `_` of the same block dies with it, so `disposed()` never logs. `scope` waits for the worker to report both jobs, not for a time, so a slow machine can't reorder them.
 import * as runtime from 'runtime'
 import * as time from 'time'
 import Inbox, Revertible from 'inbox'

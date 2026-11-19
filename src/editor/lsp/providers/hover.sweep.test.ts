@@ -35,7 +35,7 @@ const checker = checkProgram(program);
 
 const client = sharedCorpusClient();
 
-/** What `node` denotes: an identifier's denotations, or the field a key names (§3.1). */
+/** What `node` denotes: an identifier's denotations, or the field a key names (§5.2). */
 function denotationsAt(module: ModuleId, node: SyntaxNode) {
   if (node.kind === 'Identifier') {
     return checker.lookup.denotationsOf(module, node);

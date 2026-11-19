@@ -66,7 +66,7 @@ export interface AnalysisContext {
 
   /** What the default of `declaration`'s parameter at `index` relates to, of those before it. */
   readonly defaultResult: (declaration: FunctionDeclaration, index: number) => GivenValue;
-  /** The program's transients (§3.4), each the global its cell is. */
+  /** The program's transients (§7.1), each the global its cell is. */
   readonly transients: () => readonly Input[];
 }
 

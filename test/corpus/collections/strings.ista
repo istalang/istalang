@@ -1,5 +1,5 @@
 # outcome: "5 b 🙂 true hé🙂 ab 5 h,é,l,🙂,o"
-# Strings count code points (§3.8): length, indexing, `at`, slicing and iteration never split the
+# Strings count code points (§19.3): length, indexing, `at`, slicing and iteration never split the
 # emoji code point, and a string spreads its characters.
 
 import * as runtime from 'runtime'

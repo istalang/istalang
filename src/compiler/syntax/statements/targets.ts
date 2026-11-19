@@ -1,5 +1,5 @@
 /**
- * Targets as written (§3.15): what an assignment's target takes its value apart into, which targets
+ * Targets as written (§4.5): what an assignment's target takes its value apart into, which targets
  * name no variable, and what declares targets (a declaration, a loop, a comprehension, a field
  * loop's header, a parameter), so the binder, the checker and lowering read one destructuring.
  */
@@ -15,7 +15,7 @@ import type { NamedType } from '../types/index.ts';
 import type { For, VariableDeclaration } from './index.ts';
 
 /**
- * What a target takes its value apart into, as written (§3.15): a tuple's elements, or a struct's
+ * What a target takes its value apart into, as written (§4.5): a tuple's elements, or a struct's
  * items, each a target of its own. A declaration's targets are patterns and an assignment's are
  * expressions, but both read as one of these, which the checker takes apart by one walk.
  */
@@ -28,7 +28,7 @@ export type Destructuring<Target> =
       readonly span: AnchoredSpan;
     };
 
-/** A struct target's item: the field it names, none when positional (§3.1), and its target. */
+/** A struct target's item: the field it names, none when positional (§5.2), and its target. */
 export interface FieldTarget<Target> {
   readonly name: Identifier | undefined;
   readonly span: AnchoredSpan;
@@ -62,8 +62,8 @@ export function destructuringOf(target: Expression): Destructuring<Expression> |
 }
 
 /**
- * What may stand left of `=` (§3.4, §3.15): a place, or a tuple or struct literal made of targets,
- * parenthesized or not; a struct's positional value needs the parentheses (§3.1).
+ * What may stand left of `=` (§7.1, §4.5): a place, or a tuple or struct literal made of targets,
+ * parenthesized or not; a struct's positional value needs the parentheses (§5.2).
  */
 export function isTarget(target: Expression): boolean {
   const bare = unparenthesized(target);
@@ -80,13 +80,13 @@ export function isTarget(target: Expression): boolean {
 
 /**
  * Whether an assignment's target takes its value apart, a tuple or struct literal of targets,
- * parenthesized or not, rather than naming one place (§3.15).
+ * parenthesized or not, rather than naming one place (§4.5).
  */
 export function destructures(target: Expression): boolean {
   return destructuringOf(target) !== undefined;
 }
 
-/** Whether an assignment's target is `_`, which names no place but holds the value (§7). */
+/** Whether an assignment's target is `_`, which names no place but holds the value (§16). */
 export function isUnnamedTarget(target: Expression): boolean {
   const bare = unparenthesized(target);
   return bare.kind === 'Identifier' && isUnnamed(bare.text);
@@ -119,9 +119,9 @@ export function ownsTargets<Node extends { readonly kind: string }>(
 }
 
 /**
- * The targets `owner` declares, which take its value apart (§3.15): a declaration's or loop's, a
+ * The targets `owner` declares, which take its value apart (§4.5): a declaration's or loop's, a
  * field loop's key and value, which take apart the pair of a field's name and value, or a
- * parameter's pattern, which takes its argument apart (§3.3).
+ * parameter's pattern, which takes its argument apart (§6.1).
  */
 export function declaredTargets(owner: TargetOwner): readonly Pattern[] {
   switch (owner.kind) {

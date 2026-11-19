@@ -2,14 +2,14 @@
  * Help for the call whose parentheses a cursor is inside: the functions it may call, each as its
  * signature, the one it calls, and in each the parameter the argument under the cursor gives.
  *
- * - A call resolved to a function marks the parameter its binding passes that argument to (§3.3),
+ * - A call resolved to a function marks the parameter its binding passes that argument to (§6.1),
  *   so a method's receiver, passed first, never counts among the written arguments, and named and
  *   rest arguments land where the call put them.
  * - A call that didn't resolve, as one being written often doesn't, shows the functions it chose
  *   among, its arguments read by position and name.
- * - A call of a function value shows its type's parameters, which have no names (§3.14).
+ * - A call of a function value shows its type's parameters, which have no names (§6.4).
  * - A deferred call's taker written as a call shows what the deferred call calls, its arguments
- *   those its parentheses write (§3.14).
+ *   those its parentheses write (§6.5).
  */
 
 import type { Checker } from '../../../compiler/checker/check.ts';
@@ -29,7 +29,7 @@ interface SignatureHelp {
   readonly signatures: readonly CallSignature[];
   /**
    * The signature of the function the call calls, among `signatures`; undefined where the passes
-   * of a field loop around it call different ones (§4), as no one of them is the call's.
+   * of a field loop around it call different ones (§11.2), as no one of them is the call's.
    */
   readonly active: number | undefined;
 }

@@ -1,5 +1,5 @@
 /**
- * `any A & B` written as a type (§3.10): a set of constraints, each trait's `Self` its own,
+ * `any A & B` written as a type (§8.3): a set of constraints, each trait's `Self` its own,
  * standing for the type of the value inside. A value of an `any` type is used through its traits
  * with its own type known only when it runs, so every trait must be object safe
  * (object-safety.ts), and none may be named twice.

@@ -1,5 +1,5 @@
 /**
- * Type identity (§3.1): two types are one exactly when their keys are equal, and a shape is its
+ * Type identity (§5.2): two types are one exactly when their keys are equal, and a shape is its
  * field names and their types, whatever order and place wrote it. The keys are checked against a
  * structural equality written here, over generated types, so "same key" means "same structure".
  */

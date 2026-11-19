@@ -1,6 +1,6 @@
 /**
  * Which types a type parameter admits while its call is settled (types/inference/settle.ts, rule
- * 2): one member of its union (`in`, §3.5), meeting each of its constraints that names no other
+ * 2): one member of its union (`in`, §8.1), meeting each of its constraints that names no other
  * type parameter, which settling can't judge before those are settled. Whether a type meets a
  * constraint is the caller's to say, within the search it is asked in (conformance.ts).
  */

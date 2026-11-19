@@ -1,11 +1,11 @@
 /**
- * Union and literal types (§2): building a union, which normalizes it, and taking one apart.
+ * Union and literal types (§4.2): building a union, which normalizes it, and taking one apart.
  *
  * - A union is a set of members, normalized by the rules every union follows (union-members.ts):
  *   a member that is a union contributes its members, duplicates merge (by key, so an alias and the
  *   type it names are one member), no value sits in two members, and one member is that member,
  *   none `Never`.
- * - A recursive type (§3.17) whose body is a union is flattened: its members join the union, as a
+ * - A recursive type (§4.6) whose body is a union is flattened: its members join the union, as a
  *   union member's do. A union equal to a recursive type it reaches is that type, written through
  *   its alias (identity/folding.ts `folded`), so `Json | Int` and `Json?` are `Json`.
  * - `unionOf` is the one constructor of a union from types, written, substituted
@@ -40,7 +40,7 @@ const typeReading: MemberReading<Type> = {
 };
 
 /**
- * The union of `members`, normalized (§2) by the program's `rules`; never a union of fewer than two
+ * The union of `members`, normalized (§4.2) by the program's `rules`; never a union of fewer than two
  * members.
  */
 export function unionOf(members: readonly Type[], rules: TypeRules): Type {
@@ -76,7 +76,7 @@ export function hasMember(type: Type, member: Type): boolean {
   return membersOf(type).some((each) => typeKeys.typeKey(each) === key);
 }
 
-/** `T | None`, which `T?` is (§2), normalized by the program's `rules`. */
+/** `T | None`, which `T?` is (§4.2), normalized by the program's `rules`. */
 export function optionalOf(type: Type, rules: TypeRules): Type {
   return unionOf([type, noneType], rules);
 }
@@ -91,7 +91,7 @@ export function optionalInner(type: Type): Type | undefined {
 }
 
 /**
- * What a value of `type` is where it isn't `none`, when `type` may hold `none` (§2, §4), as `??`,
+ * What a value of `type` is where it isn't `none`, when `type` may hold `none` (§4.2, §10.4), as `??`,
  * `?.`, `!` and `case none` test it: a union holding `None`, without it, a recursive type left
  * unfolded, as a value of it is taken apart (`unfolded`); `Never` for `None`
  * itself, whose one value is `none`; or, where an `any` member took `None` whole, `type` itself,
@@ -114,7 +114,7 @@ export function hasOneValue(member: Type): boolean {
 }
 
 /**
- * The literal type of a literal written in place (§2): a string, a Bool, or an integer, maybe
+ * The literal type of a literal written in place (§4.3): a string, a Bool, or an integer, maybe
  * negated; undefined for any other expression.
  */
 export function writtenLiteral(node: Expression): LiteralType | undefined {
@@ -126,10 +126,10 @@ export function writtenLiteral(node: Expression): LiteralType | undefined {
 }
 
 /**
- * The type a literal of `value` has where `expected` is expected (§2): its literal type where a
+ * The type a literal of `value` has where `expected` is expected (§4.3): its literal type where a
  * literal type of its base is expected, or a union holding one, or a type standing for one member
  * (a member parameter, a member-bounded associated type), each of whose instantiations is one
- * member (§3.5), else its base, as `const s = "draft"` makes a `String`.
+ * member (§8.1), else its base, as `const s = "draft"` makes a `String`.
  */
 export function literalOrBase(
   value: LiteralValue,
@@ -148,7 +148,7 @@ export function literalOrBase(
 
 /**
  * The base a literal type, or a union of literals of one base, widens to, the keys of a struct not
- * known yet being Strings (§3.1); else undefined.
+ * known yet being Strings (§5.2); else undefined.
  */
 export function literalsBase(type: Type): Type | undefined {
   const bases = membersOf(type).map((member) =>

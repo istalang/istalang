@@ -1,5 +1,5 @@
 /**
- * What a name on a receiver may mean (§3.1, §3.7), one answer for a read, a call and what tools
+ * What a name on a receiver may mean (§5.2, §6.2), one answer for a read, a call and what tools
  * list: a method counts only where its `self` takes the receiver.
  */
 

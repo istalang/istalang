@@ -1,6 +1,6 @@
 # outcome: 1000
 # An operator on a type finds its function in the module declaring the type, though nothing
-# imports it by name (§3.13): `+` on a Time and a Duration finds `time`'s `add`.
+# imports it by name (§13.1): `+` on a Time and a Duration finds `time`'s `add`.
 import * as runtime from 'runtime'
 import * as time from 'time'
 

@@ -1,5 +1,5 @@
 /**
- * How the language names a static function: `Owner.name` (§3.10). The checker's resolution and
+ * How the language names a static function: `Owner.name` (§6.2). The checker's resolution and
  * messages, lowering's function-table names and the natives' keys all spell it here, so a static
  * call the checker resolves and the entry and native it binds to can never disagree on the name.
  */

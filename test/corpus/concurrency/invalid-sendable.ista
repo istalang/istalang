@@ -4,8 +4,8 @@
 # error: 5001 at 21:8
 # error: 5644 at 28:14
 # error: 5001 at 34:11
-# A sendable function type (§3.14) holds code, which only `spawn` sends: it isn't Encodable, so
-# an extern's types may not contain one (§9); and a function value capturing a `let`, which is a
+# A sendable function type (§6.4) holds code, which only `spawn` sends: it isn't Encodable, so
+# an extern's types may not contain one (§17.4); and a function value capturing a `let`, which is a
 # `Shared`, has a plain function type, which doesn't fit where a sendable one is expected. One
 # capturing a value that isn't sendable is reported at that capture, unless it misfits besides.
 

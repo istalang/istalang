@@ -116,7 +116,7 @@ describe('what accepting an item writes', () => {
     });
   });
 
-  it('ranks first the functions and constructors a function value expected fits (§3.14)', () => {
+  it('ranks first the functions and constructors a function value expected fits (§6.4)', () => {
     const decls = [
       'enum Choice { Plain, Other(n: Int), Picked(by: String, why: String = "") }',
       'fn shout(s: String) -> Choice: Choice.Picked(s)',
@@ -155,7 +155,7 @@ describe('what accepting an item writes', () => {
     expect(fitting('ista fn caller() -> Int: wrapped(‸)')).toContain('W');
   });
 
-  it('writes a function or a variant alone where a function value is expected (§3.14)', () => {
+  it('writes a function or a variant alone where a function value is expected (§6.4)', () => {
     const nothing = { insert: undefined, next: undefined };
     expect(insertOf('pl', 'fn t(xs: Array<Int>):', '  _ = xs.map(p‸)')).toEqual(nothing);
     expect(insertOf('pl', 'const f: fn(Int) -> Int = p‸')).toEqual(nothing);

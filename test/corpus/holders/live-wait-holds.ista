@@ -1,5 +1,5 @@
 # outcome: "giver after resolve, disposed, after the await"
-# A decided wait holds the value deciding it until its waiter moves on (§7): the lease its giver let
+# A decided wait holds the value deciding it until its waiter moves on (§16): the lease its giver let
 # go of is disposed only once `main` resumes past its `await` and drops it, not as the giver goes on.
 
 import * as time from 'time'

@@ -1,5 +1,5 @@
 /**
- * The one walk over a pattern (§3.11, §3.15): what it binds, the tests a value must pass to match
+ * The one walk over a pattern (§11.3, §4.5): what it binds, the tests a value must pass to match
  * it, and its shape for exhaustiveness. Every pattern is walked here: a declaration's or loop's
  * targets, a `match` case's and an `is`'s.
  *
@@ -9,21 +9,21 @@
  *   as an assignment's target is (taking.ts). What could fail to match (a literal, a comparison,
  *   a referring name, a variant, an array's length, a range) is checked by its own kind (kinds/)
  *   in a `match` case or `is`, and refused in a target, which must always match (refusals.ts).
- * - A target's `_` holds its part (§3.15, §7): a binding with no name. A case's binds nothing.
+ * - A target's `_` holds its part (§4.5, §16): a binding with no name. A case's binds nothing.
  * - A bare name binds when the binder made it a variable, as it does for every bare name of a
- *   target and for a camelCase one in a case (§3.11); otherwise it refers.
+ *   target and for a camelCase one in a case (§11.3); otherwise it refers.
  * - Tests come out in the order lowering runs them: a variant is tested before its fields are read.
  * - An or-pattern walks each alternative on its own, into one `or` test. Its alternatives bind the
  *   first's variables (binder), so a binding is named by its variable's declaring name, and the
  *   alternatives must agree on the names and their types (walk/kinds/alternatives.ts). An
- *   alternative its part's type rules out (a `never` test, §3.11) is left out; with none left, the
+ *   alternative its part's type rules out (a `never` test, §11.3) is left out; with none left, the
  *   pattern never matches.
  * - What a pattern selects of its part comes first (selections.ts): a downcast of an `any`
  *   value, or the members of a union's. Type arguments are written only there, on a union's
- *   members, and in a parameter's own pattern, whose head names the parameter's type (§3.3,
+ *   members, and in a parameter's own pattern, whose head names the parameter's type (§6.1,
  *   `typed`).
  * - A shape is undefined when the pattern acts as a guard for exhaustiveness: it compares by more
- *   than `==` against a literal or variant, tests one field twice, or is a range (§3.11).
+ *   than `==` against a literal or variant, tests one field twice, or is a range (§11.3).
  * - What tools read of a pattern being written is recorded as the walk takes it (../matching.ts):
  *   the type each pattern and part is matched against, and the fields a struct or call pattern
  *   names, so no tool walks a pattern again.
@@ -87,9 +87,9 @@ export function walkPattern(
 
 /**
  * The names a declaration's or loop's `targets` bind in a value of `type`, each with its part
- * (§3.15). A target refuses whatever could fail to match before taking it apart (`refused`), so
+ * (§4.5). A target refuses whatever could fail to match before taking it apart (`refused`), so
  * its parts are fields and tuple elements only. `typed` is a struct pattern among them whose
- * written type is the value's own, a parameter's (§3.3), so its type arguments are that type's.
+ * written type is the value's own, a parameter's (§6.1), so its type arguments are that type's.
  */
 export function walkTargets(
   context: BodyContext,
@@ -115,7 +115,7 @@ interface Walk extends Refusing {
   readonly typed: StructPattern | undefined;
   readonly found: PatternTest[];
   readonly bindings: PartBinding[];
-  /** A target's `_`s, each holding its part (§3.15); a pattern that may fail holds none. */
+  /** A target's `_`s, each holding its part (§4.5); a pattern that may fail holds none. */
   readonly unnamed: (Omit<PartBinding, 'name'> & { readonly name: WildcardPattern })[];
 }
 
@@ -225,7 +225,7 @@ function takeMatched(walk: Walk, written: Pattern | PatternPart, part: ValuePart
  * `node`, no or-pattern, matched at `part`, what it selects of the part first (selections.ts). A
  * part already in error, or a selection refused, was reported where it arose; it takes anything,
  * for exhaustiveness, and a refused one still binds its names, at the error type (`bindAt`). A part
- * of type `Never` has no value (§2), so the pattern never runs: it takes anything and binds its
+ * of type `Never` has no value (§4.1), so the pattern never runs: it takes anything and binds its
  * names at `Never`, testing and reporting nothing (resolution/calls/stopped-operations.ts).
  */
 function takeSelecting(walk: Walk, node: Pattern | PatternPart, part: ValuePart): Matched {
@@ -275,7 +275,7 @@ function takeSelected(walk: Walk, node: Pattern | PatternPart, selection: Select
 }
 
 /**
- * `node`, its part's type ruling it out (§3.11): a `never` test, covering nothing, binding `Never`.
+ * `node`, its part's type ruling it out (§11.3): a `never` test, covering nothing, binding `Never`.
  */
 function takeRuledOut(walk: Walk, node: Pattern | PatternPart, part: ValuePart): Matched {
   walk.found.push(neverTest);
@@ -285,7 +285,7 @@ function takeRuledOut(walk: Walk, node: Pattern | PatternPart, part: ValuePart):
 
 /**
  * Whether a name pattern binds a new variable, rather than referring: every bare name of a target,
- * and in a case a bare name the binder made a variable (§3.11).
+ * and in a case a bare name the binder made a variable (§11.3).
  */
 function binds(walk: Walk, node: NamePattern): boolean {
   const [name, ...rest] = node.path;

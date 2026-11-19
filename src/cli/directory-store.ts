@@ -5,7 +5,7 @@
  *
  * Each write goes to a temporary file in the same directory, which is then renamed over the old
  * one. A rename within one file system is atomic, so a crash mid-write leaves the previous commit
- * in place, which is what a commit promises (§5). Names are percent-encoded into file names, so no
+ * in place, which is what a commit promises (§14). Names are percent-encoded into file names, so no
  * instance name can reach outside its directory.
  */
 

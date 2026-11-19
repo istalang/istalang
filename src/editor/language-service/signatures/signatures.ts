@@ -6,7 +6,7 @@
  *
  * Types read as messages spell them (checker types/type/type-text.ts). A default value reads as
  * `…`, since its text may span lines; type parameters read by name, as a call site names them. A
- * parameter's pattern reads as written, on one line, with its `as` name (§3.3); one naming its type
+ * parameter's pattern reads as written, on one line, with its `as` name (§6.1); one naming its type
  * (`Point{x, y}`) shows no type beside it, as source writes none.
  */
 
@@ -62,7 +62,7 @@ export function signatureOf(checker: Checker, declaration: FunctionDeclaration):
     .parametersOf(declaration)
     .map((parameter) => parameterText(tree, parameter));
   const result = checker.resultOf(declaration);
-  // An async head says its call gives a future, so it spells what its body gives (§3.14).
+  // An async head says its call gives a future, so it spells what its body gives (§6.4).
   const written = awaits(qualifiers) ? outcomeOf(checker, result) : result;
   return joined(`${head}(`, parameters, `) -> ${typeText(written)}`);
 }

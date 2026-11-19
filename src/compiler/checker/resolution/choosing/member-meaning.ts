@@ -1,11 +1,11 @@
 /**
- * What a member's name means through a receiver (§3.1, §3.7): one answer for a read (`x.f`), a call
+ * What a member's name means through a receiver (§5.2, §6.2): one answer for a read (`x.f`), a call
  * (`x.f(…)`) and what tools list (lookup/members.ts). The functions are those candidates.ts finds
  * through the receiver, a call on a union through a trait only where the union meets it
  * (conformance/trait-calls.ts), each kept where its `self` takes the receiver: with the type
  * parameters that decides meeting their constraints (`met`), or not (`unmet`), which a use finding
  * nothing else reports as their call would (receivers.ts `selfTaking`). Beside them, the keyed
- * indexes taking the receiver (keyed-indexes.ts), which serve the names their keys are (§3.9). A
+ * indexes taking the receiver (keyed-indexes.ts), which serve the names their keys are (§10.2). A
  * read or a call looks up one name, a listing every one, from the same sources.
  */
 
@@ -32,7 +32,7 @@ export interface Taking {
 
 /**
  * The methods, called `x.f(…)`, and the getters, read `x.f`, taking a receiver as `self`, and the
- * keyed indexes, read `x.k` for a key `k` (§3.9).
+ * keyed indexes, read `x.k` for a key `k` (§10.2).
  */
 export interface TakingMembers {
   readonly methods: Taking;
@@ -66,7 +66,7 @@ export function membersNamed(
 
 /**
  * The methods of `name` a call `x.name(…)` written in `module` may choose, its receiver's type the
- * first of `argumentTypes`: those the other arguments' types find too (§3.13).
+ * first of `argumentTypes`: those the other arguments' types find too (§13.1).
  */
 export function methodsNamed(
   checker: CheckerContext,

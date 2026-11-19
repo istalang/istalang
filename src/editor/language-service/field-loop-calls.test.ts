@@ -1,5 +1,5 @@
 /**
- * Tools on a call inside a field loop whose passes resolve it to different functions (§4): each
+ * Tools on a call inside a field loop whose passes resolve it to different functions (§11.2): each
  * pass checks the same text against another field's type, so the call names every function a pass
  * called, as a type there names every pass's type.
  */

@@ -1,5 +1,5 @@
 /**
- * Heads (§2): a head's modifiers stack in any order, giving the tree their print order gives, in
+ * Heads (§2.2): a head's modifiers stack in any order, giving the tree their print order gives, in
  * every form; a repeated, conflicting or misplaced one costs one diagnostic naming it, and one
  * implying another of its group (`sendable inert`) none, the tree holding the stronger.
  */

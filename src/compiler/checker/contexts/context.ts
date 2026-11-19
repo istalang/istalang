@@ -46,9 +46,9 @@ import type { UseSite } from './use-site.ts';
 export type Instantiable = FunctionDeclaration | NominalDeclaration | TypeAliasDeclaration;
 
 /**
- * What an instantiation at `at` must pass once its module is checked (§3.5): `typeArguments`
+ * What an instantiation at `at` must pass once its module is checked (§8.1): `typeArguments`
  * giving `parameter` an argument meeting its constraints, or giving `declaration` arguments every
- * type `match` it reaches reduces for (§3.17).
+ * type `match` it reaches reduces for (§4.6).
  */
 export type ConstraintCheck =
   | {
@@ -107,7 +107,7 @@ export interface ProgramInputs {
    */
   readonly holdersOf: (module: ModuleId, node: SyntaxNode) => readonly SyntaxNode[];
   /**
-   * The first variant of the program named `name` (§3.11) declared by one of `enums`, in the
+   * The first variant of the program named `name` (§5.3) declared by one of `enums`, in the
    * order the program lists its variants: what a bare name expecting those enums chooses.
    */
   readonly variantNamed: (
@@ -160,10 +160,10 @@ export interface CheckerContext extends Omit<Checker, 'program'> {
    * or a struct literal's type, which name a type rather than denote one. Asking reports nothing.
    */
   readonly resolvedTypeOf: (node: TypeNode) => Type | undefined;
-  /** The type `match`es of aliases and associated types, resolved (§3.17). */
+  /** The type `match`es of aliases and associated types, resolved (§4.6). */
   readonly typeMatches: TypeMatchQueries;
   /**
-   * The type `any` followed by `traits` denotes in `module` (§3.10), the traits' type arguments
+   * The type `any` followed by `traits` denotes in `module` (§8.3), the traits' type arguments
    * resolved by `argumentType`, as the resolution asking resolves type nodes.
    */
   readonly anyTypeOf: (
@@ -180,38 +180,38 @@ export interface CheckerContext extends Omit<Checker, 'program'> {
   readonly typingDefaults: () => boolean;
   /** An enum declaration's variants, types as declared (not substituted). */
   readonly declaredVariantsOf: (declaration: EnumDeclaration) => readonly VariantMember[];
-  /** How types cross as JSON, with what meeting `Encodable` and `Decodable` asks (§9). */
+  /** How types cross as JSON, with what meeting `Encodable` and `Decodable` asks (§17.4). */
   readonly json: JsonCodecs;
-  /** The trait goals asked at the root of a witness search, each searched once (§3.10). */
+  /** The trait goals asked at the root of a witness search, each searched once (§8.2). */
   readonly rootGoals: RootGoals;
-  /** What fitting a value where a type is expected asks of the program (§2). */
+  /** What fitting a value where a type is expected asks of the program (§4.1). */
   readonly fitting: Fitting;
   /**
-   * How `found` fits `expected`, by implicit conversions; undefined when nothing makes it (§2,
-   * §3.14).
+   * How `found` fits `expected`, by implicit conversions; undefined when nothing makes it (§4.1,
+   * §6.4).
    */
   readonly fitOf: (found: Type, expected: Type) => Fit | undefined;
-  /** The trait constraints after `is` on a type parameter, resolved where it is declared (§3.5). */
+  /** The trait constraints after `is` on a type parameter, resolved where it is declared (§8.1). */
   readonly constraintsOf: (parameter: TypeParameter) => readonly Constraint[];
   /**
-   * The struct constraints after `is` on a type parameter, resolved where it is declared (§3.5).
+   * The struct constraints after `is` on a type parameter, resolved where it is declared (§8.1).
    */
   readonly structConstraintsOf: (parameter: TypeParameter) => readonly StructConstraintModel[];
   /**
-   * The bound a trait's associated type requirement states (`type Key is C`, §3.10), resolved in
+   * The bound a trait's associated type requirement states (`type Key is C`, §8.2), resolved in
    * the trait's module: each trait's `Self` the associated type of the trait's own `Self`.
    */
   readonly associatedBoundsOf: (requirement: RequiredAssociatedType) => AssociatedBounds;
   /**
    * The union after `in` on a member parameter, which it stands for one member of, resolved where
-   * it is declared (§3.5); undefined for any other parameter.
+   * it is declared (§8.1); undefined for any other parameter.
    */
   readonly memberUnionOf: (
     parameter: TypeParameter,
     resolve?: (node: TypeNode) => Type,
   ) => Type | undefined;
   /**
-   * The distinct kinds what a value of `type` holds is of (§3.3; types/properties/value-kinds.ts),
+   * The distinct kinds what a value of `type` holds is of (§9.1; types/properties/value-kinds.ts),
    * read once per type however many signatures hold it.
    */
   readonly valueKindsOf: (type: Type) => readonly Type[];
@@ -220,17 +220,17 @@ export interface CheckerContext extends Omit<Checker, 'program'> {
    * allow (types/traits/data-kind.ts).
    */
   readonly boundKindsOf: (type: Type) => readonly Type[];
-  /** The static functions declared on `owner` in `module` (§3.7). */
+  /** The static functions declared on `owner` in `module` (§6.2). */
   readonly staticFunctionsIn: (
     module: ModuleId,
     owner: StaticOwner,
   ) => readonly FunctionDeclaration[];
-  /** Annotations, as later phases read them and as declarations check them (§3.16). */
+  /** Annotations, as later phases read them and as declarations check them (§5.5). */
   readonly annotations: AnnotationChecks;
   /**
    * Notes `check`, an instantiation's in `module`: an argument meeting its parameter's constraints,
    * which may name the declaration's other parameters, or the type `match`es it reaches reducing
-   * (§3.5). Types resolve while signatures are still being resolved, and either check looks at
+   * (§8.1). Types resolve while signatures are still being resolved, and either check looks at
    * signatures, so it runs once the module's declarations are checked: it is noted in the entry
    * computing now, which that module's check reads.
    */
@@ -241,7 +241,7 @@ export interface CheckerContext extends Omit<Checker, 'program'> {
 export interface TraitGoal {
   readonly type: Type;
   readonly constraint: Constraint;
-  /** Whether only calls on the type's values need it: a union's, through its members (§6). */
+  /** Whether only calls on the type's values need it: a union's, through its members (§8.2). */
   readonly onValues: boolean;
 }
 
@@ -256,7 +256,7 @@ export interface StructGoal {
 
 /**
  * Goals asked at the root of a witness search (resolution/conformance/conformance.ts), each
- * searched once per program, since meeting is the same wherever it is asked (§3.10;
+ * searched once per program, since meeting is the same wherever it is asked (§8.2;
  * resolution/conformance/root-goals.ts).
  */
 export interface RootGoals {

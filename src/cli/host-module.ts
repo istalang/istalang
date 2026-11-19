@@ -1,5 +1,5 @@
 /**
- * `ista run --host <module>` (§9): a JavaScript module standing in for a real host. Its default
+ * `ista run --host <module>` (§17.3): a JavaScript module standing in for a real host. Its default
  * export implements the program's externs by key, against JSON (runtime/boundary/host-natives.ts):
  * each function takes the extern's arguments, in order, as JSON values, and gives its result. One
  * for an extern returning a future, which is live (proposal 8, Rule 9), may give a promise, which

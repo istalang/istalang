@@ -1,5 +1,5 @@
 /**
- * An `any` type's entry while lowering runs (§3.10): the types converted into it so far, in the
+ * An `any` type's entry while lowering runs (§8.3): the types converted into it so far, in the
  * order of their names, their table keys, each with how the Definition refers to it. Its enum, a
  * variant per member holding its value in the one field, is built from it once lowering has
  * reached every conversion (tables.ts).

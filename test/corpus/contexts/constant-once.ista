@@ -1,5 +1,5 @@
 # outcome: [2001,30,10]
-# A context constant is made once per context, at its first read, and kept across commits (§3.4).
+# A context constant is made once per context, at its first read, and kept across commits (§7.1).
 
 import * as runtime from 'runtime'
 

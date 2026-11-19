@@ -1,5 +1,5 @@
 /**
- * Keys of types holding recursion (§3.17): built from a minimized term graph once per structure,
+ * Keys of types holding recursion (§4.6): built from a minimized term graph once per structure,
  * however many type objects spell that structure, and always the key a fresh term graph gives.
  * Checked over spines (tuples, unions, shapes, nominals) around the nodes of generated recursive
  * groups (recursive-types.test-kit.ts); each spine is built twice, as two objects of one structure,

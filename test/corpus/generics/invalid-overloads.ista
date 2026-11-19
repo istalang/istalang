@@ -2,7 +2,7 @@
 # error: 5105 at 17:4
 # error: 5105 at 20:4
 # error: 5003 at 23:39
-# Overloads that some call fits alike clash (§3.7): through a generated default overload, by
+# Overloads that some call fits alike clash (§6.3): through a generated default overload, by
 # `self` taken as a value and as a reference, or as generic functions each instantiating its own
 # type parameter, so a call both take is ambiguous too.
 

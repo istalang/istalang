@@ -1,5 +1,5 @@
 /**
- * Letting go (spec §3.4, §7; docs/arch/definition.md, "Holders").
+ * Letting go (spec §7.1, §16; docs/arch/definition.md, "Holders").
  *
  * Lowering decides every point a register lets go of what it owns: a block's end on every exit
  * path, a statement's end for its temporaries, `drop x`, overwriting a variable, a `return` for
@@ -10,7 +10,7 @@
  * Letting go empties each register; letting go of an empty one does nothing. What lost its last
  * holder is disposed then, values losing it together newest first.
  *
- * `hold let`, `hold const` and `hold _` keep their values until a scope around them ends (§3.4),
+ * `hold let`, `hold const` and `hold _` keep their values until a scope around them ends (§7.1),
  * even from a loop body: each is copied into an array of its own type, a variable of that scope
  * let go of where the scope ends.
  */

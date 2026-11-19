@@ -1,6 +1,6 @@
 # outcome: [3,[4],5,"6",null,7,"int 1","tuple"]
-# A one-element tuple and its element each fit where the other is expected (§3.15), once, before
-# a wrap into T? (§2); a function taking every argument as it is beats one converting it (§3.7).
+# A one-element tuple and its element each fit where the other is expected (§4.5), once, before
+# a wrap into T? (§4.2); a function taking every argument as it is beats one converting it (§6.3).
 import * as runtime from 'runtime'
 
 fn twice(x: Int) -> Int: x * 2

@@ -4,7 +4,7 @@
  *
  * The names are found by asking the identifier query of every identifier in every module, std
  * modules included, and the key query of every String literal outside std and in std's annotations
- * (§3.1 Key types, §3.16): fields, methods and statics are resolved by type, so only the checker
+ * (§5.2 Key types, §5.5): fields, methods and statics are resolved by type, so only the checker
  * knows which names reach them, and asking one query of every name keeps references, renaming and
  * going to a definition in agreement.
  * This is the program's one index of the names denoting each declaration. The answer depends on the
@@ -92,8 +92,8 @@ function indexOf(program: Program): ReadonlyMap<PlaceKey, readonly NamePlace[]> 
 
 /**
  * Whether `node`, of `module` parsed as `tree`, may name a declaration: an identifier; a String
- * literal outside std, which may be a key naming a field (§3.1 Key types); or one in std's
- * annotations, which may name a parameter in a `@Keeps` (§3.16). A std module can name no field of
+ * literal outside std, which may be a key naming a field (§5.2 Key types); or one in std's
+ * annotations, which may name a parameter in a `@Keeps` (§5.5). A std module can name no field of
  * the program's own, and reading the literals of its bodies would check each of them.
  */
 function isName(

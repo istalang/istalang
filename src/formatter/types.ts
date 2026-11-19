@@ -1,12 +1,12 @@
 /**
- * Types (spec §2, §3). An anonymous struct type prints as its braces alone: in a type position
- * `struct` before `{` changes nothing (§3.1), and the indented field block under a field is sugar
- * for the same type, so braces are the one spelling. A struct constraint (§3.5) keeps its
+ * Types (spec §4.1, §5.1). An anonymous struct type prints as its braces alone: in a type position
+ * `struct` before `{` changes nothing (§5.2), and the indented field block under a field is sugar
+ * for the same type, so braces are the one spelling. A struct constraint (§8.1) keeps its
  * `struct`, which makes it one, and prints bare when it has no entries: `struct` and `struct {}`
  * are the same constraint. A mapped entry prints its parameter as a member type parameter does,
- * `[F in keyof S]: T` (§3.1). A type `match`'s cases stand on lines of their own, as a `match`
+ * `[F in keyof S]: T` (§5.2). A type `match`'s cases stand on lines of their own, as a `match`
  * expression's do; a case's type follows its colon on the same line while it fits, indented below
- * otherwise (§3.17).
+ * otherwise (§4.6).
  */
 
 import { builders } from 'prettier/doc';
@@ -90,7 +90,7 @@ export const typePrinters: Printers<TypeKind> = {
 };
 // biome-ignore-end lint/style/useNamingConvention: the keys are the tree's node kinds.
 
-/** ` is A & B`, the constraints after `is` (§3.5); nothing for none. */
+/** ` is A & B`, the constraints after `is` (§8.1); nothing for none. */
 export function constraintsAfterIs(
   printer: Printer,
   constraints: readonly ConstraintNode[],

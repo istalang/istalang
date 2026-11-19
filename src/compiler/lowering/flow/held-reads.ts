@@ -1,5 +1,5 @@
 /**
- * Which reads of a flow hold the value they read (§2: a value never changes once read;
+ * Which reads of a flow hold the value they read (§7.2: a value never changes once read;
  * docs/arch/definition.md, "Places"). A read of a variable at a name is the variable's register,
  * and a part read out of a value borrows it, as a one-element tuple's element taken out where the
  * element is expected does: both hold nothing, and stay what was read only while what they were

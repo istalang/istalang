@@ -131,7 +131,7 @@ describe('the lifetime rule', () => {
       ['const l = new Lease{n: 1}', 'f = fn: l->n + f()'],
       ['10:write'],
     ],
-  ])('%s a captured `let` and a transient alike (§3.4)', (_title, body, found) => {
+  ])('%s a captured `let` and a transient alike (§7.1)', (_title, body, found) => {
     const sourceOf = (declared: string) =>
       inSubject([`${declared} f: fn() -> Int = fn: 0`, ...body, '_ = f()'].join('\n'));
     expect(findingsIn(sourceOf('let'))).toEqual(found);

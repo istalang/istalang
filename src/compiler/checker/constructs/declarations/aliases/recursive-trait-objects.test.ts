@@ -1,5 +1,5 @@
 /**
- * Recursive aliases through a trait object's arguments (§3.10, §3.17): `any Trait<…>` is a type
+ * Recursive aliases through a trait object's arguments (§8.3, §4.6): `any Trait<…>` is a type
  * built from others, so a use of the alias inside its arguments is guarded, closes like any guarded
  * use, and two aliases alike up to the written order of their constraints are one type.
  */

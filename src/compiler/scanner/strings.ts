@@ -1,5 +1,5 @@
 /**
- * String literals and the escapes every literal with escapes shares (spec §2).
+ * String literals and the escapes every literal with escapes shares (spec §3.1).
  *
  * `"…"` and `'…'` mean the same thing; each may hold the other quote unescaped. Strings are
  * single-line: a line break ends an unterminated string right there. A missing closing quote then

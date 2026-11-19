@@ -4,7 +4,7 @@
  * instance's entry and for a nested function's.
  *
  * - An instance's entry reads its own body through the instance's substitution, and its prologue
- *   its defaults' body, checked apart (§3.1, §3.3); a nested function reads its owner's, or a
+ *   its defaults' body, checked apart (§5.2, §6.1); a nested function reads its owner's, or a
  *   constant's, the defaults' when its owner is them. These are the only rules of which body an
  *   entry reads.
  * - A function with no body of its own, a struct's or a variant's fields, a host extern or an
@@ -54,7 +54,7 @@ export interface Frame {
   readonly captures: readonly Capture[];
   /**
    * What the entry runs: a top-level declaration, a nested function, or a context constant's
-   * initializer (§3.4).
+   * initializer (§7.1).
    */
   readonly function: NestedFunction | ContextConstantDeclaration;
   /** `T` for an async entry returning `Future<T>`. */
@@ -82,7 +82,7 @@ export function loweredInstance(
   return body === undefined ? undefined : { ...lowering, owner, body };
 }
 
-/** What `instance`'s defaults are read as: by its prologue, through its substitution (§3.3). */
+/** What `instance`'s defaults are read as: by its prologue, through its substitution (§6.1). */
 export function defaultsReading(checker: Checker, instance: FunctionInstance): BodyReading {
   const owner = { kind: 'defaults', instance } as const;
   return { owner, body: defaultsBodyOf(checker, instance) };
@@ -90,7 +90,7 @@ export function defaultsReading(checker: Checker, instance: FunctionInstance): B
 
 /**
  * What a nested function of `owner` is lowered from: its owner's body, as the passes of the field
- * loops the owner is lowered in read it (§4).
+ * loops the owner is lowered in read it (§11.2).
  */
 export function loweredNested(lowering: Lowering, owner: BodyOwner): LoweredFunction {
   const { checker } = lowering;
@@ -101,13 +101,13 @@ export function loweredNested(lowering: Lowering, owner: BodyOwner): LoweredFunc
   return { ...lowering, owner, body: passedBody(body, owner.passes ?? []) };
 }
 
-/** `body` as the passes `steps` name read it, outermost first (§4). */
+/** `body` as the passes `steps` name read it, outermost first (§11.2). */
 export function passedBody(body: CheckedBody, steps: readonly FieldPassStep[]): CheckedBody {
   return steps.reduce(passBody, body);
 }
 
 /**
- * `body` as the pass `step` names reads it (§4): an instantiated body has one pass per field of the
+ * `body` as the pass `step` names reads it (§11.2): an instantiated body has one pass per field of the
  * struct it runs over, its own.
  */
 function passBody(body: CheckedBody, step: FieldPassStep): CheckedBody {
@@ -181,7 +181,7 @@ export function builtFrame(lowering: Lowering, instance: FunctionInstance, await
 }
 
 /**
- * The frame of a context constant's entry (§3.4): no parameters, giving the constant's value, ista
+ * The frame of a context constant's entry (§7.1): no parameters, giving the constant's value, ista
  * code that never waits (modes.ts).
  */
 export function accessorFrame(

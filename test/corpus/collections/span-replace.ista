@@ -1,6 +1,6 @@
 # outcome: "[0, 1, 2, 9, 9, 9, 9, 5, 6] [0, 2, 9, 9, 9, 9, 5, 6] [0, 1, 2, 3, 4, 5, 6] [8]"
-# Replacing a span of an array with an array of another length, longer or empty (§3.9); a copy taken
-# before is untouched (§3.1), and an open end means the start or the length.
+# Replacing a span of an array with an array of another length, longer or empty (§10.2); a copy taken
+# before is untouched (§7.2), and an open end means the start or the length.
 
 import * as runtime from 'runtime'
 

@@ -1,5 +1,5 @@
 /**
- * What a pattern refused where it stands binds (§3.11, §3.15): a call pattern naming no variant,
+ * What a pattern refused where it stands binds (§11.3, §4.5): a call pattern naming no variant,
  * braces after a variant's name, a construct that could fail to match standing in a target. Each
  * is reported once, and its names bound at the error type (`bindAt`), so their uses resolve with
  * nothing more to report.
@@ -59,7 +59,7 @@ export function refusedCall(
 }
 
 /**
- * `node`, braces after a variant's name, reported (§3.11), nothing selected of its part first;
+ * `node`, braces after a variant's name, reported (§11.3), nothing selected of its part first;
  * undefined for any other pattern. A target's binds at the error type (kinds/variant-calls.ts).
  */
 export function refusedBraces(

@@ -132,7 +132,7 @@ export function programTypeRules(
         : associatedTypeOf(checker, of, name, associating),
     ),
     mappedType: (parts, outer) => mappedTypeOf(checker, parts, outer),
-    // A type `match` closes what its reduction reaches again into a recursive type (§3.17), so an
+    // A type `match` closes what its reduction reaches again into a recursive type (§4.6), so an
     // associated type expanded around it, reached inside, is no cycle of expansions.
     matchType: (declaration, typeArguments) =>
       withEmptied(associating, () => reductions.reduce(declaration, typeArguments)),
@@ -279,9 +279,9 @@ function sameMet(first: MetInstantiation, second: MetInstantiation): boolean {
 }
 
 /**
- * What `declaration`'s values hold (§3.5): a struct's fields, every variant's fields, the type an
+ * What `declaration`'s values hold (§8.1): a struct's fields, every variant's fields, the type an
  * alias names; a trait's requirements, each as the function type a call through `any` makes, its
- * receiver apart and exact, and its required fields, which an `any` value gives (§3.10).
+ * receiver apart and exact, and its required fields, which an `any` value gives (§8.3).
  */
 function partsOf(
   checker: Pick<

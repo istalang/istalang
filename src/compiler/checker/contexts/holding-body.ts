@@ -91,7 +91,7 @@ function bodyInItem(
 
 /**
  * The body holding `inner` inside `part` of the function `declaration`: its body, the one block a
- * function holds, where a parameter's pattern is declared too (§3.3), or its defaults.
+ * function holds, where a parameter's pattern is declared too (§6.1), or its defaults.
  */
 function bodyInFunction(
   checker: BodyOwners,

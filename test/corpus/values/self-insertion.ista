@@ -1,5 +1,5 @@
 # outcome: [10,10,20,30,40,30,40,4,3,2,1,99,1,1]
-# A write reads its right side before changing anything (§2, §3.7): a slice assigned from its own
+# A write reads its right side before changing anything (§4.2, §7.3): a slice assigned from its own
 # array, a reversed span from itself, and a struct pushed into its own array through overlapping
 # references each see the value as it was.
 

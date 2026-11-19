@@ -10,7 +10,7 @@
  * - A field loop's top goes to its first pass; a `select` goes to the case its wait was decided
  *   for (flow-waits.ts), or to its `else` alone where it has no case.
  * - `transient` is the instruction sharing a transient's cell from a call this one is nested in,
- *   going on to its initializer where none shares one (§3.4).
+ *   going on to its initializer where none shares one (§7.1).
  */
 
 import { unreachable } from '../../../foundation/structures/unreachable.ts';

@@ -4,14 +4,14 @@
  *
  * A one-item body stays on its header's line when the line fits a compressed form's width
  * (compact.ts), which the caller's group decides, unless the item opens a body of its own outside
- * brackets: an `else` after it would then belong to it (spec §4, "Continuing a construct"). A
+ * brackets: an `else` after it would then belong to it (spec §10.1, "Continuing a construct"). A
  * collection literal keeps its opening bracket on the header's line when it breaks; a struct
  * literal never does, moving to the next line whole. A body with a docstring is always indented, the docstring first. A braced block
  * never moves off the header's line, since breaking before its `{` only adds a level of
  * indentation around the braces; unless a comment or annotation stands before its `{`.
  *
  * Annotations written before an item stand on lines of their own above it; those written after it
- * stay on its line (§3.16).
+ * stay on its line (§5.5).
  */
 
 import { builders } from 'prettier/doc';
@@ -105,7 +105,7 @@ function hugsItsBrackets(printer: Printer, statement: SyntaxNode): boolean {
   );
 }
 
-/** `block` indented under its header's `:`, as a labelled block's must be (§4). */
+/** `block` indented under its header's `:`, as a labelled block's must be (§10.1). */
 export function indentedBlock(printer: Printer, block: Block): builders.Doc {
   return [printer.dangling(block), indent([hardline, printer.print(block)])];
 }
@@ -144,7 +144,7 @@ export function functionBody(
   ];
 }
 
-/** A docstring on the line after a declaration that has no indented body, deeper than it (§2). */
+/** A docstring on the line after a declaration that has no indented body, deeper than it (§2.3). */
 export function docBelow(printer: Printer, doc: Docstring | undefined): builders.Doc {
   return doc === undefined ? '' : [printer.dangling(doc), indent([hardline, printer.print(doc)])];
 }

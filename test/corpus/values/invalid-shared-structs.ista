@@ -7,11 +7,11 @@
 # error: 5406 at 35:19
 # error: 5220 at 37:17
 # error: 5210 at 39:3
-# A shared struct (§3.18) is built with `new`, and only one is; its fields are read through it
+# A shared struct (§5.4) is built with `new`, and only one is; its fields are read through it
 # with `->`, never `.`; and its values have an identity, so they never leave their instance, nor
-# does compile time compute one into a top-level const, by itself or as a field's default (§3).
+# does compile time compute one into a top-level const, by itself or as a field's default (§5.1).
 # `?->` reads through an optional shared struct only, and a value read through it is a copy, so a
-# method taking `&self` isn't called through it (§4).
+# method taking `&self` isn't called through it (§10.4).
 
 import * as runtime from 'runtime'
 

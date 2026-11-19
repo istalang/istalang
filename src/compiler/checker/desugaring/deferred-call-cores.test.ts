@@ -1,5 +1,5 @@
 /**
- * Deferred calls as checked (§3.14): what each computes now and what refuses it, how tools read the
+ * Deferred calls as checked (§6.5): what each computes now and what refuses it, how tools read the
  * calls it makes later, through the core each was checked as.
  */
 

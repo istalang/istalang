@@ -1,8 +1,8 @@
 # outcome: "25 7 | 3 4 | first 5 | 2 | 9 | 2 1"
-# A nominal struct's value fits where its equal shape is expected, copied as the shape (§3.1): its
+# A nominal struct's value fits where its equal shape is expected, copied as the shape (§5.2): its
 # fields, with its type arguments substituted, are the shape, in any order, at run time and at
-# compile time alike. Taking an argument as it is beats converting it (§3.7), and inference sees
-# the struct's fields where a shape is expected (§3.5). The wrap into `T?` follows the conversion.
+# compile time alike. Taking an argument as it is beats converting it (§6.3), and inference sees
+# the struct's fields where a shape is expected (§8.1). The wrap into `T?` follows the conversion.
 
 import * as runtime from 'runtime'
 

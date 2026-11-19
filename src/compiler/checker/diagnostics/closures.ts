@@ -1,5 +1,5 @@
 /**
- * The checker's diagnostics of closures and function values, codes 5500–5599 (§3.8, §3.14): a part
+ * The checker's diagnostics of closures and function values, codes 5500–5599 (§19.1, §6.4): a part
  * of the checker's one catalog (index.ts).
  */
 
@@ -9,7 +9,7 @@ export const closureTemplates = {
   nestedFunctionForm: {
     code: 5500,
     message: (form: string) =>
-      `A lambda or local function can't have ${form}: it is a single value (§3.14).`,
+      `A lambda or local function can't have ${form}: it is a single value (§6.4).`,
   },
   parameterTypeUnknown: {
     code: 5501,
@@ -48,6 +48,6 @@ export const closureTemplates = {
   typeArgumentsOnValue: {
     code: 5508,
     message: (name: string) =>
-      `Only a function named as a value takes type arguments, and '${name}' names none (§3.5).`,
+      `Only a function named as a value takes type arguments, and '${name}' names none (§8.1).`,
   },
 } as const;

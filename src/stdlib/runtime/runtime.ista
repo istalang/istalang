@@ -1,12 +1,12 @@
-# The runtime module (spec §3.8, §5, §9): what an instance can ask of the runtime about itself;
+# The runtime module (spec §19.2, §14, §17.1): what an instance can ask of the runtime about itself;
 # `isolate`, which runs a function as an instance of its own; `delegate`, ista code's effects; and
 # for live code, the runtimes that run ista code in contexts, instances named by key in the host's
 # store.
 #
 # `commit` returns an already-resolved future, so `await runtime.commit()` commits without
-# waiting (§5).
+# waiting (§14).
 #
-# Jobs (§5) are Istalang over a context constant, with no state of the runtime's own. A context's
+# Jobs (§14) are Istalang over a context constant, with no state of the runtime's own. A context's
 # jobs wait in an inbox, sent at the commit, and each stays among the unanswered until its result
 # commits. A runtime's live loop serves every instance it drives, each through calls into it: it
 # takes over the instance's jobs, takes them one by one and replies with each result, so a job
@@ -14,11 +14,11 @@
 #
 # - Taking over rings the loop before it out, one of a runtime since disposed or of an earlier
 #   process, whose call into the instance waits still, and hands every job it took and never
-#   answered back to the inbox: a waiting take that loses its `select` consumes nothing (§8), and
+#   answered back to the inbox: a waiting take that loses its `select` consumes nothing (§15.4), and
 #   one decided before its loop was rung out hands what it took back, so no earlier loop keeps a
 #   job for good, and every one runs again until its result commits.
 # - A loop holds each job it runs until the instance tells it to let go: once the job's result
-#   commits, or once its future is let go of (§7), which withdraws it: queued, it is passed over,
+#   commits, or once its future is let go of (§16), which withdraws it: queued, it is passed over,
 #   and running, its live future is disposed. So a job whose future loses a `select` never runs, or
 #   stops, and never runs again, and disposing a runtime cancels every job its loop runs.
 # - A result crosses back as JSON, so what a job gives needs its codecs, not sendability; a job's
@@ -26,7 +26,7 @@
 # - One open runtime serves an instance at a time, the earliest opened (`_served`), so two never
 #   take turns ringing each other out.
 # - The loop's calls into an instance are its own (`_jobCall`): the instance's panic ends them, but
-#   the host still hears of it, as of one no call waits on (§9).
+#   the host still hears of it, as of one no call waits on (§17.3).
 # - Only a program that delegates has a loop serving jobs: lowering adds `_serve` to the program
 #   once it reaches `delegate`, as its job server (`_jobServer`), so one that never does lowers
 #   none of it.
@@ -36,15 +36,15 @@ import resultOfEnding from 'endings'
 import Inbox from 'inbox'
 
 # The instance's name: a context's key, or what its parent's spawn made it; a live run's, as its
-# host started it (§9).
+# host started it (§17.3).
 extern fn id() -> String
 
-# The content hash of the program the instance runs, fixed for its life (§5).
+# The content hash of the program the instance runs, fixed for its life (§14).
 extern fn version() -> String
 
 extern ista fn commit() -> Future<Unit, "ista">
 
-# Runs `f` as an instance of its own and waits for its end (§9): `f`'s result, or its panic as an
+# Runs `f` as an instance of its own and waits for its end (§17.1): `f`'s result, or its panic as an
 # `Err`. The panic also terminates that instance at once, disposing what it holds, so no operator
 # has to.
 ista fn isolate<T is Sendable>(f: sendable ista async fn() -> T) -> Future<Result<T>, "ista">:
@@ -53,12 +53,12 @@ ista fn isolate<T is Sendable>(f: sendable ista async fn() -> T) -> Future<Resul
 # Spawns `f` as an instance a panic terminates at once.
 extern ista fn _isolated<T>(f: sendable ista async fn() -> T) -> Instance<T>
 
-# The host's store, where contexts live (§9): `ista run`'s `--store`, memory without it, and a
+# The host's store, where contexts live (§17.1): `ista run`'s `--store`, memory without it, and a
 # test's own under a test.
 extern live struct Store
 extern live fn hostStore() -> Store
 
-# A runtime over a store (§9): opening it resumes the work persisted there, which it runs while the
+# A runtime over a store (§17.1): opening it resumes the work persisted there, which it runs while the
 # live code that opened it runs, the jobs of its instances included. Releasing it stops that work,
 # which the next open resumes.
 shared struct Runtime:
@@ -93,7 +93,7 @@ extern live fn _jobServer() -> Array<_JobServer>
 
 type _JobServer = live async fn(_Runtime) -> Unit
 
-# A call into a context (§9): awaited, `Ok` of what it gave, or `Err` once the context panicked.
+# A call into a context (§17.1): awaited, `Ok` of what it gave, or `Err` once the context panicked.
 struct Call<R>:
   result: Future<Result<R>, "live">
   type Mode = "live"
@@ -101,7 +101,7 @@ struct Call<R>:
 live fn onAwait<R>(self: Call<R>, done: Resolver<Result<R>, "live">):
   self.result.onAwait(done)
 
-# Runs `f` in the context named `key`, made if new (§9). Every call starts a new invocation, which
+# Runs `f` in the context named `key`, made if new (§17.3). Every call starts a new invocation, which
 # releasing the `Call` doesn't cancel, and what crosses into the context and back is sendable. A
 # key holds no `/`, which only spawned instances' names do, so no key names one of them.
 live fn call<R is Sendable>(
@@ -110,7 +110,7 @@ live fn call<R is Sendable>(
   f: sendable ista async fn() -> R
 ) -> Call<R>:
   if "/" in key:
-    panic("A context's key '" + key + "' holds a '/', which only spawned instances' names do (§9).")
+    panic("A context's key '" + key + "' holds a '/', which only spawned instances' names do (§17.1).")
   Call<R>{result: _call(self->_host, key, f)}
 
 live async fn _call<R is Sendable>(
@@ -129,7 +129,7 @@ extern live fn _called<R is Sendable>(
 ) -> Future<(Array<R>, String, String), "live">
 
 # A call into the context named `key` that the loop serving its jobs makes: as `_call`, but the
-# context's panic, which ends it, is still the host's to hear, as though no call waited (§9).
+# context's panic, which ends it, is still the host's to hear, as though no call waited (§17.3).
 live async fn _jobCall<R is Sendable>(
   runtime: _Runtime
   key: String
@@ -144,7 +144,7 @@ extern live fn _jobCalled<R is Sendable>(
 ) -> Future<(Array<R>, String, String), "live">
 
 # Runs `f` in the context named `key` of a runtime over the host's store, and gives what it gave;
-# its panic panics here, as it did there (§9).
+# its panic panics here, as it did there (§17.3).
 live async fn run<R is Sendable>(key: String, f: sendable ista async fn() -> R) -> R:
   const rt = await Runtime.open(hostStore())
   match await rt.call(key, f):
@@ -154,8 +154,8 @@ live async fn run<R is Sendable>(key: String, f: sendable ista async fn() -> R) 
 # Panics as `error` says, where it says: a panic from elsewhere, raised again here.
 extern fn _raise(error: Error) -> Never
 
-# Runs `job` as live code after the commit (§5), and again under the same key until its result
-# commits; a segment discarded runs it never, nor does one letting go of its future (§7).
+# Runs `job` as live code after the commit (§14), and again under the same key until its result
+# commits; a segment discarded runs it never, nor does one letting go of its future (§16).
 ista fn delegate<R is Encodable & Decodable>(
   job: sendable live async fn() -> R
 ) -> Future<R, "ista">:
@@ -170,7 +170,7 @@ ista fn delegate<R is Encodable & Decodable>(
   _decoded<R>(queued.number, result)
 
 # Job `number`'s result, once it commits: its wait is the waypoint `job`, where an operator, or a
-# test that serves no job, sees the instance wait on one (§10). Its release withdraws the job, which
+# test that serves no job, sees the instance wait on one (§18). Its release withdraws the job, which
 # leaves nothing to withdraw once its result has committed.
 ista async fn _decoded<R is Decodable>(number: Int, result: Slot<Json>) -> R:
   _ = defer _release(number)

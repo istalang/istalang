@@ -1,5 +1,5 @@
 # outcome: 1
-# A decided wait's value is held by the case that took it (§7): kept with `_` it lives until that
+# A decided wait's value is held by the case that took it (§16): kept with `_` it lives until that
 # case's block ends, and is disposed then.
 
 import * as runtime from 'runtime'

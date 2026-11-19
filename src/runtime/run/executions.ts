@@ -5,11 +5,11 @@
  *
  * - **Parking.** A wait decided readies the execution to resume with its decision (ready-queue.ts);
  *   one decided anew as its call is disposed (`disposingWins`) resumes where it was readied first.
- * - **Stopping** (§7): an execution whose future is disposed settles its `disposing()`. Where that
+ * - **Stopping** (§16): an execution whose future is disposed settles its `disposing()`. Where that
  *   unparks it, it resumes at once on that case, before anything else; else it resumes with `STOP`,
  *   which sends it to its stop landing, letting go of what its frame holds. Either way, the next
  *   `park` it reaches stops it.
- * - **Commits** are each await's (§6): an execution parking marks the instance's segment as one
+ * - **Commits** are each await's (§15.2): an execution parking marks the instance's segment as one
  *   to commit, and the one parking last names the await a failed commit panics at.
  * - **The call rule** (foundation/language/call-rule.ts): an instance starts async code of its own
  *   kind alone. The IR's function types carry no mark, so only the run sees which kind a call
@@ -45,7 +45,7 @@ interface ExecutionSeams {
   readonly entry: (index: number) => (frame: Frame) => unknown;
   readonly newId: () => number;
   readonly settle: (future: Future, value: Value) => void;
-  /** The transients' scope of an execution starting now, holding the cells visible here (§3.4). */
+  /** The transients' scope of an execution starting now, holding the cells visible here (§7.1). */
   readonly startedTransients: () => TransientScope;
   /** What `run` gives; a panic in a durable instance ends the instance, and gives nothing. */
   readonly guarded: <Result>(run: () => Result) => Result | undefined;
@@ -58,7 +58,7 @@ export class Executions {
   #running: Execution | undefined;
   /** The execution whose call is being disposed now, its `disposing()` future settling. */
   #disposingNow: Execution | undefined;
-  /** Whether an execution parked since the instance last committed: each await commits (§6). */
+  /** Whether an execution parked since the instance last committed: each await commits (§15.2). */
   parkedSinceCommit: boolean;
   /** The execution that parked last, whose await a commit that fails names. */
   lastParked: Execution | undefined;
@@ -68,7 +68,7 @@ export class Executions {
     this.parkedSinceCommit = false;
   }
 
-  /** The execution whose code runs now, as simple code nested in it reads its call (§7). */
+  /** The execution whose code runs now, as simple code nested in it reads its call (§16). */
   readonly current = (): Execution | undefined => this.#running;
 
   /**
@@ -180,12 +180,12 @@ export class Executions {
     this.#seams.queue.resume(execution, decision);
   }
 
-  /** Whether `execution`'s call is being disposed, its `disposing()` future settling (§7). */
+  /** Whether `execution`'s call is being disposed, its `disposing()` future settling (§16). */
   disposingWins(execution: Execution): boolean {
     return this.#disposingNow === execution;
   }
 
-  /** The future `execution`'s `disposing()` gives (§7): settled once its call is disposed. */
+  /** The future `execution`'s `disposing()` gives (§16): settled once its call is disposed. */
   disposingOf(execution: Execution): Future {
     execution.disposing = watchFuture(execution.disposing, () => new Future(this.#seams.newId()));
     if (execution.frame.stopping && !execution.disposing.settled) {
@@ -195,7 +195,7 @@ export class Executions {
   }
 
   /**
-   * Stops `execution`, whose future was disposed (§7). Resuming on its `disposing()`, it runs
+   * Stops `execution`, whose future was disposed (§16). Resuming on its `disposing()`, it runs
    * cleanup code, whose let-gos are disposed in rounds of their own before its call is gone;
    * stopped where it waits, it runs none, so what its frame held loses its holder with the rest of
    * its disposal, in the round after.

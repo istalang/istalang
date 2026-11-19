@@ -1,5 +1,5 @@
 /**
- * The scanner: source text → tokens, comments and diagnostics (spec §2).
+ * The scanner: source text → tokens, comments and diagnostics (spec §2.1).
  *
  * It is context-free, total and lossless:
  * - Context-free: no token depends on syntactic context. Layout is left to the parser (see
@@ -52,7 +52,7 @@ class Scanner {
   readonly #comments: Comment[] = [];
   readonly #diagnostics: Diagnostic[] = [];
   #offset = 0;
-  /** Current line's state: whether it has a token yet, and its first leading tab (§2). */
+  /** Current line's state: whether it has a token yet, and its first leading tab (§2.1). */
   #line: { hasToken: boolean; indentationTab?: number } = { hasToken: false };
   /** How many template values enclose the token being scanned. */
   #valueDepth = 0;

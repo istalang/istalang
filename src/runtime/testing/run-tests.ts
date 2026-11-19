@@ -1,5 +1,5 @@
 /**
- * Running a test Definition's suites (§10): each suite's tests are listed in a world of their own,
+ * Running a test Definition's suites (§18): each suite's tests are listed in a world of their own,
  * then each test that runs gets a fresh world (test-world.ts), so nothing one test leaves behind
  * reaches the next.
  *

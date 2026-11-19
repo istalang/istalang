@@ -1,7 +1,7 @@
 /**
  * The `random` module's natives (random.ista): integers and UUIDs drawn from the instance's random
  * source (runtime/random-draws.ts), so a segment that runs again draws the same values
- * (§5).
+ * (§14).
  *
  * An integer of a range is its start and a whole number of steps, uniform over every one it reaches
  * (ranges.ts). An integer below `n` reads as many bytes as `n - 1` needs, keeps as many low bits as

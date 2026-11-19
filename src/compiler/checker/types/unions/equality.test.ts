@@ -1,5 +1,5 @@
 /**
- * `==` and `!=` (§3.9, §6): two values compare when either fits the other's type, so a member's
+ * `==` and `!=` (§10.2, §15.2): two values compare when either fits the other's type, so a member's
  * value compares with its union, a literal's with its base, and two unions only when one holds the
  * other's members.
  */

@@ -1,6 +1,6 @@
 # The prelude's array and map methods taking a function, the array methods beside them, ranges and
-# their steps, powers and bitwise operators, and the wait on a spawned instance's end (spec §3.8,
-# §3.9, §9); the rest of the prelude is the corpus's.
+# their steps, powers and bitwise operators, and the wait on a spawned instance's end (spec §19.1,
+# §10.2, §17.1); the rest of the prelude is the corpus's.
 
 import assert, assertEq, expectPanic, group, Suite, Test, test from 'testing'
 

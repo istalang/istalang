@@ -1,10 +1,10 @@
 /**
- * Binding names in expressions (§2–§4, §3.11, §3.14). Where the bindings of a condition, case or
+ * Binding names in expressions (§2–§11, §11.3, §6.4). Where the bindings of a condition, case or
  * comprehension are visible is module/flow.ts's rule.
  *
  * `a.b.c` is bound as a qualified name only when its head may be a module namespace or an enum:
  * otherwise every part after the head is a member, which the checker resolves by type. A head
- * naming a function denotes its call instead (§7, module/local-binder.ts `useBeforeMember`).
+ * naming a function denotes its call instead (§16, module/local-binder.ts `useBeforeMember`).
  */
 
 import { type Handlers, handlerOf } from '../../../foundation/structures/kind-table.ts';
@@ -30,7 +30,7 @@ import type { Scope } from '../module/scope.ts';
 
 /**
  * An expression that may name what it means, used as `role` says: a name, or one given type
- * arguments (§3.5), whose types are bound too; any other expression is bound as itself.
+ * arguments (§8.1), whose types are bound too; any other expression is bound as itself.
  */
 function bindNamed(binder: LocalBinder, node: Expression, scope: Scope, role: Role): void {
   switch (node.kind) {
@@ -48,7 +48,7 @@ function bindNamed(binder: LocalBinder, node: Expression, scope: Scope, role: Ro
   }
 }
 
-/** A struct literal's or an indented value's type and entries (§3.1, §2). */
+/** A struct literal's or an indented value's type and entries (§5.2, §3.2). */
 function bindLiteral(binder: LocalBinder, node: FieldsLiteral | IndentedValue, scope: Scope): void {
   if (node.type !== undefined) {
     binder.constructedType(node.type, scope);

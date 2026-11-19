@@ -1,4 +1,4 @@
-# A child is spawned by name once its parent's segment commits (§9): a segment run again before it
+# A child is spawned by name once its parent's segment commits (§17.1): a segment run again before it
 # commits spawns the same child, which the store holds once.
 import * as runtime from 'runtime'
 import * as time from 'time'

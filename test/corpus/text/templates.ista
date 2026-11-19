@@ -2,7 +2,7 @@
 # disable-ista-formatter
 # A template writes each value with its toString, found as an operator's function is, so a type's
 # own `toString`, a type parameter's requirement and an `any Stringable` all work; a multi-line
-# one loses the line its backtick ends and the indentation its lines share (§2).
+# one loses the line its backtick ends and the indentation its lines share (§3.1).
 struct Point:
   x: Int
   y: Int

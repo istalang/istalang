@@ -1,6 +1,6 @@
 # error: 4003 at 10:3
 # error: 4004 at 13:39
-# `x is Pattern`'s bindings exist only where the match is known to have succeeded (§3.11): never
+# `x is Pattern`'s bindings exist only where the match is known to have succeeded (§11.3): never
 # after the `if`, and never through `or`.
 
 enum Shape { Circle(radius: Int), Square(side: Int) }

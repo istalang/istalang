@@ -1,5 +1,5 @@
 /**
- * Fitting part by part (§3.5): a value whose type is built of other types fits where an instance of
+ * Fitting part by part (§8.1): a value whose type is built of other types fits where an instance of
  * the same construct is expected when each part fits as the construct's variance says, so
  * conversions compose inside types. Its own rule, apart from fitting's entry (index.ts), which
  * hands it the match it belongs to, so a part is fitted as any value is.
@@ -39,7 +39,7 @@ export interface PartsRelation extends Pick<Fitting, 'varianceOf' | 'shapeOf' | 
 }
 
 /**
- * Whether `found` fits `expected` part by part (§3.5): instantiations of one declaration whose
+ * Whether `found` fits `expected` part by part (§8.1): instantiations of one declaration whose
  * arguments fit as its variance says, tuples of as many elements, a shape (or a nominal struct, as
  * its shape) into a shape of the same fields, or a function into a function type of its shape,
  * taking what it takes and giving what it gives, into a future's value where one is expected. A
@@ -95,7 +95,7 @@ export function argumentsFitAs(
   );
 }
 
-/** Whether `found` fits `expected` where a parameter of `variance` stands (§3.5). */
+/** Whether `found` fits `expected` where a parameter of `variance` stands (§8.1). */
 function fitsAs(variance: Variance, found: Type, expected: Type, relation: PartsRelation): boolean {
   switch (variance) {
     case 'covariant':
@@ -121,7 +121,7 @@ function fieldsFit(
 /**
  * Whether a function of type `found` fits where `expected` is, part by part (`functionFits`):
  * taking what `expected` takes, a `&` exactly, and giving what it gives, into the value of a
- * future expected of it too (§3.14), its mark and sendability at or below `expected`'s by their orders (`ordered`). A function
+ * future expected of it too (§6.4), its mark and sendability at or below `expected`'s by their orders (`ordered`). A function
  * ending in a pack fits only as it is, but for its kind.
  */
 function functionFitsByParts(

@@ -1,5 +1,5 @@
 /**
- * Struct comprehensions (§3.1, §4): `struct{id, for k, v in ...x: [k]: e}` gives each field of `x`
+ * Struct comprehensions (§5.2, §10.5): `struct{id, for k, v in ...x: [k]: e}` gives each field of `x`
  * a field of its own, of `e`'s value as that field's pass checks it
  * (constructs/loops/field-passes.ts), after the fields the literal names; `struct{for K in keyof
  * S: [K]: e}` gives each field of the type `S` one. The literal gives every field itself, so it has

@@ -1,5 +1,5 @@
 /**
- * The run's timers (`time.at`, §6): a future each, settling at an instant in milliseconds since the
+ * The run's timers (`time.at`, §15.2): a future each, settling at an instant in milliseconds since the
  * Unix epoch. Timers due at one instant settle together; one nothing holds any more no longer keeps
  * the run waiting, so it never comes due.
  */

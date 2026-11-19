@@ -1,6 +1,6 @@
 /**
  * A type holding recursion in a compiled program is spelled by its structure, never by the alias
- * or representation lowering met it through (§3.17, docs/arch/definition.md): its entry is named
+ * or representation lowering met it through (§4.6, docs/arch/definition.md): its entry is named
  * by its table key, whichever aliases name it, a computed associated type no alias names among
  * them. So a union holding it orders its variants alike however it was written, and each value,
  * `none` among them, is its own variant through every spelling.

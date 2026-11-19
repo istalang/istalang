@@ -1,6 +1,6 @@
 # outcome: [12,30]
 # A spawned call names its arguments as any call does; the new instance computes the defaults it
-# leaves out (§3.3, §9).
+# leaves out (§6.1, §17.1).
 import * as runtime from 'runtime'
 
 ista async fn scaled(base: Int = 1, by: Int = 10, offset: Int = 0) -> Int:

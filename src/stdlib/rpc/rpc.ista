@@ -1,9 +1,9 @@
-# The rpc module (spec §3.8): calls and replies between the executions of one instance.
+# The rpc module (spec §19.2): calls and replies between the executions of one instance.
 #
-# A method's calls queue in an inbox, so its servers share them by the inbox's rules (§6): each
+# A method's calls queue in an inbox, so its servers share them by the inbox's rules (§15.3): each
 # call goes to one server, the one that has waited longest. A call is sent revertibly, and its
 # caller's wait holds the holder, so a call its caller lets go of before a server takes it is
-# withdrawn, as a `select`'s losing send is (§8). The wait holds nothing else, so waiting callers
+# withdrawn, as a `select`'s losing send is (§15.4). The wait holds nothing else, so waiting callers
 # don't keep the method alive.
 #
 # Each call carries its reply's one-shot slot inside a `_Reply`, whose `dispose` answers

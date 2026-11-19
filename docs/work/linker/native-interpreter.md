@@ -48,7 +48,7 @@ All of this is new code, sized by today's TypeScript (non-test lines):
   - a primitive's text is `String(value)` (`stdlib/prelude/text-forms.ts`);
   - regex replacement expands `$1` "as JavaScript does";
   - `strings` takes JavaScript's names;
-  - JSON keys sort in UTF-16 order (§9).
+  - JSON keys sort in UTF-16 order (§17.4).
 
   Either specify each exactly, or keep JavaScript's behaviour and port it to the letter.
 - **A runtime seam for tests.** `ista test` and the end-to-end corpus run the TS runtime (`runtime/testing/`). Let them run a Definition on another runtime and compare outcomes, commits and traces.

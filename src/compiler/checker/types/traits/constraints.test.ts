@@ -1,5 +1,5 @@
 /**
- * A constraint's trait (§3.5, §3.10) read through the parentheses around it, as any grouped type
+ * A constraint's trait (§8.1, §8.2) read through the parentheses around it, as any grouped type
  * is read.
  */
 

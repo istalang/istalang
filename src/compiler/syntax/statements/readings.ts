@@ -1,5 +1,5 @@
 /**
- * Reading statements as the language means them (§3.4, §4, §7): a block's tail, which gives its
+ * Reading statements as the language means them (§7.1, §11.1, §16): a block's tail, which gives its
  * value, the name a `drop` releases, what a construct running over a struct's fields checks once per
  * field, and whether a transient declaration leads its function's body.
  */
@@ -10,14 +10,14 @@ import type { SyntaxNode } from '../tree/index.ts';
 import type { Identifier, NodeOf } from '../tree/node.ts';
 import type { Block, Drop, FieldLoop } from './index.ts';
 
-/** The name `drop` releases, parentheses seen through; undefined when it drops a value (§7). */
+/** The name `drop` releases, parentheses seen through; undefined when it drops a value (§16). */
 export function droppedName(node: Drop): Identifier | undefined {
   const value = unparenthesized(node.value);
   return value.kind === 'Identifier' ? value : undefined;
 }
 
 /**
- * A construct running over a struct's fields (§4): a field loop, an array or a struct
+ * A construct running over a struct's fields (§11.1): a field loop, an array or a struct
  * comprehension.
  */
 export type OverFields = FieldLoop | FieldComprehension | StructComprehension;
@@ -42,7 +42,7 @@ export function passedParts(node: OverFields): readonly (Block | Expression)[] {
 }
 
 /**
- * The expression whose value is the block's (§4): its last statement's, when that is an
+ * The expression whose value is the block's (§10.1): its last statement's, when that is an
  * expression statement. A block ending in any other statement, or empty, has none, and is `Unit`
  * or `Never`.
  */
@@ -67,7 +67,7 @@ const overFieldsKinds: ReadonlySet<string> = new Set<OverFields['kind']>([
 
 /**
  * Whether the statement first in `holders`, then the nodes holding it outward, stands where a
- * transient may (§3.4): in the block a declared function or a lambda runs, every statement before
+ * transient may (§7.1): in the block a declared function or a lambda runs, every statement before
  * it a transient declaration.
  */
 export function leadsFunctionBody([node, block, holder, outer]: readonly SyntaxNode[]): boolean {

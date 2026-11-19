@@ -1,14 +1,14 @@
 /**
- * Reading a member of a value (§3.1): `s.f`, or a name qualified by a type or a namespace.
+ * Reading a member of a value (§5.2): `s.f`, or a name qualified by a type or a namespace.
  *
  * - Reading `s.f` gives the field's type, substituted for the struct's type arguments; through a
- *   type parameter, a field a constraint requires (§3.10). What else the name may mean is the
+ *   type parameter, a field a constraint requires (§8.2). What else the name may mean is the
  *   receiver's (resolution/choosing/member-meaning.ts): a member that isn't a field may be a
  *   getter, read by calling it (rules/getters.ts), and a name no member has a key of a keyed
- *   `index`, read as `x["k"]` (§3.9); one that is none is reported as unknown here, listing the
+ *   `index`, read as `x["k"]` (§10.2); one that is none is reported as unknown here, listing the
  *   keys where keyed indexes take the receiver, or, when it is a field of the value behind a
- *   handle, as to be read with `->` (§3.9); a call of one is a method call (../calls.ts). How each read reaches its field is recorded for lowering
- *   (`FieldReads`, checked-field.ts). A name on a type means one member (§3.1): a use finding a
+ *   handle, as to be read with `->` (§10.2); a call of one is a method call (../calls.ts). How each read reaches its field is recorded for lowering
+ *   (`FieldReads`, checked-field.ts). A name on a type means one member (§5.2): a use finding a
  *   getter beside a field, or beside a method taking the receiver, is reported where it is used
  *   (`readClash`, `callClash`), the getters and methods counted being those taking the receiver,
  *   and so is any member beside a keyed index taking the name.
@@ -143,7 +143,7 @@ function memberKind({
 }
 
 /**
- * Why reading `x.name` means two things on its receiver (§3.1): a field and a getter, any member
+ * Why reading `x.name` means two things on its receiver (§5.2): a field and a getter, any member
  * and a keyed index taking the name, or a getter beside a method taking the receiver; a read reads
  * a field whatever methods share its name.
  */
@@ -160,7 +160,7 @@ function readClash(
 /**
  * Why calling `x.name(…)` means two things on its receiver: a field and a getter, any member and a
  * keyed index taking the name, or a field or a getter beside a method taking the receiver, which
- * the call could call as well (§3.1, §3.7).
+ * the call could call as well (§5.2, §6.2).
  */
 export function callClash(
   name: Identifier,
@@ -174,7 +174,7 @@ export function callClash(
   );
 }
 
-/** Why a keyed index taking `name` stands beside a member of the name (§3.1, §3.9). */
+/** Why a keyed index taking `name` stands beside a member of the name (§5.2, §10.2). */
 function keyedBesideMember(
   name: Identifier,
   receiver: Type,
@@ -217,8 +217,8 @@ function besideMethod(
 
 /**
  * A static member `name` no function of `owner`, the type `written` names in value position, is
- * (§3.7), read or called alike: through a pass over no field (§4), `Never`, `node` stops, as that pass never
- * runs; through a type indexed by a key naming no field of it, `S[Int].make` (§3.10), it is
+ * (§6.2), read or called alike: through a pass over no field (§11.2), `Never`, `node` stops, as that pass never
+ * runs; through a type indexed by a key naming no field of it, `S[Int].make` (§8.2), it is
  * reported at the key; through any other owner in error, nothing more; else as no static function
  * of the name, `at`.
  */
@@ -345,7 +345,7 @@ function missExplained(
 }
 
 /**
- * Why `name` names nothing on `receiver` where keyed indexes take it (§3.9): none takes the name,
+ * Why `name` names nothing on `receiver` where keyed indexes take it (§10.2): none takes the name,
  * so the keys they take are listed; undefined where none takes it.
  */
 export function keyMissed(

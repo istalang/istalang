@@ -1,5 +1,5 @@
 # outcome: [[2,11],1]
-# A method taking `&self`, called through an `any` value, changes the value inside it (§3.7, §3.10).
+# A method taking `&self`, called through an `any` value, changes the value inside it (§7.3, §8.3).
 
 import * as runtime from 'runtime'
 

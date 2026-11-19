@@ -48,7 +48,7 @@ trait Kv:
 
 ## Contexts
 
-A context is an instance (§9), named by its key. Its memory, executions, panics, retries, termination, operator view and re-run state (proposal 8, Rule 7) are the instance's.
+A context is an instance (§17.1), named by its key. Its memory, executions, panics, retries, termination, operator view and re-run state (proposal 8, Rule 7) are the instance's.
 
 - **`rt.call(key) f(args)`** in live code, and **`runtime.call(key) f(args)`** in ista code, run `f` in the context named `key`, creating it if it doesn't exist. Both are proposal 8's deferred form with arguments, `g(args) f(x)`:
   - `f` is an `ista` function, and its call is captured as a `sendable ista async fn() -> R`, so its arguments are copied into the context. Live code holds that function and never calls it (proposal 8, Rule 4).
@@ -61,8 +61,8 @@ A context is an instance (§9), named by its key. Its memory, executions, panics
   In live code a `Call` is an in-memory listener on persistent work. An ista one is sendable, so it can be passed to another context.
 - **An invocation belongs to its context, not its caller.** Releasing a `Call` without awaiting it doesn't cancel the invocation.
 - **Every call starts a new invocation.** Nothing joins or caches calls. Running something once is the program's job, with a context constant as a flag, or with `once`.
-- **`spawn f(args)`** is `runtime.call(key) f(args)` with a key made from its caller's context and a count of its spawns, as §9 names spawned instances. `Call` replaces `Instance<T>`, and `runtime.isolate(f)` is `await spawn f()`.
-- **A context ends** on `rt.delete(key)` or `runtime.delete(key)`, which disposes everything it holds (§7). The `Call`s waiting on it then give an `Err`.
+- **`spawn f(args)`** is `runtime.call(key) f(args)` with a key made from its caller's context and a count of its spawns, as §17.1 names spawned instances. `Call` replaces `Instance<T>`, and `runtime.isolate(f)` is `await spawn f()`.
+- **A context ends** on `rt.delete(key)` or `runtime.delete(key)`, which disposes everything it holds (§16). The `Call`s waiting on it then give an `Err`.
 
 ## Context constants
 
@@ -72,7 +72,7 @@ ista const verdicts = Inbox.create<Verdict>()
 
 - **A top-level `ista const` holds one value per context.** The value is made the first time code in that context reads it, inside the reading segment, and is kept in the context's memory.
 - **It is named as every declaration is,** by its module and name. It therefore has one type, and proposal 10 moves it between releases by name.
-- **It holds any type:** a slot, an inbox, an `rpc` method, a bus, a `Shared<T>`. It is immutable as every `const` is, up to its handles (§3.4).
+- **It holds any type:** a slot, an inbox, an `rpc` method, a bus, a `Shared<T>`. It is immutable as every `const` is, up to its handles (§7.1).
 - **Reading one is an `ista` call** (proposal 8, Rule 2). A function that reads one is `ista`, so no live code reaches one.
 - **Handlers are how anything enters a running context.** Temporal's three message kinds are all plain handlers:
   - **signal:** a handler that sends into a context constant;
@@ -193,13 +193,13 @@ Today's JavaScript host becomes one more implementation of the OS layer and of s
 
 ## Spec changes
 
-- **§3.4:** context constants, `ista const`.
-- **§3.8:** the standard library above.
-- **§9:**
+- **§7.1:** context constants, `ista const`.
+- **§19.2:** the standard library above.
+- **§17.1:**
   - Instances are contexts.
   - `spawn` gives a `Call`, and `runtime.isolate(f)` is `await spawn f()`.
   - A host starts live code only (proposal 8), and persistent work runs in the runtimes the program opens.
-- **§10:** `testing` inspects a context by its key, as `call.key()` gives it, instead of an `Instance`.
+- **§18:** `testing` inspects a context by its key, as `call.key()` gives it, instead of an `Instance`.
 
 ## Left for later
 

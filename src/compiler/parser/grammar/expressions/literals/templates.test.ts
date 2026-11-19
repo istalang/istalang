@@ -1,5 +1,5 @@
 /**
- * Templates (§2): their texts and values, tags, values spanning lines, and what a broken value
+ * Templates (§3.1): their texts and values, tags, values spanning lines, and what a broken value
  * reports without disturbing what follows the template.
  */
 

@@ -1,5 +1,5 @@
 /**
- * The deferred call, `g f(args)` (§3.14): a name on the line of an operand shaped as a taker, a
+ * The deferred call, `g f(args)` (§6.5): a name on the line of an operand shaped as a taker, a
  * path of names or a call of one (`retry(times: 5) fetchUser(id)`), starts the call the taker is
  * given. The shape alone decides, so parsing never depends on what a name means; whether the taker
  * takes a call, and whether what follows is one, is the checker's to say.

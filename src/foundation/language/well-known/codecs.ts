@@ -1,10 +1,10 @@
 /**
- * The json module's codecs the compiler knows by name (§3.10, §9; docs/arch/boundary.md): the
+ * The json module's codecs the compiler knows by name (§8.4, §17.4; docs/arch/boundary.md): the
  * functions `Encodable` and `Decodable` require, the codecs it derives per type, and the helpers
  * those call.
  */
 
-/** The functions `Encodable` and `Decodable` require (§3.10): a type's codecs, by direction. */
+/** The functions `Encodable` and `Decodable` require (§8.4): a type's codecs, by direction. */
 export const codecFunctions = { write: 'toJson', read: 'fromJson' } as const;
 
 /**

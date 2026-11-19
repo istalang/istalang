@@ -1,5 +1,5 @@
 /**
- * Patterns that may fail to match (§3.11): a `match` case's and an `is`'s. The walk is shared with
+ * Patterns that may fail to match (§11.3): a `match` case's and an `is`'s. The walk is shared with
  * targets (walk/index.ts), and checks what only these patterns have where it meets it
  * (walk/kinds/); this module declares what they bind and keeps what lowering reads of them.
  */

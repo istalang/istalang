@@ -1,7 +1,7 @@
 # error: 5101 at 11:47
 # error: 5101 at 13:37
 # A generic function a trait requires is called with type arguments that meet its own
-# constraints, whether through a type parameter or an `any` value (§3.5, §3.10).
+# constraints, whether through a type parameter or an `any` value (§8.1, §8.3).
 
 trait Shower:
   fn show<U is Stringable>(self: Self, u: U) -> String

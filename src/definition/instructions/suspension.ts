@@ -1,5 +1,5 @@
 /**
- * Waiting (spec §5, §8; proposal 8, Rule 5): the one instruction a frame stops at.
+ * Waiting (spec §14, §15.4; proposal 8, Rule 5): the one instruction a frame stops at.
  *
  * Futures, resolvers and waits are Istalang (the prelude): an `await` or a `select` registers
  * resolvers of a wait with the futures it awaits, then parks the execution, which a resolver's
@@ -8,12 +8,12 @@
  * - `park` suspends the running execution, a live or ista entry's, its frame kept as data:
  *   `(function, parkedAt, registers)`, the label of the `park` it stands at and every register the
  *   code hasn't emptied, so each backend maps the label to its own resume point. In ista code it commits
- *   the segment first, so a frame in a snapshot always stands at a `park` (§5).
+ *   the segment first, so a frame in a snapshot always stands at a `park` (§14).
  * - Unparked, `dst` gets the position the wait was decided for, an `Int`.
- * - A call stopped while parked (§7: its future disposed and it not resuming on `disposing()`), or
+ * - A call stopped while parked (§16: its future disposed and it not resuming on `disposing()`), or
  *   reaching a `park` once stopping, goes on at `stop` instead: its landing, which lets go of what
  *   the frame still owns, then ends the execution with `stopped`.
- * - A waypoint names the stop for `reaches`, `waitingAt` and the operator's view (§10).
+ * - A waypoint names the stop for `reaches`, `waitingAt` and the operator's view (§18).
  */
 
 import { z } from 'zod';

@@ -1,6 +1,6 @@
 /**
  * The kind lowering gives the entries it writes (docs/arch/definition.md, "Frames"): an entry whose
- * body may wait runs in its function's kind (§3.3), concrete in every instance, since a function
+ * body may wait runs in its function's kind (§9.1), concrete in every instance, since a function
  * generic over its mark is compiled once per mark it is used at, the mark an instance's type
  * argument; one whose body never waits is simple, callable from either kind.
  *

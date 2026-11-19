@@ -1,5 +1,5 @@
 /**
- * The externs a host implements (§3.6, §9), as natives: a host writes each against JSON, by the
+ * The externs a host implements (§17.2, §17.3), as natives: a host writes each against JSON, by the
  * extern's key, and this module adapts it to the runtime's native seam. The program calls each
  * through a compiled wrapper (docs/arch/boundary.md), so the values crossing here are always the
  * json module's `Json`.
@@ -24,7 +24,7 @@
  *   (`FinalizationRegistry`): maybe late, never wrongly, since each of its functions holds it. A
  *   live extern that gives back no promise and takes no resolver dropped it at once.
  * - A result JSON can't hold, or a promise that rejects, is a bug in the host, so it panics the run
- *   (§3.12), as a result of the wrong type does in the wrapper. Every such panic carries the trace
+ *   (§12), as a result of the wrong type does in the wrapper. Every such panic carries the trace
  *   of where the extern was called (runtime/natives.ts `HostFilling`).
  * - This is the one shape the runtime takes. `ista run --host` loads plain functions taking the
  *   arguments spread and returning promises (cli/host-module.ts), and adapts them to it.

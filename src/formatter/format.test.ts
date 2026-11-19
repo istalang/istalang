@@ -58,7 +58,7 @@ describe('a body whose one statement is a braced block', () => {
   });
 });
 
-describe('unions, literal types, member parameters and generic patterns (§2, §3.5, §3.11)', () => {
+describe('unions, literal types, member parameters and generic patterns (§4.2, §8.1, §11.3)', () => {
   it('prints each as written', () => {
     const text = lines(
       'type Status = "draft" | "sent" | -1 | true',
@@ -83,7 +83,7 @@ describe('unions, literal types, member parameters and generic patterns (§2, §
   });
 });
 
-describe('key types and mapped struct types (§3.1)', () => {
+describe('key types and mapped struct types (§5.2)', () => {
   it('prints each as written', () => {
     const text = lines(
       'type Keys<S is struct> = keyof S | keyof S["meta"]',
@@ -107,7 +107,7 @@ describe('key types and mapped struct types (§3.1)', () => {
   });
 });
 
-describe('comprehensions over fields (§3.1, §4)', () => {
+describe('comprehensions over fields (§5.2, §10.5)', () => {
   it('prints an array and a struct comprehension as written, and moves a long body below its header, broken inside', () => {
     const text = lines(
       'fn f<S is struct>(s: S) -> { [F in keyof S]: S[F] }:',
@@ -130,7 +130,7 @@ describe('comprehensions over fields (§3.1, §4)', () => {
   });
 });
 
-describe('field loops (§4)', () => {
+describe('field loops (§11.2)', () => {
   it('prints each as written, labelled or not, its targets destructured', () => {
     const text = lines(
       'fn f<S is struct>(s: S, shared: Box):',
@@ -144,7 +144,7 @@ describe('field loops (§4)', () => {
   });
 });
 
-describe('type `match` (§3.17)', () => {
+describe('type `match` (§4.6)', () => {
   it('prints its cases a line each, a case type after its colon, `infer` as written', () => {
     const text = lines(
       'type DataOf<D> = match D:',

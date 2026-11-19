@@ -4,7 +4,7 @@
  *
  * Nominal types print their declared name without a module: inside a message the source location
  * already says where. A type written through an alias reads as the alias, with its arguments
- * (§3.17), as the programmer wrote it; any other shape reads as its fields, never as a key. A
+ * (§4.6), as the programmer wrote it; any other shape reads as its fields, never as a key. A
  * recursive type reads as the alias it was written through, else as its node's label. A function
  * type reads as its head would write it, `sendable live fn(Int) -> Bool`, or as `Fn<(T,), U, M>`
  * where its mark or sendability is a variable no head's word spells. Types one message spells
@@ -71,12 +71,12 @@ function unlabelledText(type: RecursiveType): string {
   }
 }
 
-/** `of.name`, an associated type as written (§3.1). */
+/** `of.name`, an associated type as written (§5.2). */
 function associatedText(of: Type, name: string): string {
   return `${ownerText(of)}.${name}`;
 }
 
-/** A type as it reads before `.` or `[`: parenthesized where it wouldn't bind tightest (§3.1). */
+/** A type as it reads before `.` or `[`: parenthesized where it wouldn't bind tightest (§5.2). */
 function ownerText(type: Type): string {
   const text = typeText(type);
   const bindsLoosely =
@@ -88,7 +88,7 @@ function ownerText(type: Type): string {
 /**
  * `type` as written and, when it was written through an alias, an associated type or a struct's
  * keys, what that names, `keyof Settings = "region" | "retries"`: what a tool shows of a type, so a
- * spelling never hides what it stands for (§3.17). A spelling naming only itself, an unreduced one,
+ * spelling never hides what it stands for (§4.6). A spelling naming only itself, an unreduced one,
  * shows once.
  */
 export function writtenAndNamedText(type: Type): string {
@@ -174,7 +174,7 @@ export function functionTypeParts(type: FunctionType): {
   if (type.pack !== undefined) {
     parameters.push(`...${typeText(type.pack)}`);
   }
-  // A function giving a future of its own kind is written as its header is (§3.14).
+  // A function giving a future of its own kind is written as its header is (§6.4).
   const awaited = ownFutureValue(type);
   return {
     head: `${modifiersText(modifiersOf(type))}${awaited === undefined ? '' : 'async '}fn(`,
@@ -184,7 +184,7 @@ export function functionTypeParts(type: FunctionType): {
 }
 
 /**
- * Whether `type` is written as `Fn<…>` (§3.14): its sendability or mark is a variable no head's
+ * Whether `type` is written as `Fn<…>` (§6.4): its sendability or mark is a variable no head's
  * word spells.
  */
 function spelledAsFn({ mark, send }: FunctionType): boolean {
@@ -218,7 +218,7 @@ function isDefaultSlot(slot: Type | undefined, value: string): boolean {
 
 /**
  * The value of the future `type`'s call gives where that future is of the function's own kind:
- * the prelude's `Future`, whose name no module may reuse (§3.13); undefined for any other result.
+ * the prelude's `Future`, whose name no module may reuse (§13.1); undefined for any other result.
  */
 function ownFutureValue(type: FunctionType): Type | undefined {
   const { result, mark } = type;
@@ -235,7 +235,7 @@ function ownFutureValue(type: FunctionType): Type | undefined {
 
 const futureName = 'Future';
 
-/** A parameter's type as written: `&T` for one passed by reference (§3.7). */
+/** A parameter's type as written: `&T` for one passed by reference (§7.3). */
 export function slotText({ type, reference }: ParameterSlot): string {
   return `${reference ? '&' : ''}${typeText(type)}`;
 }
@@ -260,7 +260,7 @@ function nominalTypeText(type: NominalType): string {
 }
 
 /**
- * A union as written, its members in the order first written (§2): `T?` for `T | None`, and a
+ * A union as written, its members in the order first written (§4.2): `T?` for `T | None`, and a
  * function type member in parentheses, since its result would take what follows it.
  */
 function unionText(type: UnionType): string {
@@ -273,10 +273,10 @@ function unionText(type: UnionType): string {
     : type.members.map(member).join(' | ');
 }
 
-/** A shape as written, its fields in the name order it keeps them in (§3.1). */
+/** A shape as written, its fields in the name order it keeps them in (§5.2). */
 /**
  * The keys of a struct type not known yet that its constraints don't name: `keyof S`, the names
- * also left out following it, as a mapped entry's or a rest's (§3.1).
+ * also left out following it, as a mapped entry's or a rest's (§5.2).
  */
 function keysText(of: Type, without: readonly string[]): string {
   const keys = `keyof ${ownerText(of)}`;
@@ -285,7 +285,7 @@ function keysText(of: Type, without: readonly string[]): string {
     : `${keys} except ${without.map((name) => JSON.stringify(name)).join(' | ')}`;
 }
 
-/** A mapped struct type as written: `{ id: String, [F in keyof S]: S[F]? }` (§3.1). */
+/** A mapped struct type as written: `{ id: String, [F in keyof S]: S[F]? }` (§5.2). */
 function mappedText(type: MappedParts): string {
   const named = type.named.map((field) => `${field.name}: ${typeText(field.type)}`);
   const mapped = `[${boundName(type.parameter)} in ${typeText(type.keys)}]: ${typeText(type.value)}`;
@@ -302,7 +302,7 @@ function parameterizedText(name: string, typeArguments: readonly Type[]): string
 
 /**
  * A type parameter's name: its own, `Self` for a trait's; a field loop's key for the fields a
- * struct constraint leaves unnamed reads as the keys it ranges over (§4); a placeholder, which
+ * struct constraint leaves unnamed reads as the keys it ranges over (§11.2); a placeholder, which
  * settling replaces before any type is shown, as `_`.
  */
 export function parameterText(type: TypeParameterType): string {
@@ -340,7 +340,7 @@ function primesOf(parameter: TypeParameter): string {
 
 /**
  * The name a parameter a declaration or a mapped type binds is written with; a struct pattern's
- * rest binds one for its keys unwritten, read as a mapped entry's conventional `F` (§3.11); a
+ * rest binds one for its keys unwritten, read as a mapped entry's conventional `F` (§11.3); a
  * recursive alias's placeholder reads as the alias.
  */
 function boundName(declaration: TypeParameter | RestPattern | TypeAliasDeclaration): string {

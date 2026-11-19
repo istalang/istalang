@@ -1,5 +1,5 @@
 /**
- * The expressions with bodies: braced blocks, `if`, `match` and `select` (spec §4, §8).
+ * The expressions with bodies: braced blocks, `if`, `match` and `select` (spec §11.1, §15.4).
  *
  * An `if` chain's `elif` and `else` stand at the indentation of the line the `if` starts on, which
  * is where a line break puts them (parser/layout/). The chain, a statement or a value, stays on
@@ -7,7 +7,7 @@
  * 10: "small" else: "large"` does; else each clause starts a line.
  *
  * A braced block is one line, `{ a; b }`, only with two items or more, none opening a body: one
- * item needs no braces on one line (§4), and a `;` can't follow a one-line body.
+ * item needs no braces on one line (§10.1), and a `;` can't follow a one-line body.
  */
 
 import { builders } from 'prettier/doc';

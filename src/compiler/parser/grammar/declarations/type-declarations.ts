@@ -1,14 +1,14 @@
 /**
- * Declarations of types (§3.1, §3.10, §3.11, §3.17, §3.18): structs, shared ones included, enums,
+ * Declarations of types (§5.2, §8.2, §5.3, §4.6, §5.4): structs, shared ones included, enums,
  * traits and type aliases.
  *
  * Structs, enums and traits list their members the same way: an indented block after `:`, or
  * braces on one line (`struct Req { id: Int, value: String }`, `enum Color { Red, Green }`). A
  * struct may also have no member list at all. One helper reads all three, with each declaration
  * supplying how a member is parsed. A variant's own fields are its parameters, so they stand in
- * parentheses after its name (§3.11).
+ * parentheses after its name (§5.3).
  *
- * `type` before a name declares an associated type among the members (§3.1, §3.10): `type Data =
+ * `type` before a name declares an associated type among the members (§5.2, §8.2): `type Data =
  * T` in a struct or enum, `type Key is C` in a trait. Anywhere else among them it is a field's
  * name, as `type: String`. A struct's or enum's associated types are a list of their own, read
  * from the same lines as its fields or variants, in any order.
@@ -50,7 +50,7 @@ export function parseStruct(parser: Parser): StructDeclaration {
   return { kind: 'StructDeclaration', ...parseStructFrom(parser, headForms.struct) };
 }
 
-/** `shared struct Name<T>: …`, at its head; `shared` is a keyword only there (§2, §3.18). */
+/** `shared struct Name<T>: …`, at its head; `shared` is a keyword only there (§2.2, §5.4). */
 export function parseSharedStruct(parser: Parser): SharedStructDeclaration {
   return { kind: 'SharedStructDeclaration', ...parseStructFrom(parser, headForms.sharedStruct) };
 }
@@ -126,7 +126,7 @@ function declaresType(parser: Parser): boolean {
   return parser.atWord('type') && parser.cursor.kindAt(1) === 'identifier';
 }
 
-/** `type Data = T`, at `type`; an associated type takes no type parameters (§3.1). */
+/** `type Data = T`, at `type`; an associated type takes no type parameters (§5.2). */
 function parseAssociatedType(parser: Parser): AssociatedType {
   const { start, name } = parseAssociatedHead(parser);
   const type = parser.expect('=') === undefined ? parser.placeholder() : parseAliasBody(parser);
@@ -135,7 +135,7 @@ function parseAssociatedType(parser: Parser): AssociatedType {
 
 /**
  * `type Key`, `type Key is C & D` or `type Mode in Persistence`, at `type`, in a trait. A member
- * bound takes no constraint beside it, as a member parameter takes none (§3.5).
+ * bound takes no constraint beside it, as a member parameter takes none (§8.1).
  */
 function parseRequiredAssociatedType(parser: Parser): RequiredAssociatedType {
   const { cursor } = parser;
@@ -151,7 +151,7 @@ function parseRequiredAssociatedType(parser: Parser): RequiredAssociatedType {
 }
 
 /**
- * An extern struct's members after its head, `type Mode = K`, and its docstring (§3.6). A field
+ * An extern struct's members after its head, `type Mode = K`, and its docstring (§17.2). A field
  * written there is read, so checking goes on, and reported: the host's value has fields of its own.
  */
 export function parseExternStructMembers(
@@ -198,7 +198,7 @@ export function parseTrait(parser: Parser): TraitDeclaration {
   return { kind: 'TraitDeclaration', span, name, typeParameters, members, ...documentedBy(doc) };
 }
 
-/** `type Name<T> = Type` or `= match …`, starting at `type`, which is a keyword only here (§2). */
+/** `type Name<T> = Type` or `= match …`, starting at `type`, which is a keyword only here (§2.2). */
 export function parseTypeAlias(parser: Parser): TypeAliasDeclaration {
   const { start, name, typeParameters } = parseTypeHead(parser);
   const type = parser.expect('=') === undefined ? parser.placeholder() : parseAliasBody(parser);
@@ -220,7 +220,7 @@ function parseTypeName(parser: Parser) {
 
 /**
  * An indented block or one-line braces of members, or none, and the declaration's docstring: first
- * in the block, or on the line below a declaration without one (§2).
+ * in the block, or on the line below a declaration without one (§2.3).
  */
 function parseMembers<Item extends DeclaredField | Variant | AssociatedType | TraitMember>(
   parser: Parser,

@@ -1,10 +1,10 @@
-# Spec §10's suite for §12.1's purchase approval, its elided bodies written out. The end-to-end
-# test (src/cli/commands/test.test.ts) writes §12.1's code, read from the spec, into purchase.ista
+# Spec §18's suite for §20.1's purchase approval, its elided bodies written out. The end-to-end
+# test (src/cli/commands/test.test.ts) writes §20.1's code, read from the spec, into purchase.ista
 # beside this module, and runs both with `ista test`.
 #
 # The fake host: a FakeClock for time, a FakeQueue per message type, and the receipts of the
 # program's revertible sends, each kept with the message it stands for, so the program's disposing
-# of a receipt retracts that message (§3.6).
+# of a receipt retracts that message (§17.2).
 
 import (
   * as testing

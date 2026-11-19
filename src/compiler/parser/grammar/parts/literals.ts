@@ -1,5 +1,5 @@
 /**
- * Literals as expressions and patterns write them (§2, §3.11): the literal a token denotes, and
+ * Literals as expressions and patterns write them (§3.1, §11.3): the literal a token denotes, and
  * a negative number, which no literal is, so `-1` is `-` applied to `1`, the node an expression
  * builds. Where a literal stands alone, as a pattern, a minus negates only the numbers that
  * position allows.

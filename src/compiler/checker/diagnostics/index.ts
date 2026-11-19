@@ -1,5 +1,5 @@
 /**
- * Diagnostics of checking types, codes 5000–5999 (§2–§4): one catalog. The codes every feature
+ * Diagnostics of checking types, codes 5000–5999 (§2–§11): one catalog. The codes every feature
  * shares (5000–5059) are here; a feature keeps its blocks of codes in a part beside this one, named
  * for the feature.
  *
@@ -28,7 +28,7 @@ export const checkerDiagnostics = defineDiagnostics('checker', {
     code: 5002,
     message: (name: string, argumentTypes: string, givenUnion = false) =>
       givenUnion
-        ? `No '${name}' takes (${argumentTypes}), and no trait visible here that the union meets requires it; take the union apart with 'match' to call its members' own (§3.10).`
+        ? `No '${name}' takes (${argumentTypes}), and no trait visible here that the union meets requires it; take the union apart with 'match' to call its members' own (§8.2).`
         : `No '${name}' takes (${argumentTypes}).`,
   },
   ambiguousCall: {
@@ -149,11 +149,11 @@ export const checkerDiagnostics = defineDiagnostics('checker', {
   transientPlace: {
     code: 5029,
     message: () =>
-      "A 'transient let' stands at the top of a function's body, before its other statements (§3.4).",
+      "A 'transient let' stands at the top of a function's body, before its other statements (§7.1).",
   },
   transientTarget: {
     code: 5030,
-    message: () => "A 'transient let' declares one name (§3.4).",
+    message: () => "A 'transient let' declares one name (§7.1).",
   },
   ...genericTemplates,
   ...varianceTemplates,

@@ -1,5 +1,5 @@
 /**
- * The binding rule (§3.3) over generated parameter lists: arguments by position fill parameters in
+ * The binding rule (§6.1) over generated parameter lists: arguments by position fill parameters in
  * order, named ones the parameter of their name in any order, a rest parameter collects what is
  * left, a deferred call's function the first parameter taking nothing left unfilled, and every
  * parameter left out takes its default; anything else fails with its reason.
@@ -175,7 +175,7 @@ describe('binding a function named as a value', () => {
   });
 });
 
-/** `slots` with their rest parameter a pack's (§3.5). */
+/** `slots` with their rest parameter a pack's (§8.1). */
 function withPackRest(slots: readonly BoundSlot[]): BoundSlot[] {
   return slots.map((slot) =>
     slot.rest === undefined ? slot : { ...slot, rest: { kind: 'pack' } },
@@ -202,7 +202,7 @@ describe('binding a pack', () => {
   });
 });
 
-/** A parameter of a function type taking nothing, a call to run later's (§3.14), or of another. */
+/** A parameter of a function type taking nothing, a call to run later's (§6.5), or of another. */
 type SlotKind = 'call' | 'function' | 'value';
 
 const typeOfKind: Record<SlotKind, Type> = {
@@ -230,7 +230,7 @@ function typedSlots(kinds: readonly SlotKind[]): BoundSlot[] {
   }));
 }
 
-describe('binding the function a deferred call gives (§3.14)', () => {
+describe('binding the function a deferred call gives (§6.5)', () => {
   it('fills the first parameter taking nothing the positional arguments leave unfilled', () => {
     fc.assert(
       fc.property(

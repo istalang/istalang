@@ -1,5 +1,5 @@
 /**
- * A witness search judges each goal once (§3.5, §3.10): wrappers meeting a trait through the same
+ * A witness search judges each goal once (§8.1, §8.2): wrappers meeting a trait through the same
  * constraint on what they wrap ask the same goals again at each level, which a search answers from
  * what it already found, so checking a nested model costs linearly in its depth. What it keeps
  * answers as the goal would: a struct-constraint goal meets what the greatest fixed point of its

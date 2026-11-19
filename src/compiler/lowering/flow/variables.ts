@@ -1,14 +1,14 @@
 /**
- * The variables of one entry (§3.4, §3.15; docs/arch/definition.md, "Frames"): each name it
+ * The variables of one entry (§7.1, §4.5; docs/arch/definition.md, "Frames"): each name it
  * declares lives in a register of its own, whichever flow of the entry writes it, its frame's
  * parameters and captures first. What a variable holds is released where its flow says
  * (writer.ts).
  *
  * - **One register per name and type.** A field loop's passes bind one name to values of several
- *   types (§4), each pass in code of its own, so each type gets its register and every register
+ *   types (§11.2), each pass in code of its own, so each type gets its register and every register
  *   keeps one type.
  * - **Cells.** A variable passed by `&` somewhere in the body, or a `let` a closure captures, lives
- *   in a cell a reference or a closure can reach (§3.7, §3.14): its register owns the cell, typed
+ *   in a cell a reference or a closure can reach (§7.3, §6.4): its register owns the cell, typed
  *   as the `_Cell<T>` it is. A write making the variable anew, where no path reaching it has made
  *   it since its scope last ended, makes a new cell (`declaringWrites`), so each iteration of a loop
  *   declaring it captures its own; any other write stores into the cell.
@@ -54,7 +54,7 @@ export class VariableRegisters {
 
 /**
  * The type the variable `name` holds where the entry reads it: as its body declares it there, as one
- * name holds each pass's field in a field loop (§4), else `checked`; read as the entry reads types.
+ * name holds each pass's field in a field loop (§11.2), else `checked`; read as the entry reads types.
  * A capture is typed so too, as the function it captures may be typed finally only after.
  */
 export function variableType(
@@ -164,7 +164,7 @@ function writtenWhole(operation: Operation): ValueId | undefined {
  * The writes of `flow` making a variable living in a cell anew: those no path reaching makes it
  * before, since the function began or its scope last ended. A variable the function binds as it
  * begins, a parameter, a capture or its own name, is made then; a transient a call it is nested in
- * shares, where the test finding it goes (§3.4).
+ * shares, where the test finding it goes (§7.1).
  */
 export function declaringWrites(flow: FlowFunction): ReadonlySet<Operation> {
   const inCell = (value: ValueId) => {

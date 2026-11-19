@@ -47,7 +47,7 @@ import type { TestClient } from '../../server.test-kit.ts';
 import { namesOf, positionOf } from './navigation.test-kit.ts';
 
 /**
- * The names keyed reads spell (§3.9), by module: `d.city` denotes the `index` it calls alone, so
+ * The names keyed reads spell (§10.2), by module: `d.city` denotes the `index` it calls alone, so
  * renaming the field its key names leaves the read behind. TODO(F36): rename reaches keyed reads.
  */
 const keyedReadNames = new Set(

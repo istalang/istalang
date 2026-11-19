@@ -9,9 +9,9 @@
  *   takes its helpers from the part owning them.
  * - **Calls.** A simple entry is a JavaScript function; an async one runs as an execution of its
  *   own, its caller getting its future.
- * - **The loop.** `drain` runs the ready queue empty, one item at a time in the order readied (§6);
+ * - **The loop.** `drain` runs the ready queue empty, one item at a time in the order readied (§15.1);
  *   `takeArrivals` runs what arrived from outside, a turn at a time, each also told to the world as
- *   an input a segment run again applies again (§5).
+ *   an input a segment run again applies again (§14).
  * - **Natives** are bound per extern when the program loads (natives.ts).
  */
 
@@ -71,9 +71,9 @@ export class Run {
   readonly instance: Instance;
   /** The instances beside it, which it reaches only through the world. */
   readonly world: World;
-  /** The secret seed of the instance's random source (§3.8 `random`), which its snapshot keeps. */
+  /** The secret seed of the instance's random source (§19.2 `random`), which its snapshot keeps. */
   readonly seed: Uint8Array;
-  /** `==` and maps over the program's values (§3.8, §3.9). */
+  /** `==` and maps over the program's values (§19.3, §10.2). */
   readonly values: RuntimeValues;
   readonly lifetimes: Lifetimes;
   readonly places: Places;
@@ -97,7 +97,7 @@ export class Run {
   readonly signals = { parked: PARKED, stopped: STOPPED, stop: STOP, notRebound: NOT_REBOUND };
   /**
    * Told of each turn the run takes as an input its world can apply again, to a run of the same
-   * instance read back from a snapshot (a segment run again, §5).
+   * instance read back from a snapshot (a segment run again, §14).
    */
   onArrivalTaken: ((input: (run: Run) => void) => void) | undefined;
   /** The compiled entries, by function index, once its program is instantiated over it. */
@@ -180,7 +180,7 @@ export class Run {
     return this.#objects;
   }
 
-  /** The instance's value of the context constant `name`, once made (§3.4). */
+  /** The instance's value of the context constant `name`, once made (§7.1). */
   readonly contextConstant = (name: string): Value | undefined =>
     this.instance.contextConstants.read(name);
 
@@ -208,7 +208,7 @@ export class Run {
     if (entry?.kind !== 'code') {
       return run(...passed);
     }
-    // A call leaving parameters out passes them absent, which the prologue computes (§3.3).
+    // A call leaving parameters out passes them absent, which the prologue computes (§6.1).
     const leftOut = Array.from({ length: entry.parameters.length - passed.length });
     return run(...passed, ...leftOut, closure);
   }
@@ -224,7 +224,7 @@ export class Run {
     return this.#natives(index);
   }
 
-  /** The instance's next random draw (§3.8 `random`): a segment run again draws the same ones (§5). */
+  /** The instance's next random draw (§19.2 `random`): a segment run again draws the same ones (§14). */
   draw(): Uint8Array {
     this.instance.draws += 1;
     return drawOf(this.seed, this.instance.draws - 1);
@@ -242,7 +242,7 @@ export class Run {
     this.settleTogether([[future, value]]);
   }
 
-  /** Settles futures together as one event, calling what waits on them in its order (§6). */
+  /** Settles futures together as one event, calling what waits on them in its order (§15.2). */
   settleTogether(settling: Settling): void {
     this.#settler.settleTogether(settling);
   }
@@ -262,19 +262,19 @@ export class Run {
     }
   }
 
-  /** How a host fills `future`, the pending future of the extern being called here (§9). */
+  /** How a host fills `future`, the pending future of the extern being called here (§17.2). */
   filling(future: Future): HostFilling {
     return this.arrivals.filling(this, future, stackSite("the host extern's call"));
   }
 
-  /** A future settling with how the instance `name` ends (§9); a snapshot keeps the watch. */
+  /** A future settling with how the instance `name` ends (§17.1); a snapshot keeps the watch. */
   watchEnd(name: string): Future {
     const future = new Future(this.newId());
     this.endWatches.watch({ future, instance: name });
     return future;
   }
 
-  /** The future `weak`'s `disposed()` gives (§7): settled once its referent is disposed. */
+  /** The future `weak`'s `disposed()` gives (§16): settled once its referent is disposed. */
   disposedOf(weak: WeakReference): Future {
     weak.whenDisposed = watchFuture(weak.whenDisposed, () => new Future(this.newId()));
     if (weak.target === undefined && !weak.whenDisposed.settled) {
@@ -361,7 +361,7 @@ export class Run {
   }
 
   /**
-   * Finishes the run once its outcome is encoded (§7): what is readied never runs, what it was to
+   * Finishes the run once its outcome is encoded (§16): what is readied never runs, what it was to
    * be called with let go of, every call still suspended stops, and `held` is let go of, the
    * outcome's holder; all together, newest first. Its context constants go last (context-
    * constants.ts), each disposing what it held before the next goes.
@@ -387,7 +387,7 @@ export class Run {
     if (given instanceof Future) {
       this.invocations.attach(given, invocation);
     } else if (instance.end === undefined) {
-      // A plain function's call gives its value at once (§9); a panicked one gives none.
+      // A plain function's call gives its value at once (§17.1); a panicked one gives none.
       this.invocations.answer(invocation, given as Value);
     }
   }

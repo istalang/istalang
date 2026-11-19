@@ -1,6 +1,6 @@
 # outcome: [11,12,3]
 # A function with defaults, named as a value of a shorter type, computes its defaults at each call;
-# one with a rest parameter takes the array as one argument (§3.14).
+# one with a rest parameter takes the array as one argument (§6.4).
 import * as runtime from 'runtime'
 
 fn window(start: Int, end: Int = start + 10) -> Int: end

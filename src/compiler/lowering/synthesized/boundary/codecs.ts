@@ -1,5 +1,5 @@
 /**
- * The derived codecs (§9; docs/arch/boundary.md): the body of each `json._toJson<T>` and
+ * The derived codecs (§17.4; docs/arch/boundary.md): the body of each `json._toJson<T>` and
  * `json._fromJson<T>` instance, written from `T`'s derived form (checker
  * rules/boundary/json-forms.ts).
  *

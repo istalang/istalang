@@ -1,6 +1,6 @@
 /**
  * The type of the register a parameter's argument arrives in, for every entry that takes one:
- * its own, or, for a `&` parameter (§3.7), a reference to it, which the callee reads and writes
+ * its own, or, for a `&` parameter (§7.3), a reference to it, which the callee reads and writes
  * through.
  */
 

@@ -1,5 +1,5 @@
 /**
- * What one instantiation does to each part a checked body records (§3.5): a body is checked once,
+ * What one instantiation does to each part a checked body records (§8.1): a body is checked once,
  * generically, so what runs for one instantiation reads it with every type it records substituted.
  * The body's facts table (index.ts) says which part each fact is made of; the parts are substituted
  * here. The calls a body records stay as checked: closing one takes the instantiation's witnesses
@@ -48,7 +48,7 @@ import type { TypeRules } from '../../../types/type/type-rules.ts';
 export interface Instantiation {
   readonly substitution: Substitution;
   readonly checker: Pick<Checker, 'fieldNamed' | 'typeRules'>;
-  /** A type as substituted, a recursive one unfolded (§3.17): what an expression is read as. */
+  /** A type as substituted, a recursive one unfolded (§4.6): what an expression is read as. */
   readonly concrete: (type: Type) => Type;
   readonly fit: (fit: Fit) => Fit;
   readonly field: (field: FieldMember) => FieldMember;
@@ -62,14 +62,14 @@ export interface Instantiation {
   /**
    * A field loop's passes: each one's key and value substituted, and its body read the same way;
    * the pass of the fields a struct constraint leaves unnamed, once they are all known, one pass per
-   * field, every pass then in field order (§3.1), as the loop runs them.
+   * field, every pass then in field order (§5.2), as the loop runs them.
    */
   readonly passes: (passes: readonly FieldPass[]) => readonly FieldPass[];
   /** What a body's flows are built from: its roots' parameters and its calls' results substituted. */
   readonly flows: (source: FlowSource) => FlowSource;
 }
 
-/** The instantiation `substitution` makes, for reading a body checked once (§3.5). */
+/** The instantiation `substitution` makes, for reading a body checked once (§8.1). */
 export function instantiationBy(
   substitution: Substitution,
   checker: Pick<Checker, 'fieldNamed' | 'typeRules'>,
@@ -141,7 +141,7 @@ function instantiatedPass(
 
 /**
  * The names of the fields the pass of the others ranges over once `substitution` knows them all
- * (§4), and the key standing for each; undefined for any other pass, or while some are unknown.
+ * (§11.2), and the key standing for each; undefined for any other pass, or while some are unknown.
  */
 function knownFields(
   { visits, key }: FieldPass,
@@ -231,7 +231,7 @@ function instantiatedTargetPath(
  * `checked` with every type it records substituted, in its or-patterns' alternatives too. Each test
  * and step kind is listed, so a kind that comes to carry a type can't pass through unsubstituted.
  *
- * A union a member test tests may collapse (§3.5): `T | Int` with `T = Int` is `Int`. Its value is
+ * A union a member test tests may collapse (§8.1): `T | Int` with `T = Int` is `Int`. Its value is
  * then the member's own value, with no variant around it: the `member` step into it carries the
  * union, substituted here, so whoever reads the path sees the collapse, and a name narrowed from
  * it reads the value as it is.
@@ -338,10 +338,10 @@ function instantiatedStructStep(
 
 /**
  * `fit` as one instantiation makes it: the type a conversion converts into, substituted. A union
- * the value goes into may collapse into one type (§3.5): a value that went in as a member then is
+ * the value goes into may collapse into one type (§8.1): a value that went in as a member then is
  * a value of that type already, its own or a literal of it, which is its base's value; one that
  * went in member by member was a union of that type's literals, or that type, taken as its base.
- * A union collapsing into an `any` type took the value's type whole (§2), so the value still goes
+ * A union collapsing into an `any` type took the value's type whole (§4.2), so the value still goes
  * into it, as lowering derives.
  */
 function substitutedFit(
@@ -353,7 +353,7 @@ function substitutedFit(
   if (into === undefined) {
     return { conversion: substituted };
   }
-  // A recursive union substituted is its use again (§3.17); the value goes into what it unfolds to.
+  // A recursive union substituted is its use again (§4.6); the value goes into what it unfolds to.
   const union = unfolded(substitute(into.union, substitution, rules));
   const member =
     into.member === undefined ? undefined : substitute(into.member, substitution, rules);

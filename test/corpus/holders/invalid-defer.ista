@@ -1,5 +1,5 @@
 # error: 5025 at 8:3
-# `defer` gives a disposable (§7), which must be kept: a bare `defer f(x)` would call `f` as soon as
+# `defer` gives a disposable (§16), which must be kept: a bare `defer f(x)` would call `f` as soon as
 # it is made.
 
 fn note(text: String): _ = text

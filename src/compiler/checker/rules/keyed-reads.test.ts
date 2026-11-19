@@ -1,5 +1,5 @@
 /**
- * Keyed reads (§3.9, rules/getters.ts): `x.k` read through an `index` whose key is a member
+ * Keyed reads (§10.2, rules/getters.ts): `x.k` read through an `index` whose key is a member
  * parameter, beside the members of its name, and the shapes of `index` that serve one. Reading and
  * calling them end to end is the corpus's (test/corpus/computed/keyed-members.ista).
  */
@@ -9,7 +9,7 @@ import { mainGives } from '../../../stdlib/prelude/prelude.test-kit.ts';
 import { inFunction, reported } from '../check.test-kit.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 
-describe('a keyed read (§3.9)', () => {
+describe('a keyed read (§10.2)', () => {
   const tagged = [
     'struct Tagged:',
     '  name: String',

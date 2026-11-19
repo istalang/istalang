@@ -1,5 +1,5 @@
 /**
- * Taking values apart (§3.3, §3.11, §3.15): parameters, declarations' and loops' targets, and
+ * Taking values apart (§6.1, §11.3, §4.5): parameters, declarations' and loops' targets, and
  * patterns, read along the steps checking recorded (`targetsOf`, `patternOf`).
  *
  * - A step through an array (its length, an item, the items between) is the implicit call its
@@ -307,7 +307,7 @@ function bind(
   }
 }
 
-/** `value`, kept at `site` as a variable with no name keeps it (§7), until `lifetime` ends. */
+/** `value`, kept at `site` as a variable with no name keeps it (§16), until `lifetime` ends. */
 export function keep(
   builder: FlowBuilder,
   site: NodeOf<string>,
@@ -321,7 +321,7 @@ export function keep(
 
 /**
  * The step a pattern's name takes past its part when it holds only some of the part's values
- * (`narrowedFrom`, §3.11): to them, out of the union or `any` type the part is of.
+ * (`narrowedFrom`, §11.3): to them, out of the union or `any` type the part is of.
  */
 function narrowing(binding: TargetBinding | PartBinding): readonly PartStep[] {
   const from = 'narrowedFrom' in binding ? binding.narrowedFrom : undefined;

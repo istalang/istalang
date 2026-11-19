@@ -1,7 +1,7 @@
 # outcome: "5 25 7 3 db | v 1 copy 2"
-# A shape is its fields, written anywhere and in any order (§3.1): an alias names one, a
+# A shape is its fields, written anywhere and in any order (§5.2): an alias names one, a
 # `struct{…}` literal with nothing to take a type from has one, and the value behind a shared
-# struct is the shape of its fields (§3.18), which any value of that shape writes or spreads into.
+# struct is the shape of its fields (§5.4), which any value of that shape writes or spreads into.
 
 import * as runtime from 'runtime'
 

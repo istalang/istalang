@@ -1,5 +1,5 @@
 /**
- * Call patterns (§3.11): the arguments bind to the fields as a call's bind to parameters, so over
+ * Call patterns (§11.3): the arguments bind to the fields as a call's bind to parameters, so over
  * generated variants and call patterns (fields by position, then by name in any order, fields a
  * call may leave out left, a last `...` leaving any, a spread taking the rest field, items past the
  * fixed fields matching the rest's), a call pattern matches what the call pattern naming each field
@@ -314,7 +314,7 @@ describe("braces after a variant's name in a pattern", () => {
       'Opt<Int> | Opt<String>',
       ['case Some{value}: 1', 'case _: 0'],
     ],
-  ])('are refused %s (§3.11)', (_, subject, cases) => {
+  ])('are refused %s (§11.3)', (_, subject, cases) => {
     expect(reported(matching(subject, 'Int', cases)).codes).toContain(refusal);
   });
 

@@ -4,7 +4,7 @@
  * the guide's module examples checking clean; and totality on broken programs and on every spec
  * example.
  *
- * Each module example is checked on its own, but §12.1's, which make one program together and are
+ * Each module example is checked on its own, but §20.1's, which make one program together and are
  * checked joined. The examples that don't check clean yet are listed by section and place in it,
  * most because they use declarations their document leaves out; a listed example that comes to
  * check clean fails until it leaves the list, so the list only shrinks.
@@ -14,7 +14,7 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { brokenText } from '../../../test/broken.ts';
 import { runPrograms } from '../../../test/corpus/programs.ts';
-import { type SpecExample, specExamples } from '../../../test/corpus/spec-examples.ts';
+import { type SpecExample, sectionKey, specExamples } from '../../../test/corpus/spec-examples.ts';
 import { subsetSource } from '../../../test/subset.ts';
 import { slowTestTimeout } from '../../../test/timeouts.ts';
 import {
@@ -278,7 +278,7 @@ describe('top-level constants hold only what compile time computes', () => {
 });
 
 /** The spec section whose module examples make one program. */
-const programSection = '12.1 Purchase approval';
+const programSection = '20.1 Purchase approval';
 
 /**
  * Doc module examples that don't check clean yet, keyed by `document › section #n`, which survives
@@ -286,33 +286,33 @@ const programSection = '12.1 Purchase approval';
  * report in a clean example does.
  */
 const uncheckedExamples = new Map<string, readonly number[]>([
-  ['docs/spec.md › 3.1 Structs #1', [4000]],
-  ['docs/spec.md › 3.3 Functions #1', [2001, 4000, 5001]],
-  ['docs/spec.md › 3.6 Extern declarations #1', [4000]],
-  ['docs/spec.md › 3.7 Methods and references #2', [4000, 5103]],
-  ['docs/spec.md › 3.7 Methods and references #3', [2001, 4000]],
-  ['docs/spec.md › 3.7 Methods and references #4', [4000, 5026]],
-  ['docs/spec.md › 3.9 Operator overloading #1', [4000]],
-  ['docs/spec.md › 3.10 Traits #1', [2001, 4008, 5001]],
-  ['docs/spec.md › 3.13 Modules #1', [2001, 3000, 5001]],
-  ['docs/spec.md › 3.14 Function types and closures #2', [5105]],
-  ['docs/spec.md › 5. Persistence #1', [4000, 5103]],
-  ['docs/spec.md › 6. Slots and inboxes #1', [4000]],
-  ['docs/spec.md › 7. Lifetimes and disposal #1', [4008]],
-  ['docs/spec.md › 7. Lifetimes and disposal #2', [4000, 5103]],
-  ['docs/spec.md › 7. Lifetimes and disposal #3', [4000]],
-  ['docs/spec.md › 7. Lifetimes and disposal #4', [4000]],
-  ['docs/spec.md › 9. Program structure #1', [4000]],
-  ['docs/spec.md › 10. Testing #1', [4000]],
-  ['docs/spec.md › 12.2 Approver side #1', [4000]],
-  ['docs/spec.md › 12.3 Broadcast with expiry #1', [4000]],
+  ['docs/spec › 5.2 Structs #1', [4000]],
+  ['docs/spec › 6.1 Function declarations #1', [2001, 4000, 5001]],
+  ['docs/spec › 17.2 Extern declarations #1', [4000]],
+  ['docs/spec › 7.3 References #1', [4000, 5103]],
+  ['docs/spec › 6.3 Overloading #1', [2001, 4000]],
+  ['docs/spec › 6.2 Methods and static functions #2', [4000, 5026]],
+  ['docs/spec › 10.2 Operators #1', [4000]],
+  ['docs/spec › 8.2 Traits #1', [2001, 4008, 5001]],
+  ['docs/spec › 13.1 Modules #1', [2001, 3000, 5001]],
+  ['docs/spec › 6.4 Function types and closures #2', [5105]],
+  ['docs/spec › 14. Persistence #1', [4000, 5103]],
+  ['docs/spec › 15.3 Inboxes #1', [4000]],
+  ['docs/spec › 16. Lifetimes and disposal #1', [4008]],
+  ['docs/spec › 16. Lifetimes and disposal #2', [4000, 5103]],
+  ['docs/spec › 16. Lifetimes and disposal #3', [4000]],
+  ['docs/spec › 16. Lifetimes and disposal #4', [4000]],
+  ['docs/spec › 17.1 Program structure #1', [4000]],
+  ['docs/spec › 18. Testing #1', [4000]],
+  ['docs/spec › 20.2 Approver side #1', [4000]],
+  ['docs/spec › 20.3 Broadcast with expiry #1', [4000]],
   ['docs/guide.md › Level 0: what it is #1', [4000, 5103]],
   ['docs/guide.md › 2.1 A whole program #1', [4000]],
-  ['docs/guide.md › 2.5 Generics, traits, operators (§3.5, §3.9, §3.10) #1', [4000]],
-  ['docs/guide.md › 2.7 Errors (§3.12) #1', [4000]],
-  ['docs/guide.md › 2.9 Concurrency (§6, §8, §9) #1', [5022, 5026, 5103]],
-  ['docs/guide.md › 2.11 Modules, host, JSON, tools (§3.6, §3.13, §9, §11) #1', [3000]],
-  ['docs/guide.md › 2.12 Testing (§10) #1', [4000, 5214]],
+  ['docs/guide.md › 2.5 Generics, traits, operators (§8.1, §10.2, §8.2) #1', [4000]],
+  ['docs/guide.md › 2.7 Errors (§12) #1', [4000]],
+  ['docs/guide.md › 2.9 Concurrency (§15.1, §15.4, §17.1) #1', [5022, 5026, 5103]],
+  ['docs/guide.md › 2.11 Modules, host, JSON, tools (§13, §17) #1', [3000]],
+  ['docs/guide.md › 2.12 Testing (§18) #1', [4000, 5214]],
 ]);
 
 /**
@@ -326,15 +326,15 @@ interface CheckedExample {
 }
 
 function isProgramExample(example: SpecExample): boolean {
-  return example.document === 'docs/spec.md' && example.section === programSection;
+  return example.section === programSection;
 }
 
-/** Each doc module example to check, and §12.1's joined as one program. */
+/** Each doc module example to check, and §20.1's joined as one program. */
 function checkedExamples(): readonly CheckedExample[] {
   const modules = specExamples.filter(
     (example) => example.form === 'module' && !example.elided && !isProgramExample(example),
   );
-  const bySection = Map.groupBy(modules, (example) => `${example.document} › ${example.section}`);
+  const bySection = Map.groupBy(modules, sectionKey);
   const program = specExamples.filter(isProgramExample);
   return [
     ...[...bySection].flatMap(([section, examples]) =>
@@ -346,8 +346,8 @@ function checkedExamples(): readonly CheckedExample[] {
       })),
     ),
     {
-      key: `docs/spec.md › ${programSection}`,
-      document: 'docs/spec.md',
+      key: `docs/spec › ${programSection}`,
+      document: program[0]?.document ?? '',
       line: program[0]?.line ?? 0,
       text: program.map(({ code }) => code).join('\n'),
     },

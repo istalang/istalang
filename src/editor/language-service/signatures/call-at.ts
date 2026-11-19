@@ -10,7 +10,7 @@
  * - A call being written often doesn't resolve, so its arguments are read as written, by position
  *   and name, against each function it chose among.
  * - A deferred call's taker written as a call, `retry(times: 5) f(x)`, writes its arguments in its
- *   own parentheses, but the deferred call makes the call and holds its records (§3.14).
+ *   own parentheses, but the deferred call makes the call and holds its records (§6.5).
  */
 
 import type { SignatureParameter } from '../../../compiler/checker/check.ts';
@@ -147,7 +147,7 @@ function callAround(tree: SyntaxTree, offset: number): Call | undefined {
 /**
  * The number of the written argument at `offset`: the one it is in, or after but for whitespace on
  * that argument's own line, unless the next one has begun there; a line break separates two
- * arguments as a `,` does (§2).
+ * arguments as a `,` does (§2.1).
  */
 function argumentAt(tree: SyntaxTree, call: Call, offset: number): number {
   const lineStart = lineStartAt(tree.source.text, offset);

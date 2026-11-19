@@ -1,5 +1,5 @@
 /**
- * The rule that several producers of one value agree on its type (§4): the branches of an `if`, a
+ * The rule that several producers of one value agree on its type (§10.1): the branches of an `if`, a
  * body's tail and its `return`s, or the items of a collection literal. The expected type decides
  * when there is one, widened (types/unions/widening.ts) when only its widening fits them all;
  * otherwise their common type does (types/unions/common-type.ts), and when they have none, the
@@ -8,11 +8,11 @@
  *
  * Without an expected type, a producer that doesn't fit is reported by the caller's own
  * diagnostic, which names what disagrees; with one, or when it fits only by the implicit wrap into
- * `T?` (§2), it is fitted, which reports the mismatch or records the wrap.
+ * `T?` (§4.2), it is fitted, which reports the mismatch or records the wrap.
  *
  * A literal type inside another one is a value a container holds, so producers holding different
  * ones can't agree on any of their types as they are: `(k, 1)` and `(k2, 2)` for keys `"a"` and
- * `"b"`. A producer that is a literal of items converts as its items do, though (§3.5), so such
+ * `"b"`. A producer that is a literal of items converts as its items do, though (§3.3), so such
  * producers agree on the first one's type with every literal type in it widened, each converted
  * into it. A later producer is likewise expected to have what those before it agree on with the
  * literal types inside it widened, since they constrain nothing a part could convert into.
@@ -51,7 +51,7 @@ export interface Produced {
   readonly type: Type;
   readonly span: AnchoredSpan;
   readonly site: ValueSite | undefined;
-  /** Whether the producer is a literal of items, which converts as its items do (§3.5). */
+  /** Whether the producer is a literal of items, which converts as its items do (§3.3). */
   readonly isLiteral?: boolean | undefined;
 }
 
@@ -79,7 +79,7 @@ interface Agreement {
 
 /**
  * The type `produced` agree on. `checker.fitOf` says how a type fits the agreed one; a producer
- * that fits only by converting its value (§2, §3.14) still disagrees, so its caller fits it and
+ * that fits only by converting its value (§4.2, §6.4) still disagrees, so its caller fits it and
  * records it.
  */
 export function agreedType(
@@ -141,7 +141,7 @@ function rebuiltAgreement(produced: readonly Produced[], checker: Joining): Type
  * `decided`, with every literal type in it widened as joining widens one, when every producer
  * agrees with or builds that type, else widened as a whole (`joinWidened`): what producers
  * whose literal types never decide their own agree on, such as a field comprehension's elements,
- * whatever fields they visit (§4).
+ * whatever fields they visit (§10.5).
  */
 export function wholeWidened(decided: Type, produced: readonly Produced[], checker: Joining): Type {
   const deep = deeplyWidened(decided, checker);
@@ -217,7 +217,7 @@ interface Agreed {
 /**
  * Settles `produced` against what it and the other producers agreed on (`settleAgreement`): one
  * that doesn't fit is reported, with no type expected, else fitted; one that agrees, left as it is.
- * A producer settled apart, in a pass of its own (§4), is settled here.
+ * A producer settled apart, in a pass of its own (§11.2), is settled here.
  */
 export function settleProduced(context: BodyContext, produced: Produced, agreed: Agreed): void {
   const { decided, expected, mismatch } = agreed;
@@ -241,7 +241,7 @@ export function fitProduced(context: BodyContext, produced: Produced, expected: 
 }
 
 /**
- * What `produced` agree on so far, which a later producer is expected to have (§3.1), with the
+ * What `produced` agree on so far, which a later producer is expected to have (§5.2), with the
  * literal types inside it widened (the banner). A `none` decides nothing of what the others are.
  */
 export function decidedSoFar(

@@ -28,7 +28,7 @@ interpreter; a live run is a run that never commits.
   inside another run's step. The turn names the object it acts on, and acts on it in whichever run
   of the instance it lands in: once a rerun replaced the run (below, `Arrivals.succeededBy`), on the object
   of the same id its snapshot read back. The world advances instances in the order their oldest
-  waiting turns arrived across runs (`Arrivals.first`), so what settles first runs first (spec §6).
+  waiting turns arrived across runs (`Arrivals.first`), so what settles first runs first (spec §15.1).
   At an instant timers come due, the instances' fire first and run to their commits, so what a
   context answers because of them reaches a live run before its own timers due then decide what
   waited on both (`DurableWorld.fireDue`).
@@ -60,7 +60,7 @@ Everything above them is Istalang in the prelude:
   `_pruned`, by `_standing`: pending, lost, withdrawn, or idle), and `_givenUp` reads a future a
   case lost on, with nothing left that may decide, as given up. The run calls the record's
   `arrived` as the future settles, each resolver deciding as `tryResolve` does, the first deciding,
-  and its `disposed` as the future is disposed first, as code its disposal runs (§7), cancelling
+  and its `disposed` as the future is disposed first, as code its disposal runs (§16), cancelling
   each and letting go at once of what it kept. An
   event calls its futures' records future by future in its order, each future's resolvers in
   registration order, deciding at once, so a race's losers take nothing and the `disposing()` case
@@ -68,7 +68,7 @@ Everything above them is Istalang in the prelude:
   nothing holds between two waits on it, is made anew once disposed (`watchFuture`). What the
   run's own listeners settle in turn (a mock's answer) settles together after the event
   (`Run.settleTogether`). A widened call's future follows the call's (prelude `_converted`, spec
-  §3.14): a resolver registered on the call's future as no wait is (`_registeredOn`), reaching the
+  §6.4): a resolver registered on the call's future as no wait is (`_registeredOn`), reaching the
   follower weakly, settles it within the call's event, its value converted. It stands as the
   follower does (`Follows`): dropped once the follower is gone, idle while it is given up on, so
   the call's future is given up on with it. Each wait on the follower runs the call's future's
@@ -83,7 +83,7 @@ Everything above them is Istalang in the prelude:
   (state 4) stays cancellable.
 - **Waits** (`_Wait`): `_caseResolver` decides the wait and unparks the call, reaching the wait
   weakly; the wait's call holds the futures its cases' chains are registered on until the wait is
-  let go of (`_awaiting`, `Execution.awaiting`, spec §7), a hold the run keeps since no value could
+  let go of (`_awaiting`, `Execution.awaiting`, spec §16), a hold the run keeps since no value could
   without a cycle the analysis of lifetimes refuses. `_parking`, emitted before every `park`, marks
   every case known; losers are cancelled once the wait is decided and its
   cases known (`_losersCancelled`). A `select` with `else` (`_decided`) takes back its call's resume
@@ -92,7 +92,7 @@ Everything above them is Istalang in the prelude:
 - **Slots** are shared structs: `contents: Array<T>` (one item while full) and one queue of
   operations holding their futures weakly, so an operation its holders let go of leaves the queue;
   a waiting put's value sits in an `_Offer` its future alone holds, the queue reaching it weakly,
-  so the value goes as the put settles or is let go of, a `select`'s loser included (spec §7, §8);
+  so the value goes as the put settles or is let go of, a `select`'s loser included (spec §16, §15.4);
   one given up on (every case awaiting it lost) is passed over, and served where it stands once
   awaited again (`_whenAwaited`). Reads at the head are one event and a take after them the next, so
   a `select` the reads decide has cancelled a losing take before it is reached. `put`, `take` and
@@ -108,7 +108,7 @@ Everything above them is Istalang in the prelude:
 
 `@Keeps` stands on a std function with a body when its body calls code the lifetime analysis can't
 follow (closures held in a resolver; a slot's queue read back through weak references): callers read
-it as a native, with exactly the summary its extern predecessor had (spec §3.16).
+it as a native, with exactly the summary its extern predecessor had (spec §5.5).
 
 ## Holders and disposal (`run/lifetimes.ts`)
 
@@ -120,9 +120,9 @@ it as a native, with exactly the summary its extern predecessor had (spec §3.16
   loses its holder in the next round. Code a disposal runs, a declared `dispose` or a disposed
   call's cleanup (its frame's let-gos and what it returns, which settles nothing), is collected
   `apart` from the round disposing it, each let-go as it happens, so before its value or call is
-  gone (spec §7) and a `select`'s losers before its winning case's body (§8).
+  gone (spec §16) and a `select`'s losers before its winning case's body (§15.4).
 - Disposal is final: an object is marked disposed as its round takes it, and a snapshot keeps the
-  mark, so no later hold counts on it, a mock recording its `dispose` call included (§10), and it
+  mark, so no later hold counts on it, a mock recording its `dispose` call included (§18), and it
   is never disposed twice.
 - A native's result is `adopt`ed by its declared type: a composite it built holds its parts. One
   storing an item through `&` (`push`, `setEntry`, ...) keeps it by its item type first, so the
@@ -142,12 +142,12 @@ it as a native, with exactly the summary its extern predecessor had (spec §3.16
 
 - A durable instance is **resident** while the world holds it. A segment starts with what wakes it
   (a call into it, its spawn, a due timer, another instance's end) and ends at every park (each
-  await commits, spec §6) or when nothing is ready. Its clock reads the time the segment started.
+  await commits, spec §15.1) or when nothing is ready. Its clock reads the time the segment started.
 - At the commit the instance is written to the store (`snapshotOf`); a write the store fails
   commits nothing, the instance read back as it last committed. Then what it did to others
   leaves it: answers to callers, the instances it spawned (made only now, so a discarded segment
   spawns nothing), its end told to watchers, its log records (to the host's reports, or to the
-  `Advanced` of a host call advancing it). A panicked segment never happened (spec §5): it commits
+  `Advanced` of a host call advancing it). A panicked segment never happened (spec §14): it commits
   the instance as it stood before, and its end alone leaves it, the calls still waiting hearing
   its panic. A panic unwinds to the run's outermost guarded call (`run/panic-guard.ts`), even from an
   async call started within another, so no code of the instance runs past it, a host extern call
@@ -156,13 +156,13 @@ it as a native, with exactly the summary its extern predecessor had (spec §3.16
   (`Run.onArrivalTaken` into `Resident.inputs`), which a segment run again applies again. A call
   made into it after a call parked still starts before the commit, which can't keep it
   (`ReadyQueue.nextInvocation`).
-- **Crash at every await** (spec §10): before committing, the segment runs again from the same
+- **Crash at every await** (spec §18): before committing, the segment runs again from the same
   inputs on the instance as it last committed, read back, as a restart's is, into a fresh run of
   the program bound to its Definition's hash (a test binds a second build), which takes the instance
   over (`Arrivals.succeededBy`: what arrives later lands there), and stops at its first park, as the first
   run did; that run commits and the first run's effects never leave. Answers of calls running across
   the rerun come from the last commit (`Resident.answers`).
-- **Random source** (spec §3.8 `random`): each instance has a seed of its own, derived from the
+- **Random source** (spec §19.2 `random`): each instance has a seed of its own, derived from the
   host's `seed` and what the instance is (`instanceSeed`, each kind under a prefix of its own): a
   context's from its key; a live run's, never persisted, from its name and the count of live runs
   the host started before it (`host/live-runs.ts`), so the usual `main` and the context named
@@ -174,13 +174,13 @@ it as a native, with exactly the summary its extern predecessor had (spec §3.16
   the segment started and the call that started it, if one did (`replay`): its spawn's, or a call
   into it. A panic no caller hears is reported to the host (`HostReports.panicked`): a call let go
   of hears none (`Invocation.hears`).
-- **Too deep to persist** (spec §5): a value nesting past `maximumDepth` panics the instance at the
+- **Too deep to persist** (spec §14): a value nesting past `maximumDepth` panics the instance at the
   await that would commit it, named by the call that parked last.
-- Extern constants are read once per instance and kept as its context constants (spec §3.6).
+- Extern constants are read once per instance and kept as its context constants (spec §17.2).
 
 ## Function slots (`run/slots.ts`, `run/remote-calls.ts`)
 
-In a Definition built to run tests (spec §10), the run's one mocking primitive: a function value
+In a Definition built to run tests (spec §18), the run's one mocking primitive: a function value
 bound to a function-table entry's slot runs in place of the entry's calls. The testing library
 makes its mocks of it (testing.ista): `mock` binds a replacement recording its calls, a `Mock`'s
 `dispose` unbinds it, and `calls()` reads what it recorded, all Istalang.
@@ -232,9 +232,9 @@ makes its mocks of it (testing.ista): `mock` binds a replacement recording its c
 - `programs.ts`: `DeployedProgram.start(name, {function?, arguments?, crashEveryAwait?})` runs a
   live run named `name` (what `runtime.id()` reads). Its start entry decodes the arguments and calls
   the root without awaiting; the start's encoding entry runs the moment the root's outcome settles,
-  and the live run finishes then: readied work never runs, suspended calls stop (spec §10). The
+  and the live run finishes then: readied work never runs, suspended calls stop (spec §18). The
   instances it reached go on as far as they can without waiting.
-- **Runtimes over the store** (`open-runtimes.ts`, spec §9): opening the first one resumes the
+- **Runtimes over the store** (`open-runtimes.ts`, spec §17.1): opening the first one resumes the
   store's work, every instance stored there that hasn't ended read back for the world to run on.
   The earliest one open serves the jobs (`runtime._served`) of every instance running its live
   code's program that began since: running then, made since, or run again by a retry, whose panic

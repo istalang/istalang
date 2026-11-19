@@ -1,5 +1,5 @@
 /**
- * Fitting a value where a type is expected (§2, §3.1, §3.5, §3.10, §3.14, §3.15): the same type, a
+ * Fitting a value where a type is expected (§4.2, §5.2, §8.1, §8.2, §6.4, §4.5): the same type, a
  * value converted into an `any` type its type meets, a nominal struct's value into its equal shape,
  * a function made async where one of its parameters giving a future of its result is expected, a
  * one-element tuple and its element each where the other is expected, a literal type's value as its
@@ -16,17 +16,17 @@
  *   union: an `Email` fits `(any Notifier)?`. An `any` type converts into another whose
  *   constraints are among its own. A nominal struct's value converts into a shape its fields are,
  *   as the program says (`Fitting.shapeOf`); a shape never converts into a nominal struct. A
- *   recursive type's value is its body's, one type (§3.17), so it goes in and out as what it
+ *   recursive type's value is its body's, one type (§4.6), so it goes in and out as what it
  *   unfolds to.
  * - Where none of those fits, a value whose type is built of others converts part by part, each
- *   part as the variance of what holds it allows (§3.5, parts.ts): an `Array<fn()>` is an
+ *   part as the variance of what holds it allows (§8.1, parts.ts): an `Array<fn()>` is an
  *   `Array<async fn()>`, and an `Array<Int>` an `Array<Int?>`; so does a union whose members each
  *   fit, one by its parts. A part converts as any value does, but for the conversion between a
- *   one-element tuple and its element, which stays at the top (§3.15).
+ *   one-element tuple and its element, which stays at the top (§4.5).
  * - A member written with a type parameter is tried after the members without one, so inference
- *   binds it only to what the others don't take (§3.5): `T?` given an `Int?` binds `T` to `Int`.
+ *   binds it only to what the others don't take (§8.1): `T?` given an `Int?` binds `T` to `Int`.
  * - Whether a type meets a constraint is the program's to say (`Fitting`).
- * - A member parameter's value (`T in U`, §3.5) fits where its own type doesn't as a value of `U`
+ * - A member parameter's value (`T in U`, §8.1) fits where its own type doesn't as a value of `U`
  *   does: it is one member of `U`, which each instantiation makes concrete.
  * - Why a value doesn't fit is worded once for every place that reports it, a value's own check and
  *   a call's argument alike (`misfitOf`): it converts into several members of the union expected,
@@ -99,7 +99,7 @@ export interface Fit {
 /**
  * A value put into `union`: as its `member`, or, without one, member by member from a union. An
  * instantiation may absorb the member into an `any` member, or collapse the union into the `any`
- * type that took the others whole (§2, §3.5), which lowering derives where the value then goes.
+ * type that took the others whole (§4.2, §8.1), which lowering derives where the value then goes.
  */
 interface IntoUnion {
   readonly union: UnionType | AnyType;
@@ -112,8 +112,8 @@ export const exactFit: Fit = { conversion: { kind: 'none' } };
 /**
  * What fitting needs of the program: the rules types are built by (../../type/type-rules.ts),
  * whether a type meets an `any` type's constraints, the shape a nominal struct's value converts
- * into, if any (§3.1), the union a member parameter stands for one member of (§3.5), and the futures
- * an async function's call gives (§3.14).
+ * into, if any (§5.2), the union a member parameter stands for one member of (§8.1), and the futures
+ * an async function's call gives (§6.4).
  */
 export interface Fitting extends TypeRules, Futures {
   readonly meetsAny: (found: Type, target: AnyType) => boolean;
@@ -130,16 +130,16 @@ export interface Fitting extends TypeRules, Futures {
    * other.
    */
   readonly qualifierOf: (parameter: ParameterKey) => QualifierParameter | undefined;
-  /** How each of a declaration's type parameters relates its instantiations (§3.5). */
+  /** How each of a declaration's type parameters relates its instantiations (§8.1). */
   readonly varianceOf: (declaration: VariedDeclaration) => readonly Variance[];
   /**
    * The instantiation of `constraint`'s trait `found` meets in its place, through the trait's
-   * variance (§3.10), the program's one answer per type and constraint.
+   * variance (§8.2), the program's one answer per type and constraint.
    */
   readonly metInstantiation: (found: Type, constraint: Constraint) => MetInstantiation;
   /**
    * The instantiations of `trait` a value of `found` may meet, each of its parameters found, none
-   * sought (§3.10): what inference relates a value through where an `any` type is expected, those
+   * sought (§8.2): what inference relates a value through where an `any` type is expected, those
    * of a type holding variables judged once they are known.
    */
   readonly proposedInstantiations: (
@@ -185,7 +185,7 @@ export function fitOf(found: Type, expected: Type, fitting: Fitting): Fit | unde
 }
 
 /**
- * How `found` fits `expected` under `rules` (§2, §3.10, §3.14, §3.15): exact, converted once, or
+ * How `found` fits `expected` under `rules` (§4.2, §8.2, §6.4, §4.5): exact, converted once, or
  * put into a union, converted first.
  */
 export function matchConversion(
@@ -198,7 +198,7 @@ export function matchConversion(
 
 /**
  * `rules` made the rules of one match. A part fits as any value does, but for the conversion
- * between a one-element tuple and its element, which stays at the top (§3.15): an `Array<(T,)>` is
+ * between a one-element tuple and its element, which stays at the top (§4.5): an `Array<(T,)>` is
  * no `Array<T>`, else the two would fit each other.
  */
 function matchingWith(rules: ConversionRules): Matching {
@@ -270,7 +270,7 @@ function intoOneMember(found: Type, expected: UnionType, rules: Matching): Fit |
 }
 
 /**
- * How a value of a member parameter `found` fits where its own type doesn't (§3.5): as its union's
+ * How a value of a member parameter `found` fits where its own type doesn't (§8.1): as its union's
  * values do, since it is one of them. Into a union holding every member of its own, it goes as
  * itself, which each instantiation makes the member it stands for; else as its union converts.
  */
@@ -315,7 +315,7 @@ function convertedInto(found: Type, expected: Type, rules: Matching): Conversion
     : undefined;
 }
 
-/** Whether `type` is built of parts a conversion may convert one by one (§3.5). */
+/** Whether `type` is built of parts a conversion may convert one by one (§8.1). */
 function hasParts(type: Type): boolean {
   return (
     type.kind === 'nominal' ||
@@ -327,7 +327,7 @@ function hasParts(type: Type): boolean {
 
 /**
  * A union whose members each fit `expected`, one converted by its parts at least, so the whole union
- * converts member by member (§3.5): `Int | Array<Int>` into `Int? | Array<Int?>`, and, as an
+ * converts member by member (§8.1): `Int | Array<Int>` into `Int? | Array<Int?>`, and, as an
  * instantiation may collapse the union expected, `Array<Int?> | Array<Int>` into `Array<Int?>`,
  * a type built of parts; never into a type parameter, which a union fills only as a whole.
  */
@@ -339,7 +339,7 @@ function membersConverted(found: UnionType, expected: Type, rules: Matching): Fi
 
 /**
  * Whether `found` is a literal type, or a union of literals, all of `base`'s base; the keys of a
- * struct not known yet are String literals too (§3.1).
+ * struct not known yet are String literals too (§5.2).
  */
 function isLiteralOf(found: Type, base: Type, futures: Pick<Futures, 'awaitedOf'>): boolean {
   return membersOf(found).every(
@@ -351,7 +351,7 @@ function isLiteralOf(found: Type, base: Type, futures: Pick<Futures, 'awaitedOf'
 
 /**
  * A union converted whole into the one `any` member of `expected` that each of its members meets,
- * then put into it (§6): `Email | Sms` fits `(any Named)?`; undefined when no one member takes it.
+ * then put into it (§4.2): `Email | Sms` fits `(any Named)?`; undefined when no one member takes it.
  */
 function intoAnyMember(found: UnionType, expected: UnionType, rules: Matching): Fit | undefined {
   const [only, ...others] = expected.members.filter(
@@ -366,7 +366,7 @@ function intoAnyMember(found: UnionType, expected: UnionType, rules: Matching): 
 /**
  * A member of `expected` that `member`, a member of a union found, goes into: its own, its base
  * when it is a literal or a member parameter standing for one (`literalsBase`), or the `any`
- * member that takes it whole (§2), which holds it as its own type; or undefined.
+ * member that takes it whole (§4.2), which holds it as its own type; or undefined.
  */
 function intoMember(member: Type, expected: UnionType, rules: ConversionRules): Type | undefined {
   return (
@@ -386,7 +386,7 @@ function baseMember(member: Type, expected: UnionType, rules: ConversionRules): 
 /**
  * The member of `expected` that is `found`'s own type: one written without a type parameter, else
  * one written with one that takes it, so inference binds a parameter only to what the others
- * don't take (§3.5).
+ * don't take (§8.1).
  */
 function ownMember(found: Type, expected: UnionType, rules: ConversionRules): Type | undefined {
   const isGeneric = (member: Type) => parametersIn(member).length > 0;
@@ -404,7 +404,7 @@ function ownMember(found: Type, expected: UnionType, rules: ConversionRules): Ty
  */
 function membersConverting(found: Type, expected: UnionType, rules: Matching): readonly Type[] {
   return expected.members.filter((member) =>
-    // A recursive member stands for what it unfolds to (§3.17), which is what converts.
+    // A recursive member stands for what it unfolds to (§4.6), which is what converts.
     rules.trial(() => convertedInto(found, unfolded(member), rules) !== undefined),
   );
 }
@@ -429,7 +429,7 @@ function intoSeveral(found: Type, expected: Type, fitting: Fitting): boolean {
 }
 
 /**
- * How `found` converts to `expected` between a one-element tuple and its element (§3.15): made one
+ * How `found` converts to `expected` between a one-element tuple and its element (§4.5): made one
  * where one of it is expected, or taken out where its element is; undefined when neither.
  */
 function singleConversion(
@@ -451,9 +451,9 @@ export function singleElement(type: Type): Type | undefined {
 }
 
 /**
- * Whether `fit` changes a value's own shape, as a call taking it as it is wouldn't (§3.7): made
+ * Whether `fit` changes a value's own shape, as a call taking it as it is wouldn't (§6.2): made
  * async, a one-element tuple and its element, a nominal struct's value as its shape, or its parts
- * converted (§3.5).
+ * converted (§8.1).
  */
 export function reshapes(fit: Fit): boolean {
   return reshapingKinds.has(fit.conversion.kind);
@@ -469,7 +469,7 @@ const reshapingKinds: ReadonlySet<Fit['conversion']['kind']> = new Set([
 
 /**
  * `source`, a function giving no future, made async where `target`, a function of its parameters
- * giving a future of its result, is expected: calling it gives a future already resolved (§3.14),
+ * giving a future of its result, is expected: calling it gives a future already resolved (§6.4),
  * of `target`'s kind. Undefined where it doesn't fit so.
  */
 function asyncFitOf(
@@ -485,7 +485,7 @@ function asyncFitOf(
 
 /**
  * Whether `found`, a constraint a type meets, stands for `expected` as its trait's variance says
- * (§3.10): `Source<Int>` for `Source<Int?>` where `Source` only gives what it is given for.
+ * (§8.2): `Source<Int>` for `Source<Int?>` where `Source` only gives what it is given for.
  */
 export function constraintFits(found: Constraint, expected: Constraint, fitting: Fitting): boolean {
   const rules = matchingWith({

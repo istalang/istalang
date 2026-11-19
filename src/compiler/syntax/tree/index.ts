@@ -203,7 +203,7 @@ function lastChildOf(tree: TreeBodies, node: SyntaxNode): SyntaxNode | undefined
   return childrenOf(tree, node).at(-1);
 }
 
-/** Whether `node` makes a function of its own, a lambda or a local function (§3.14). */
+/** Whether `node` makes a function of its own, a lambda or a local function (§6.4). */
 export function nestsFunction(node: SyntaxNode): node is Lambda | FunctionDeclaration {
   return node.kind === 'Lambda' || node.kind === 'FunctionDeclaration';
 }

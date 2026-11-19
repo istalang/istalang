@@ -1,7 +1,7 @@
 # error: 5025 at 24:3
 # error: 5025 at 29:3
 # error: 5025 at 30:3
-# A value holding a future, a Result or a disposable must be used, at any depth (§7): a declared
+# A value holding a future, a Result or a disposable must be used, at any depth (§16): a declared
 # struct holds its fields and an enum its variants' fields, as a tuple holds its elements, and a
 # value of a type parameter constrained to be Disposable is disposable. A recursive type holding
 # none of them may be discarded.

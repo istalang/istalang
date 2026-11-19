@@ -1,5 +1,5 @@
 /**
- * The rules that normalize a union's members (§2), in one home for every union built: `unionOf`
+ * The rules that normalize a union's members (§4.2), in one home for every union built: `unionOf`
  * (unions.ts) over types, and the term graph of recursive types (identity/recursive-terms.ts) over
  * its slots, whose members only flattening brings together. Each reads its members through a
  * `MemberReading`, so the rules never depend on how a member is held.
@@ -32,7 +32,7 @@ export function literalBase(value: LiteralValue): LiteralBase {
 
 /**
  * The type a value of `type` widens to without a literal type: a literal's base, `String` for the
- * keys of a struct not known yet, each a String literal (§3.1), else itself.
+ * keys of a struct not known yet, each a String literal (§5.2), else itself.
  */
 export function baseOf(type: Type): Type {
   if (type.kind === 'keys') {
@@ -120,7 +120,7 @@ function mergedLiterals<Member>(
 }
 
 /**
- * The `any` type among `members` that takes `member` whole (§2), as `rules` say: one whose every
+ * The `any` type among `members` that takes `member` whole (§4.2), as `rules` say: one whose every
  * constraint `member` meets, or its literal's base does; undefined for an `any` type itself, which
  * stays a member of its own, and for a type none takes.
  */

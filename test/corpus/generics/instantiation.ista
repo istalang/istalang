@@ -1,5 +1,5 @@
 # outcome: "12 6.0 8 8 2"
-# Each instantiation calls what its own type has (§3.10), through generic calls nested in generic
+# Each instantiation calls what its own type has (§8.2), through generic calls nested in generic
 # calls: `T.zero()` and `+` inside `quad<T>` reach `Int`'s, `Float`'s and `Money`'s functions.
 
 import * as runtime from 'runtime'

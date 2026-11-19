@@ -1,6 +1,6 @@
 # panic: A call nests deeper than the runtime allows.
 # A context constant reading itself in its own initializer makes it again, calling itself until the
-# nesting limit panics (§3.4, §5).
+# nesting limit panics (§7.1, §14).
 
 import * as runtime from 'runtime'
 

@@ -184,7 +184,7 @@ describe('using a union: traits, overloads, clashes, equality, sendability, must
   });
 });
 
-describe('JSON codecs for `T | None`, `T??`, and literal unions (§6, §9)', () => {
+describe('JSON codecs for `T | None`, `T??`, and literal unions (§6, §17.4)', () => {
   it('encodes and decodes `T | None`, collapsed `T??`, and literal unions, refusing invalid literals', async () => {
     expect(
       await runMain(

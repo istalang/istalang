@@ -1,6 +1,6 @@
 /**
  * Goals asked at the root of a witness search (conformance.ts), kept program-wide: a type meets a
- * trait, or a struct constraint, the same wherever it is asked (§3.10), so one search answers
+ * trait, or a struct constraint, the same wherever it is asked (§8.2), so one search answers
  * every site asking: calls instantiated with the same type arguments (`rootGoalsAt`), lowering's
  * trait objects, conversions, noted constraint checks, the host boundary and codecs ask one goal
  * at many sites.

@@ -1,7 +1,7 @@
 # error: 5400 at 12:9
-# A `match` must cover every value of its subject's type (§3.11, §4): a missing variant is
+# A `match` must cover every value of its subject's type (§11.4, §11.1): a missing variant is
 # reported at the subject. A pattern its subject's type can't hold is only warned of, as it never
-# runs (§3.11).
+# runs (§11.3).
 
 enum Decision:
   Approved(by: String)

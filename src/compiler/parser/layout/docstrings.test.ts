@@ -1,5 +1,5 @@
 /**
- * Docstrings (§2): first in a declaration's indented body or a module, or on the line below a
+ * Docstrings (§2.3): first in a declaration's indented body or a module, or on the line below a
  * declaration without one; refused anywhere else.
  */
 

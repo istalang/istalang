@@ -1,7 +1,7 @@
 /**
- * Character classes of the lexical grammar (spec §2).
+ * Character classes of the lexical grammar (spec §2.1).
  *
- * Identifiers are ASCII-only in v0.1 (§2), so every class is a comparison on one UTF-16 unit.
+ * Identifiers are ASCII-only in v0.1 (§2.1), so every class is a comparison on one UTF-16 unit.
  * Unicode appears only inside strings and comments, which the scanner copies without classifying.
  * The functions take `string | undefined` so that callers can pass `text[i]` past the end of input
  * and get `false` instead of a special case.

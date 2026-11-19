@@ -8,7 +8,7 @@ import type { Expression } from '../../../syntax/expressions/index.ts';
 import { parseGroup } from '../../cursor/recovery.ts';
 import type { Parser } from '../../parser.ts';
 
-/** `(x)` groups; `()`, `(x,)` and `(x, y)` are tuples (§3.15). */
+/** `(x)` groups; `()`, `(x,)` and `(x, y)` are tuples (§4.5). */
 export function parseParenthesized(parser: Parser): Expression {
   return parseGroup<Expression, Expression>(parser, () => parser.expression(), {
     tuple: (span, elements) => ({ kind: 'Tuple', span, elements }),

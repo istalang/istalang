@@ -1,5 +1,5 @@
 /**
- * Values compile time computes (§2, §3): what the checker hands lowering for a top-level constant
+ * Values compile time computes (§4.2, §5.1): what the checker hands lowering for a top-level constant
  * or a duration literal, so lowering only maps types to table indexes. With check.ts, this is the
  * checker's surface for later phases; it holds value constructors, so it can't sit in check.ts,
  * which the checker's own modules import.
@@ -24,7 +24,7 @@ import type { TargetStep } from './checked-pattern.ts';
 /**
  * A primitive (`Unit` is `null`), a struct of a struct type with its fields in declaration order,
  * a tuple, an array, a map with its entries in order and no two keys equal, a value put into a
- * union as one of its members (§2), or a lambda that captures nothing (§3.14), with the constant
+ * union as one of its members (§4.2), or a lambda that captures nothing (§6.4), with the constant
  * whose value checked it (`Checker.constantBodyOf`).
  */
 export type ConstantForm =
@@ -49,7 +49,7 @@ export type ConstantForm =
  * The types `form`'s value is built of, each a type lowering gives an entry (lowering/tables/
  * constants.ts): every struct's, and every union a member is put into, with that member. An
  * annotation every instance's entry carries names none of its declaration's type parameters in
- * them (§3.16, rules/annotations.ts).
+ * them (§5.5, rules/annotations.ts).
  */
 export function typesIn(form: ConstantForm): readonly Type[] {
   switch (form.kind) {
@@ -72,13 +72,13 @@ export function typesIn(form: ConstantForm): readonly Type[] {
   }
 }
 
-/** What a duration literal is (§2): a `time.Duration`, whose one field is its milliseconds. */
+/** What a duration literal is (§3.1): a `time.Duration`, whose one field is its milliseconds. */
 function durationForm(type: NominalType, milliseconds: bigint): ConstantForm {
   return { kind: 'struct', type, fields: [{ kind: 'primitive', value: milliseconds }] };
 }
 
 /**
- * The value `literal` writes (§2), of `type`, the type checking gave it: `none` is the one value of
+ * The value `literal` writes (§3.1), of `type`, the type checking gave it: `none` is the one value of
  * `None`, written as `null`, as `Unit`'s is; a duration is a `time.Duration`, undefined where its
  * type is no such struct.
  */
@@ -93,7 +93,7 @@ export function literalForm(literal: Literal, type: Type | undefined): ConstantF
   }
 }
 
-/** The one value a literal type holds (§2); undefined for any other type. */
+/** The one value a literal type holds (§4.3); undefined for any other type. */
 export function literalTypeForm(type: Type): ConstantForm | undefined {
   return type.kind === 'literal' ? { kind: 'primitive', value: type.value } : undefined;
 }
@@ -102,9 +102,9 @@ export function literalTypeForm(type: Type): ConstantForm | undefined {
 export const unitForm: ConstantForm = { kind: 'primitive', value: null };
 
 /**
- * The part of `form` at `path`, outermost first (§3.15): a field or element by position, a field
+ * The part of `form` at `path`, outermost first (§4.5): a field or element by position, a field
  * by its name in the struct `fieldsOf` lays out, or a struct pattern's rest, the struct of the
- * fields it takes (§3.11), built from `form`'s by name.
+ * fields it takes (§11.3), built from `form`'s by name.
  */
 export function formAt(
   form: ConstantForm,
@@ -141,7 +141,7 @@ function formStep(
 }
 
 /**
- * `==` and map keys over forms (§3.8, §3.9), by the rules the runtime's values follow too
+ * `==` and map keys over forms (§19.3, §10.2), by the rules the runtime's values follow too
  * (foundation/language/values.ts): a map constant's later entry for an equal key replaces the
  * earlier's. A head's text tells only kinds apart, since a struct's type has none of its own; equal
  * texts are confirmed by `==`. A nominal struct compares its declaration, never its instantiation,

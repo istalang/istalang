@@ -5,8 +5,8 @@
  * call of it in an ista function is delegated, `runtime.delegate f(…)`: the host's work runs after
  * the commit, and the ista code gets an ista future of `T`, as it did.
  *
- * - A std module's externs are the runtime's, which keep their mark (§3.6), so its sources are
- *   left as they are, and so is an excerpt of the prelude, such as the spec's (§3.8), which
+ * - A std module's externs are the runtime's, which keep their mark (§17.2), so its sources are
+ *   left as they are, and so is an excerpt of the prelude, such as the spec's (§19.1), which
  *   declares the prelude's own `Future`, as no program does.
  * - Only an extern the source declares is known as one, called by its name: a call of one another
  *   source declares, or through a method, is left for a person, whose compiler names it.

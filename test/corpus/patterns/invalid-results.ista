@@ -3,7 +3,7 @@
 # error: 5405 at 20:17
 # error: 5404 at 28:17
 # error: 5025 at 33:3
-# `?` takes a Result apart (§3.12): never an optional, and only inside a function whose own Result
+# `?` takes a Result apart (§12): never an optional, and only inside a function whose own Result
 # holds the same error type, declared or inferred. A Result must be used.
 
 import * as runtime from 'runtime'

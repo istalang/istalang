@@ -1,9 +1,9 @@
-# The strings module (spec §3.8): String methods, with JavaScript's names.
+# The strings module (spec §19.2): String methods, with JavaScript's names.
 #
-# Every position and length counts code points, as a string's own indexing does (§3.8), so none
+# Every position and length counts code points, as a string's own indexing does (§19.3), so none
 # splits a code point. They are called as `strings.trim(s)`, or as `s.trim()` where `trim` is
-# imported, the way any module's functions on a primitive are (§3.13). `includes` is the prelude's,
-# since `in` calls it (§3.9).
+# imported, the way any module's functions on a primitive are (§13.1). `includes` is the prelude's,
+# since `in` calls it (§10.2).
 
 extern fn indexOf(self: String, search: String, from: Int = 0) -> Int
 
@@ -80,7 +80,7 @@ extern fn toLowerCase(self: String) -> String
 
 # A template's `{}` takes the next value, `{n}` value `n`, and `{{` and `}}` write a brace. The
 # template is the program's own text, so a placeholder without a value, or a brace that is neither,
-# is a bug in it and panics (§3.12). `{}` counts on from the last `{}` alone, so writing `{n}`
+# is a bug in it and panics (§12). `{}` counts on from the last `{}` alone, so writing `{n}`
 # between them doesn't move it; values no placeholder takes are left out.
 fn format(template: String, ...values: Array<String>) -> String:
   let written = ""

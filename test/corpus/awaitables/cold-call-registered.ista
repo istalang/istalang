@@ -1,5 +1,5 @@
 # outcome: 17
-# An awaitable keeps the work it starts alive by registering its resolver on it (§6, §7): a call
+# An awaitable keeps the work it starts alive by registering its resolver on it (§15.2, §16): a call
 # `onAwait` starts and registers the wait's resolver on runs to its end and decides the wait.
 
 import * as runtime from 'runtime'

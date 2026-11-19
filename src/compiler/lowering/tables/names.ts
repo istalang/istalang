@@ -9,7 +9,7 @@
  * - A type's table key is its key (types/identity/type-keys.ts) with each identity spelled by its
  *   qualified name in place of a number, from the same structural walk: canonical, injective over
  *   keys, and a function of the type alone, never of an alias it was written through or of what
- *   else the program declares (§3.17), so it is persisted. A union orders its variants by their
+ *   else the program declares (§4.6), so it is persisted. A union orders its variants by their
  *   members' table keys and names each by one, and an entry a declaration doesn't name is named by
  *   its own (type-table.ts).
  * - Extern keys spell types their own way, stored (extern-keys.ts).

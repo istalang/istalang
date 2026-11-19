@@ -1,9 +1,9 @@
 /**
  * Lowering's entry: a checked program, compiled into a Definition (docs/arch/definition.md).
  *
- * Lowering starts from `main`, or from a test program's suites (§10), and compiles every entry it
+ * Lowering starts from `main`, or from a test program's suites (§18), and compiles every entry it
  * reaches, through a worklist (tables/tables.ts), each by its kind's row of the kind table
- * (entry-kinds.ts), and the runtime's loop serving jobs once it reaches `delegate` (§5), as the
+ * (entry-kinds.ts), and the runtime's loop serving jobs once it reaches `delegate` (§14), as the
  * program's job server. Lowering runs only on a program the checker accepted, so it reports
  * nothing; anything it can't lower is a bug in an earlier phase and throws.
  *
@@ -39,7 +39,7 @@ export interface LoweringOptions {
 }
 
 /**
- * The tables of `checker`'s program, a test build's functions' slots `rebindable` (§10), taking over
+ * The tables of `checker`'s program, a test build's functions' slots `rebindable` (§18), taking over
  * the entries `std` kept for the build: what changes how the std's entries lower, which the std
  * functions its test modules mock do too, as they are never shared across types.
  */
@@ -62,7 +62,7 @@ function tablesOf(
 }
 
 /**
- * The Definition of everything `main` and the program's startable functions reach (§9): `main` is
+ * The Definition of everything `main` and the program's startable functions reach (§17.3): `main` is
  * started through its start entry, as a host starts any of the others.
  */
 export function lower(
@@ -88,14 +88,14 @@ export function lower(
   });
 }
 
-/** A `@Suite` function (§10), with the title its annotation gives. */
+/** A `@Suite` function (§18), with the title its annotation gives. */
 export interface Suite {
   readonly title: string;
   readonly declaration: FunctionDeclaration;
 }
 
 /**
- * The Definition of a program's tests (§10): everything its `suites` and the testing module's
+ * The Definition of a program's tests (§18): everything its `suites` and the testing module's
  * listing and running of their tests reach, which every test's instance starts from.
  */
 export function lowerTests(

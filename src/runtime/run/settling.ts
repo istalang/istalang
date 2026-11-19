@@ -1,5 +1,5 @@
 /**
- * Settling futures (§6): futures one event settles together call what waits on each of them (its
+ * Settling futures (§15.2): futures one event settles together call what waits on each of them (its
  * `waiting`, as the prelude keeps it) at once, future by future in the event's order: a future
  * widened follows its call's from the prelude (`_converted`), settling within that call's event.
  * Then the run's own listeners hear each value, such as a call into a context waiting on its

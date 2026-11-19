@@ -1,8 +1,8 @@
 # outcome: "row 0, row 1, stopped 11, stopped 10, stopped 1, stopped 0, rows done, stopped 21, stopped 20, broke out, last pass, stopped 33, stopped 32, stopped 31, while done, batch started, stopped 41, stopped 40, after batch, function done, stopped 50"
 # `hold(name)` keeps what it holds until the loop or block `name` labels ends, however it ends
-# (§3.4, §4): normally, by `break` of a loop around it, as the earlier pass's holdings show when the
+# (§7.1, §11.1): normally, by `break` of a loop around it, as the earlier pass's holdings show when the
 # `break` stands before the hold, and kept across `continue`; awaiting inside it keeps them across
-# a commit. `hold(f)` naming the function is plain `hold`. Each scope releases newest first (§7).
+# a commit. `hold(f)` naming the function is plain `hold`. Each scope releases newest first (§16).
 
 import * as runtime from 'runtime'
 import * as time from 'time'

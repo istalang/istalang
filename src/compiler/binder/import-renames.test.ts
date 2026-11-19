@@ -1,5 +1,5 @@
 /**
- * Imported names renamed (§3.13): an alias binds the export it names, and only the alias is in
+ * Imported names renamed (§13.1): an alias binds the export it names, and only the alias is in
  * scope, so clashes and the prelude rule read the names bound. Both forms of a named import, bare
  * on one line and parenthesized over any lines, bind alike, and so does what the formatter prints
  * of either: compared as the export each bound name denotes, generated over names and renames.

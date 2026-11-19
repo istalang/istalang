@@ -1,5 +1,5 @@
 /**
- * Function types (§3.14) and the packs they end in (§3.5): built by one constructor, compared by
+ * Function types (§6.4) and the packs they end in (§8.1): built by one constructor, compared by
  * one relation. The types themselves are type/index.ts's.
  *
  * - `functionType` is the only way a function type is built, written, inferred or substituted
@@ -9,7 +9,7 @@
  *   it: its mark and sendability are type slots, each a `Mark` or `Sendability` member or a
  *   variable, `"simple"` and `"plain"` where its head writes none (`sendOf`), and its text and key
  *   print the head's words for them (`modifiersOf`).
- * - An async head is no part of the type (§3.14): `async fn(A) -> R` is `fn(A) -> Future<R>`,
+ * - An async head is no part of the type (§6.4): `async fn(A) -> R` is `fn(A) -> Future<R>`,
  *   which a head's call gives (`headResult`), so the two spellings are one type, one key and one
  *   text, and a function returning a future is an async one wherever its type is all that's known.
  * - A function fits where another is expected when its sendability fits, by `Sendability`'s order
@@ -55,7 +55,7 @@ function sendabilityOf(send: Type): Sendability | undefined {
   return sendabilities.find((each) => send.kind === 'literal' && send.value === each);
 }
 
-/** Whether values of the function type `type` capture only sendable values (§3.14). */
+/** Whether values of the function type `type` capture only sendable values (§6.4). */
 export function isSendableFunction(type: FunctionType): boolean {
   return sendabilityOf(type.send) === 'sendable';
 }
@@ -96,7 +96,7 @@ interface FunctionParts extends WrittenThrough {
 
 /**
  * The function type of `parts`, ending in its pack: a pack it keeps, a tuple it flattens into
- * parameters by value, `Unit` into none (§3.5); anything else was refused where it was bound to a
+ * parameters by value, `Unit` into none (§8.1); anything else was refused where it was bound to a
  * pack, so it leaves the error type.
  */
 export function functionType({ pack, ...parts }: FunctionParts): FunctionType {
@@ -120,7 +120,7 @@ function packed(
 }
 
 /**
- * The function type `Fn<Args, Result, Kind, Send>` names (§3.14), given its arguments in that
+ * The function type `Fn<Args, Result, Kind, Send>` names (§6.4), given its arguments in that
  * order: `Args`, a tuple, gives its parameters, each by value unless `byReference` says its written
  * item is a `&T`; a pack, or anything else, ends it as `functionType` takes a pack.
  */
@@ -139,13 +139,13 @@ export function fnType(
       });
 }
 
-/** A rest parameter: an array's (§3.3), whose arguments are its `item`s, or a pack's (§3.5). */
+/** A rest parameter: an array's (§6.1), whose arguments are its `item`s, or a pack's (§8.1). */
 export type RestSlot = { readonly kind: 'array'; readonly item: Type } | { readonly kind: 'pack' };
 
-/** The rest slot of a parameter or function type ending in a pack (§3.5). */
+/** The rest slot of a parameter or function type ending in a pack (§8.1). */
 export const packRestSlot: RestSlot = { kind: 'pack' };
 
-/** Whether `type` is a pack, a type parameter standing for a tuple of types (§3.5). */
+/** Whether `type` is a pack, a type parameter standing for a tuple of types (§8.1). */
 export function isPack(type: Type): type is TypeParameterType {
   return (
     type.kind === 'parameter' &&
@@ -154,14 +154,14 @@ export function isPack(type: Type): type is TypeParameterType {
   );
 }
 
-/** Whether `type` can stand for a pack: a tuple, `Unit` (the empty tuple), or a pack (§3.5). */
+/** Whether `type` can stand for a pack: a tuple, `Unit` (the empty tuple), or a pack (§8.1). */
 export function fillsPack(type: Type): boolean {
   return type.kind === 'error' || isPack(type) || tupleElements(type) !== undefined;
 }
 
 /**
  * Whether `type` is a function type taking nothing, `fn() -> X`, as the function a deferred call
- * gives is (§3.14); one ending in a pack may take something.
+ * gives is (§6.5); one ending in a pack may take something.
  */
 export function takesNothing(type: Type): type is FunctionType {
   return type.kind === 'function' && type.parameters.length === 0 && type.pack === undefined;
@@ -178,7 +178,7 @@ type ParameterRelation = (declared: Type, given: Type, byReference: boolean) => 
  * same result, their types compared by `parts`: exactly (`sameType`), or as inference matches a
  * declared type against a given one. Whether each is sendable is the caller's to compare.
  * A pack on either side takes the other's parameters past its own fixed ones, as their tuple, or
- * the other's own pack when none are left (§3.5).
+ * the other's own pack when none are left (§8.1).
  */
 function sameShape(
   declared: FunctionType,
@@ -264,7 +264,7 @@ export function functionFits(
   );
 }
 
-/** What awaiting a value gives (§6): the value it resumes with, and the kind of its wait. */
+/** What awaiting a value gives (§15.2): the value it resumes with, and the kind of its wait. */
 export interface AwaitedType {
   readonly value: Type;
   /** The kind of code it is awaited in (proposal 8, Rule 5): a `Persistence` member or variable. */
@@ -273,14 +273,14 @@ export interface AwaitedType {
 
 /** What relating a function's result to a future needs of the program: the futures it has. */
 export interface Futures {
-  /** `Future<T, K>` of `value`, what calling an async function of kind `mode` gives (§3.14). */
+  /** `Future<T, K>` of `value`, what calling an async function of kind `mode` gives (§6.4). */
   readonly futureOf: (value: Type, mode: Type) => Type;
   /** What awaiting a value of `type` gives; undefined where it can't be awaited. */
   readonly awaitedOf: (type: Type) => AwaitedType | undefined;
 }
 
 /**
- * How a function's result fits where another's is expected (§3.14): as a value, or, where a
+ * How a function's result fits where another's is expected (§6.4): as a value, or, where a
  * future is expected, the `value` it gives into that future's (`into`), made a future already
  * resolved where it gives none (`resolved`), awaited from the one it gives (`awaited`).
  */
@@ -332,7 +332,7 @@ function sameMode(
 
 /**
  * The value of the future `expected` of a function's result, where what it gives, `given`, is no
- * future: what it goes into, made a future already resolved (§3.14). Undefined where `expected`
+ * future: what it goes into, made a future already resolved (§6.4). Undefined where `expected`
  * is no future, or `given` is one, so an async function's result is never made a future of one.
  */
 export function resolvedInto(
@@ -359,7 +359,7 @@ export function madeAsync(
 
 /**
  * What calling a function of `head` and kind `kind` gives, where its body gives `value`: an async
- * head's call a future of it of that kind (§3.14), a plain one's the value.
+ * head's call a future of it of that kind (§6.4), a plain one's the value.
  */
 export function headResult(
   { futureOf }: Pick<Futures, 'futureOf'>,

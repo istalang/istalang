@@ -3,7 +3,7 @@
 # error: 5170 at 18:17
 # error: 5100 at 20:19
 # A type match no case of matches its use, one whose reductions never end, inference through a
-# type match, and `infer` outside a case's pattern (§3.5, §3.17).
+# type match, and `infer` outside a case's pattern (§8.1, §4.6).
 
 struct Field<T> { value: T }
 

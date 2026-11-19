@@ -1,5 +1,5 @@
 /**
- * Type parameters across the program (§3.5): where each is declared, its constraints resolved there
+ * Type parameters across the program (§8.1): where each is declared, its constraints resolved there
  * once, and the arguments given for those constraints, checked once the module that gave them is
  * checked (types/written/resolve-type.ts explains why later, and why every check is noted by then),
  * with the type `match`es an instantiation reaches, which must all reduce

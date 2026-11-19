@@ -150,7 +150,7 @@ function denotationsOf(
 
 /**
  * What a call of `called` names: the function, of `type` as a value; or the variant a constructor
- * builds (§3.11), of the enum type its type arguments make.
+ * builds (§5.3), of the enum type its type arguments make.
  */
 function calledDenotation(called: ResolvedCall, type: Type | undefined): Denotation {
   const built = constructedVariant(called.function);

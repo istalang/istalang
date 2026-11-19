@@ -1,5 +1,5 @@
 /**
- * The commutation law of a recursive alias use and what it unfolds to (§3.17, proposal 5 note 11),
+ * The commutation law of a recursive alias use and what it unfolds to (§4.6, proposal 5 note 11),
  * over every kind a body can be (a tuple, a function, a nominal type, a shape, a union): the two
  * are one type by key, and a literal of generated nesting built against the alias runs to the value
  * the same literal built against the body written out gives, passed where the alias is expected.

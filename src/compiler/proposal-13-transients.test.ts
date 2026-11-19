@@ -1,6 +1,6 @@
 /**
  * End-to-end verification of transient variables (docs/proposals/13-transients-and-getters.md,
- * spec §3.4): the outermost call of a function makes one, every call nested in it shares it, an
+ * spec §7.1): the outermost call of a function makes one, every call nested in it shares it, an
  * async call's included, and the next outermost call starts afresh. What checking refuses is
  * proposal-13-transients-refusals.test.ts.
  */

@@ -1,5 +1,5 @@
 # error: 5114 at 15:37
-# A witness can need the constraint it meets again (§3.10): the generic `show` meets Show for any
+# A witness can need the constraint it meets again (§8.2): the generic `show` meets Show for any
 # type that already meets Show, so whether Badge meets it is never decided, and is reported as a
 # search without end rather than as a function Badge lacks.
 

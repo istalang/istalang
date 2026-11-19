@@ -1,5 +1,5 @@
 # outcome: "1 x 4 | 3 4 | 4 3 | 9 2 | 5 7 | 3 4 5 | 7 8 | 6"
-# Tuples and destructuring (§3.15): building, reading elements by position, declarations taking
+# Tuples and destructuring (§4.5): building, reading elements by position, declarations taking
 # a value apart by tuple and struct patterns at any depth, and assignments to tuples and structs
 # of places, element assignment among them.
 

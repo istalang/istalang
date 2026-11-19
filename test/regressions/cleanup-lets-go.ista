@@ -1,5 +1,5 @@
 # outcome: 0
-# A disposed call's cleanup runs inside its disposal (§7): what it lets go of, its variables as it
+# A disposed call's cleanup runs inside its disposal (§16): what it lets go of, its variables as it
 # returns or stops at its next await and what it returns, which settles nothing, is disposed before
 # its call is gone, and so before what was let go of with it, which is older.
 

@@ -1,5 +1,5 @@
 # outcome: "3 | 11 | 2 22 | 5 | 0 | 2 22 | 2 22 | 0"
-# Sendable function types (§3.14): a function value capturing only sendable values has a sendable
+# Sendable function types (§6.4): a function value capturing only sendable values has a sendable
 # function type, which fits where the plain one is expected. Where one value is decided but others
 # may follow, the type is widened to the plain function type: a `let` without a written type, and
 # producers of one value that disagree, such as the items of an array literal or an if's branches.

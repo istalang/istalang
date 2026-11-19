@@ -1,5 +1,5 @@
 /**
- * A host's calls on one instance (§9, instance-calls.ts) run one after another: a call a host's
+ * A host's calls on one instance (§17.1, instance-calls.ts) run one after another: a call a host's
  * extern makes into the runtime, halfway through the segment calling it, starts once that call
  * ended, and sees what it committed.
  */

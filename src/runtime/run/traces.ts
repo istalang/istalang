@@ -1,5 +1,5 @@
 /**
- * Traces of compiled code, read off the JavaScript stack (§3.12), so nothing is paid for them
+ * Traces of compiled code, read off the JavaScript stack (§12), so nothing is paid for them
  * until a panic or a native asks.
  *
  * - Each instruction is one line of the program's code (codegen/entry.ts), and the code says
@@ -11,13 +11,13 @@
  * - A frame on a frame record shows only from where it last resumed: the stack holds nothing of
  *   what awaited it.
  * - A frame standing at its `rebound` handed its call over to the function bound to its slot
- *   (§10), whose frames stand for it: it runs none of its own code, so it shows none.
+ *   (§18), whose frames stand for it: it runs none of its own code, so it shows none.
  * - A panic is a thrown `Panic`, or a host limit `panicOf` names (a stack overflow is the recursion
  *   panic); anything else thrown is a bug.
  * - The recursion panic's trace starts at the call that nested too deep, the innermost frame
  *   standing at a `call`: the host's stack runs out anywhere in the cycle, a runtime helper an
  *   instruction calls included, so its innermost frame alone would depend on the stack's depth when
- *   the run began, which a segment run again doesn't share (§10).
+ *   the run began, which a segment run again doesn't share (§18).
  */
 
 import type { CodeFunction } from '../../definition/tables/functions.ts';
@@ -65,7 +65,7 @@ export class Traces {
     return { message: panic.message, trace: traceText(this.#definition, frames) };
   }
 
-  /** Where every running frame is, innermost first, as an `Error`'s `trace` reads (§3.12). */
+  /** Where every running frame is, innermost first, as an `Error`'s `trace` reads (§12). */
   here(): string {
     return this.#of(wholeStack('the stack, read for a trace'));
   }

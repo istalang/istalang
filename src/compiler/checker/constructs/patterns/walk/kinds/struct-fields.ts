@@ -1,9 +1,9 @@
 /**
  * What a struct pattern takes of a struct whose fields aren't known yet, and its rest
- * (§3.11, §3.15).
+ * (§11.3, §4.5).
  *
  * - A struct whose fields aren't known yet, a type parameter with a struct constraint or a computed
- *   struct over one (§3.5), gives a pattern the fields its constraints name, each typed as they
+ *   struct over one (§8.1), gives a pattern the fields its constraints name, each typed as they
  *   say, and reached by its name, as every struct's field is (`StructStep`). Any other field is
  *   unknown to the pattern, as to a field read.
  * - A rest is the mapped struct type of the keys the pattern leaves, each to its field's type:
@@ -93,7 +93,7 @@ export function restBinding(
 
 /**
  * The struct of the fields of `of` but those `named` names, written at `rest`: the mapped type of
- * its keys left, each to its field's type (§3.11); the error type when `of` is no struct, which
+ * its keys left, each to its field's type (§11.3); the error type when `of` is no struct, which
  * was reported where the pattern took it apart.
  */
 function restType(rules: TypeRules, of: Type, named: readonly string[], rest: RestPattern): Type {

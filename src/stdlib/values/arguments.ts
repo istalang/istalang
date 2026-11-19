@@ -44,7 +44,7 @@ export const int = argumentOf('bigint');
 export const float = argumentOf('number');
 export const text = argumentOf('string');
 
-/** The payload of an argument of an extern type the runtime implements (§3.6). */
+/** The payload of an argument of an extern type the runtime implements (§17.2). */
 export function externPayloadOf(value: Value | undefined): unknown {
   if (value === undefined || !isComposite(value) || value.kind !== 'extern') {
     unreachable('Expected a value of an extern type.');

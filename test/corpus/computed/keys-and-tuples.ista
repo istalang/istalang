@@ -1,7 +1,7 @@
 # outcome: "a1,b2|7|3"
 # Array comprehension elements agree as an array literal's do, so tuples of different key literals
-# widen (§4, §5); under `[_]: Int` a member-parameter key reads and writes as an Int, every field
-# being one (§8).
+# widen (§10.5, §14); under `[_]: Int` a member-parameter key reads and writes as an Int, every field
+# being one (§15.4).
 
 import * as runtime from 'runtime'
 

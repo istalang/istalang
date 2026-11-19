@@ -1,5 +1,5 @@
 # outcome: "lambdaErr|localErr|ok101|asyncErr|genericErr"
-# `?` in a lambda or local function returns from that function (§3.12, §3.14), not from the
+# `?` in a lambda or local function returns from that function (§12, §6.4), not from the
 # function around it, which need not return a Result.
 import * as runtime from 'runtime'
 

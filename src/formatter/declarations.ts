@@ -1,11 +1,11 @@
 /**
- * Declarations and the module (spec §3). A declaration with members prints them in braces,
+ * Declarations and the module (spec §5.1). A declaration with members prints them in braces,
  * `struct Req { id: Int, value: String }`, when that line fits a compressed form's width
  * (layout/compact.ts), else indented under its `:`, one per line: the tree doesn't record which
  * was written, and one canonical form per width is the point. A variant's fields are its parameters, listed in parentheses as a function's are.
  *
  * A docstring stands first in an indented body; a declaration without one takes it on the next
- * line, deeper (§2).
+ * line, deeper (§3.2).
  */
 
 import { builders } from 'prettier/doc';
@@ -170,7 +170,7 @@ export const declarationPrinters: Printers<DeclarationKind> = {
       node.memberOf === undefined ? '' : [' in ', printer.print(node.memberOf)],
       constraintsAfterIs(printer, node.constraints),
     ]),
-  // A variant's fields are its parameters (spec §3.11), so they print as a parameter list; one
+  // A variant's fields are its parameters (spec §5.3), so they print as a parameter list; one
   // without fields is its name alone, but for comments its parentheses hold.
   Variant: (printer, node) =>
     annotated(printer, node, [

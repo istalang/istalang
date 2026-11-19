@@ -1,5 +1,5 @@
 # outcome: 1
-# An async fn's own call is its body's (§7): a parameter's default runs in the function's prologue,
+# An async fn's own call is its body's (§16): a parameter's default runs in the function's prologue,
 # before its body starts, so it reads no call, while the body still does.
 
 import * as runtime from 'runtime'

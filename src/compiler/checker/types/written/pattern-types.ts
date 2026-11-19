@@ -1,5 +1,5 @@
 /**
- * The type a pattern naming a type tests a value for (§3.10, §3.11), the rules the checker's
+ * The type a pattern naming a type tests a value for (§8.3, §11.3), the rules the checker's
  * patterns (constructs/patterns/walk/kinds/references.ts,
  * constructs/patterns/walk/kinds/downcasts.ts, constructs/patterns/walk/members.ts) and the
  * editor's completion read alike, so what a pattern may name and what it then tests can't drift
@@ -8,14 +8,14 @@
  * - A pattern gives no type arguments, so it names a generic type only as a whole: against a value
  *   of that type it matches every instance, but against an `any` value, whose own type is one
  *   instance, it names none. A generic alias stands for no one type, so it names none either,
- *   recursive or not: a recursive alias's uses are their structure (§3.17).
+ *   recursive or not: a recursive alias's uses are their structure (§4.6).
  * - An alias names the type it stands for; a trait, a type parameter, `Self` and `Never`, which no
  *   value has, name no type a value is tested for.
  * - An `any` type holds a type whose values convert into it (types/fitting/fit/index.ts), the
  *   conversion's own rule, so what a pattern may name there and what may be converted in agree.
  * - Against an `any` value, a variant qualified by its enum names the enum, whose value is then
  *   tested for the variant; a bare variant name is chosen by the expected enum, so it names none.
- * - Against a union's value, a pattern selects members (§3.11,
+ * - Against a union's value, a pattern selects members (§11.3,
  *   constructs/patterns/walk/members.ts): a name the members it names (`membersNamed`), a generic
  *   type's instances or the one its type arguments give (`instancesWith`), a literal its own member
  *   or its base's (`literalMembers`), and a tuple, array or `struct{…}` pattern the members of its
@@ -77,7 +77,7 @@ export function patternTypeOf(checker: Aliases, entity: Entity): PatternType {
 type DowncastTarget = PatternType | { readonly kind: 'unheld'; readonly type: Type };
 
 /**
- * What a pattern naming `entity` tests a value of the `any` type `from` for (§3.10): a type that
+ * What a pattern naming `entity` tests a value of the `any` type `from` for (§8.3): a type that
  * may be inside it. The value inside has its own type, never an `any` one, so an alias of an `any`
  * type names none.
  */
@@ -130,7 +130,7 @@ type MemberNaming = Pick<
 >;
 
 /**
- * The members of a union a pattern naming `entity` selects (§3.11): the enums declaring a variant
+ * The members of a union a pattern naming `entity` selects (§11.3): the enums declaring a variant
  * it names, bare or qualified; the member of a type it names, else the members of a union it names
  * where the union holds them all (`case Status as s` against `Status | Int`, `case Tree as t`
  * against `Tree | String`, whose members are `Tree`'s and `String`), else every literal member of
@@ -230,7 +230,7 @@ function instancesWith(
 
 /**
  * The members among `named`, those a pattern naming `entity` selects (`membersNamed`), that type
- * arguments `given` instantiate (§3.11): a generic type's instances with them, a variant's its
+ * arguments `given` instantiate (§11.3): a generic type's instances with them, a variant's its
  * enum's (`variantEnums`); undefined when what `entity` names takes no such arguments.
  */
 export function instancesNamed(
@@ -277,7 +277,7 @@ export function variantEnums(
 
 /**
  * The type arguments `type` instantiates the generic `declaration` with, a nominal type's, or what
- * a recursive type it is unfolds to (§3.17); undefined when it instantiates `declaration` in
+ * a recursive type it is unfolds to (§4.6); undefined when it instantiates `declaration` in
  * neither.
  */
 function instanceOf(type: Type, declaration: GenericDeclaration): readonly Type[] | undefined {
@@ -307,7 +307,7 @@ export function literalMembers(
 }
 
 /**
- * Whether an `any` member among `members` may hold a value of `type`, one that took it whole (§2)
+ * Whether an `any` member among `members` may hold a value of `type`, one that took it whole (§4.2)
  * or one it converted into, so a test of it looks inside.
  */
 function heldByAnyMember(
@@ -330,7 +330,7 @@ type PatternKind =
 
 /**
  * The members a pattern of `pattern`'s kind selects, as `PatternKind` says, each read as what it
- * unfolds to where it is a recursive type (§3.17).
+ * unfolds to where it is a recursive type (§4.6).
  */
 export function kindMembers(
   checker: Pick<Checker, 'wellKnownType' | 'typeRules'>,

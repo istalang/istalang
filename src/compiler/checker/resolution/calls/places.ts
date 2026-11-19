@@ -1,36 +1,36 @@
 /**
- * Places that change (§3.4, §3.7): what an assignment to a part, a `&` argument, or a method
+ * Places that change (§7.1, §7.3): what an assignment to a part, a `&` argument, or a method
  * taking `&self` may change, and the variables each change counts against.
  *
  * - A place is a variable, or a field, tuple element or indexed element of one, at any depth
  *   (syntax `isPlace`, by which the parser reports a target or `&` argument that is none). A field
  *   a trait requires, read through an `any` value or a type parameter, which may be an `any` type,
  *   is no place: its value's own type, which holds the field, is known only when the program runs
- *   (§3.14); nor is a getter, whose value is computed on each read (§3.1), nor a keyed read, a call
- *   of `index` (§3.9). Its root decides: a
+ *   (§6.4); nor is a getter, whose value is computed on each read (§5.2), nor a keyed read, a call
+ *   of `index` (§10.2). Its root decides: a
  *   `let` may change, and so may a reference parameter, which changes the caller's place. A
- *   by-value parameter is as if declared `const` (§3.3), and a `const`, top-level or local, is
+ *   by-value parameter is as if declared `const` (§6.1), and a `const`, top-level or local, is
  *   deeply immutable, so no part of either may change; neither may a pattern's or loop's binding
- *   or an extern constant (§3.6).
+ *   or an extern constant (§17.2).
  * - A change counts as the root `let` being changed, so it isn't warned about as never reassigned.
  *   A reference marks its root as referenced, which lowering gives storage a reference can reach,
  *   and so does an element written, since its `setIndex` takes the container by `&`.
  * - Writing an indexed element (`xs[i] = v`, `&m[k]`, `a[i].b = v`) reads it with the `index`
  *   its indexing resolved and writes it back with `setIndex(&container, key, element)`, found like
- *   an operator's function, so any type with a `setIndex` takes element writes (§3.7, §3.9). Each
+ *   an operator's function, so any type with a `setIndex` takes element writes (§6.2, §10.2). Each
  *   indexed step of a changing place records its `setIndex`, and both functions must run at once
  *   (collection-functions.ts).
- * - A field a key reads, `s[k]` (§3.9), is a field path, as `s.name` is: no accessor. A key of one
+ * - A field a key reads, `s[k]` (§10.2), is a field path, as `s.name` is: no accessor. A key of one
  *   name is one field. A key that may name several is no place to pass by `&`, which would let the
  *   callee write another field's type; a value written to it must fit each field it may name
  *   (`severalKeyedFields`), each through its own conversion.
- * - The value behind a handle, `*x`, is a place too (§3.9): the place starts there, whatever the
+ * - The value behind a handle, `*x`, is a place too (§10.2): the place starts there, whatever the
  *   handle is read from, since changing it changes what is behind the handle, not the handle.
  *   Changing it (`x->f = v`, `*x += v`, `&*x`) reads it whole and writes it back whole, which
  *   lowering does with the handle's cell, so it needs no call.
  * - An element or a handle's value is an accessor: reached through a pair of reads and writes, it
  *   is a copy for the change. Passed by `&`, it is copied in before its call and written back when
- *   the call returns (§3.7). An async call returns its future before its callee ends, so neither
+ *   the call returns (§7.3). An async call returns its future before its callee ends, so neither
  *   can be passed by `&` to an async function. And a copy can't change together with another place
  *   it is part of, so two places of one variable passed by `&` to one call may not reach through an
  *   element, keys being known only when the program runs, and two places reaching through handles
@@ -117,7 +117,7 @@ function changePlace(context: BodyContext, node: Expression, use: PlaceUse): boo
 
 /**
  * Whether a place passed by `&` reaches one field wherever a key reads one: a key that may name
- * several is reported (§3.7). An element written past such a key passes its container by `&` to
+ * several is reported (§7.3). An element written past such a key passes its container by `&` to
  * `setIndex`, so it is passed by `&` too.
  */
 function referencesOneField(
@@ -150,7 +150,7 @@ function isElementStep(context: BodyContext, step: Index): boolean {
 
 /**
  * The fields a value written to `node` must each fit, when a key that may name several reads it
- * (§3.9): the type of each field its key may name. Undefined for any other place, which a value
+ * (§10.2): the type of each field its key may name. Undefined for any other place, which a value
  * fits as its type says.
  */
 export function severalKeyedFields(
@@ -171,7 +171,7 @@ export function severalKeyedFields(
 
 /**
  * Whether a key of type `key` names one field however the program runs: one literal, or a member
- * type parameter, one key per instantiation (§3.5, §3.9).
+ * type parameter, one key per instantiation (§8.1, §10.2).
  */
 function isSingleKey(checker: CheckerContext, key: Type): boolean {
   return (
@@ -183,7 +183,7 @@ function isSingleKey(checker: CheckerContext, key: Type): boolean {
 /**
  * Whether a value of `type` has the field `name` only as a trait requires it: on an `any` type, or
  * on a type known only per instantiation unless a struct constraint names it, which states a
- * struct's own field (§3.5, §3.10).
+ * struct's own field (§8.1, §8.2).
  */
 function holdsFieldByTrait(context: BodyContext, type: Type, name: string): boolean {
   if (type.kind === 'any') {
@@ -205,7 +205,7 @@ interface ReferencingCallee {
 }
 
 /**
- * Checks the places `written` passes by `&` against copying accessors in and out (§3.7): none
+ * Checks the places `written` passes by `&` against copying accessors in and out (§7.3): none
  * reaches through one when the callee is async, no two of one variable when either reaches through
  * an element, and no two reaching through handles.
  */
@@ -276,7 +276,7 @@ interface PlaceIdentity {
 /**
  * The identity of a place on a variable (`p.first.0`) or behind the handle a variable holds
  * (`x->a` or `*x`); undefined when it reaches through an indexed element, whose key is known only
- * when running (§3.15), or starts at anything else.
+ * when running (§4.5), or starts at anything else.
  */
 function placeIdentity(context: BodyContext, target: Expression): PlaceIdentity | undefined {
   const { root, steps } = placePath(target);
@@ -337,7 +337,7 @@ function placesOverlap(first: PlaceIdentity, second: PlaceIdentity): boolean {
   return shorter.steps.every((step, index) => longer.steps[index] === step);
 }
 
-/** Reports a place written twice, or written whole and in part, by one assignment (§3.15). */
+/** Reports a place written twice, or written whole and in part, by one assignment (§4.5). */
 export function checkDistinctPlaces(context: BodyContext, parts: readonly AssignedPart[]): void {
   const written: PlaceIdentity[] = [];
   for (const { target } of parts.filter((part) => part.kind === 'place')) {
@@ -393,14 +393,14 @@ function writesElement(context: BodyContext, node: Index): boolean {
 }
 
 /**
- * Checks a method's receiver passed as `&self` (§3.7), already known to be a place (`isPlace` on
+ * Checks a method's receiver passed as `&self` (§7.3), already known to be a place (`isPlace` on
  * the call's callee, constructs/expressions/calls.ts), against the rules of changing places.
  */
 export function changeReceiver(context: BodyContext, receiver: Expression): void {
   changePlace(context, receiver, 'referenced');
 }
 
-/** How a message names a variable that may not change: a parameter, or a `const` (§3.3, §3.4). */
+/** How a message names a variable that may not change: a parameter, or a `const` (§6.1, §7.1). */
 export function immutableKind(owner: VariableOwner): string {
   return owner.kind === 'Parameter' ? 'a parameter' : 'a const';
 }

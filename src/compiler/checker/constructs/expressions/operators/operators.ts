@@ -1,5 +1,5 @@
 /**
- * Operator expressions (§3.9).
+ * Operator expressions (§10.2).
  *
  * - An operator's meaning (syntax/expressions/operators.ts) decides how it is checked. Arithmetic,
  *   negation, the orderings and `in` call functions (resolution/calls/operators.ts); an ordering is

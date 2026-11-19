@@ -81,7 +81,7 @@ describe('std natives', () => {
     expect(keys.filter((key, index) => keys.indexOf(key) !== index)).toEqual([]);
   });
 
-  it("keep only what the holder's type holds, as its @Holds says (§3.16)", () => {
+  it("keep only what the holder's type holds, as its @Holds says (§5.5)", () => {
     const { checker } = std;
     const unheld = std.externs.flatMap(({ key, declaration }) => {
       const parameters = checker.parametersOf(declaration);

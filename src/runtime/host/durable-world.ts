@@ -1,17 +1,17 @@
 /**
- * The world of a host runtime (§5, §9): its live runs and its ista instances, each instance
+ * The world of a host runtime (§14, §17.1): its live runs and its ista instances, each instance
  * resident in memory while it runs and committed to the store at the end of every segment, so a
  * runtime opened over the same store goes on where it committed.
  *
  * - **Segments.** An instance's segment starts with what wakes it (a call into it, its spawn, a due
  *   timer, another instance's end) and runs until it has nothing ready; then it commits. Its clock
  *   reads the time the segment started, and what it does to others (answering a call, ending, and
- *   the instances it spawned) and its log records leave it only at that commit (§5).
+ *   the instances it spawned) and its log records leave it only at that commit (§14).
  * - **Commits** write the segment and let out what it did (commits.ts).
  * - **Crossings.** What crosses between runs is copied, and arrives in the receiving run as a turn
  *   of its own, on the object it concerns (world.ts).
  * - **Order.** Residents run in the order their waiting turns arrived across every run, so what
- *   settles first runs first, whichever instance waits on it (§6).
+ *   settles first runs first, whichever instance waits on it (§15.2).
  */
 
 import { copied } from '../../definition/values/replacing.ts';
@@ -61,7 +61,7 @@ export class DurableWorld implements World {
 
   /**
    * A world bound by `binding`, reading a Definition by its hash through `bind`; `testing` answers
-   * what a test's code asks of it, when it runs a test (§10).
+   * what a test's code asks of it, when it runs a test (§18).
    */
   constructor(binding: HostBinding, bind: (hash: string) => WorldProgram, testing?: TestingWorld) {
     this.binding = binding;
@@ -77,7 +77,7 @@ export class DurableWorld implements World {
     };
   }
 
-  /** A live run of `program`, named `name`, which a host's start drives (§9). */
+  /** A live run of `program`, named `name`, which a host's start drives (§17.3). */
   liveRun(
     program: WorldProgram,
     name: string,
@@ -101,7 +101,7 @@ export class DurableWorld implements World {
     const name = `${parent.instance.name}/${parent.instance.spawned}`;
     const sent = copied(closure);
     const owner = this.#residentOfRun(parent);
-    // Drawn as it spawns, in the parent's segment, so a segment run again spawns it alike (§5).
+    // Drawn as it spawns, in the parent's segment, so a segment run again spawns it alike (§14).
     const seed = parent.draw().subarray(0, seedBytes);
     const started = () => {
       const crashEveryAwait = options.crashEveryAwait ?? owner?.crashEveryAwait ?? false;
@@ -126,7 +126,7 @@ export class DurableWorld implements World {
 
   readonly call = (caller: Run, { key, call, maker }: ContextCall, future: Future): void => {
     let heard = maker === 'program';
-    // A call let go of unanswered hears no panic, which is then the host's to hear (§9).
+    // A call let go of unanswered hears no panic, which is then the host's to hear (§17.3).
     future.cancels.push(() => {
       heard = false;
     });
@@ -136,10 +136,10 @@ export class DurableWorld implements World {
     );
   };
 
-  /** Makes `into` in the context `key` (§9); `answer` is told how it ended as the context commits. */
+  /** Makes `into` in the context `key` (§17.1); `answer` is told how it ended as the context commits. */
   invokeIn(caller: Run, key: string, into: CallInto, answer: (end: InvocationEnd) => void): void {
     // Only a live run calls into a context, the call rule keeping ista code from its natives
-    // (proposal 8, Rule 2), which it makes with the run's program and options (§9, §10).
+    // (proposal 8, Rule 2), which it makes with the run's program and options (§17.1, §18).
     const { program, options } =
       this.#live.of(caller) ?? unreachable('A context call of no live run.');
     const context =
@@ -262,7 +262,7 @@ export class DurableWorld implements World {
 
   /**
    * Lets the live runs that opened a runtime go on once the work it resumed ran what it had due
-   * by now, a timer that came due while none was open included (§9); whether anything moved.
+   * by now, a timer that came due while none was open included (§17.1); whether anything moved.
    */
   #opened(): boolean {
     if (!this.#runtimes.opening) {
@@ -275,8 +275,8 @@ export class DurableWorld implements World {
   }
 
   /**
-   * Whether the work persisted in the store runs: while a runtime is open over it (§9), and always
-   * in a test's world, which drives its instances itself (§10).
+   * Whether the work persisted in the store runs: while a runtime is open over it (§17.1), and always
+   * in a test's world, which drives its instances itself (§18).
    */
   get #storeWorkRuns(): boolean {
     return this.testing !== undefined || this.#runtimes.anyOpen;
@@ -307,7 +307,7 @@ export class DurableWorld implements World {
   /**
    * Fires every run's due timers, a resident's as a segment of its own. The residents' go first and
    * run until `done` or nothing is ready, so what a context answers because of them reaches a live
-   * run before its own timers due at the same instant decide what waited on both (§6).
+   * run before its own timers due at the same instant decide what waited on both (§15.1).
    */
   fireDue(now: bigint, done: () => boolean = () => false): void {
     if (this.#storeWorkRuns) {
@@ -332,7 +332,7 @@ export class DurableWorld implements World {
 
   /**
    * Runs `resident`'s segment until it has nothing ready or one of its calls parks, then commits it,
-   * as every await commits (§6); whether it ran any.
+   * as every await commits (§15.1); whether it ran any.
    */
   #advanced(resident: Resident): boolean {
     const { run } = resident;
@@ -354,7 +354,7 @@ export class DurableWorld implements World {
   }
 
   /**
-   * `resident`, panicked, running again from where it stood before its failed segment (§3.12): a
+   * `resident`, panicked, running again from where it stood before its failed segment (§12): a
    * life of its own, since its panic ended the loop serving its jobs.
    */
   restart(resident: Resident): void {
@@ -372,8 +372,8 @@ export class DurableWorld implements World {
   }
 
   /**
-   * Ends `resident`, panicked, as terminated (§3.12): what it held as it stood before its failed
-   * segment is disposed (§7), and it commits holding nothing.
+   * Ends `resident`, panicked, as terminated (§12): what it held as it stood before its failed
+   * segment is disposed (§16), and it commits holding nothing.
    */
   terminate(resident: Resident, panic: { readonly message: string; readonly trace: string }): void {
     this.#restored(resident);

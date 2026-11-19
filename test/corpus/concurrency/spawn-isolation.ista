@@ -1,5 +1,5 @@
 # outcome: "3 2 7"
-# A spawned instance runs on its own snapshot (§9): what it does to the copies of its arguments
+# A spawned instance runs on its own snapshot (§17.1): what it does to the copies of its arguments
 # and captures never reaches the parent, and what the parent does after the spawn never reaches it.
 
 import * as runtime from 'runtime'

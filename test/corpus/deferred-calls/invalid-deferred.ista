@@ -5,7 +5,7 @@
 # error: 5120 at 43:7
 # error: 5640 at 44:12
 # error: 5642 at 46:9
-# A deferred call (§3.14) computes what its call passes now and captures it, so no reference can be
+# A deferred call (§6.5) computes what its call passes now and captures it, so no reference can be
 # passed by `&` or as a `&self` receiver; a sendable function taken needs each captured value
 # sendable. Its taker must take a function of nothing, the first one left unfilled, its other
 # parameters given as for any call; what follows it must be a call. A taker that is a value and no

@@ -1,9 +1,9 @@
 /**
- * Values a part is compared with (§3.11): a literal pattern, and a field compared by an operator.
+ * Values a part is compared with (§11.3): a literal pattern, and a field compared by an operator.
  *
  * - A literal is compared with `==`, so it has the part's own type. On a union's value it first
  *   selects its member (../members.ts), so `case 1` against an `Int?` compares the `Int` held, and
- *   `case none` selects `None`. One the part's type can't hold is ruled out (§3.11), a `never` test
+ *   `case none` selects `None`. One the part's type can't hold is ruled out (§11.3), a `never` test
  *   (surface/checked-pattern.ts), and so is a field's `==` its type fixes to fail.
  * - A field compared with `==` or `!=` follows `==`'s rule (types/unions/equality.ts); any other
  *   comparison calls `compare`. Compared with `==` with a value fitting the field's type, it
@@ -109,7 +109,7 @@ export function comparison(context: BodyContext, item: CompareFieldPattern, part
 /**
  * The shape of a value a part is compared with, by `==` or as a literal pattern: a variant
  * without fields is that variant, a literal is itself, and `none` an optional's `None` member
- * (§3.11). Any other value acts as a guard.
+ * (§11.3). Any other value acts as a guard.
  */
 function valueShape(context: BodyContext, value: Expression, part: ValuePart) {
   if (value.kind === 'NoneLiteral') {

@@ -9,7 +9,7 @@
  * go to them, find them or rename them. A declaring name is told apart by where it stands, not by
  * its node: an async function's own call, a variable, is declared by a copy of the function's name.
  *
- * A renaming import's alias (§3.13) binds a name of its own to the export: going to a definition
+ * A renaming import's alias (§13.1) binds a name of its own to the export: going to a definition
  * reaches the export, while finding references and renaming act on the alias, declared at the
  * alias, so renaming either leaves the other's names alone (`actedOnBy`).
  */
@@ -27,7 +27,7 @@ import { identifierAt, stringLiteralAt } from '../reading/identifier-at.ts';
 type Declared = Denotation['declared'];
 
 /**
- * A name as written: an identifier, or a String literal naming a field as its key (§3.1 Key types),
+ * A name as written: an identifier, or a String literal naming a field as its key (§5.2 Key types),
  * which a field's references and renaming reach as any name of it.
  */
 export type WrittenName = Identifier | StringLiteral;

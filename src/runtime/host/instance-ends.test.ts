@@ -1,5 +1,5 @@
 /**
- * What an instance disposes as it ends (§3.4, §7, §9): the call its outcome awaits when it is
+ * What an instance disposes as it ends (§7.1, §16, §17.1): the call its outcome awaits when it is
  * terminated, a root's own defers before the outcome it returns, and its context constants, with
  * what they hold, whether the host's or the program's. And how a wait on an instance's end goes on
  * as it ends: on a fresh runtime too, and committed once resolved, before anything awaits it. And
@@ -94,7 +94,7 @@ describe('a spawned instance', () => {
     expect(logged.get('p/1')).toEqual(['defer', 'disposed out']);
     expect(logged.get('p/2')).toEqual(['defer', 'disposed out']);
   });
-  it('is terminated at once when isolated and it panics, keeping its panic (§9 runtime.isolate)', async () => {
+  it('is terminated at once when isolated and it panics, keeping its panic (§17.1 runtime.isolate)', async () => {
     const text = compiledEncoded(
       lines(
         "import * as runtime from 'runtime'",
@@ -284,7 +284,7 @@ describe('a panic', () => {
     ['a plain', 'ista fn caller() -> Int:'],
     ['an async', 'ista async fn caller() -> Int:'],
   ])(
-    'in an async call before its first await ends its instance there: %s caller runs no further (§3.12)',
+    'in an async call before its first await ends its instance there: %s caller runs no further (§12)',
     async (_, caller) => {
       const records: string[] = [];
       const test = testRuntime({
@@ -314,7 +314,7 @@ describe('a panic', () => {
 });
 
 describe('a terminated instance', () => {
-  it("stops every call it holds though a call's cleanup panics, letting go of what each held (§3.12, §7)", async () => {
+  it("stops every call it holds though a call's cleanup panics, letting go of what each held (§12, §16)", async () => {
     const records: string[] = [];
     const test = testRuntime({
       externs: {

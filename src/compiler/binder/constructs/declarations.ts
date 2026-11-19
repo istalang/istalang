@@ -1,6 +1,6 @@
 /**
  * Binding names inside declarations: functions and lambdas, and the parts of type declarations
- * (§3.1, §3.3, §3.5, §3.10, §3.11, §3.14, §3.17).
+ * (§5.2, §6.1, §8.1, §8.2, §11.3, §6.4, §4.6).
  *
  * A declaration's own name is defined by whoever owns its scope: the module for top-level ones
  * (module/module-scope.ts), the block for a local function. What is bound here is everything inside
@@ -8,14 +8,14 @@
  *
  * - Type parameters are all defined before any constraint or default is bound, so they may refer
  *   to one another (`<A, B is Convertible<A>>`).
- * - A parameter's default may use the parameters before it (§3.3), so each parameter is defined
+ * - A parameter's default may use the parameters before it (§6.1), so each parameter is defined
  *   after its own type and default are bound: its name, and the names its pattern binds, which the
  *   parameter owns, as a declaration owns its targets' (patterns.ts). A field's default may use the
- *   fields before it the same way (§3.1), as a parameter of the function the fields read as
+ *   fields before it the same way (§5.2), as a parameter of the function the fields read as
  *   (syntax/declarations/field-defaults.ts).
- * - A named lambda's name is visible only inside the lambda (§3.14).
- * - `Self` is defined in a trait's scope, and only there (§3.10).
- * - A generic declaration's annotations see its type parameters (§3.16), and nothing it declares
+ * - A named lambda's name is visible only inside the lambda (§6.4).
+ * - `Self` is defined in a trait's scope, and only there (§8.2).
+ * - A generic declaration's annotations see its type parameters (§5.5), and nothing it declares
  *   after them: a function's are bound before its parameters are defined. A local function's see
  *   its own name, as its body does and a top-level function's do.
  * - A static function's owner (`Duration` in `fn Duration.zero()`) is a type use in the scope
@@ -113,7 +113,7 @@ function bindParameters(
 }
 
 /**
- * The defaults of a struct's or a variant's fields, each seeing the fields before it (§3.1). The
+ * The defaults of a struct's or a variant's fields, each seeing the fields before it (§5.2). The
  * fields' names were checked, repeats reported, and their types bound, with the fields.
  */
 function bindFieldDefaults(
@@ -173,7 +173,7 @@ function bindStruct(binder: LocalBinder, node: DeclaredStruct, scope: Scope): vo
 
 /**
  * Defines a struct's or an enum's associated types in the scope of its type parameters, where
- * its fields, variants and other associated types name them bare (§3.1), then binds what each
+ * its fields, variants and other associated types name them bare (§5.2), then binds what each
  * names. In an enum, each differs from every variant's name.
  */
 function bindAssociatedTypes(

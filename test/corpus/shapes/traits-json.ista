@@ -1,7 +1,7 @@
 # outcome: "{\"a\":[{\"x\":2,\"y\":1}],\"b\":1} 6 9 | {\"x\":2,\"y\":3} 5 | 1 q"
-# A shape meets a trait through the trait's module or another type's, never its own (§3.10): a
+# A shape meets a trait through the trait's module or another type's, never its own (§8.2): a
 # function over a shape written through one alias serves every spelling of it, a struct's value
-# converted into it included. Shapes are Encodable and Decodable as structs are, keys sorted (§9),
+# converted into it included. Shapes are Encodable and Decodable as structs are, keys sorted (§17.4),
 # and a generic alias is a family: a struct with its arguments substituted fits one member.
 
 import * as json from 'json'

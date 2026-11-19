@@ -19,10 +19,10 @@ export interface Candidate {
 
 /**
  * What a candidate names: a binder entity (a visible name, a module's export), a keyword, a field,
- * a member read by calling a function as a field is (a getter or a keyed index's key, §3.1, §3.9),
+ * a member read by calling a function as a field is (a getter or a keyed index's key, §5.2, §10.2),
  * a function reached through a value (a method) or a type (a static), a variant reached through its
- * enum, of type `enum`, a literal of a literal type expected, such as a key naming a field (§3.1), a
- * parameter a call's argument names, a field a call pattern's argument names (§3.11), or what an
+ * enum, of type `enum`, a literal of a literal type expected, such as a key naming a field (§5.2), a
+ * parameter a call's argument names, a field a call pattern's argument names (§11.3), or what an
  * import's path names: a module, or a folder holding modules; or the label of a loop or a block.
  */
 export type Subject =

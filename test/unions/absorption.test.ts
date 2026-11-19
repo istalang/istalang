@@ -1,7 +1,7 @@
 /**
- * An `any` member takes whole every member meeting its traits (§2 "Collapse") in every union,
+ * An `any` member takes whole every member meeting its traits (§4.2 "Collapse") in every union,
  * however it was built: written, or reached by substituting type arguments into a generic one
- * (§3.5). The commutation law (test/AGENTS.md): a generic union instantiated is the union written
+ * (§8.1). The commutation law (test/AGENTS.md): a generic union instantiated is the union written
  * with the arguments in place, for arguments that meet the traits, that don't, and that collapse
  * the union into one member. Generic code then runs on values of the members an `any` member took
  * whole: put into the union, tested by a pattern, carried into a wider union, and an optional
@@ -31,7 +31,7 @@ const declarations = [
 
 const sameNormalized = { syntaxErrors: [], same: true, sameKey: true, assignCodes: [] };
 
-describe('an `any` member absorbing after substitution (§2, §3.5)', () => {
+describe('an `any` member absorbing after substitution (§4.2, §8.1)', () => {
   it('takes a type argument meeting its traits, at any depth', () => {
     expect(compareWrittenTypes('Absorbing<String>', 'any Stringable', declarations)).toEqual(
       sameNormalized,
@@ -235,7 +235,7 @@ function fixedCalls(type: string): readonly (readonly [string, string])[] {
   ];
 }
 
-describe('generic code on values of members an `any` member took whole (§2, §3.5)', () => {
+describe('generic code on values of members an `any` member took whole (§4.2, §8.1)', () => {
   it('puts, tests and carries them as the value says', async () => {
     await fc.assert(
       fc.asyncProperty(valuedArgument, async ({ text, values }) => {

@@ -1,5 +1,5 @@
 /**
- * What the testing module asks of the code using it (§10), checked where that code is written.
+ * What the testing module asks of the code using it (§18), checked where that code is written.
  *
  * - Suite functions: what `@Suite` asks of the function it marks. The runner calls a suite function
  *   again in every test's instance and finds the test by its position, so the function must build
@@ -11,7 +11,7 @@
  *   body is; the runner checks each test's title at its position as it runs it.
  * - The testing module's calls whose arguments its signatures can't constrain: a mock's target must
  *   name a function, since a lambda or a variable has no identity to replace, nor a variant, built
- *   where it is called (§3.11), and is never made async to fit (§3.14), since the function made
+ *   where it is called (§5.3), and is never made async to fit (§6.4), since the function made
  *   async would be another. It is named at a type taking every parameter: a mock replaces the
  *   function once its defaults are filled, so its replacement is given them all, and one written
  *   for a type leaving defaults out would take arguments it doesn't expect. The type `handle`
@@ -107,7 +107,7 @@ export function mockedFunctionsQuery(
 }
 
 /**
- * The functions the program's test modules mock (§10). A mock binds a function-table entry's slot,
+ * The functions the program's test modules mock (§18). A mock binds a function-table entry's slot,
  * so an instance of one stays its own, never shared across types (rules/parametricity/).
  */
 function mockedFunctions(
@@ -116,7 +116,7 @@ function mockedFunctions(
   const { inputs } = checker;
   const mocks = checker.languageFunctions(languageModules.testing, testingFunctions.mock);
   const testing = inputs.role(languageModules.testing);
-  // Only a test module may import testing (§10), and only one running mocks anything: the testing
+  // Only a test module may import testing (§18), and only one running mocks anything: the testing
   // module's own code mocks only for it.
   const tests =
     testing === undefined
@@ -139,7 +139,7 @@ function mockedFunctions(
   return new Set(mocked);
 }
 
-/** `target`, where it may name a function as a value (§3.14). */
+/** `target`, where it may name a function as a value (§6.4). */
 function namingOf(target: Expression): FunctionNaming | undefined {
   switch (target.kind) {
     case 'Identifier':

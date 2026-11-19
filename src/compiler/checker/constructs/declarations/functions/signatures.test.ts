@@ -1,5 +1,5 @@
 /**
- * A parameter's `&` (§3.7) read through the parentheses around its type, as the parser reads a
+ * A parameter's `&` (§7.3) read through the parentheses around its type, as the parser reads a
  * grouped type, so the checker adds no error of its own to the parser's.
  */
 

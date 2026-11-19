@@ -1,5 +1,5 @@
 # outcome: {"each":"6.63","total":"19.9"}
-# A Decimal crosses to the host as the JSON string of its text (§9), here in a struct outcome.
+# A Decimal crosses to the host as the JSON string of its text (§17.4), here in a struct outcome.
 
 import * as decimal, Decimal from 'decimal'
 import * as runtime from 'runtime'

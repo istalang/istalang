@@ -14,7 +14,7 @@
  * - A local function is a variable whose owner is its declaration: the spec defines it as a `const`
  *   bound to a lambda. Only top-level functions form overload sets.
  * - A bare name that names no declaration may still be an enum variant, which the expected type
- *   chooses (§3.11): it denotes the variants of that name in the program (`candidatesOf`), for the
+ *   chooses (§5.3): it denotes the variants of that name in the program (`candidatesOf`), for the
  *   checker to pick from.
  */
 
@@ -52,7 +52,7 @@ import type { For, VariableDeclaration } from '../syntax/statements/index.ts';
 import type { Identifier, NodeOf } from '../syntax/tree/node.ts';
 
 /**
- * The call of an async function, which the function's name denotes before a `.` inside it (§7):
+ * The call of an async function, which the function's name denotes before a `.` inside it (§16):
  * the owner of a hidden variable that the function's entry fills with its call's handle.
  */
 interface OwnCall {
@@ -101,7 +101,7 @@ export function localFunctionOf(
 }
 
 /**
- * A module's top-level functions sharing a name (§3.7); `overloadsOf` adds the prelude's. A called
+ * A module's top-level functions sharing a name (§6.3); `overloadsOf` adds the prelude's. A called
  * name no scope defines denotes a set with no overloads, which argument-dependent lookup may fill.
  */
 export interface FunctionsEntity {
@@ -130,13 +130,13 @@ export interface TypeEntity {
   readonly declaration: TypeDeclaration;
 }
 
-/** A language built-in type (§2). */
+/** A language built-in type (§4.1). */
 export interface PrimitiveEntity {
   readonly kind: 'primitive';
   readonly name: PrimitiveName;
 }
 
-/** `Self` inside a trait: the type that satisfies it (§3.10). */
+/** `Self` inside a trait: the type that satisfies it (§8.2). */
 interface SelfEntity {
   readonly kind: 'self';
   /** The module whose bindings made it (module/bind-module.ts). */
@@ -193,7 +193,7 @@ export function qualifies(entity: Entity): entity is Qualifier {
   );
 }
 
-/** Whether `entity` is an alias, which may stand for a qualifier once linked (§3.17). */
+/** Whether `entity` is an alias, which may stand for a qualifier once linked (§4.6). */
 export function isAlias(entity: Entity): boolean {
   return entity.kind === 'type' && entity.declaration.kind === 'TypeAliasDeclaration';
 }
@@ -248,7 +248,7 @@ export function moduleStampOf(entity: Entity): ModuleId | undefined {
 
 /**
  * The variable an async function holds its own call in, named like the function where it declares
- * its name, so a name before a `.` in its body reads it (§7).
+ * its name, so a name before a `.` in its body reads it (§16).
  */
 export function ownCallEntity(
   module: ModuleId,
@@ -318,7 +318,7 @@ export interface Bindings {
   readonly exportsOf: (module: ModuleId) => ReadonlyMap<string, Entity>;
   /**
    * The module declaring `entity`, at its top level or inside a declaration; argument-dependent
-   * lookup starts there (§3.13). Undefined for what no module declares: a primitive type, or the
+   * lookup starts there (§13.1). Undefined for what no module declares: a primitive type, or the
    * candidates of a bare variant.
    */
   readonly moduleOf: (entity: Entity) => ModuleId | undefined;
@@ -337,16 +337,16 @@ export interface Bindings {
   readonly declarationModuleOf: (node: NodeOf<string>) => ModuleId | undefined;
   /**
    * The names visible at `offset` in `module`, each with what it denotes there: its scopes'
-   * (§3.4), its top level's and imports', then the prelude's exports, then, for any other name an
+   * (§7.1), its top level's and imports', then the prelude's exports, then, for any other name an
    * enum of the program has a variant by, those variants, in the order a free name resolves.
    */
   readonly visibleAt: (module: ModuleId, offset: number) => ReadonlyMap<string, Entity>;
-  /** A function set's overloads, the prelude's of the same name joined (§3.13). */
+  /** A function set's overloads, the prelude's of the same name joined (§13.1). */
   readonly overloadsOf: (functions: FunctionsEntity) => readonly FunctionDeclaration[];
-  /** The variants a bare name may denote; the expected type picks one (§3.11). */
+  /** The variants a bare name may denote; the expected type picks one (§5.3). */
   readonly candidatesOf: (variants: VariantsEntity) => readonly VariantEntity[];
   /**
-   * The variable the async function `node` of `module` holds its own call in (§7); undefined
+   * The variable the async function `node` of `module` holds its own call in (§16); undefined
    * unless its name before a `.` reads it.
    */
   readonly ownCallOf: (
@@ -355,16 +355,16 @@ export interface Bindings {
   ) => VariableEntity | undefined;
   /**
    * What `name` denotes at the top level of `module`: a declaration or import of its own, or the
-   * prelude's. Operators and method calls look up their function's name this way (§3.7, §3.9),
+   * prelude's. Operators and method calls look up their function's name this way (§6.2, §10.2),
    * since nothing binds it in the tree.
    */
   readonly topLevelNamed: (module: ModuleId, name: string) => Entity | undefined;
   /** Every name the top level of `module` sees, each denoting what `topLevelNamed` finds for it. */
   readonly topLevelNames: (module: ModuleId) => readonly string[];
-  /** The transients `module` declares (§3.4), wherever the function bodies they lead stand. */
+  /** The transients `module` declares (§7.1), wherever the function bodies they lead stand. */
   readonly transientsOf: (module: ModuleId) => readonly VariableEntity[];
   /**
-   * The alias of the renaming import (§3.13) through which `name` of `module` denotes its entity:
+   * The alias of the renaming import (§13.1) through which `name` of `module` denotes its entity:
    * for the alias and each of its uses; undefined for any other name, the export's own name in the
    * import among them. The alias declares a name of its own, which tools rename apart from the
    * export.

@@ -1,5 +1,5 @@
 /**
- * The expansion graph (§3.5). Generics compile per instantiation, so a generic that uses itself,
+ * The expansion graph (§8.1). Generics compile per instantiation, so a generic that uses itself,
  * directly or not, with a type argument built from its own type parameter would need endlessly many
  * instantiations: `f<T>` calling `f<Array<T>>`.
  *

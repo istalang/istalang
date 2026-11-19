@@ -1,5 +1,5 @@
 # outcome: ["p5","atrue","as"]
-# A function a trait requires may be generic with constraints of its own (§3.10): called through
+# A function a trait requires may be generic with constraints of its own (§8.2): called through
 # a type parameter or an `any` value, its type arguments meet them where the call is.
 
 import * as runtime from 'runtime'

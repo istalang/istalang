@@ -1,5 +1,5 @@
 /**
- * Optional chains as the syntax shows them (§4): which expressions are links, the step each takes,
+ * Optional chains as the syntax shows them (§10.4): which expressions are links, the step each takes,
  * and whether one reads through an optional. Whether a link really is one is the checker's to say
  * (a call through a namespace has a link's shape and never is), so this module only reads shapes.
  */
@@ -9,7 +9,7 @@ import type { Expression } from './index.ts';
 import { calledName } from './readings.ts';
 
 /**
- * The forms of a link of an optional chain (§4), each with its operator taking the step on the
+ * The forms of a link of an optional chain (§10.4), each with its operator taking the step on the
  * value inside an optional: `.` (a field, a tuple element or a method), `->` (the value behind a
  * handle), `[` (an element) and `(` (a call of the function, a link only through an optional).
  */
@@ -21,7 +21,7 @@ export type LinkForm = keyof typeof optionalOperators;
 /** An operator taking a link's step on the value inside an optional. */
 type OptionalOperator = (typeof optionalOperators)[LinkForm];
 
-/** The operator a link of an optional chain takes its step with (§4). */
+/** The operator a link of an optional chain takes its step with (§10.4). */
 type ChainOperator = Exclude<LinkForm, '('> | OptionalOperator;
 
 /** The operator taking a step of `form` on the value inside an optional: `?.[` for `[`. */
@@ -34,13 +34,13 @@ export function linkOperator(form: Exclude<LinkForm, '('>, isOptional: boolean):
   return isOptional ? optionalOperatorOf(form) : form;
 }
 
-/** The step a link of an optional chain takes (§4): what it works on, and with which operator. */
+/** The step a link of an optional chain takes (§10.4): what it works on, and with which operator. */
 export interface ChainStep {
   readonly target: Expression;
   readonly operator: ChainOperator;
 }
 
-/** Whether `step` reads through an optional, so meeting `none` ends its whole chain (§4). */
+/** Whether `step` reads through an optional, so meeting `none` ends its whole chain (§10.4). */
 export function isOptionalStep(step: ChainStep): boolean {
   return step.operator.startsWith('?');
 }
@@ -85,7 +85,7 @@ function callStepOf(node: CallingNode): ChainStep | undefined {
     : undefined;
 }
 
-/** Whether `node` is a link of an optional chain at a `?.` or `?->`, or after one (§4). */
+/** Whether `node` is a link of an optional chain at a `?.` or `?->`, or after one (§10.4). */
 export function isOptionallyChained(node: Expression): boolean {
   for (let step = chainStepOf(node); step !== undefined; step = chainStepOf(step.target)) {
     if (isOptionalStep(step)) {

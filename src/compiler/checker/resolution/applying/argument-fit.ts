@@ -6,7 +6,7 @@
  *
  * - An argument with no node stands for no expression of its own (an implicit call's operand
  *   that isn't wrappable), so there is nothing to wrap and it isn't fitted.
- * - A spread's items are copied or iterated as they are (§3.3), so a spread isn't fitted either.
+ * - A spread's items are copied or iterated as they are (§6.1), so a spread isn't fitted either.
  */
 
 import type { Expression } from '../../../syntax/expressions/index.ts';
@@ -47,7 +47,7 @@ export function filledTypes(
 
 /**
  * Records each String literal argument given for a parameter whose type is a struct's keys, or a
- * member parameter within them, as a key of the struct the instantiation makes it (§3.1).
+ * member parameter within them, as a key of the struct the instantiation makes it (§5.2).
  */
 export function recordArgumentKeys(
   context: BodyContext,
@@ -67,7 +67,7 @@ export function recordArgumentKeys(
 /**
  * Fits each argument to the type it fills, `expected` by argument number, checking first one the
  * chosen function decides that wasn't judged already, and checking a scalar literal again, which
- * has its literal type where the type it fills expects one (§2).
+ * has its literal type where the type it fills expects one (§4.3).
  */
 export function fitArguments(
   context: BodyContext,

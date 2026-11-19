@@ -1,4 +1,4 @@
-# Spawned instances and waits on their ends (spec §9): what a spawn computes now and carries over,
+# Spawned instances and waits on their ends (spec §17.1): what a spawn computes now and carries over,
 # what an instance's root ends with, and a wait on an end that already happened. Each rule is its
 # own function, and its test asserts what the old runtime's unit test did.
 

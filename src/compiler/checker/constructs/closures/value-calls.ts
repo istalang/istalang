@@ -1,16 +1,16 @@
 /**
- * Calling a function value (§3.14): a variable, a field or any expression of a function type. Its
+ * Calling a function value (§6.4): a variable, a field or any expression of a function type. Its
  * type says everything: there is one function to call, so nothing is chosen, but its arguments are
  * judged, reported and fitted as a chosen function's are (resolution/calls/resolve/index.ts), as
  * one signature with no type parameters, so every argument rule has one home.
  *
  * - Calling an async function value starts it and yields its future, `Future<R>` for an
- *   `async fn(…) -> R`, as calling a declared async function does (§3.3).
+ *   `async fn(…) -> R`, as calling a declared async function does (§6.1).
  * - Type arguments can't be given: a function value is one instance, never generic. Its parameters
  *   are known before its arguments are checked, so each argument by position is checked against
  *   its parameter's type, as a variant's (`valueParameterTypes`).
  * - Its type names no parameters, so its call gives every argument by position, with no name;
- *   a spread only fills a pack its type ends in (§3.3, §3.5).
+ *   a spread only fills a pack its type ends in (§6.1, §8.1).
  * - An argument still open in the call's constraint scope (wiring/body/constraint-scope.ts) is
  *   matched in it, so `f(id(1))` bounds `id`'s variable by `f`'s parameter; the call then joins the
  *   scope, and is fitted, or reported, once it settles, with every type as it settled.

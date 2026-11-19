@@ -1,5 +1,5 @@
 /**
- * One annotation the toolchain reads, found among an item's (§3.16): what the std's declarations
+ * One annotation the toolchain reads, found among an item's (§5.5): what the std's declarations
  * say that no code shows, read by the rules that need it (lifetimes' `@Holds` and `@Keeps`,
  * parametricity's `@_Parametric`). An item written with none, as most are, reads no checked
  * annotation, since rules ask at every step of walks over types and calls.

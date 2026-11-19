@@ -1,7 +1,7 @@
 /**
- * Code a pass rules out (spec §4 field loops, §4 `if` and `match`): a loop over a struct with no
+ * Code a pass rules out (spec §11.2 field loops, §11.1 `if` and `match`): a loop over a struct with no
  * fields still checks its body once, as code that never runs, its key and value of type `Never`,
- * whose operations report nothing (§2), so a mistake that doesn't depend on a field is still found,
+ * whose operations report nothing (§4.1), so a mistake that doesn't depend on a field is still found,
  * and nothing runs.
  */
 

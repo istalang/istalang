@@ -13,11 +13,11 @@
  * - **Modes** (proposal 8, Rule 2). A simple entry runs on its caller's execution, never waiting; a
  *   live or ista one runs as an execution of its own, waiting at `park`. Live code waits in memory
  *   and never commits; ista code runs in an instance, every wait committing.
- * - **Defaults are the callee's** (§3.3): a code entry computes each parameter its call left out in
+ * - **Defaults are the callee's** (§6.1): a code entry computes each parameter its call left out in
  *   its prologue (`given`), so a call passes those as omitted. An extern computes nothing, so a call
  *   leaving out its defaults calls a code entry computing them, then the extern.
  * - **An extern is its key and signature.** Its native gets every capability the run has, typed by
- *   those it uses (runtime/natives.ts), and holds what it keeps itself (§3.16), as natives are
+ *   those it uses (runtime/natives.ts), and holds what it keeps itself (§5.5), as natives are
  *   written per backend; so binding needs nothing more of it.
  */
 
@@ -44,7 +44,7 @@ const common = {
   annotations: z.array(value),
   /**
    * The entry of least key lowered from the same declaration, lambda or local function, whose
-   * closures `==` reads as this one's (§3.14, `bodyOf`); absent on that one.
+   * closures `==` reads as this one's (§6.4, `bodyOf`); absent on that one.
    */
   body: functionId.optional(),
 };
@@ -55,7 +55,7 @@ export type CodeMode = z.output<typeof codeMode>;
 
 const registerEntry = z.strictObject({
   type: typeReference,
-  /** Whether the register borrows its values: it holds none of them (§7). */
+  /** Whether the register borrows its values: it holds none of them (§16). */
   borrowed: z.boolean(),
 });
 
@@ -74,9 +74,9 @@ const code = z.strictObject({
   /** How many captured values a closure of this function carries. */
   captures: z.int().nonnegative(),
   /**
-   * Set on a function value widened (§3.5, §3.14): the entry converting the arguments and result
+   * Set on a function value widened (§8.1, §6.4): the entry converting the arguments and result
    * of the function value in its first capture, so that a call of it is that function's own call,
-   * and a start of it starts that function (§10).
+   * and a start of it starts that function (§18).
    */
   wrapping: z.literal(true).optional(),
   registers: z.array(registerEntry),
@@ -97,7 +97,7 @@ const external = z.strictObject({
   result: typeReference,
   /**
    * For an extern a host implements, the type the host provides as declared, spelled as keys spell
-   * types: a function's result, a constant's type. The runtime holds the host to it (§3.6).
+   * types: a function's result, a constant's type. The runtime holds the host to it (§17.2).
    */
   host: z.strictObject({ declaredType: z.string() }).optional(),
 });
@@ -124,7 +124,7 @@ export function startsExecution(entry: CodeFunction): boolean {
 const transientRegisters = new WeakMap<CodeFunction, readonly Register[]>();
 
 /**
- * The registers of `entry`'s transients (spec §3.4), the cells its `transient` instructions share.
+ * The registers of `entry`'s transients (spec §7.1), the cells its `transient` instructions share.
  * Memoized, the entry being immutable.
  */
 export function transientRegistersOf(entry: CodeFunction): readonly Register[] {
@@ -134,7 +134,7 @@ export function transientRegistersOf(entry: CodeFunction): readonly Register[] {
 }
 
 /**
- * Which body entry `index` of `functions` runs, as `==` tells closures apart (§3.14): one per
+ * Which body entry `index` of `functions` runs, as `==` tells closures apart (§6.4): one per
  * declaration, lambda or local function, however many instances lowering made of it.
  */
 export function bodyOf(functions: readonly FunctionDefinition[], index: FunctionId): FunctionId {

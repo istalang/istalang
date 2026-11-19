@@ -9,7 +9,7 @@
  * - A name that reads as a value or a type commits on `.`, the one character that goes on with it.
  * - A method named bare gives no value that fits: its value is reached through a receiver.
  * - An annotation's struct, named after its `@`, opens its literal's braces where it has fields
- *   (§3.16), as nothing but its value can follow it there; elsewhere a type's name may go on with
+ *   (§5.5), as nothing but its value can follow it there; elsewhere a type's name may go on with
  *   a `.` as well.
  */
 

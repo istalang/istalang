@@ -1,5 +1,5 @@
 ---
-description: proposal 18 of docs/proposals, packages — imports under fixed roots (`/std`, `/app`, mounts a manifest names such as `/lib/x`), `./` only for the same directory; `package.ista` and `package-lock.ista` as Istalang modules typed by `/std/package` (`Package`, `Source`, `Lock`); a module's identity is the path the root sees, never a name or version, so saved state survives any upgrade; links resolved literally, the root overriding any link by its chained path and sharing copies with `Source.Symlink`; versions from the fetched package's own manifest, refs any tag, branch or commit; `_` modules internal to their package; `programs` for `ista run`; vendoring and verify kept; replaces spec §11 and the toolchain paths of §3.13; read before designing or implementing the package manager, the module loader's paths, manifests, lockfiles or vendoring
+description: proposal 18 of docs/proposals, packages — imports under fixed roots (`/std`, `/app`, mounts a manifest names such as `/lib/x`), `./` only for the same directory; `package.ista` and `package-lock.ista` as Istalang modules typed by `/std/package` (`Package`, `Source`, `Lock`); a module's identity is the path the root sees, never a name or version, so saved state survives any upgrade; links resolved literally, the root overriding any link by its chained path and sharing copies with `Source.Symlink`; versions from the fetched package's own manifest, refs any tag, branch or commit; `_` modules internal to their package; `programs` for `ista run`; vendoring and verify kept; replaces spec §13.2 and the toolchain paths of §13.1; read before designing or implementing the package manager, the module loader's paths, manifests, lockfiles or vendoring
 owner: tech-lead
 status: active
 applies_to: istalang
@@ -10,8 +10,8 @@ tags: [proposal, toolchain, packages, modules, imports, lockfile, vendoring, ide
 
 # Proposal: packages
 
-**Motivation.** Spec §11 sketches packages (`ista.json`, minimal version selection, one version per
-package, vendoring) and §3.13 resolves bare paths against both the std and the project, so a
+**Motivation.** Spec §13.2 sketches packages (`ista.json`, minimal version selection, one version per
+package, vendoring) and §13.1 resolves bare paths against both the std and the project, so a
 project file can collide with a std module. Neither says how a package's code is named in compiled
 code and saved state, which proposal 10 matches by name across releases.
 
@@ -39,7 +39,7 @@ This proposal decides all three:
   link mounted under one is an error.
 - **Inside a dependency,** `/app` is that dependency's own root and `/lib/…` its own mounts: each
   import resolves through the manifest of the package it is written in.
-- **The prelude** stays implicit. A host's own loaders may still use paths of their own (§3.13);
+- **The prelude** stays implicit. A host's own loaders may still use paths of their own (§13.1);
   these are the `ista` toolchain's.
 
 ## Manifest: `package.ista`
@@ -73,7 +73,7 @@ const package = Package:
 ```
 
 The toolchain reads it by compiling it as a module and taking the constant's compile-time value
-(§3); a type error in a manifest is a compile error at its span.
+(§5.1); a type error in a manifest is a compile error at its span.
 
 ## The schema: `/std/package`
 
@@ -171,7 +171,7 @@ formatter's canonical form. Dependencies' own lockfiles are ignored.
 
 ## Vendoring
 
-Kept from §11. `ista vendor` resolves, writes the lock and copies every fetched package to
+Kept from §13.2. `ista vendor` resolves, writes the lock and copies every fetched package to
 `vendor/<name>@<version>/`, committed with the project. Two paths at the same version share one
 folder, keyed by content; `Path` packages are already in the repository and aren't copied.
 `ista verify` checks every vendored folder against the lock's hash. Builds download nothing.
@@ -185,12 +185,12 @@ packages that depend on it. The std is one package, so `endings` becomes `/std/_
 
 ## Programs
 
-`programs` maps names to entry modules, each declaring `live async fn main()` (§9).
+`programs` maps names to entry modules, each declaring `live async fn main()` (§17.1).
 - `ista run` and `ista build` with no argument take `main`, which defaults to `/app/main`.
 - `ista run <program>` takes the named one.
 - An argument containing `/` or ending in `.ista` is a file path, as today.
 
-## Kept from §11
+## Kept from §13.2
 
 - **Packages are pure source:** no install scripts or build steps, and no I/O but their `extern`
   declarations, which tooling lists before a dependency is added. Every package includes a license
@@ -214,10 +214,10 @@ packages that depend on it. The std is one package, so `endings` becomes `/std/_
   examples and spec moves to the new paths; compiled names and snapshots change with them.
 
 **Spec edits:**
-- §3.13: the toolchain's paths, project sources and the root, as above.
-- §11: rewritten as this proposal.
-- §9: `ista run` and `ista build` with programs.
-- §3.8 and every example and cheat-sheet import: `/std/…` paths.
+- §13.1: the toolchain's paths, project sources and the root, as above.
+- §13.2: rewritten as this proposal.
+- §17.3: `ista run` and `ista build` with programs.
+- §19.2 and every example and cheat-sheet import: `/std/…` paths.
 - `docs/arch/architecture.md`: the `packages/` line and the loader contract's path syntax.
 
 ## Decisions (the human's, approved 2026-11-18)

@@ -1,18 +1,18 @@
 /**
- * What a `pattern` place offers: where a pattern a `case` or an `is` tests is written (§3.11),
+ * What a `pattern` place offers: where a pattern a `case` or an `is` tests is written (§11.3),
  * read from the placeholder parse, which holds the pattern being written whole.
  *
  * - Where a pattern starts, or a struct pattern's name is written, what it may refer to, never a
  *   variable, since a bare camelCase name binds one: the variants of the type it matches, bare, of
  *   a union's members those whose name selects one member; the names of that type and of what a
- *   pattern on a union selects (§3.11, checker/types/written/pattern-types.ts), and the namespaces,
+ *   pattern on a union selects (§11.3, checker/types/written/pattern-types.ts), and the namespaces,
  *   which qualify a variant, a struct or a constant; against an `any` type the types a downcast may
  *   name; `_`; and the literal keywords whose literal selects a member (`true` and `false` a
  *   `Bool`, `none` an optional), all of them where the type isn't known, as a literal pattern has
  *   the matched value's own type. A variant another case of the `match` already takes whole is
  *   marked covered, for ranking, a call pattern's when it binds what its fields hold whole. As a
  *   call pattern's argument by position, also the names labelling the fields its other arguments
- *   don't give, `by:`; after a named one, those alone, as in a call (§3.3), and those alone where
+ *   don't give, `by:`; after a named one, those alone, as in a call (§6.1), and those alone where
  *   a named one's label is being written.
  * - After a struct pattern item's field name, `as` or `is`; a comparison is an operator.
  * - After a case's whole pattern, once a space parts them, `if` for a guard and `as` for the whole.
@@ -112,8 +112,8 @@ function patternStarts(
 
 /**
  * Where `argument` is a call pattern's argument being written, by position or the name of a named
- * one, the names labelling the fields its other arguments don't give, each as `name:` (§3.11), and
- * whether an argument up to it is named, so only names may follow, as in a call (§3.3); none
+ * one, the names labelling the fields its other arguments don't give, each as `name:` (§11.3), and
+ * whether an argument up to it is named, so only names may follow, as in a call (§6.1); none
  * elsewhere.
  */
 function fieldLabels(
@@ -166,7 +166,7 @@ function referringNames(cursor: Cursor, type: Type | undefined): readonly Candid
 /**
  * A namespace, which qualifies what it exports; a name of `type` itself, or, against a union, one a
  * pattern selects members by (checker/types/written/pattern-types.ts), but a variant's, offered by
- * its owner above; and against an `any` type, a type a downcast may name, one it may hold (§3.10).
+ * its owner above; and against an `any` type, a type a downcast may name, one it may hold (§8.3).
  */
 function mayRefer(checker: Checker, entity: Entity, type: Type | undefined): boolean {
   if (entity.kind === 'namespace') {
@@ -215,7 +215,7 @@ const wholeKinds: ReadonlySet<string> = new Set(['OrPattern', 'ParenthesizedPatt
 
 /**
  * The variants `pattern` matches every value of: by name, or with fields it only binds, a call
- * pattern testing no item of the rest field, whose length that would test (§3.11).
+ * pattern testing no item of the rest field, whose length that would test (§11.3).
  */
 function variantsTakenWhole(pattern: Pattern, fieldsOf: FieldsOfVariant): readonly string[] {
   switch (pattern.kind) {
@@ -293,7 +293,7 @@ function followsWholePattern(cursor: Cursor, { chain }: Parsed): boolean {
 
 /**
  * Whether `pattern` is written whole: not one the parser found missing or broken, nor a range
- * lacking the end its `..=`, or its `..` with no start, takes (§3.11).
+ * lacking the end its `..=`, or its `..` with no start, takes (§11.3).
  */
 function isWhole(pattern: Pattern): boolean {
   if (pattern.kind === 'Missing' || pattern.kind === 'Invalid') {

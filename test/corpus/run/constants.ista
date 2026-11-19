@@ -1,5 +1,5 @@
 # outcome: "total: 38 432000000 0.5 -0.25"
-# Top-level constants (§3): literals, a negated number, a duration, a struct built from them, and
+# Top-level constants (§5.1): literals, a negated number, a duration, a struct built from them, and
 # constants built from other constants, each computed while compiling.
 
 import * as runtime from 'runtime'

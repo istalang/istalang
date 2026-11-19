@@ -1,5 +1,5 @@
 /**
- * Overload clashes (§3.3, §3.7): whether two functions of one name clash doesn't depend on which
+ * Overload clashes (§6.1, §6.3): whether two functions of one name clash doesn't depend on which
  * is declared first, and they clash where some call fits both and choosing prefers neither: a type
  * beside a union holding it, a literal type beside its base, or a type converting part by part into
  * another, is more specific, so neither clashes, while two functions each narrower somewhere, or

@@ -171,7 +171,7 @@ export function isOneKind(lookup: QualifierLookup, kind: Type): boolean {
 
 /**
  * Whether `type` is a mark variable: a mark parameter, `K in Persistence` or `M in Mark`, or an
- * associated type bounded to marks, `type Mode in Persistence` (§3.10).
+ * associated type bounded to marks, `type Mode in Persistence` (§8.2).
  */
 export function isMarkVariable(lookup: QualifierLookup, type: Type): boolean {
   return (
@@ -182,7 +182,7 @@ export function isMarkVariable(lookup: QualifierLookup, type: Type): boolean {
   );
 }
 
-/** Whether `type` is an associated type bounded to one member of `members` (§3.10). */
+/** Whether `type` is an associated type bounded to one member of `members` (§8.2). */
 function isBoundTo(lookup: QualifierLookup, type: Type, members: readonly string[]): boolean {
   const union = type.kind === 'associated' ? lookup.fitting.memberUnionOf(type) : undefined;
   return (

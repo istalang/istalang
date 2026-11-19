@@ -1,12 +1,12 @@
 /**
- * Deployed programs (§9): a Definition emitted and stored once per hash, and starting what a host
+ * Deployed programs (§17.1): a Definition emitted and stored once per hash, and starting what a host
  * may start of it by key, with its arguments as JSON.
  *
  * - A start runs on a turn of its own, as every host call does (host-turns.ts).
  * - A host starts live or simple code only, as a live run: in memory, never written to the store,
- *   its promise settling with how it ended, at once when its root call returns (§10). Ista code
- *   runs in the contexts live code calls (§9), each an instance of the world, which a start's
- *   options (`crashEveryAwait`, §10) hold for.
+ *   its promise settling with how it ended, at once when its root call returns (§18). Ista code
+ *   runs in the contexts live code calls (§17.1), each an instance of the world, which a start's
+ *   options (`crashEveryAwait`, §18) hold for.
  * - What crosses is JSON: arguments are decoded by the start entry, and the outcome encoded by
  *   the start's encoding entry, the moment the root call's outcome settles; an outcome JSON can't
  *   hold refuses the start, once the run finished.
@@ -110,7 +110,7 @@ async function settled(world: DurableWorld, given: unknown): Promise<Value | und
 }
 
 /**
- * An outcome no encoding wrote, a spawned instance's (§9), as JSON text: a primitive as JSON writes
+ * An outcome no encoding wrote, a spawned instance's (§17.1), as JSON text: a primitive as JSON writes
  * it, an int exactly; anything else has no text without its type's codec.
  */
 function plainText(outcome: Value): string {

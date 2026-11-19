@@ -1,6 +1,6 @@
 /**
- * What a call's callee may name (§3.7, §3.10): a trait names no type, so nothing converts into it,
- * and calling one is refused, whether written as a call or as the taker of a deferred call (§3.14).
+ * What a call's callee may name (§6.2, §8.2): a trait names no type, so nothing converts into it,
+ * and calling one is refused, whether written as a call or as the taker of a deferred call (§6.5).
  */
 
 import { describe, expect, it } from 'vitest';

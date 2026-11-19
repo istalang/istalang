@@ -1,9 +1,9 @@
 /**
- * Where a panic stops (§3.12): an ista instance's ends the instance at the run's outermost guarded
+ * Where a panic stops (§12): an ista instance's ends the instance at the run's outermost guarded
  * call, unwinding every call started within it (an async call's start, a call stopped as it is
  * disposed) as a plain callee's panic does, so no code of the instance runs past it, a host extern
  * call included. The live run's propagates to the host. While a termination disposes everything
- * past panics (§3.12), a guarded call's panic ends that call alone, as a `dispose`'s does
+ * past panics (§12), a guarded call's panic ends that call alone, as a `dispose`'s does
  * (disposal.ts), and the calls stopped after it still run their cleanup.
  */
 

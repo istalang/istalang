@@ -1,5 +1,5 @@
 /**
- * A call's type variables (§3.5): one per type parameter it infers, a key of its own, so they stay
+ * A call's type variables (§8.1): one per type parameter it infers, a key of its own, so they stay
  * apart from the same declaration's parameters standing rigid where the call is written, as a
  * generic function's own call inside its body has them (`fn flip<A, B>` calling `flip(b, a)`
  * gives its variable for `A` the rigid `B`, never itself). Matching, bounds and settling read the

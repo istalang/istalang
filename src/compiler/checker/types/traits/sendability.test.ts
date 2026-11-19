@@ -1,7 +1,7 @@
 /**
- * Sendability's three levels (§3.14): what a closure is inferred to be from its captures, where a
+ * Sendability's three levels (§6.4): what a closure is inferred to be from its captures, where a
  * function of each level fits, what an expected `inert` or `sendable` function refuses it to
- * capture, and what meets `Inert` (§3.10).
+ * capture, and what meets `Inert` (§7.4).
  */
 
 import { describe, expect, it } from 'vitest';

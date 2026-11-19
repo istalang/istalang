@@ -1,5 +1,5 @@
 /**
- * Context constants (spec §3.4): each initializer is checked once, on demand, as a value within
+ * Context constants (spec §7.1): each initializer is checked once, on demand, as a value within
  * its constant (wiring/body/body-kinds.ts), so as ista code that can't await, against the written
  * type if there is one. ProgramChecker composes this unit, as its `contextConstants`.
  *

@@ -1,5 +1,5 @@
 # outcome: "21 true false"
-# spawn gives the new instance's Instance<T> (§9): T is what its function returns, an async one's
+# spawn gives the new instance's Instance<T> (§17.1): T is what its function returns, an async one's
 # awaited value. A handle compares by identity, may be passed to another instance, and its
 # result() gives that instance's end, here in a third instance.
 

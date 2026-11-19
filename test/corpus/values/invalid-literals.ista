@@ -6,7 +6,7 @@
 # error: 5213 at 25:20
 # error: 5015 at 26:26
 # error: 5001 at 28:20
-# Struct literal forms (§3.1): a positional value only for a struct of one field, a spread first
+# Struct literal forms (§5.2): a positional value only for a struct of one field, a spread first
 # and of the literal's own type, a struct without fields written bare, and a fresh `struct{…}`
 # with named, distinct fields, a type of its own.
 

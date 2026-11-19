@@ -1,5 +1,5 @@
 /**
- * Type arguments given a generic declaration (§3.5): completed with the defaults of the parameters
+ * Type arguments given a generic declaration (§8.1): completed with the defaults of the parameters
  * left out, and noted for the checks an instantiation needs, which run when the module giving them
  * is checked (resolve-type.ts says why later).
  *
@@ -88,7 +88,7 @@ export function defaultArgument(
 
 /**
  * Notes every argument of a constrained parameter in a complete list for its constraints, and the
- * instantiation for the type `match`es it reaches (§3.5, §3.17): a type's, whose associated types
+ * instantiation for the type `match`es it reaches (§8.1, §4.6): a type's, whose associated types
  * each use reduces, whatever its arity, and a generic or type `match` alias's, whose body each use
  * reduces; a plain alias's body without parameters reduces once, where it is written.
  */

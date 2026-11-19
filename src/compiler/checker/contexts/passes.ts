@@ -1,5 +1,5 @@
 /**
- * Passes (§4): a field loop's body is checked once per field it visits, as the body written out
+ * Passes (§11.2): a field loop's body is checked once per field it visits, as the body written out
  * once per field, so what checking records of a node inside it is recorded per pass, and lowering
  * writes each pass's code from that pass's records (CheckedBody `passesOf`).
  *
@@ -16,7 +16,7 @@
  * - Each pass checks the same text, so what passes report waits for the loop's passes to be checked
  *   (`hold`), then a diagnostic several made is reported once, and a case no value reaches only
  *   when no pass reaches it (`settled`).
- * - A loop over a type's keys declares its key as a type (§3.5), which each pass binds to its own
+ * - A loop over a type's keys declares its key as a type (§8.1), which each pass binds to its own
  *   (`keyBinding`): the body's types are resolved once for the whole program, so the body reads
  *   each through the bindings of the passes it is in (`Pass.binds`).
  */
@@ -139,7 +139,7 @@ export class Passes {
   /**
    * What the passes of one loop report, once each: every diagnostic a pass made since they were
    * last settled, except one about code that never runs, which holds of the loop only when every
-   * pass made it (§4): a case or a branch one field's pass never reaches, another's may.
+   * pass made it (§11.2): a case or a branch one field's pass never reaches, another's may.
    */
   settled(passes: readonly Pass[]): readonly Diagnostic<AnchoredSpan>[] {
     const made = passes.map((pass) => this.#held.get(pass) ?? []);
@@ -224,7 +224,7 @@ function passTable<Key, Value>(passes: Passes): PassTable<Key, Value> {
 }
 
 /**
- * Which fields one checking of a field loop's body is for (§4): the field `name` names, its key
+ * Which fields one checking of a field loop's body is for (§11.2): the field `name` names, its key
  * that field's name as a literal type and its value that field's type; every field a struct
  * constraint leaves unnamed at once, its key a member parameter keyed by the loop's header, which
  * each instantiated field gives its own literal, and its value the field that key names; or none,
@@ -246,7 +246,7 @@ export interface FieldPassType {
 
 /**
  * What a pass of the loop `header` heads binds: over a type's keys, the key it declares to the
- * pass's (§4); over a value's fields nothing, its key a variable.
+ * pass's (§11.2); over a value's fields nothing, its key a variable.
  */
 export function keyBinding(header: FieldLoopHeader, pass: FieldPassType): Substitution {
   return header.kind === 'TypeParameter' ? new Map([[header, pass.key]]) : new Map();

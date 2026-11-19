@@ -1,5 +1,5 @@
 /**
- * The common type of several values' types where none is expected (§2, §4): what agreement (an
+ * The common type of several values' types where none is expected (§4.2, §10.1): what agreement (an
  * `if`'s branches, a body's tail and its `return`s, a collection literal's items) decides, and
  * inference's settling will.
  *
@@ -66,8 +66,8 @@ export function optionalOver(type: Type, joining: Joining): Type {
 }
 
 /**
- * What joining widens a type to (§2): a literal type, a union of literals of one base, or a member
- * parameter standing for one of them, such as a field loop's key (§4), to that base, and a
+ * What joining widens a type to (§4.3): a literal type, a union of literals of one base, or a member
+ * parameter standing for one of them, such as a field loop's key (§11.2), to that base, and a
  * sendable function type to a plain one; an optional's inner type likewise, kept optional.
  */
 export function joinWidened(type: Type, joining: Joining): Type {

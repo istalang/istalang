@@ -1,5 +1,5 @@
 /**
- * Generic code over unions behaves as the code each instantiation stands for (§2 "Collapse", §3.5):
+ * Generic code over unions behaves as the code each instantiation stands for (§4.2 "Collapse", §8.1):
  * every function of a table using union constructs (`??`, `?.`, a value put into a union, `match`
  * with literal, union and or-patterns, `?`) gives, instantiated with a type argument, what the
  * same function written for that type gives. Type arguments are drawn from a few types and the
@@ -60,7 +60,7 @@ interface Compared {
 const functions: readonly Compared[] = [
   {
     lines: ['fn coalesce$<T>(x: T?, y: T?) -> T?: x ?? y'],
-    // `??` takes no `None` itself (§4), so the one written for a type is the `match` it stands for.
+    // `??` takes no `None` itself (§10.4), so the one written for a type is the `match` it stands for.
     written: [
       'fn coalesce$<T>(x: T?, y: T?) -> T?:',
       '  match x:',
@@ -132,7 +132,7 @@ function comparisons(type: string, value: string): readonly string[] {
     );
 }
 
-describe('generic code over unions, instantiated (§3.5)', () => {
+describe('generic code over unions, instantiated (§8.1)', () => {
   it('gives what the same code written for the type argument gives', {
     timeout: slowTestTimeout,
   }, async () => {

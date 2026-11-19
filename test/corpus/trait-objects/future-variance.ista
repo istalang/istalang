@@ -1,6 +1,6 @@
 # outcome: [2,4]
 # A trait whose function gives a future varies in what the future gives, whether the function is
-# async or a plain one giving a future, one type (§3.5, §3.14): a call through the `any` type
+# async or a plain one giving a future, one type (§8.1, §6.4): a call through the `any` type
 # a wider argument stands for awaits the future and converts its value.
 import * as runtime from 'runtime'
 

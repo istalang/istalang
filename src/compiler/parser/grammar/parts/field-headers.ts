@@ -1,11 +1,11 @@
 /**
- * A field loop's header (§4), which a field loop, an array comprehension and a struct
+ * A field loop's header (§11.2), which a field loop, an array comprehension and a struct
  * comprehension share: over a value's fields, `for key, value in ...x`, or over a type's keys,
  * `for K in keyof S`. What follows `in` tells them from iterating an `Iterable`: the `...`, or the
  * word `keyof`, which no expression starts with. So each reads its targets and `in` as `for` does,
  * then this the rest.
  *
- * A loop over a type's keys declares its key as a member parameter (§3.5), so its header is that
+ * A loop over a type's keys declares its key as a member parameter (§8.1), so its header is that
  * parameter, `K in keyof S`, as a mapped entry's is: its one target is its name.
  */
 

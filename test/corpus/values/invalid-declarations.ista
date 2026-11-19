@@ -5,8 +5,8 @@
 # error: 5211 at 18:12
 # error: 5125 at 19:23
 # A method taking `self` by value clashes with one taking it by reference, as `x.f()` couldn't
-# choose (§3.7). A struct never holds itself, directly, through a tuple, or through another
-# struct (§3.1), and one growing its own type argument is endless (§3.5).
+# choose (§6.3). A struct never holds itself, directly, through a tuple, or through another
+# struct (§5.2), and one growing its own type argument is endless (§8.1).
 
 struct P { x: Int }
 fn f(self: P): 1

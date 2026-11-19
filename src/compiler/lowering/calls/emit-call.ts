@@ -4,12 +4,12 @@
  *
  * A resolved call (`emitFunctionCall`) runs its function's entry with every parameter in order:
  * the ones the call passes, and each one it leaves out passed as omitted, which the entry computes
- * from its default in its prologue (§3.1, §3.3), so a default runs in the function however the call
+ * from its default in its prologue (§5.2, §6.1), so a default runs in the function however the call
  * gave the parameters before it. An extern computes nothing, so a call leaving its defaults out runs
  * the extern's entry computing them (tables/tables.ts `leavingOutIndex`). A dispatch on an `any`
  * value's own type binds the required function's parameters the same way, then runs its dispatch
- * entry (§3.10). A variant's constructor called with every field runs no entry: its parameters are
- * the fields of the variant it builds in place (§3.11, values/variant-values.ts); one leaving a
+ * entry (§8.2). A variant's constructor called with every field runs no entry: its parameters are
+ * the fields of the variant it builds in place (§5.3, values/variant-values.ts); one leaving a
  * field out runs the constructor's entry, which computes it. A primitive operation's extern
  * (tables/own-entries.ts) is that operation, written inline, never a call.
  *
@@ -87,7 +87,7 @@ interface FunctionCallToEmit {
 
 /**
  * Writes `toEmit`, its parameters bound as its binding says first; `dst` holds its result. A
- * dispatch takes the required function's parameters, which have no defaults (§3.10).
+ * dispatch takes the required function's parameters, which have no defaults (§8.2).
  */
 export function emitFunctionCall(
   context: CodeContext,
@@ -133,7 +133,7 @@ export function emitPrimitive(
   return dst;
 }
 
-/** A parameter a call leaves out, which the callee computes from its default (§3.3). */
+/** A parameter a call leaves out, which the callee computes from its default (§6.1). */
 const omitted: Argument = { kind: 'omitted' };
 
 function isOmitted(parameter: Register | Argument): boolean {
@@ -255,7 +255,7 @@ function registerOf(argument: Register | Argument): Register {
   return argument.register;
 }
 
-/** A reference, of `type`, to the whole value in the cell `cell`, as `&` passes it (§3.7). */
+/** A reference, of `type`, to the whole value in the cell `cell`, as `&` passes it (§7.3). */
 export function referenceTo(
   context: CodeContext,
   cell: Register,

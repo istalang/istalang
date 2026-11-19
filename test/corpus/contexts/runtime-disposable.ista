@@ -1,5 +1,5 @@
 # outcome: true
-# A `Runtime` is disposable (§9), so a weak reference can watch it: one the live run holds derefs to
+# A `Runtime` is disposable (§17.1), so a weak reference can watch it: one the live run holds derefs to
 # itself.
 
 import * as runtime from 'runtime'

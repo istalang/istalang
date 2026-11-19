@@ -1,5 +1,5 @@
 /**
- * Where a `dispose` may use its value (§7): only so it can't outlive the disposal. What it can't
+ * Where a `dispose` may use its value (§16): only so it can't outlive the disposal. What it can't
  * do is the corpus's (`test/corpus/holders/invalid-dispose.ista`), which states its positions.
  */
 

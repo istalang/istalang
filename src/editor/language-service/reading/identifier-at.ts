@@ -21,7 +21,7 @@ function innermostIdentifier(tree: SyntaxTree, offset: number): Identifier | und
 
 /**
  * The String literal of `tree` the cursor at `offset` is on, as `identifierAt` places it: what
- * may be a key naming a field (§3.1 Key types); undefined for none.
+ * may be a key naming a field (§5.2 Key types); undefined for none.
  */
 export function stringLiteralAt(tree: SyntaxTree, offset: number): StringLiteral | undefined {
   return innermostLiteral(tree, offset) ?? innermostLiteral(tree, offset - 1);

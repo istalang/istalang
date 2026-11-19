@@ -1,6 +1,6 @@
 /**
  * What a witness search finds, and the state it carries down the active stack (conformance.ts,
- * §3.5, §3.10): a witness, or why there is none. A search that fails has reported why at its use
+ * §8.1, §8.2): a witness, or why there is none. A search that fails has reported why at its use
  * site already; one reaching the depth bound counts as endless, which the root reports as such.
  *
  * - A search judges each goal once (`SearchGoals`): wrappers meeting a trait through the same

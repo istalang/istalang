@@ -1,5 +1,5 @@
 # outcome: "10,15 b 0:1,1:2,2:3 3 1,0 true"
-# Comprehensions (§4): over any iterable, kept by a condition, taking items apart like `for`, and
+# Comprehensions (§10.5): over any iterable, kept by a condition, taking items apart like `for`, and
 # nested; the expected array's element type, through optionals around the array, guides the body.
 
 import * as runtime from 'runtime'

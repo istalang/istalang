@@ -1,5 +1,5 @@
 /**
- * An annotation's place (§3.16): its struct's name after `@`. Its literal is a literal field's
+ * An annotation's place (§5.5): its struct's name after `@`. Its literal is a literal field's
  * place (literal-field.ts), as the parser reads it even with no item after it to annotate (an
  * Invalid holds it then), and a qualifier's `.` a member's.
  *
@@ -51,7 +51,7 @@ function annotationNames(cursor: Cursor, parsed: PlaceholderParse): readonly Can
   }
   const holder = chain[itemIndex - 1];
   if (holder?.kind === 'StructType') {
-    // A shape's field takes no annotation (§3.16).
+    // A shape's field takes no annotation (§5.5).
     return [];
   }
   const statement =
@@ -67,7 +67,7 @@ function annotationNames(cursor: Cursor, parsed: PlaceholderParse): readonly Can
 }
 
 /**
- * What a statement of a body may carry (§3.16, `statementPlace`): a local function's any
+ * What a statement of a body may carry (§5.5, `statementPlace`): a local function's any
  * struct, a statement that waits `@Waypoint`, any other nothing. An annotation with no statement
  * after it yet may still be a waiting one's.
  */

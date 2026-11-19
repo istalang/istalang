@@ -1,11 +1,11 @@
 /**
- * `ista run --host` end to end (§3.6, §9): a JavaScript module stands in for the host, implementing
+ * `ista run --host` end to end (§17.2, §17.3): a JavaScript module stands in for the host, implementing
  * the program's externs by key against JSON. A host type's value crosses as the host's own JSON, a
  * promise resolves the live future its extern returns, which ista code reaches through
  * `runtime.delegate`, an extern constant is read from the host, and a result as JSON says it maps
  * back. What doesn't fit panics where the spec says: a result of the wrong type the instance, and a
  * promise's JSON that doesn't fit, or a promise that rejects, the live code waiting on it.
- * Spec §12's examples, read from the spec itself, run against a scripted host of queues.
+ * Spec §20's examples, read from the spec itself, run against a scripted host of queues.
  */
 
 import { readFileSync } from 'node:fs';
@@ -59,7 +59,7 @@ function host(order: string, charge: string): string {
 }
 
 /**
- * The host spec §12 declares, scripted: a queue is named after what it carries, and logs to
+ * The host spec §20 declares, scripted: a queue is named after what it carries, and logs to
  * `queue.log` every send, retraction and charge, a send by the token it gave. The purchase requests
  * hold one request, then fail, which panics the run serving the job asking for the next; a
  * purchase's verdicts arrive one after the other, and its cancels late, once nothing waits on
@@ -126,7 +126,7 @@ const specHost = [
 ].join('\n');
 
 /**
- * What the host logs of purchase `p1` going through §12.1's approval: a review request sent to
+ * What the host logs of purchase `p1` going through §20.1's approval: a review request sent to
  * each role, then the card charged and both requests retracted once approval ended.
  */
 const purchased = {
@@ -135,7 +135,7 @@ const purchased = {
 };
 
 /**
- * Runs `lines`, a module of spec §12, against the scripted host: what it printed, the sends it
+ * Runs `lines`, a module of spec §20, against the scripted host: what it printed, the sends it
  * logged in order, and what it logged after them, sorted.
  */
 async function runSpec(lines: readonly string[]) {
@@ -303,10 +303,10 @@ describe('ista run --host', () => {
     expect(run.err).toMatch(laterRejected);
   });
 
-  it('runs spec §12.1 and §12.2: a purchase spawned for each request, until requests fail', async () => {
+  it('runs spec §20.1 and §20.2: a purchase spawned for each request, until requests fail', async () => {
     const { run, ...logged } = await runSpec([
-      ...specCode('12.1 Purchase approval'),
-      ...specCode('12.2 Approver side'),
+      ...specCode('20.1 Purchase approval'),
+      ...specCode('20.2 Approver side'),
     ]);
     expect(run.code).toBe(1);
     expect(run.out).toBe('');
@@ -316,9 +316,9 @@ describe('ista run --host', () => {
     expect(logged).toEqual({ ...purchased, after: [] });
   });
 
-  it("runs spec §12.1's purchase in place, to the outcome its charge gives", async () => {
+  it("runs spec §20.1's purchase in place, to the outcome its charge gives", async () => {
     const { run, ...logged } = await runSpec([
-      ...specCode('12.1 Purchase approval', (code) => !code.includes('spawn purchase')),
+      ...specCode('20.1 Purchase approval', (code) => !code.includes('spawn purchase')),
       "import * as runtime from 'runtime'\nlive async fn main() -> String: await runtime.run(runtime.id()) _main()\nista async fn _main() -> String:",
       '    await purchase(PurchaseRequest{id: "p1", item: "laptop", amount: 900})',
     ]);
@@ -326,12 +326,12 @@ describe('ista run --host', () => {
     expect(logged).toEqual(purchased);
   });
 
-  it("runs spec §12.3, retracting every unread copy through the host's queue when it ends", async () => {
+  it("runs spec §20.3, retracting every unread copy through the host's queue when it ends", async () => {
     const { run, ...logged } = await runSpec([
-      ...specCode('12.1 Purchase approval', (code) =>
+      ...specCode('20.1 Purchase approval', (code) =>
         code.includes('extern sendable struct Queue'),
       ),
-      ...specCode('12.3 Broadcast with expiry').map((code) =>
+      ...specCode('20.3 Broadcast with expiry').map((code) =>
         code.replace("import * as time from 'time'\n", ''),
       ),
       "import * as runtime from 'runtime'\nlive async fn main() -> String: await runtime.run(runtime.id()) _main()\nista async fn _main() -> String:",

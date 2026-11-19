@@ -3,7 +3,7 @@
  * instance keeps (its live executions, its timers, its watches and its context constants), each
  * value with its objects named by id.
  *
- * - A value deeper than `maximumDepth` can't be persisted (§5): writing it fails with
+ * - A value deeper than `maximumDepth` can't be persisted (§14): writing it fails with
  *   `TooDeep`, which the instance panics with, at the await that would have committed it.
  * - A finished instance's outcome is written as any value is, a disposable one naming its object.
  * - A weak reference names its target only while the target lives, which it does only while
@@ -25,7 +25,7 @@ import { WeakReference } from '../run/objects/weak-reference.ts';
 import type { Run } from '../run/run.ts';
 import type { PersistedObject, PersistedRegister, PersistedStatus, Snapshot } from './format.ts';
 
-/** A value nesting deeper than an instance can persist (§5). */
+/** A value nesting deeper than an instance can persist (§14). */
 export class TooDeep extends Error {
   override readonly name = 'TooDeep';
 

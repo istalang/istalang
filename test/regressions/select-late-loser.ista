@@ -1,6 +1,6 @@
 # outcome: 499
 # A case whose `onAwait` runs after an earlier case decided the wait loses once the waiter stops at
-# the `select`, every case known (§8): its resolver is cancelled then, which calls its `onCancel`.
+# the `select`, every case known (§15.4): its resolver is cancelled then, which calls its `onCancel`.
 
 import * as time from 'time'
 

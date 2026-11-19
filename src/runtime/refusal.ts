@@ -1,7 +1,7 @@
 /**
  * The runtime refusing what a host asked of it, as opposed to failing: a Definition naming externs
  * no native implements, a value with no JSON form, JSON from the host that doesn't fit the type it
- * was given for (§9), an instance the store doesn't hold, ista code to start (§9), an operation
+ * was given for (§17.3), an instance the store doesn't hold, ista code to start (§17.3), an operation
  * its status doesn't allow (retrying one that hasn't panicked), a snapshot
  * whose Definition the store lacks, a snapshot that doesn't fit its Definition, or a seed of the
  * wrong length from the host's `seed` seam. A host catches these, together with the FormatError an

@@ -1,5 +1,5 @@
 /**
- * Waypoints (§10): the name a statement's `@Waypoint` gives where code inside it waits, which a
+ * Waypoints (§18): the name a statement's `@Waypoint` gives where code inside it waits, which a
  * host inspecting a waiting instance reads. The innermost statement naming one counts; a function
  * or lambda boundary ends the search, as a nested function's waits are its own.
  */

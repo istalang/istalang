@@ -1,7 +1,7 @@
 # error: 5026 at 6:18
 # error: 5026 at 7:29
 # Compile time computes array and map constants from literals and from spreads of other array and
-# map constants (§3); a spread of a string or a range waits until the program runs.
+# map constants (§5.1); a spread of a string or a range waits until the program runs.
 
 const letters = [..."ab"]
 const numbers = [...[1, 2], ...0..3]

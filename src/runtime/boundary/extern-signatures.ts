@@ -1,5 +1,5 @@
 /**
- * One name, one type (§3.6): the runtime remembers the declared type of every extern a host
+ * One name, one type (§17.2): the runtime remembers the declared type of every extern a host
  * implements, by its key, across every Definition it deploys, and refuses a Definition that
  * declares one of them differently. A key already spells a function's parameter types, so what can
  * differ under one key is a function's result or a constant's type, which a host provides against.

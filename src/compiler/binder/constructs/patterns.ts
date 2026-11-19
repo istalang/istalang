@@ -1,5 +1,5 @@
 /**
- * Binding names in patterns (§3.11) and in the targets of declarations and loops (§3.15).
+ * Binding names in patterns (§11.3) and in the targets of declarations and loops (§4.5).
  *
  * A pattern both refers and binds. The names it refers to (variants, types, the values a field is
  * compared with) resolve in the scope the pattern is written in. The variables it binds go into a
@@ -115,7 +115,7 @@ function walk(binder: LocalBinder, node: Pattern | PatternPart, binding: Binding
  * defined where the pattern binds, and a later one's name is the first's variable of that name, so
  * whichever alternative matched, the body reads one variable. A name only a later alternative
  * binds is defined too, so it resolves where it is read; the checker reports that the
- * alternatives differ (§3.11).
+ * alternatives differ (§11.3).
  */
 function bindAlternatives(
   binder: LocalBinder,

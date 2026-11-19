@@ -1,5 +1,5 @@
 /**
- * Functions named as values with type arguments written after the name (§3.5, §3.14): every way
+ * Functions named as values with type arguments written after the name (§8.1, §6.4): every way
  * of naming a function takes them, and the value is the function they instantiate, whatever types
  * they are. What each refusal reports is a corpus program
  * (`test/corpus/generics/invalid-applied-function-values.ista`), which states its positions.

@@ -1,10 +1,10 @@
 /**
- * The functions the language's constructs call by name, with no call written in the source (§2,
- * §3.8–§3.12, §4, §7): indexing and iteration, conversions, templates, a range's inclusive end,
+ * The functions the language's constructs call by name, with no call written in the source (§3.1,
+ * §8.4, §10.2, §11.3, §12, §19.1, §11.1, §16): indexing and iteration, conversions, templates, a range's inclusive end,
  * array patterns, panics and disposal.
  */
 
-/** The functions collections go through (§3.9, §3.10): `x[k]`, `x[k] = v`, `for` and spreads. */
+/** The functions collections go through (§10.2, §8.4): `x[k]`, `x[k] = v`, `for` and spreads. */
 export const collectionFunctions = {
   index: 'index',
   setIndex: 'setIndex',
@@ -12,7 +12,7 @@ export const collectionFunctions = {
 } as const;
 
 /**
- * The functions an untagged template calls (§2): each value's `toString`, as a method, and the
+ * The functions an untagged template calls (§3.1): each value's `toString`, as a method, and the
  * prelude's `join` of its texts and values.
  */
 export const templateFunctions = {
@@ -20,11 +20,11 @@ export const templateFunctions = {
   join: 'join',
 } as const;
 
-/** The range `..=` builds, its end one past the written end in the step's direction (§3.8). */
+/** The range `..=` builds, its end one past the written end in the step's direction (§19.3). */
 export const inclusiveRangeFunction = '_inclusiveRange';
 
 /**
- * What an array pattern calls in the prelude once its length test passed (§3.11): its length, an
+ * What an array pattern calls in the prelude once its length test passed (§11.3): its length, an
  * item counted from the start or, when negative, from the end, and the items between.
  */
 export const arrayPatternFunctions = {
@@ -34,7 +34,7 @@ export const arrayPatternFunctions = {
 } as const;
 
 /**
- * What a value converted part by part calls in the prelude (§3.5, §3.14): an array's `map` of its
+ * What a value converted part by part calls in the prelude (§8.1, §6.4): an array's `map` of its
  * items, a map's `_mapValues`, its keys kept, and a future's `_converted` of what it gives.
  */
 export const partConversionFunctions = {
@@ -43,17 +43,17 @@ export const partConversionFunctions = {
   futureValue: '_converted',
 } as const;
 
-/** The static function a conversion `T(x)` calls (§3.10). */
+/** The static function a conversion `T(x)` calls (§8.4). */
 export const conversionFunction = 'from';
 
-/** What `x!` calls on none (§4), and what a program calls to panic (§3.12). */
+/** What `x!` calls on none (§10.4), and what a program calls to panic (§12). */
 export const panicFunction = 'panic';
 
 /** What `await` and each `select` case call on what they wait on (proposal 8, Rule 5). */
 export const awaitFunction = 'onAwait';
 
 /**
- * What a host extern's wrapper calls for the future its host fills (§9): a pending future of the
+ * What a host extern's wrapper calls for the future its host fills (§17.2): a pending future of the
  * run's, which the host's native is given and the run settles with what the host gives.
  */
 export const hostFutureFunction = '_pendingFuture';
@@ -74,5 +74,5 @@ export const waitFunctions = {
   parking: '_parking',
 } as const;
 
-/** The function `Disposable` requires (§3.10, §7). */
+/** The function `Disposable` requires (§8.4, §16). */
 export const disposeFunction = 'dispose';

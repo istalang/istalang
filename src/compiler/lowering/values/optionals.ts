@@ -1,5 +1,5 @@
 /**
- * Optionals in lowered code (§2, §4): `T?` is the union `T | None` (members/index.ts), and this is the one
+ * Optionals in lowered code (§4.2, §10.4): `T?` is the union `T | None` (members/index.ts), and this is the one
  * place that tests one for `none`, for `none` itself, `??`, optional chains and a range's left-out
  * end, as their flows branch (lowering/flow/exits.ts).
  *
@@ -8,9 +8,9 @@
  * - Reading one tests whether it is `none` and, where it isn't, carries on with it as the type the
  *   reader asks for: what remains without `None`, or the optional itself, as `a ?? b` gives when
  *   `b` is optional too.
- * - An instantiation may collapse an optional (§3.5): `T?` with `T = None` is `None`, whose one
+ * - An instantiation may collapse an optional (§8.1): `T?` with `T = None` is `None`, whose one
  *   value is always absent, and with `T = Int?` is `Int?`, which a value of `T` is already, so it
- *   goes in as it is; with `T = any Sendable`, which takes `None` whole (§2), it is that `any`
+ *   goes in as it is; with `T = any Sendable`, which takes `None` whole (§4.2), it is that `any`
  *   type, holding `none` as any other value (members/holdings.ts).
  */
 

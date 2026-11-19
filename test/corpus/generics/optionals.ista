@@ -1,5 +1,5 @@
 # outcome: "true true false true true"
-# A `T` is wrapped into `T?` wherever an optional is expected (§2, §3.11): in a declaration, an
+# A `T` is wrapped into `T?` wherever an optional is expected (§4.2, §11.3): in a declaration, an
 # argument, a branch, a comparison and a return.
 
 import * as runtime from 'runtime'

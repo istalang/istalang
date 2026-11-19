@@ -1,5 +1,5 @@
 /**
- * The language's fixed time-unit ratios, in milliseconds (§2, §3.8, §9), which duration literals
+ * The language's fixed time-unit ratios, in milliseconds (§3.1, §19.2, §17.1), which duration literals
  * count in; the `time` module's code writes them as its own constants.
  */
 

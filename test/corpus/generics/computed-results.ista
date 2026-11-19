@@ -1,5 +1,5 @@
 # outcome: "x|Berlin|5|Ada|Ada|Ada|ACME|-|in"
-# A call whose result is computed from its own type parameters (§3.5) — an associated type, a
+# A call whose result is computed from its own type parameters (§8.1) — an associated type, a
 # field's type, a keyed `index`'s `S[K].Scope`, `S[K].Inner.Scope` with `S` given by its receiver
 # — gives what takes it the type that result reduces to, so a generic call it is passed to infers
 # from it: `text(scopeOf(…))` gives `T` a `String`.

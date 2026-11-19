@@ -1,7 +1,7 @@
 /**
- * `a!` (§4) is `a ?? panic("Force-unwrapped none.")`: the value inside `a`, or a panic.
+ * `a!` (§10.4) is `a ?? panic("Force-unwrapped none.")`: the value inside `a`, or a panic.
  *
- * - The `panic` is the prelude's, bound by the desugaring, whatever a local one shadows (§3.4).
+ * - The `panic` is the prelude's, bound by the desugaring, whatever a local one shadows (§7.1).
  * - `!` is warned of where it is written, since it panics on `none`, which `??`, `is` and `match`
  *   handle; no core rule says so, so the sugar does.
  * - `??`'s report of an operand that can't be `none` names the `!` written.

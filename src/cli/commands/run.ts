@@ -1,7 +1,7 @@
 /**
  * `ista run <entry>`: compile the program rooted at `entry` and run its `live async fn main()`
- * (§9) as a live run, printing its outcome as JSON. Its ista work runs in the contexts its
- * runtimes open over the host's store (§9): `--store <dir>` keeps the Definition and every commit
+ * (§17.1) as a live run, printing its outcome as JSON. Its ista work runs in the contexts its
+ * runtimes open over the host's store (§17.3): `--store <dir>` keeps the Definition and every commit
  * in a directory, so running a program again on it resumes the contexts it left, and memory keeps
  * them otherwise. `--host <module>` loads the externs the program's host implements from a
  * JavaScript module (host-module.ts), whose promises resolve the live futures `main` waits on.
@@ -12,7 +12,7 @@
  * instance its contexts spawned that panics, heard by no call, is reported as it panics and fails
  * the run. Nothing runs unless the whole program checks
  * clean. Diagnostics, warnings included, go to the error stream as `check` renders them, and so
- * does each log record `main` and its contexts committed, as a line of JSON (§9), so the output
+ * does each log record `main` and its contexts committed, as a line of JSON (§17.3), so the output
  * holds only the outcome.
  * Exit codes: 0 when `main` finishes; 1 when the program has errors, declares no `main`, panics,
  * the runtime refuses it, an instance panics unheard, or `main` waits on nothing that can wake it; 2 when the entry can't be
@@ -108,7 +108,7 @@ interface RunReports extends HostReports {
 
 /**
  * Reports written to the error stream: each log record as a line of JSON, and each instance that
- * panicked with no call hearing it, which fails the run, as a spawned one does (§9).
+ * panicked with no call hearing it, which fails the run, as a spawned one does (§17.1).
  */
 function errorStreamReports(environment: CliEnvironment): RunReports {
   let failed = false;

@@ -1,5 +1,5 @@
 /**
- * Shared instances (§3.5): an instance is keyed, and lowered, with each type argument its
+ * Shared instances (§8.1): an instance is keyed, and lowered, with each type argument its
  * declaration's code uses only opaquely (checker `opaqueParametersOf`) replaced by the stand-in for
  * that argument's representation (definition `representationOf`), so instantiations every backend
  * runs alike are one entry (Go's GC-shape stenciling, with the representation as the shape).

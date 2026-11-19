@@ -1,5 +1,5 @@
 # outcome: "mail(cfo):hi|sms(555):yo|42|Email(ops)|42|Email(ops)|-1|true:false:num:str|spawned:9"
-# Using a union (§6): trait conformance through functions declared for the union (Optional.default)
+# Using a union (§4.2): trait conformance through functions declared for the union (Optional.default)
 # or through every member meeting an object-safe trait, trait calls through visible traits, == and
 # != comparing member type then value, unions as Map keys, and Sendable unions across spawn.
 

@@ -1,5 +1,5 @@
 # outcome: "cleaned up | job unhandled"
-# The `disposing()` case wins in live code too (§7): the job's case decides the worker's wait first,
+# The `disposing()` case wins in live code too (§16): the job's case decides the worker's wait first,
 # readying it, but its last holder lets go of it before it runs, so it resumes on its `disposing()`
 # case, which stays registered until the worker moves on, though it comes later in the `select`.
 

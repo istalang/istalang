@@ -1,5 +1,5 @@
 /**
- * Shared instances (§3.5, stencils.ts): a generic function whose code uses a type parameter only
+ * Shared instances (§8.1, stencils.ts): a generic function whose code uses a type parameter only
  * opaquely is one entry per representation of the arguments it is given, a primitive its own, and
  * each of them runs as the instance of its own type would; a parameter whose type tells, as a union
  * naming it does, stays one entry per type.

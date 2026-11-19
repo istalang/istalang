@@ -1,5 +1,5 @@
 /**
- * String literals (spec §2).
+ * String literals (spec §3.1).
  *
  * Decoding is checked by round trip: any text, written as a literal with a random choice of
  * escapes, must decode back to itself. That covers both quotes, every escape, astral characters

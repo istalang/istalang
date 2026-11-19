@@ -3,7 +3,7 @@
 # error: 5702 at 23:16
 # error: 5702 at 25:23
 # error: 5703 at 27:4
-# Only a value with an identity of its own can be disposable (§7): a shared struct (§3.18), or an
+# Only a value with an identity of its own can be disposable (§16): a shared struct (§5.4), or an
 # extern type a host provides, never a plain struct, whose copies have none. A `dispose` is plain
 # code that takes its value and returns unit, it is found beside the type it disposes, and its
 # value can't escape it: `self` is used only as `*self`, through `->`, or passed to an extern. A

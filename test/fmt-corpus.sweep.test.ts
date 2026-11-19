@@ -97,7 +97,7 @@ describe('ista fmt over the corpus', () => {
   });
 });
 
-describe('ista fmt over line breaks (spec §2: `\\n`, `\\r\\n` or a lone `\\r`)', () => {
+describe('ista fmt over line breaks (spec §2.1: `\\n`, `\\r\\n` or a lone `\\r`)', () => {
   /**
    * Each formattable input formatted as written, with `\n`, once for both line breaks, by the
    * formatter itself, which formats a module its banner keeps as written too.

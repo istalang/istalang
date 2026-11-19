@@ -1,9 +1,9 @@
 /**
- * Statements made of a keyword and at most one expression or label (§4, §7): `return`, `break`,
+ * Statements made of a keyword and at most one expression or label (§11.1, §16): `return`, `break`,
  * `continue` and `drop`.
  *
  * `return` takes a value only when an expression follows on its line, or an indented value on the
- * lines below, deeper than its own (§2); so `if x: return` and a bare `return` at the end of a line
+ * lines below, deeper than its own (§3.2); so `if x: return` and a bare `return` at the end of a line
  * with no deeper line below both return unit. `break` and `continue` take a label on their line.
  */
 

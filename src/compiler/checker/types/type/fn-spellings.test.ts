@@ -1,5 +1,5 @@
 /**
- * One function type, `Fn<Args, Result, Kind, Send>` (§3.14, proposal 8, Rule 4): every other
+ * One function type, `Fn<Args, Result, Kind, Send>` (§6.4, proposal 8, Rule 4): every other
  * spelling is its sugar, so each resolves to the type, key and text of its `Fn` spelling; `Args` is
  * a tuple, `(A,)` for one parameter, with `&T` items for parameters taken by reference; and a
  * higher-order function keeps its argument's mark and sendability through written `M` and `S`.

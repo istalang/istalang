@@ -27,7 +27,7 @@ export const functionId = indexSchema();
 export const typeId = indexSchema();
 export const constantId = indexSchema();
 export const objectId = index;
-/** A binding of a function slot in a test (§10), numbered from its instance's object serial. */
+/** A binding of a function slot in a test (§18), numbered from its instance's object serial. */
 export const bindingId = index;
 export const fieldIndex = index;
 export const variantIndex = index;

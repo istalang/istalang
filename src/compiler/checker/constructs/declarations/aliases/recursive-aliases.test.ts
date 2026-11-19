@@ -85,7 +85,7 @@ describe('guarded vs unguarded self-reference (§2)', () => {
   });
 });
 
-describe('finiteness and regularity rules (§2, §3.1, §3.5)', () => {
+describe('finiteness and regularity rules (§2, §5.2, §8.1)', () => {
   it('reports 5211 when a recursive shape holds itself by value without an optional or collection', () => {
     expect(reported('type BadList = { head: Int, tail: BadList }')).toEqual(
       reportedOnce(checkerDiagnostics.recursiveField.code, 'tail'),
@@ -296,7 +296,7 @@ describe('identity, typeKey, sameType, substitution and union absorption (§2, n
   });
 });
 
-describe('recursive aliases through tuples and functions, which have no entry of their own (§3.17)', () => {
+describe('recursive aliases through tuples and functions, which have no entry of their own (§4.6)', () => {
   it('builds and reads a chain through a tuple and an optional', async () => {
     const decls = lines(
       'type Chain = (Int, Chain?)',

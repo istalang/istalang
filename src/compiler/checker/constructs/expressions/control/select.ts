@@ -1,16 +1,16 @@
 /**
- * `select` (§8): races futures and runs the case of the first to resolve.
+ * `select` (§15.4): races futures and runs the case of the first to resolve.
  *
  * - `await select` waits, so only an async function writes one, and it has no `else`. A `select`
  *   without `await` never waits, so any function may write one, and it needs `else`, which runs
  *   when no case's future has resolved.
  * - Each case's expression is an awaitable, checked in source order before its body, and waited on
- *   through its `onAwait` as an `await` is (await.ts). `as name` binds what it gives; a case without `as` discards it, so a value that must be used (§7), such
+ *   through its `onAwait` as an `await` is (await.ts). `as name` binds what it gives; a case without `as` discards it, so a value that must be used (§16), such
  *   as a `Result`, is reported as a bare expression's would be.
  * - The case bodies and `else` agree on the select's type as an `if`'s branches do
  *   (constructs/expressions/control/branches.ts).
  * - A case on the function's own call's `disposing()` runs while the call is being disposed, so
- *   an `await` in its body stops the call instead of waiting (§7), which is warned about. The
+ *   an `await` in its body stops the call instead of waiting (§16), which is warned about. The
  *   runtime decides cleanup by the future; the warning sees it where the case calls `disposing`
  *   on the function's own name, not through a variable holding that future.
  */
@@ -45,7 +45,7 @@ export function checkSelect(context: BodyContext, node: Select, expected: Type |
   return branches.agreedType();
 }
 
-/** Whether `future` is the `disposing()` of the current function's own call (§7). */
+/** Whether `future` is the `disposing()` of the current function's own call (§16). */
 function watchesOwnDisposal(context: BodyContext, future: Expression): boolean {
   const bare = unparenthesized(future);
   if (bare.kind !== 'Call' || bare.callee.kind !== 'MemberAccess') {

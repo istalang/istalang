@@ -8,10 +8,10 @@
 # error: 5305 at 31:30
 # error: 5207 at 33:3
 # error: 5016 at 34:17
-# Collections that don't type: an empty literal with nothing to say its type (§3.5), items that
-# disagree, something not iterable (§3.10), a write to an element no `setIndex` takes or of a
-# constant (§3.4), a map literal of a type with no `default()` (§2), a map spread of non-pairs, and
-# indexing with a key no `index` takes (§3.9).
+# Collections that don't type: an empty literal with nothing to say its type (§8.1), items that
+# disagree, something not iterable (§8.4), a write to an element no `setIndex` takes or of a
+# constant (§7.1), a map literal of a type with no `default()` (§3.3), a map spread of non-pairs, and
+# indexing with a key no `index` takes (§10.2).
 
 import * as runtime from 'runtime'
 

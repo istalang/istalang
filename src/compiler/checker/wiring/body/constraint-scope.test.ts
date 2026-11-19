@@ -150,7 +150,7 @@ describe('a literal naming its type, where no scope is open', () => {
       'A spread comes first, and only once.',
     ]);
     expect(messagesOf('{ _ = Ok{value: empty()}; 0 }')).toEqual([
-      "A variant is built by calling it, as in 'Ok(…)', not by naming its fields in braces or a block (§3.11).",
+      "A variant is built by calling it, as in 'Ok(…)', not by naming its fields in braces or a block (§5.3).",
     ]);
     expect(messagesOf('{ _ = EmptyStruct{a: empty()}; 0 }')).toEqual([
       'EmptyStruct has no fields, so it is written bare: EmptyStruct.',

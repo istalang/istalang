@@ -1,5 +1,5 @@
 /**
- * Lambdas (§3.14) and parameter lists: every lambda form, defaults, rest and reference parameters,
+ * Lambdas (§6.4) and parameter lists: every lambda form, defaults, rest and reference parameters,
  * and a body that ends at the next `,` or `)`.
  */
 

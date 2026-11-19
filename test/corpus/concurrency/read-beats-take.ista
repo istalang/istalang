@@ -1,5 +1,5 @@
 # outcome: 4242
-# A value's reads are served before its take and resolve as one event (§6), so a `select` whose read
+# A value's reads are served before its take and resolve as one event (§15.1), so a `select` whose read
 # case wins cancels its take case before the take is served: the value stays in the slot.
 
 import * as runtime from 'runtime'

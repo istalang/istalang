@@ -1,5 +1,5 @@
 /**
- * Pattern grammar (§3.11): every pattern form, every field test, a call pattern's arguments, `as`
+ * Pattern grammar (§11.3): every pattern form, every field test, a call pattern's arguments, `as`
  * on a field and on a whole pattern, and one diagnostic per malformed pattern.
  */
 
@@ -71,7 +71,7 @@ describe('struct patterns', () => {
   });
 });
 
-describe('call patterns (§3.11)', () => {
+describe('call patterns (§11.3)', () => {
   const v = '(NamePattern [v] [])';
 
   it.each([
@@ -116,7 +116,7 @@ describe('call patterns (§3.11)', () => {
   });
 });
 
-describe('patterns naming a generic type with its type arguments (§3.11)', () => {
+describe('patterns naming a generic type with its type arguments (§11.3)', () => {
   const settingsRegion = `[${named('Settings')} (LiteralType "region")]`;
 
   it.each([

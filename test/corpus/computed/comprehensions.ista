@@ -1,5 +1,5 @@
 # outcome: "a,m,z|named-z,named-a,comp-b,comp-x|1:2|20,40"
-# Comprehensions over a struct's fields (§3.1, §4): an array's elements and a struct
+# Comprehensions over a struct's fields (§5.2, §10.5): an array's elements and a struct
 # comprehension's fields in name order, the named fields evaluated as written before the
 # comprehension, and `...*x` over the value behind a shared struct.
 

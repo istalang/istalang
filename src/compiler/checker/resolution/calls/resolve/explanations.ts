@@ -1,7 +1,7 @@
 /**
  * Why a call no candidate takes isn't made, as precisely as its candidates allow: with one
  * candidate, what exactly doesn't fit it, as choosing decided it, so an explanation never disagrees
- * with the choice; a call to run later that no candidate can take, that alone (§3.14); else no
+ * with the choice; a call to run later that no candidate can take, that alone (§6.5); else no
  * overload taking what it was given.
  */
 
@@ -119,7 +119,7 @@ type ExplainedCall = Pick<CallRequest, 'name' | 'arguments' | 'typeArguments'> &
   readonly site: ResolvedSite | FunctionNaming;
 };
 
-/** The report saying why a call's arguments can't fill its one function's parameters (§3.3). */
+/** The report saying why a call's arguments can't fill its one function's parameters (§6.1). */
 function bindingReport(request: ExplainedCall, reason: BindingFailure): Diagnostic<AnchoredSpan> {
   const { site, name } = request;
   switch (reason.kind) {
@@ -150,7 +150,7 @@ function bindingReport(request: ExplainedCall, reason: BindingFailure): Diagnost
   }
 }
 
-/** The report saying why a pack's arguments, or a written pack, don't fill it (§3.5). */
+/** The report saying why a pack's arguments, or a written pack, don't fill it (§8.1). */
 function packReport(
   request: ExplainedCall,
   reason: Extract<Inapplicability, { kind: 'pack' | 'packTypeArgument' }>,
@@ -204,7 +204,7 @@ function explainMisfits(
 
 /**
  * Why `argument` doesn't fit where `expected` is: a closure by what it captures, where that is why
- * (§3.14); else as its type misfits.
+ * (§6.4); else as its type misfits.
  */
 function explainMisfit(context: BodyContext, argument: WrittenArgument, expected: Type): void {
   const { type, node } = argument;
@@ -219,7 +219,7 @@ function explainMisfit(context: BodyContext, argument: WrittenArgument, expected
   }
 }
 
-/** The report that an argument gave a member parameter several members of its union (§3.5). */
+/** The report that an argument gave a member parameter several members of its union (§8.1). */
 function severalMembersReport(
   context: BodyContext,
   request: ExplainedCall,

@@ -1,5 +1,5 @@
 # outcome: [10,20,30]
-# An instance's outcome is the value its root returned (§9): a `defer` changing the returned local as
+# An instance's outcome is the value its root returned (§17.1): a `defer` changing the returned local as
 # the root exits changes nothing of it.
 
 import * as runtime from 'runtime'

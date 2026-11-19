@@ -13,7 +13,7 @@ import { binderDiagnostics } from '../../../binder/diagnostics.ts';
 import { reported as checkReported } from '../../../checker/check.test-kit.ts';
 import { dumpClean, lines, parseAs, reported } from '../../parse.test-kit.ts';
 
-describe('parenthesized import lists (§3.13, §6, §7)', () => {
+describe('parenthesized import lists (§13.1, §6, §7)', () => {
   it.each([
     [
       'parenthesized names separated by line breaks without commas',

@@ -1,5 +1,5 @@
 /**
- * The members of a union a name written in a pattern selects (§3.11): a type, a variant or a
+ * The members of a union a name written in a pattern selects (§11.3): a type, a variant or a
  * constant, as types/written/pattern-types.ts says, and with type arguments the instances they
  * give, a variant's those of its enum (`case Ok<Int, String>(v)`). members.ts applies it to a
  * pattern, reporting what selects several members where it must select one.
@@ -32,7 +32,7 @@ import { typeOfEntity } from '../../../types/written/resolve-type.ts';
  * `membersNamed`), a constant those of its base, and with type arguments the instance they give;
  * undefined after a report, or for a name naming nothing, reported where it was written. A type's
  * name sharing a member enum's variant's (`case Shared` where the prelude declares the type) is
- * qualified instead (§3.11).
+ * qualified instead (§5.3).
  */
 export function namedMembers(
   context: BodyContext,

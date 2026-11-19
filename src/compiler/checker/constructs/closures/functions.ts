@@ -1,5 +1,5 @@
 /**
- * The functions a body is checked in (§3.14): the body's own, and the lambdas and local `fn`s
+ * The functions a body is checked in (§6.4): the body's own, and the lambdas and local `fn`s
  * nested in it, innermost last. One body checker checks them all, so their types and calls land
  * in one CheckedBody; what differs per function lives in its FunctionScope.
  *
@@ -10,11 +10,11 @@
  *   captured by it, and by every function between the two. A top-level name, of this module or
  *   another, is never captured; which names are top-level is the binder's to say (it gives them
  *   a module), so a local one is always in this body's own tree, where spans compare.
- * - A captured `let` is shared with the closure, so it lives in a cell (§3.14); anything else
+ * - A captured `let` is shared with the closure, so it lives in a cell (§6.4); anything else
  *   captured is copied, since it never changes. A reference can't be captured, as references are
- *   never stored (§3.7).
+ *   never stored (§7.3).
  * - A nested function without a declared result, checked while its own name is used inside it,
- *   can't know its type: that is recursion needing a declared result (§2), as for top-level ones.
+ *   can't know its type: that is recursion needing a declared result (§4.4), as for top-level ones.
  */
 
 import type { VariableEntity } from '../../../binder/entities.ts';

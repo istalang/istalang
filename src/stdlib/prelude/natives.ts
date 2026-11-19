@@ -6,7 +6,7 @@
  * they have none here.
  *
  * - `_trace()` runs as `Error`'s `trace` default, in the entry a literal leaving the field out
- *   calls (§3.1), so it takes its caller's trace, without that entry's frame: an `Error`'s trace
+ *   calls (§5.2), so it takes its caller's trace, without that entry's frame: an `Error`'s trace
  *   starts where it is built.
  */
 

@@ -2,7 +2,7 @@
 # Field loops over a type (proposal 17, §4): a struct comprehension builds a nested model from its
 # type alone, `S[K].make` calling each field's own static function, a constraint naming a field
 # resolving it per pass; an array comprehension reads each key as its value; and a member parameter
-# over literal types reads as its value (§3.5).
+# over literal types reads as its value (§8.1).
 
 import * as runtime from 'runtime'
 

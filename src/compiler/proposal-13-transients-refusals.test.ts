@@ -1,7 +1,7 @@
 /**
  * End-to-end verification of what checking refuses of transient variables
- * (docs/proposals/13-transients-and-getters.md, spec §3.4): where one stands, what it declares and
- * what its initializer reads, and the cycles a value kept in one closes (§7).
+ * (docs/proposals/13-transients-and-getters.md, spec §7.1): where one stands, what it declares and
+ * what its initializer reads, and the cycles a value kept in one closes (§16).
  */
 
 import { describe, expect, it } from 'vitest';
@@ -75,7 +75,7 @@ describe('transient variables: what checking refuses', () => {
       ),
     ],
   ])(
-    "reads in its initializer no own call of %s function's, a variable of it (§7)",
+    "reads in its initializer no own call of %s function's, a variable of it (§16)",
     (_where, text) => {
       expect(codesOf(text)).toContain(transientReads.code);
     },
@@ -97,7 +97,7 @@ describe('transient variables: what checking refuses', () => {
     );
   });
 
-  it('is never dropped, which the calls nested in its outermost one share (§7)', () => {
+  it('is never dropped, which the calls nested in its outermost one share (§16)', () => {
     const dropped = lines(
       'fn f(step: Int) -> Int:',
       '  transient let shared = 1',
@@ -143,7 +143,7 @@ describe('transient variables: what checking refuses', () => {
       ),
     ],
   ])(
-    'is held by every async call future, so one kept in a transient of %s is a cycle (§7)',
+    'is held by every async call future, so one kept in a transient of %s is a cycle (§16)',
     (_where, keeps) => {
       const worker = lines('ista async fn worker(slot: Slot<Unit>):', '  drop await slot.take()');
       expect(codesOf(lines(worker, keeps))).toEqual([checkerDiagnostics.cycleCall.code]);
@@ -152,7 +152,7 @@ describe('transient variables: what checking refuses', () => {
 
   // B86: a recursive group names its inputs whole, so a write behind a shared cell's value is
   // missed, as it is through an explicit `Shared` parameter.
-  it.fails('refuses a cycle a recursion closes behind the value a transient holds (§7)', () => {
+  it.fails('refuses a cycle a recursion closes behind the value a transient holds (§16)', () => {
     const linked = lines(
       'shared struct Lease:',
       '  n: Int',

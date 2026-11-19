@@ -1,4 +1,4 @@
-# An extern constant is read as its declared type (§3.6): a host giving a value of another type
+# An extern constant is read as its declared type (§17.2): a host giving a value of another type
 # panics the instance reading it.
 import * as runtime from 'runtime'
 

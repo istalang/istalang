@@ -1,7 +1,7 @@
 /**
  * Producers of one value that agree on its type (rules/agreement.ts) where they stand in a
  * constraint scope that still infers what they agree on (docs/work/done/variance-inference/i2-scope.md
- * §3): the branches of an `if` passed to a call not chosen yet, holding a call whose type arguments
+ * §5.1): the branches of an `if` passed to a call not chosen yet, holding a call whose type arguments
  * the call it is passed to infers, or a lambda's tail and `return`s while its result is. Their type
  * is a result variable of the scope, each producer a lower bound of it and what is expected an
  * upper bound, so what they agree on is what the scope settles it to, as agreement decides where

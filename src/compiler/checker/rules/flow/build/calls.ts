@@ -1,10 +1,10 @@
 /**
- * Calls (§3.3, §3.7, §3.14):
+ * Calls (§6.1, §6.2, §6.4):
  * arguments evaluated in the order written, a method's receiver first; one passed by `&` (written
  * `&x`, or a receiver whose `self` takes a reference) passes its place, and what an accessor read
  * for it is written back once the call returns. A call of a function value calls its callee's
  * value with its arguments in its parameters' order, as checking bound them; only one written `&x`
- * passes a place. A call naming a variant with no fields is that variant's value (§3.11). A
+ * passes a place. A call naming a variant with no fields is that variant's value (§5.3). A
  * function a call gives after its arguments (`Call.given`) is its last argument.
  */
 
@@ -59,7 +59,7 @@ export function callFlow(builder: FlowBuilder, node: Call): ValueId {
 }
 
 /**
- * A call neither resolved nor of a value: a variant's with no fields, its value (§3.11); else a
+ * A call neither resolved nor of a value: a variant's with no fields, its value (§5.3); else a
  * mistake checking reported, whose parts run all the same.
  */
 function unresolved(builder: FlowBuilder, node: Call, into: ValueId): ValueId {

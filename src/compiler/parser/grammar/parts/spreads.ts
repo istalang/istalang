@@ -1,7 +1,7 @@
 /**
- * The token opening a spread (`...xs` in an array, a map, a call or a struct literal, §2) and a
- * rest (a pattern's, a parameter's, a function type's or a type parameter pack's, §3.3, §3.5,
- * §3.11): every list item it opens is read through this name, which also tells where a line
+ * The token opening a spread (`...xs` in an array, a map, a call or a struct literal, §3.1) and a
+ * rest (a pattern's, a parameter's, a function type's or a type parameter pack's, §6.1, §8.1,
+ * §11.3): every list item it opens is read through this name, which also tells where a line
  * break before it starts an item (layout/item-breaks.ts).
  *
  * A spread, `...xs`, spreads into an array, a map, a call's arguments or a struct literal. It is

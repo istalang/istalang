@@ -1,5 +1,5 @@
 # outcome: ["r1 read 10","t1 take 10","r2 read 20","t2 take 20","last 7"]
-# QA M3 (§6): one queue per slot, longest waiter first: a read before the first take sees the value, the take empties it, and a read queued behind that take waits for the next put.
+# QA M3 (§15.1): one queue per slot, longest waiter first: a read before the first take sees the value, the take empties it, and a read queued behind that take waits for the next put.
 import * as runtime from 'runtime'
 import Inbox from 'inbox'
 

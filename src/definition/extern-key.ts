@@ -13,9 +13,9 @@
  *   `externKey`, so the two can't drift apart. A natives table spells its types with the builders
  *   below.
  * - A rest parameter is spelled with its `...`, `log(String, ...prelude.Array<String>)`: its host
- *   function takes the array the call collects (§3.3, §9). No std native takes one.
+ *   function takes the array the call collects (§6.1, §17.3). No std native takes one.
  * - An extern constant has no parameters to tell overloads apart, so its key is its qualified
- *   name alone: `purchase.approvalDeadline` (§9).
+ *   name alone: `purchase.approvalDeadline` (§17.3).
  */
 
 import type { PrimitiveName } from '../foundation/language/primitives.ts';
@@ -28,24 +28,24 @@ export type KeyType =
   | { readonly kind: 'named'; readonly name: string; readonly arguments: readonly KeyType[] }
   | { readonly kind: 'parameter'; readonly name: string }
   | { readonly kind: 'tuple'; readonly elements: readonly KeyType[] }
-  /** An anonymous struct (§3.1), spelled by its fields, which are all it has. */
+  /** An anonymous struct (§5.2), spelled by its fields, which are all it has. */
   | {
       readonly kind: 'anonymous';
       readonly fields: readonly { readonly name: string; readonly type: KeyType }[];
     }
   | {
       readonly kind: 'function';
-      /** Its kind where it has one of the two; an unmarked function type has none (§3.3). */
+      /** Its kind where it has one of the two; an unmarked function type has none (§9.1). */
       readonly persistence?: Persistence | undefined;
       readonly parameters: readonly KeyType[];
       readonly result: KeyType;
     }
-  /** `any A & B` (§3.10), spelled by its traits, sorted, since they are a set. */
+  /** `any A & B` (§8.3), spelled by its traits, sorted, since they are a set. */
   | { readonly kind: 'any'; readonly traits: readonly KeyType[] }
-  /** A literal type (§2), spelled as its literal: `"draft"`, `-1`, `true`. */
+  /** A literal type (§4.3), spelled as its literal: `"draft"`, `-1`, `true`. */
   | { readonly kind: 'literal'; readonly text: string }
   /**
-   * `A | B` (§2), spelled by its members, sorted, since they are a set; `T | None` is spelled
+   * `A | B` (§4.2), spelled by its members, sorted, since they are a set; `T | None` is spelled
    * `prelude.Optional<T>` instead, as keys spelled it before unions, so no host table changes.
    */
   | { readonly kind: 'union'; readonly members: readonly KeyType[] };
@@ -99,7 +99,7 @@ export function parameterKey(name: string): KeyType {
   return { kind: 'parameter', name };
 }
 
-/** A parameter the extern takes by `&`, as a natives table writes it (§3.7). */
+/** A parameter the extern takes by `&`, as a natives table writes it (§7.3). */
 interface ReferenceKey {
   readonly reference: KeyType;
 }

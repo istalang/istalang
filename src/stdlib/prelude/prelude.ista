@@ -1,17 +1,17 @@
-# The prelude: what every module sees without importing it (spec §3.8, §3.10, §3.12, §3.13).
+# The prelude: what every module sees without importing it (spec §19.1, §8.4, §12, §13.1).
 #
 # Built-in types the runtime implements are extern declarations, the same mechanism programs use
-# (§3.6). Primitive types (Int, Float, Bool, String, Unit, Never) are part of the language, not
+# (§17.2). Primitive types (Int, Float, Bool, String, Unit, Never) are part of the language, not
 # declared here. Functions and methods each type offers arrive with the features that use them.
 #
 # `Holds` and `Keeps` say what the runtime's handles hold and its natives keep, which no code shows
-# (§3.16): a handle holds its type arguments, and a native keeps nothing but through `&`, unless
+# (§5.5): a handle holds its type arguments, and a native keeps nothing but through `&`, unless
 # they say otherwise.
 
 import resultOfEnding from 'endings'
 import Holds, Keeps from 'lifetimes'
 
-# An array's items and a map's values are covariant (§3.5): an `Array<Int>` is an `Array<Int?>`,
+# An array's items and a map's values are covariant (§8.1): an `Array<Int>` is an `Array<Int?>`,
 # rebuilt where its layout changes. A map's keys are invariant: widening them would rehash each.
 extern struct Array<gives T>
 extern struct Map<K, gives V>
@@ -25,10 +25,10 @@ extern shared struct WeakRef<T is Disposable>
 # its `Mode`.
 type Mark = "simple" | "live" | "ista"
 type Persistence = "live" | "ista"
-# A future (§3.3) is what an async call, a timer or a host gives: the run's object, which settles
+# A future (§15.2) is what an async call, a timer or a host gives: the run's object, which settles
 # once. What waits on it is the prelude's (`_Waiters`), which the run calls as it settles or is
 # disposed first. It holds its value and what waits on it, as a callback's chain is held from its
-# futures up (spec §7); a call's future also holds its call, which belongs to the language.
+# futures up (spec §16); a call's future also holds its call, which belongs to the language.
 @Holds<(T, _Waiters<T, K>, Fn<(T,), Unit, K>, Fn<(), Unit, K>)>
 extern shared struct Future<T, K in Persistence> { type Mode = K }
 
@@ -41,7 +41,7 @@ trait Awaitable<T>:
   Self.Mode fn onAwait(self: Self, done: Resolver<T, Self.Mode>)
 
 # A future resolves `done` at once when it has settled, else as it settles: whichever of the futures
-# `done` is registered on resolves it first decides it, and the others do nothing (§6). What `done`
+# `done` is registered on resolves it first decides it, and the others do nothing (§15.2). What `done`
 # comes down to deciding holds the future (`_registered`).
 @Keeps{["self": ["done"]]}
 K fn onAwait<T, K in Persistence>(self: Future<T, K>, done: Resolver<T, K>):
@@ -55,7 +55,7 @@ K fn onAwait<T, K in Persistence>(self: Future<T, K>, done: Resolver<T, K>):
 
 # Registers `done` on `future`, dropping those registered before it that can't decide any more;
 # what waits on `future`. `done` itself is never dropped as it comes: a case on its call's
-# `disposing()` may win though another case decided its wait first (§7, `_overrides`).
+# `disposing()` may win though another case decided its wait first (§16, `_overrides`).
 @Keeps{["future": ["done"]]}
 K fn _registeredOn<T, K in Persistence>(
   future: Future<T, K>
@@ -63,7 +63,7 @@ K fn _registeredOn<T, K in Persistence>(
 ) -> _Waiters<T, K>:
   const waiters = _waitersMade(future)
   # Pushed before pruning: what pruning reads back through weak references, the analysis of
-  # lifetimes takes to reach anything of its type, `done` among them (§7).
+  # lifetimes takes to reach anything of its type, `done` among them (§16).
   waiters->resolvers.push(done)
   drop _pruned(waiters, waiters->resolvers.length() - 1)
   waiters
@@ -79,8 +79,8 @@ shared struct _Waiters<T, K in Persistence>:
   kept: Array<Fn<(), Unit, K>> = []
 
 # What waits on `future`, made as something first comes to wait on it: the run calls it as the
-# future settles, each resolver deciding with its value in the order registered (§6), or as it is
-# disposed first, each resolver cancelled and what it kept let go of at once (§7).
+# future settles, each resolver deciding with its value in the order registered (§15.2), or as it is
+# disposed first, each resolver cancelled and what it kept let go of at once (§16).
 K fn _waitersMade<T, K in Persistence>(future: Future<T, K>) -> _Waiters<T, K>:
   const found = _waitersOf(future)
   if found.length() == 1: return found[0]
@@ -105,10 +105,10 @@ K fn _emptied<T, K in Persistence>(waiters: _Waiters<T, K>):
   waiters->kept = []
 
 # Drops the resolvers registered on `waiters`' future before position `end` that can't decide any
-# more: one that lost marks the future as one a case lost on (§8), and one withdrawn gives up on
+# more: one that lost marks the future as one a case lost on (§15.4), and one withdrawn gives up on
 # nothing. An idle one stays, marking it as one lost on for now. In place, as a pruned copy written
 # back would hold what it was read from, which the analysis of lifetimes can't tell from a cycle
-# (§7). Whether one of those before `end` may still decide.
+# (§16). Whether one of those before `end` may still decide.
 K fn _pruned<T, K in Persistence>(waiters: _Waiters<T, K>, end: Int) -> Bool:
   let mayDecide = false
   let index = end
@@ -124,7 +124,7 @@ K fn _pruned<T, K in Persistence>(waiters: _Waiters<T, K>, end: Int) -> Bool:
   mayDecide
 
 # Whether `future` was given up on: pending, a case waiting on it lost, and nothing that may still
-# decide waits on it, so a slot passes it over (§8). It keeps nothing: what a follower's standing
+# decide waits on it, so a slot passes it over (§15.4). It keeps nothing: what a follower's standing
 # runs (`_converted`) is code the analysis of lifetimes can't follow.
 @Keeps{[:]}
 K fn _givenUp<T, K in Persistence>(future: Future<T, K>) -> Bool:
@@ -144,15 +144,15 @@ K fn _whenAwaited<T, K in Persistence>(future: Future<T, K>, run: Fn<(), Unit, K
 K fn _keeps<T, K in Persistence>(future: Future<T, K>, kept: Fn<(), Unit, K>):
   _waitersMade(future)->kept.push(kept)
 
-# A future of `U` following `future`, a `T`'s, as a function widened gives it (§3.14): it settles as
+# A future of `U` following `future`, a `T`'s, as a function widened gives it (§6.4): it settles as
 # `future` does, in the same event, with what `convert`, a conversion's entry, makes of its value,
 # and leaves `future` as it is for whatever else reaches it. Widening awaits nothing, so its
 # resolver on `future` is registered as no wait is (`_registeredOn`): it reaches the follower
 # weakly and stands as the follower does, dropped once that is gone and idle while it is given up
-# on, so `future` is given up on with it (§8). Each wait on the follower is one on `future`, which
+# on, so `future` is given up on with it (§15.4). Each wait on the follower is one on `future`, which
 # a slot serves where it stands (`_awaitedNow`); what runs it keeps `future` until the follower
 # settles, as an unwidened caller holds its call's future, and lets go of it at once as the
-# follower is disposed first, so the call stops as an unwidened one does (§7).
+# follower is disposed first, so the call stops as an unwidened one does (§16).
 K fn _converted<T, U, K in Persistence>(future: Future<T, K>, convert: fn(T) -> U) -> Future<U, K>:
   const follower = _pendingFuture<U, K>()
   if _settled(future):
@@ -212,7 +212,7 @@ shared struct _Resolution<K in Persistence>:
   registered: Bool = false
 
 # Where a resolver stands: pending; resolved; cancelled; withdrawn, cancelled by a `select` that
-# didn't wait (§8); or resolved to no effect, still to be cancelled.
+# didn't wait (§15.4); or resolved to no effect, still to be cancelled.
 enum _ResolverState:
   Pending
   Resolved
@@ -228,7 +228,7 @@ fn _wasResolved(state: _ResolverState) -> Bool:
 fn _cancellable(state: _ResolverState) -> Bool:
   state is Pending or state is Unheeded
 
-# What a resolver comes down to deciding (§7): a wait's case, the wait reached weakly, since its call
+# What a resolver comes down to deciding (§16): a wait's case, the wait reached weakly, since its call
 # holds what its cases' chains are registered on, and that call's handle; the resolver a
 # `Resolver.at` one decides; a callback; or a future following the one it is registered on, which
 # `standing` tells where it stands, reached weakly (`_converted`).
@@ -240,7 +240,7 @@ enum _Decides<K in Persistence>:
 
 # What a resolver stands for to a future it is registered on: it may still decide; it lost, decided
 # otherwise or let go of; it was withdrawn by a `select` that didn't wait, which gives up on nothing
-# (§8); or it is idle, a follower given up on that may be awaited again (`_converted`).
+# (§15.4); or it is idle, a follower given up on that may be awaited again (`_converted`).
 enum _Standing { MayDecide, Lost, Withdrawn, Idle }
 
 # Where `resolution` stands (`_Standing`). An at-resolver stands for what the resolver it decides
@@ -264,7 +264,7 @@ K fn _caseWait<K in Persistence>(resolution: _Resolution<K>) -> _Wait<K>?:
 
 # Notes that `deciding`, what a resolver comes down to deciding (`_decidedBy`), is registered on
 # something, itself or through `Resolver.at` ones; the call of its wait, for a case's, which holds
-# what it is registered on while the wait lasts (§7, `_awaiting`).
+# what it is registered on while the wait lasts (§16, `_awaiting`).
 K fn _registered<K in Persistence>(deciding: _Resolution<K>) -> _Call?:
   deciding->registered = true
   match deciding->decides:
@@ -290,7 +290,7 @@ K fn tryResolve<T, K in Persistence>(self: Resolver<T, K>, value: T) -> Bool:
 
 # Resolves `resolver`, if pending, with `value`; whether that decided what it decides. A case's
 # resolved as its call is disposed decides even cancelled, while the call hasn't gone on: the case on
-# its own `disposing()` wins (§7).
+# its own `disposing()` wins (§16).
 K fn _decides<T, K in Persistence>(resolver: Resolver<T, K>, value: T) -> Bool:
   const resolution = resolver->resolution
   if not (resolution->state is Pending) and not _overrides(resolution):
@@ -354,7 +354,7 @@ K fn dispose<T, K in Persistence>(self: Resolver<T, K>):
 K fn dispose<K in Persistence>(self: _Resolution<K>): ()
 
 # A resolver let go of (`dispose`): cancelled, or, a case's never registered while its wait hasn't
-# begun or still waits, a panic: nothing can decide the wait through it any more (§6).
+# begun or still waits, a panic: nothing can decide the wait through it any more (§15.2).
 K fn _released<K in Persistence>(resolution: _Resolution<K>):
   if resolution->state is Pending and not resolution->registered and _awaited(resolution):
     panic(
@@ -392,7 +392,7 @@ shared struct _Wait<K in Persistence>:
   cancels: Array<Fn<(Bool,), Unit, K>> = []
 
 # How a wait was decided: not yet; for the case at `position`; or given up, by a `select` that
-# didn't wait, no case having decided it (§8).
+# didn't wait, no case having decided it (§15.4).
 enum _Decision { Undecided, For(position: Int), GivenUp }
 
 K fn _wait<K in Persistence>(call: _Call) -> _Wait<K>:
@@ -432,12 +432,12 @@ K fn _caseResolver<T, K in Persistence>(
   }
 
 # Where a case's resolver puts its value (`_caseResolver`), empty until then: an array, never an
-# optional, so a case's code is one instance for every type of value of one representation (§3.5).
+# optional, so a case's code is one instance for every type of value of one representation (§8.1).
 fn _caseInto<T>() -> Shared<Array<T>>:
   new Shared<Array<T>>{value: []}
 
 # The value a case's resolver put into `into`, taken out: a resolver outliving its wait still
-# reaches `into`, and must not keep the value its waiter moved on with (§7).
+# reaches `into`, and must not keep the value its waiter moved on with (§16).
 fn _caseTaken<T>(into: Shared<Array<T>>) -> T:
   const taken = into->value
   into->value = []
@@ -448,7 +448,7 @@ K fn _decidable<K in Persistence>(wait: _Wait<K>) -> Bool:
   wait->decided is Undecided or _disposingOverrides(wait)
 
 # Whether `wait` was decided while its call is being disposed, which its case on its own
-# `disposing()` decides again (§7).
+# `disposing()` decides again (§16).
 K fn _disposingOverrides<K in Persistence>(wait: _Wait<K>) -> Bool:
   wait->decided is For(_) and _disposingWins(wait->call)
 
@@ -477,7 +477,7 @@ K fn _parking<K in Persistence>(wait: _Wait<K>):
   wait->known = true
   if wait->decided is For(_): _losersCancelled(wait)
 
-# Cancels the resolvers of the cases `wait` wasn't decided for: a `select`'s losers (§8), each
+# Cancels the resolvers of the cases `wait` wasn't decided for: a `select`'s losers (§15.4), each
 # `onCancel` running right after the waiter.
 K fn _losersCancelled<K in Persistence>(wait: _Wait<K>):
   const cancels = wait->cancels
@@ -493,7 +493,7 @@ K fn _cancelledBut<K in Persistence>(cancels: Array<Fn<(Bool,), Unit, K>>, decid
       const cancel = cancels[index]
       cancel(false)
 
-# The position `wait` was decided for already, as a `select` with an `else` asks (§8), its call going
+# The position `wait` was decided for already, as a `select` with an `else` asks (§15.4), its call going
 # on without parking; -1, as lowering reads it, where no case decided it, every case then withdrawn.
 K fn _decided<K in Persistence>(wait: _Wait<K>) -> Int:
   if wait->decided is For(position):
@@ -518,7 +518,7 @@ extern K fn _valueOf<T, K in Persistence>(future: Future<T, K>) -> T
 extern K fn _waitersOf<T, K in Persistence>(future: Future<T, K>) -> Array<_Waiters<T, K>>
 
 # Has `future` keep `waiters` until it settles, calling `arrived` with its value then, or `disposed`
-# as it is disposed first, as code its disposal runs: what that lets go of is disposed at once (§7).
+# as it is disposed first, as code its disposal runs: what that lets go of is disposed at once (§16).
 @Keeps{["future": ["waiters", "arrived", "disposed"]]}
 @_Parametric
 extern K fn _wait<T, K in Persistence>(
@@ -541,7 +541,7 @@ extern K fn _settleAll<T, K in Persistence>(futures: Array<Future<T, K>>, value:
 extern K fn _later<K in Persistence>(callback: Fn<(), Unit, K>)
 extern fn _unpark(call: _Call, position: Int)
 # Has `call` hold `holding` until its wait is let go of (`_waitEnded`): a wait holds the futures its
-# cases' chains are registered on (§7). The run holds it, as a future may reach what its callbacks
+# cases' chains are registered on (§16). The run holds it, as a future may reach what its callbacks
 # do, so no value could hold it without a cycle the analysis of lifetimes refuses.
 @Keeps{[:]}
 extern K fn _awaiting<K in Persistence>(call: _Call, holding: Fn<(), Unit, K>)
@@ -549,19 +549,19 @@ extern K fn _awaiting<K in Persistence>(call: _Call, holding: Fn<(), Unit, K>)
 # Lets go of what `call` holds for its wait (`_awaiting`).
 extern fn _waitEnded(call: _Call)
 extern fn _stayRunning(call: _Call)
-# Whether `call` is being disposed, its `disposing()` future settling (§7).
+# Whether `call` is being disposed, its `disposing()` future settling (§16).
 extern fn _disposingWins(call: _Call) -> Bool
 
-# What a function's values may capture (§3.14): only sendable values, only inert ones, which reach
+# What a function's values may capture (§6.4): only sendable values, only inert ones, which reach
 # no disposable, or any. Each allows the one before it.
 type Sendability = "sendable" | "inert" | "plain"
 
-# The one function type (§3.14): `Args` is the tuple of its parameters, `(A,)` for one, a pack, or
+# The one function type (§6.4): `Args` is the tuple of its parameters, `(A,)` for one, a pack, or
 # items written `&T` for parameters taken by reference. Every other spelling is its sugar:
 # `sendable live fn(A) -> R` is `Fn<(A,), R, "live", "sendable">`.
 extern struct Fn<Args, Result, Kind in Mark = "simple", Send in Sendability = "plain">
 
-# What `spawn` gives (§9): a handle to the new instance, compared by identity, which holds nothing.
+# What `spawn` gives (§17.1): a handle to the new instance, compared by identity, which holds nothing.
 # `result()` resolves with its first end: `Ok` of its outcome, or `Err` of its panic.
 extern sendable struct Instance<T>
 ista async fn result<T is Sendable>(self: Instance<T>) -> Result<T>:
@@ -576,19 +576,19 @@ extern ista fn _ended<T is Sendable>(self: Instance<T>) -> Future<(
 ), "ista">
 
 # Starts `f` as a new, independent instance once the caller's segment commits, and goes on at once
-# (§9). The instance awaits the future `f` gives and ends with its value, so `spawn purchase(req)`,
-# a deferred call (§3.14), copies `req` into it now and calls `purchase` there, async or not.
+# (§17.1). The instance awaits the future `f` gives and ends with its value, so `spawn purchase(req)`,
+# a deferred call (§6.5), copies `req` into it now and calls `purchase` there, async or not.
 extern ista fn spawn<R>(f: sendable ista async fn() -> R) -> Instance<R>
 
-# A slot (§6), empty or full: full, its one value is its contents' one item, so a value of any type,
+# A slot (§15.1), empty or full: full, its one value is its contents' one item, so a value of any type,
 # `none` among them, fills it. Its waiting operations are one queue, longest waiter first, which
-# holds nothing (§7): it reaches each one's future, and a put's offer, weakly, so an operation its
+# holds nothing (§16): it reaches each one's future, and a put's offer, weakly, so an operation its
 # holders let go of leaves the queue, as an inbox's retracted message does, and a put's value goes
 # with its future, which alone holds it while it waits. An operation that can complete when it is
 # called completes then, its future settled, and a full slot never has a read or take waiting that
 # it would serve, nor an empty one such a put, so completing at once never jumps a waiter. Its
 # operations declare what they keep: serving reads the queue's futures back through weak
-# references, which the analysis of lifetimes can't follow (§7).
+# references, which the analysis of lifetimes can't follow (§16).
 shared struct Slot<T>:
   contents: Array<T> = []
   waiting: Array<_SlotOperation<T>> = []
@@ -667,7 +667,7 @@ ista fn _serve<T>(slot: Slot<T>):
 # at the head yield its value together, or else the take at the head empties it, so a `select` the
 # reads decide has cancelled a losing take before it is reached; while it is empty, the put at the
 # head fills it. An operation no longer held is dropped, one given up on, every case awaiting it
-# lost, passed over (§8).
+# lost, passed over (§15.4).
 ista fn _servedOnce<T>(slot: Slot<T>) -> Bool:
   const waiting = slot->waiting
   const full = slot->contents.length() == 1
@@ -680,7 +680,7 @@ ista fn _servedOnce<T>(slot: Slot<T>) -> Bool:
         if _waiting(weak) is Future<T, "ista"> as future:
           if not full:
             return _readersServed(slot, readers, [...kept, ...waiting.slice(index)])
-          # Not pushed in place: a future pushed into a local it may reach would make the cycle §7
+          # Not pushed in place: a future pushed into a local it may reach would make the cycle §16
           # forbids, which the analysis can't rule out.
           readers = [...readers, future]
         elif weak._held(): kept.push(operation)
@@ -723,7 +723,7 @@ ista fn _waiting<U>(weak: WeakRef<Future<U, "ista">>) -> Future<U, "ista">?:
     if not _givenUp(future): return future
   none
 
-# Weak references (§7): `WeakRef(x)` is the one weak reference to `x`, which holds nothing.
+# Weak references (§16): `WeakRef(x)` is the one weak reference to `x`, which holds nothing.
 extern fn WeakRef.from<T is Disposable>(value: T) -> WeakRef<T>
 fn deref<T is Disposable>(self: WeakRef<T>) -> T?:
   if self._held(): self._referent() else: none
@@ -734,20 +734,20 @@ extern fn _referent<T is Disposable>(self: WeakRef<T>) -> T
 extern ista fn disposed<T is Disposable>(self: WeakRef<T>) -> Future<Unit, "ista">
 
 # An async call's handle, a weak reference to the call, which the function's own name is before a
-# `.` (§7): `worker.disposing()` is the future that resolves when the call is disposed.
+# `.` (§16): `worker.disposing()` is the future that resolves when the call is disposed.
 extern shared struct _Call
 extern K fn disposing<K in Persistence>(self: _Call) -> Future<Unit, K>
 
-# A Shared value (§3.8) is a shared struct of any one value (§3.18): `new Shared{value: v}` makes
+# A Shared value (§19.1) is a shared struct of any one value (§5.4): `new Shared{value: v}` makes
 # one, and `x->value` reads and writes it, for every copy.
 shared struct Shared<T> { value: T }
 
-# The cell a variable lives in when it is passed by `&` or a closure captures it (§3.7, §3.14),
+# The cell a variable lives in when it is passed by `&` or a closure captures it (§7.3, §6.4),
 # which the runtime makes, reads and writes as it does a shared struct's.
 extern shared struct _Cell<T>
 
-# Disposal (§7): the runtime disposes a future and a slot once nothing holds them. Declaring their
-# `dispose` is what makes them Disposable (§3.10). A future's is the runtime's own. A slot's is ista,
+# Disposal (§16): the runtime disposes a future and a slot once nothing holds them. Declaring their
+# `dispose` is what makes them Disposable (§8.4). A future's is the runtime's own. A slot's is ista,
 # so a slot is ista data, which only ista code handles (proposal 8, Rule 6); a slot dies along with
 # the values in it, so its disposal lets go of its contents, disposed in the slot's own round before
 # anything created before them.
@@ -756,9 +756,9 @@ extern K fn dispose<T, K in Persistence>(self: Future<T, K>)
 
 ista fn dispose<T>(self: Slot<T>): self->contents = []
 
-# What `defer` gives (§7): a disposable whose release calls `run`, so `_ = defer log(x)` computes
+# What `defer` gives (§16): a disposable whose release calls `run`, so `_ = defer log(x)` computes
 # `x` now and logs when the block ends, and `hold _ = defer log(x)` when the function does. Its
-# function is of the mark of the code deferring it (§3.3), which its release runs in, so ista code
+# function is of the mark of the code deferring it (§9.1), which its release runs in, so ista code
 # defers an ista call and simple code a simple one.
 shared struct Deferred<M in Mark> { run: Fn<(), Unit, M> }
 
@@ -767,15 +767,15 @@ M fn defer<M in Mark>(f: Fn<(), Unit, M>) -> Deferred<M>:
 
 M fn dispose<M in Mark>(self: Deferred<M>): self->run()
 
-# `T?` is `T | None` (§2); this alias names it, so the statics declared on it are `T?`'s (§3.17).
+# `T?` is `T | None` (§4.2); this alias names it, so the statics declared on it are `T?`'s (§4.6).
 type Optional<T> = T?
 
-# Default, as an Array and a Map are: what a skipped JSON field reads back as (§9).
+# Default, as an Array and a Map are: what a skipped JSON field reads back as (§17.4).
 fn Optional.default<T>() -> T?: none
 
 enum Result<T, E = Error> { Ok(value: T), Err(error: E) }
 
-# What a cursor gives each time it is called (§3.10): the next item, or that there are no more. An
+# What a cursor gives each time it is called (§8.4): the next item, or that there are no more. An
 # enum of its own, never `T?`, since an item may itself be `none` and `T??` is `T?`, so a stored
 # `none` would read as the end.
 enum Step<T> { Next(value: T), Done }
@@ -788,7 +788,7 @@ struct Error:
 struct Range { start: Int?, end: Int?, step: Int = 1 }
 
 # The range `..=` builds: its end stored one past the written one in the step's direction, so
-# every range is half-open (§3.8).
+# every range is half-open (§19.3).
 fn _inclusiveRange(start: Int?, end: Int, step: Int) -> Range:
   Range{start, end: if step < 0: end - 1 else: end + 1, step}
 
@@ -796,7 +796,7 @@ extern fn includes(self: Range, value: Int) -> Bool
 
 extern fn panic(message: String) -> Never
 
-# Collections (§3.8, §3.9, §3.10). Indexing panics outside the bounds, while `at` and `get` return an
+# Collections (§19.2, §10.2, §8.4). Indexing panics outside the bounds, while `at` and `get` return an
 # optional, and `at` and `slice` count a negative index from the end, as JavaScript does. A string
 # counts code points. Methods taking a function are code, below, since only code calls one.
 @_Parametric
@@ -860,7 +860,7 @@ fn join(self: Array<String>, separator: String) -> String:
     joined += self[position]
   joined
 
-# What an array pattern reads once its length test passed (§3.11): the item `offset` from the start,
+# What an array pattern reads once its length test passed (§11.3): the item `offset` from the start,
 # or from the end when negative, and the items between the first `before` and the last `after`.
 @_Parametric
 extern fn _patternItem<T>(self: Array<T>, offset: Int) -> T
@@ -912,13 +912,13 @@ fn at(self: String, index: Int) -> String?:
   if position == -1: none else: self[position]
 
 # Where `index` falls in a sequence of `length`, counting from the end when negative; -1 past either
-# end (§3.9).
+# end (§10.2).
 extern fn _positionOf(index: Int, length: Int) -> Int
 extern fn includes(self: String, search: String) -> Bool
 extern fn index(self: String, key: Int) -> String
 extern fn index(self: String, key: Range) -> String
 
-# Methods taking a function (§3.8), with JavaScript's names. Each calls its function on the items in
+# Methods taking a function (§19.3), with JavaScript's names. Each calls its function on the items in
 # order, a search only until it finds one.
 M fn map<T, U, M in Mark>(self: Array<T>, f: Fn<(T,), U, M>) -> Array<U>: [
   for item in self: f(item)
@@ -973,7 +973,7 @@ M fn Map.groupBy<K, T, M in Mark>(items: Array<T>, key: Fn<(T,), K, M>) -> Map<K
     groups[group] = [...(groups.get(group) ?? []), item]
   groups
 
-# A map converted part by part (§3.5): each value made what `f` makes of it, its key kept.
+# A map converted part by part (§8.1): each value made what `f` makes of it, its key kept.
 M fn _mapValues<K, V, W, M in Mark>(self: Map<K, V>, f: Fn<(V,), W, M>) -> Map<K, W>:
   let mapped: Map<K, W> = [:]
   for (key, value) in self: mapped[key] = f(value)
@@ -1002,7 +1002,7 @@ M fn _merged<T, M in Mark>(left: Array<T>, right: Array<T>, order: Fn<(T, T), In
       fromLeft += 1
   [...merged, ...left[fromLeft..], ...right[fromRight..]]
 
-# Iteration (§3.10): `iterate` gives a cursor, which gives the next item each time it is called and
+# Iteration (§8.4): `iterate` gives a cursor, which gives the next item each time it is called and
 # `Done` once there are no more. A cursor holds what it runs over as `iterate` was given it, so
 # changing the original meanwhile changes nothing, and it persists as any closure does: a range's
 # holds two ints, never its items.
@@ -1049,10 +1049,10 @@ extern fn _entryAt<K, V>(self: Map<K, V>, position: Int) -> (K, V)
 extern fn _characterAt(self: String, offset: Int) -> (String, Int)
 
 # Where the running frames are, innermost first, from the code that called for the value: the
-# default of an `Error`'s `trace`, which runs in an entry of its own (§3.1, §3.12).
+# default of an `Error`'s `trace`, which runs in an entry of its own (§5.2, §12).
 extern fn _trace() -> String
 
-# Operators on primitives (§3.9). The runtime implements those on two operands of one type, and
+# Operators on primitives (§10.2). The runtime implements those on two operands of one type, and
 # declaring them here lets an operator resolve like any other call. Mixed operands are overloads,
 # as a program's own are, written over those: mixing int and float converts the int and gives a
 # float, and `/` always gives a float.
@@ -1107,7 +1107,7 @@ fn compare(left: Float, right: Int) -> Int:
 
 extern fn compare(left: String, right: String) -> Int
 
-# Conversions (§3.10): only the ones that can't fail are written T(x). `Int(x)` truncates toward
+# Conversions (§8.4): only the ones that can't fail are written T(x). `Int(x)` truncates toward
 # zero; a float that is no number (NaN, an infinity) has no int, which is a bug, so it panics.
 # `String(x)` is `toString`, the one place a type says how it is written; a whole float keeps its
 # `.0`, so `1.0` never reads as the int `1`. `parse` reads back what `toString` writes, and fails
@@ -1148,7 +1148,7 @@ fn Bool.parse(text: String) -> Result<Bool>:
   elif text == "false": Ok(false)
   else: Err(Error.unparsed(text, "a Bool"))
 
-# The error a `parse` gives (§3.10) for `text` that doesn't read as `what`, as `an Int`.
+# The error a `parse` gives (§8.4) for `text` that doesn't read as `what`, as `an Int`.
 fn Error.unparsed(text: String, what: String) -> Error:
   Error{
     message: "'" + text + "' is not " + what + "."
@@ -1173,7 +1173,7 @@ trait Disposable { fn dispose(self: Self) }
 trait Iterable<T, C = Self>:
   fn iterate(self: C) -> fn() -> Step<T>
 
-# What `item in c` asks (§3.9).
+# What `item in c` asks (§10.2).
 trait Container<T, C = Self>:
   fn includes(self: C, item: T) -> Bool
 
@@ -1225,10 +1225,10 @@ trait Stringable { fn toString(self: Self) -> String }
 
 trait Parsable { fn Self.parse(text: String) -> Result<Self> }
 
-# Names the suspension point of the statement it annotates, for tests and operators (§10).
+# Names the suspension point of the statement it annotates, for tests and operators (§18).
 struct Waypoint { label: String }
 
-# Shared instances (§3.5): an instance is compiled once for every type of one representation at a
+# Shared instances (§8.1): an instance is compiled once for every type of one representation at a
 # type parameter its code uses only opaquely (lowering/tables/stencils.ts), taking a primitive for its
 # own, else one of these stand-ins: a pointer its backend never counts, an enum's bare tag, a heap
 # value, a value that may reach a disposable. No value is of them.

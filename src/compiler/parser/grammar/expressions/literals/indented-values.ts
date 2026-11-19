@@ -1,9 +1,9 @@
 /**
- * Indented values (§2): a struct, map or array value written as an indented block.
+ * Indented values (§3.2): a struct, map or array value written as an indented block.
  *
  * - A value after `=`, `return` or a key's `:` (`parseValue`) is an indented value when its line
  *   ends there, the block below it, or ends in `T:` or `new T:` naming its type, the block below
- *   that; else it is an expression. Inside brackets no line ends for the parser (§2), so no
+ *   that; else it is an expression. Inside brackets no line ends for the parser (§2.1), so no
  *   indented value opens there. A lambda's `:`, a header's and a label's never open one.
  * - The block is read by layout's one block loop (layout/index.ts), entries separated by `,` on a
  *   line. Its lines stand right of the opening line's indentation, or of the column of the entries

@@ -1,7 +1,7 @@
 /**
  * A reference bisimulation over the generated groups of recursive bodies
  * (recursive-types.test-kit.ts), written apart from the term graph it checks
- * (recursive-types.test.ts): a union's members flattened, then normalized by the rules of §2 as
+ * (recursive-types.test.ts): a union's members flattened, then normalized by the rules of §4.2 as
  * stated here, not as ../unions/unions.ts states them.
  */
 
@@ -34,7 +34,7 @@ function flatMembersOf(side: Side): readonly Side[] {
 }
 
 /**
- * The members `side` holds as values (§2): `Never` holds none; `any Shows` holds every primitive
+ * The members `side` holds as values (§4.2): `Never` holds none; `any Shows` holds every primitive
  * and literal; a primitive holds its literals, and `true` and `false` together are `Bool`.
  */
 function membersOf(side: Side): readonly Side[] {

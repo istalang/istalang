@@ -1,6 +1,6 @@
 # outcome: ["a number, 3","mail to a","2.5","true","HI","4","whole 7","cents 5","other","marker","mail to b","mail to c","mail to d","any 6"]
-# A bare PascalCase name in a pattern tests a value's type (§3.11): against an `any` value, a
-# primitive, a whole struct or an alias of a type, matched by its own type (§3.10); against a
+# A bare PascalCase name in a pattern tests a value's type (§11.3): against an `any` value, a
+# primitive, a whole struct or an alias of a type, matched by its own type (§8.3); against a
 # value of that very type, every value, as `_` does, so it covers the type alone. An alias names
 # what it stands for in braces too, and an `any` type's own alias matches every value of it.
 

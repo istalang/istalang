@@ -1,6 +1,6 @@
 /**
  * An associated type's unreduced type `match` use reads as source writes it, through the type that
- * declares it (§3.1, §3.17): `Bad<T>.Data`, in hovers and in every message alike, never the
+ * declares it (§5.2, §4.6): `Bad<T>.Data`, in hovers and in every message alike, never the
  * associated type's own name given its owner's arguments.
  */
 

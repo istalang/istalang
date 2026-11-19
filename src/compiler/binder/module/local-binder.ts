@@ -65,7 +65,7 @@ import { type Visibility, VisibilityNotes } from './visibility.ts';
 
 /**
  * How a name is used: read as a value, named as a type, assigned to, or called. A called name that
- * no scope defines may still name functions argument-dependent lookup finds (§3.13), which only the
+ * no scope defines may still name functions argument-dependent lookup finds (§13.1), which only the
  * checker can tell, so it is no diagnostic here.
  */
 export type Role = 'value' | 'type' | 'assignment' | 'callee';
@@ -77,7 +77,7 @@ export interface FreeName {
   readonly miss: Miss | undefined;
   /**
    * For a value or a callee, what it denotes if some enum of the program has a variant by its
-   * name: a variant is a value, and one with fields a function too (§3.11).
+   * name: a variant is a value, and one with fields a function too (§5.3).
    */
   readonly variants: VariantsEntity | undefined;
 }
@@ -94,7 +94,7 @@ export interface QualifiedPath {
 
 /**
  * Where a path is written, which says what may follow a part nothing qualifies: in an expression a
- * value's member, in a type an associated type (§3.1), naming a pattern's or literal's type
+ * value's member, in a type an associated type (§5.2), naming a pattern's or literal's type
  * nothing.
  */
 type PathRole = 'expression' | 'type' | 'named';
@@ -140,15 +140,15 @@ export const holdsNoNames = (): void => undefined;
 
 /**
  * The handler of an Invalid node standing where one node goes: it holds only the annotations the
- * parser rejected there, bound where it stands (§3.16).
+ * parser rejected there, bound where it stands (§5.5).
  */
 export const bindRejected = (binder: LocalBinder, node: Invalid, scope: Scope): void => {
   binder.annotations(node, scope);
 };
 
 /**
- * A declaration whose targets are patterns, owning every name they bind (§3.15): a parameter
- * owns its pattern's names (§3.3).
+ * A declaration whose targets are patterns, owning every name they bind (§4.5): a parameter
+ * owns its pattern's names (§6.1).
  */
 type TargetOwner = VariableDeclaration | For | FieldHeader | Comprehension | Parameter;
 
@@ -274,7 +274,7 @@ export class LocalBinder {
 
   /**
    * Resolves `name` written before a `.`. A function's name has no members, so there it denotes the
-   * call of the enclosing async function of that name (§7), held in a variable of that function.
+   * call of the enclosing async function of that name (§16), held in a variable of that function.
    */
   useBeforeMember(name: Identifier, scope: Scope): void {
     const entity = scope.lookup(name.text);
@@ -339,7 +339,7 @@ export class LocalBinder {
   }
 
   /**
-   * Binds the annotations on an item, each a struct value written in `scope` (§3.16): the scope
+   * Binds the annotations on an item, each a struct value written in `scope` (§5.5): the scope
    * around it, or a generic declaration's own once its type parameters are defined, which they see
    * (constructs/declarations.ts).
    */
@@ -353,7 +353,7 @@ export class LocalBinder {
    * Walks a list's `items` in order: binds each one's annotations in `scope`, but a generic
    * declaration's, which its type parameters' scope binds (constructs/declarations.ts), then hands
    * it to `bind`, but an Invalid one, which holds only the annotations the parser rejected there,
-   * still struct values written in `scope` that every tool walking the tree meets (§3.16).
+   * still struct values written in `scope` that every tool walking the tree meets (§5.5).
    */
   eachItem<Item extends SyntaxNode & Annotatable>(
     items: readonly (Item | Invalid)[],

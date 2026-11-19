@@ -1,5 +1,5 @@
 /**
- * Where each annotation the toolchain reads means something (§3.16): which they are, and the place
+ * Where each annotation the toolchain reads means something (§5.5): which they are, and the place
  * each may stand at, as an annotation's check reads its place (index.ts).
  */
 

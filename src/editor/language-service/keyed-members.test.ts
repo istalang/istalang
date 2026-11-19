@@ -1,5 +1,5 @@
 /**
- * A keyed member in the editor (§3.9): `d.city` read through an `index` keyed by a member parameter
+ * A keyed member in the editor (§10.2): `d.city` read through an `index` keyed by a member parameter
  * is offered and shown as the field it reads as, of its own key's type, while hover and going to
  * its definition reach the `index` its read calls.
  */

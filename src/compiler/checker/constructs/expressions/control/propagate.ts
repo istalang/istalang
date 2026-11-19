@@ -1,7 +1,7 @@
 /**
- * `e?` on a `Result` (§3.12): the `Ok` value, or an early return of the `Err` from the function,
+ * `e?` on a `Result` (§12): the `Ok` value, or an early return of the `Err` from the function,
  * whose result must hold the same error type (constructs/closures/returns.ts). An optional isn't
- * taken apart by `?`; `??` and `match` do that (§4).
+ * taken apart by `?`; `??` and `match` do that (§11.1).
  */
 
 import { wellKnown } from '../../../../../foundation/language/well-known/index.ts';

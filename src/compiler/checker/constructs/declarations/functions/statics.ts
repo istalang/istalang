@@ -1,8 +1,8 @@
 /**
- * Static functions by the type they are declared on (§3.7): `fn Duration.zero()` belongs to
+ * Static functions by the type they are declared on (§6.2): `fn Duration.zero()` belongs to
  * `Duration`, not to an overload set of `zero`. Each module's are indexed once, by what their owner
  * names where it is written, as types/written/named-types.ts keys it: an alias's owner is the type
- * it stands for, a shape among them (§3.17).
+ * it stands for, a shape among them (§4.6).
  */
 
 import type { EntryTable } from '../../../../../foundation/structures/entries/index.ts';

@@ -1,6 +1,6 @@
 # outcome: 0
-# `Array` and `Map` satisfy `Default` (§3.8), so generic code asking for one gets it empty; the
-# type argument of `Array.default<T>()` comes from the `Self` it must give (§3.10).
+# `Array` and `Map` satisfy `Default` (§19.3), so generic code asking for one gets it empty; the
+# type argument of `Array.default<T>()` comes from the `Self` it must give (§8.4).
 
 import * as runtime from 'runtime'
 

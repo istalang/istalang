@@ -1,5 +1,5 @@
 /**
- * A future (§3.3): what an async call, a timer or a host gives. It settles once, and calls what
+ * A future (§15.2): what an async call, a timer or a host gives. It settles once, and calls what
  * the prelude keeps waiting on it then (`waiting`, settling.ts); an async call's knows its execution,
  * which its disposal stops.
  */
@@ -15,7 +15,7 @@ export class Future extends RunObject {
   waiting: Waiting | undefined;
   /** What of the run itself waits on it: a call into a context waits on its invocation's. */
   readonly listeners: ((value: Value) => void)[] = [];
-  /** What the run does if it is disposed before it settles: a host's cancel (§9). */
+  /** What the run does if it is disposed before it settles: a host's cancel (§17.2). */
   readonly cancels: (() => void)[] = [];
   /** The execution it is the future of, for an async call's. */
   readonly execution: Execution | undefined;
@@ -30,7 +30,7 @@ export class Future extends RunObject {
 /**
  * The future a watch gives (`disposed()`, `disposing()`): `kept`, or one `made` anew where there is
  * none or it was disposed. Nothing holds a watch's future between two waits on it, and a disposed
- * future is never given out again (§7).
+ * future is never given out again (§16).
  */
 export function watchFuture(kept: Future | undefined, made: () => Future): Future {
   return kept === undefined || kept.disposed ? made() : kept;

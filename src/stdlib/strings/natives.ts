@@ -10,7 +10,7 @@
  * Case mapping is Unicode's default, never a locale's, and graphemes are segmented by the root
  * locale, so the machine's locale never changes a result; the Unicode tables are the Node build's,
  * so a segment re-run on a newer Node may map a newly assigned code point differently. A string
- * longer than JavaScript can hold is a limit the program ran into, so building one panics (§3.12),
+ * longer than JavaScript can hold is a limit the program ran into, so building one panics (§12),
  * as the run makes every such limit do (runtime/natives.ts `panicOf`).
  */
 

@@ -1,5 +1,5 @@
 /**
- * Rules a struct declaration, and a recursive alias, must keep (§3.1, §3.17): every value of it
+ * Rules a struct declaration, and a recursive alias, must keep (§5.2, §4.6): every value of it
  * must be finite, so no field may hold another value of the same type by value
  * (types/properties/finiteness.ts, the one rule, which holds a recursive type `match` use's values
  * too). A recursive alias's shape is reported at the field, any other body at the alias.

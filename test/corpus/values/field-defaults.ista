@@ -1,5 +1,5 @@
 # outcome: "3 6 9 6 0 4 1.5 1 100 0"
-# A field's default (§3.1) runs at a literal that leaves the field out, seeing the fields before it,
+# A field's default (§5.2) runs at a literal that leaves the field out, seeing the fields before it,
 # and a field may take its type from its default. A spread gives every field, so it runs none. A
 # variant's fields have defaults too, a generic struct's default meets the constraints its literal
 # meets, and a constant computes a default that compile time can.

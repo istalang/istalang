@@ -1,16 +1,16 @@
 /**
- * Trait objects (§3.10): a value of an `any` type is the variant of that type's enum holding it,
+ * Trait objects (§8.2): a value of an `any` type is the variant of that type's enum holding it,
  * one variant per type converted into it (type-table.ts), and what uses it through its traits
  * switches over every variant, calling the function each type meets the trait with. A call on a
- * union through a trait its members meet (§6) switches over the union's variants alike.
+ * union through a trait its members meet (§8.2) switches over the union's variants alike.
  *
  * - A conversion from a concrete type builds its variant, a literal type's its base's, whose value
- *   it is (§2), so a downcast to the base finds it. From another `any` type, whose constraints
+ *   it is (§4.3), so a downcast to the base finds it. From another `any` type, whose constraints
  *   include the target's, it calls an entry converting variant by variant; from the same `any`
  *   type, it is the value itself. From a union, each member's value converts as a value of that
  *   member, so a value of `A | B` inside an `any` type is an `A` or a `B`.
  * - A dispatch entry takes what the required function takes, its receiver first, and is async when
- *   the function gives a future, async or not (§3.14), awaiting the call it makes, so what a member
+ *   the function gives a future, async or not (§6.4), awaiting the call it makes, so what a member
  *   gives converts as the value of the future the call gives. On a union, a member with one value
  *   (a literal, `none`) holds nothing, so its function gets that value; on the one type a union
  *   collapsed into, it calls that type's function.
@@ -20,7 +20,7 @@
  *   what the function takes, and what it gives into what the call through `any` gives, as the
  *   checker fits them; a field it holds is read converted alike. A `&` never converts, and the
  *   variance it makes is none, so it is passed on as it is.
- * - A field a member stores none of is read by calling the getter meeting it (§3.10).
+ * - A field a member stores none of is read by calling the getter meeting it (§8.2).
  * - Every entry switching over an `any` type's variants is a closing entry (../tables/tables.ts):
  *   written once lowering reached every type converted so far, and again when it reaches another.
  */
@@ -143,7 +143,7 @@ export function anyConversionEntry(
 
 /**
  * The entry reading `required`'s field, which a trait of `on` requires, from a value of `on`: each
- * member's stored field, or its getter's call (§3.10).
+ * member's stored field, or its getter's call (§8.2).
  */
 export function anyFieldEntry(
   lowering: Lowering,

@@ -1,5 +1,5 @@
 /**
- * What a flow releases where (§3.4, §7): a scope's variables where it ends and on every path
+ * What a flow releases where (§7.1, §16): a scope's variables where it ends and on every path
  * leaving it early, what a `hold` keeps kept there first and released where the scope it names
  * ends, however it ends, `break` and `continue` going where the scope they name says; and a
  * construct's temporaries where it says, each once (`claim`): a statement's at its end, a header's
@@ -30,7 +30,7 @@ interface Releasing {
   readonly temporariesSince: (first: number) => readonly ValueId[];
 }
 
-/** Where what a `hold` keeps lasts until: a labelled scope's end, or the function's (§7). */
+/** Where what a `hold` keeps lasts until: a labelled scope's end, or the function's (§16). */
 type HeldUntil = LabelledScope | 'function';
 
 interface Scope {
@@ -86,7 +86,7 @@ export class Scopes {
   }
 
   /**
-   * `variable`, declared in the innermost scope, or held until `until` ends (§7): kept where the
+   * `variable`, declared in the innermost scope, or held until `until` ends (§16): kept where the
    * innermost scope ends, released where `until` does, or by the function's return.
    */
   declare(variable: ValueId, until?: HeldUntil): void {

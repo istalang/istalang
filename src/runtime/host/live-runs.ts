@@ -1,5 +1,5 @@
 /**
- * The live runs a host's starts are running (§9): the program each runs and its options, and how
+ * The live runs a host's starts are running (§17.3): the program each runs and its options, and how
  * many the host started. None is ever persisted, so its name tells nothing of which start it is:
  * its random source is told apart from every other by the count of starts before it
  * (random-draws.ts `instanceSeed`), so two starts under one name draw apart.

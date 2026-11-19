@@ -5,7 +5,7 @@
 # error: 5203 at 17:11
 # A target can't fail to match, at the top level or in a body: an array, an alternative, a range
 # or a variant is refused there once, and reading the names it would bind reports nothing more
-# (§3.11, §3.15).
+# (§11.3, §4.5).
 
 const [a, b] = [1, 2]
 const (c, 0) | (0, c) = (1, 0)

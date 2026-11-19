@@ -1,5 +1,5 @@
 # outcome: "job 1, pass, job 2, pass, flushed 2, pass, cleaned up | done"
-# Graceful disposal (§7): when the last holder of a call lets go of it, a call waiting on its own
+# Graceful disposal (§16): when the last holder of a call lets go of it, a call waiting on its own
 # `disposing()` resumes there at once, within the disposal, and cleans up; its next `await`, here
 # the loop's next `select`, stops it. A call waiting on anything else is stopped where it waits.
 

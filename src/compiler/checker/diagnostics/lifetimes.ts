@@ -1,10 +1,10 @@
 /**
- * The checker's diagnostics of lifetimes (§3.4, §4, §7), a part of the checker's one catalog
+ * The checker's diagnostics of lifetimes (§7.1, §11.1, §16), a part of the checker's one catalog
  * (index.ts):
  *
  * - holders and disposal, codes 5700–5799, the labels `hold`, `break` and `continue` name included,
- *   and the std's annotations of what its externs hold and keep (5750–5759, §3.16);
- * - the cycles static lifetimes rejects, codes 5720–5739 (§7), apart so tests that run them can
+ *   and the std's annotations of what its externs hold and keep (5750–5759, §5.5);
+ * - the cycles static lifetimes rejects, codes 5720–5739 (§16), apart so tests that run them can
  *   tell them from the rest;
  * - the weak side of disposal, codes 5800–5899: an async call's `disposing()`. Which name denotes
  *   the call, and where none does, is the binder's to report.
@@ -14,17 +14,17 @@ export const lifetimeTemplates = {
   disposeType: {
     code: 5700,
     message: (type: string) =>
-      `'dispose' can't be declared for ${type}: only a shared struct (§3.18) or an extern type a host provides has a single identity to dispose (§7).`,
+      `'dispose' can't be declared for ${type}: only a shared struct (§5.4) or an extern type a host provides has a single identity to dispose (§16).`,
   },
   disposeSignature: {
     code: 5701,
     message: () =>
-      "'dispose' takes its value as its one parameter, returns Unit and can't be async (§7).",
+      "'dispose' takes its value as its one parameter, returns Unit and can't be async (§16).",
   },
   disposeGetter: {
     code: 5712,
     message: () =>
-      "'dispose' is the runtime's to call (§7), so it is never a getter, which code reads (§3.1).",
+      "'dispose' is the runtime's to call (§16), so it is never a getter, which code reads (§5.2).",
   },
   disposeSelfEscapes: {
     code: 5702,
@@ -76,46 +76,46 @@ export const lifetimeTemplates = {
   holdsOutsideStd: {
     code: 5750,
     message: () =>
-      "'@Holds' stands only on an extern struct of the std: any other type shows what its values hold, and a host's hold no language values (§3.16).",
+      "'@Holds' stands only on an extern struct of the std: any other type shows what its values hold, and a host's hold no language values (§5.5).",
   },
   keepsOutsideStd: {
     code: 5751,
     message: () =>
-      "'@Keeps' stands only on a function of the std: any other function shows what it keeps, and a host's keep no language values (§3.16).",
+      "'@Keeps' stands only on a function of the std: any other function shows what it keeps, and a host's keep no language values (§5.5).",
   },
   keepsUnknownParameter: {
     code: 5752,
     message: (name: string, function_: string) =>
-      `'${function_}' has no parameter '${name}' for '@Keeps' to name (§3.16).`,
+      `'${function_}' has no parameter '${name}' for '@Keeps' to name (§5.5).`,
   },
 } as const;
 
-/** The cycles static lifetimes rejects (§7). */
+/** The cycles static lifetimes rejects (§16). */
 export const cycleTemplates = {
   cycleWrite: {
     code: 5720,
     message: (holder: string) =>
-      `What is written here may already reach what it is written into, so this makes a cycle holding ${holder}, which reaches a disposable: no cycle may (§7). Hold one side through a 'WeakRef'.`,
+      `What is written here may already reach what it is written into, so this makes a cycle holding ${holder}, which reaches a disposable: no cycle may (§16). Hold one side through a 'WeakRef'.`,
   },
   cycleCall: {
     code: 5721,
     message: (callee: string | undefined, holder: string) =>
-      `${calledHere(callee)} writes one of what it is given here into another that may already reach it, making a cycle holding ${holder}, which reaches a disposable: no cycle may (§7). Hold one side through a 'WeakRef'.`,
+      `${calledHere(callee)} writes one of what it is given here into another that may already reach it, making a cycle holding ${holder}, which reaches a disposable: no cycle may (§16). Hold one side through a 'WeakRef'.`,
   },
   cycleEscaping: {
     code: 5722,
     message: (holder: string) =>
-      `Code that calls this function may give it values making a cycle holding ${holder}, which reaches a disposable: no cycle may (§7). Hold one side through a 'WeakRef'.`,
+      `Code that calls this function may give it values making a cycle holding ${holder}, which reaches a disposable: no cycle may (§16). Hold one side through a 'WeakRef'.`,
   },
   cycleWitness: {
     code: 5723,
     message: (witness: string | undefined, holder: string) =>
-      `${calledHere(witness)}, which this runs through a type's witness, may be given values making a cycle holding ${holder}, which reaches a disposable: no cycle may (§7). Hold one side through a 'WeakRef'.`,
+      `${calledHere(witness)}, which this runs through a type's witness, may be given values making a cycle holding ${holder}, which reaches a disposable: no cycle may (§16). Hold one side through a 'WeakRef'.`,
   },
   cycleInstance: {
     code: 5724,
     message: (callee: string | undefined, holder: string) =>
-      `${calledHere(callee)} makes a cycle holding ${holder} at the types this call gives it, which reaches a disposable: no cycle may (§7). Hold one side through a 'WeakRef'.`,
+      `${calledHere(callee)} makes a cycle holding ${holder} at the types this call gives it, which reaches a disposable: no cycle may (§16). Hold one side through a 'WeakRef'.`,
   },
 } as const;
 
@@ -125,7 +125,7 @@ function calledHere(name: string | undefined): string {
 }
 
 /**
- * The checker's diagnostics of the weak side of disposal, codes 5800–5899 (§7): an async call's
+ * The checker's diagnostics of the weak side of disposal, codes 5800–5899 (§16): an async call's
  * `disposing()`. Which name denotes the call, and where none does, is the binder's to report. A
  * part of the checker's one catalog (index.ts).
  */

@@ -3,7 +3,7 @@
 # error: 5644 at 16:28
 # error: 5101 at 17:7
 # What a context call carries crosses into its context, so its arguments and its result must be
-# sendable (§9): a runtime given as an argument, and a shared struct given back.
+# sendable (§17.1): a runtime given as an argument, and a shared struct given back.
 
 import * as runtime from 'runtime'
 

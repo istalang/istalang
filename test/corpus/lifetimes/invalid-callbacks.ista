@@ -1,7 +1,7 @@
 # error: 5720 at 21:3
 # error: 5721 at 29:3
 # error: 5721 at 36:7
-# Static lifetimes rejects code that holds what holds it, through a disposable (§7): a button's
+# Static lifetimes rejects code that holds what holds it, through a disposable (§16): a button's
 # handler using the button, which holds a lease; a callback registered on the future it keeps,
 # since a future holds what is registered on it; and a slot's own pending take put into it, since
 # a pending take holds its slot.

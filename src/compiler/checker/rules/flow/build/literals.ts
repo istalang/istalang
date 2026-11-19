@@ -1,5 +1,5 @@
 /**
- * Literals (§2, §3.1): the values a literal makes from its parts, in the order its parts run.
+ * Literals (§3.1, §5.2): the values a literal makes from its parts, in the order its parts run.
  *
  * - A struct literal's fields come from their sources in declaration order (`sourcesOf`): a value,
  *   or a field of its leading spread's value, read once; `new` puts the struct behind a new
@@ -36,7 +36,7 @@ import { fieldLoop, itemLoop, targetsLoop } from './loops.ts';
 import { readAlong } from './parts.ts';
 
 /**
- * A struct literal (§3.1): its items evaluated in the order written, then its fields taken in
+ * A struct literal (§5.2): its items evaluated in the order written, then its fields taken in
  * declaration order, each from its value, its spread's field or a struct comprehension; then the
  * struct made of them, put behind a new handle by `new`, or, where it leaves fields to their
  * defaults, the call of its fields function given the others.

@@ -1,5 +1,5 @@
 /**
- * What a bare name in a pattern does (§3.11), held to the naming conventions: a name cased as a
+ * What a bare name in a pattern does (§11.3), held to the naming conventions: a name cased as a
  * value binds, one cased as a type refers, and every other name, `_` among them, binds.
  */
 

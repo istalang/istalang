@@ -1,5 +1,5 @@
 /**
- * The random draws of a run (§3.8 `random`, §5), alike on every runtime: draw `n` of a source
+ * The random draws of a run (§19.2 `random`, §14), alike on every runtime: draw `n` of a source
  * seeded with `seedBytes` secret bytes is HMAC-SHA-256 keyed by the seed over `n`, 32 bytes. A run
  * that draws again from the same seed draws what it drew before, as a segment run again from its
  * snapshot does, and no draw can be told from the others without the seed, which keeps draws fit
@@ -7,9 +7,9 @@
  * - **An instance's seed** is the host's seed's: HMAC-SHA-256 keyed by it over what the instance
  *   is, apart from its draws, whose messages are 8 bytes. A context is its key, which names one
  *   instance of the store; a live run, never persisted, its name and the count of the host's live
- *   starts before it, so the usual `main` and the context named after it (`runtime.id()`, §9) draw
+ *   starts before it, so the usual `main` and the context named after it (`runtime.id()`, §17.1) draw
  *   apart, and so do two starts under one name. Each kind's message has a prefix of its own. A
- *   spawned instance draws its seed from its parent's (§9).
+ *   spawned instance draws its seed from its parent's (§17.1).
  *
  * Hashing is computation, not I/O, so it runs on @noble/hashes, the project's one hash library,
  * which runs in Node and a browser alike.

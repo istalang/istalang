@@ -1,11 +1,11 @@
 /**
- * How a named type's path splits (§3.1, §3.13): the one home every reader of a `NamedType`'s path
+ * How a named type's path splits (§5.2, §13.1): the one home every reader of a `NamedType`'s path
  * goes through, so a name a module's namespace qualifies (`lib.OrInt`) is read as what it names
  * everywhere, never by its first part.
  *
  * - The name is the last part the binder resolved: namespaces qualifying it resolve too, to the
  *   module they name.
- * - The parts past it are the associated types read through what it names (`T.Data`, §3.1), which
+ * - The parts past it are the associated types read through what it names (`T.Data`, §5.2), which
  *   the binder leaves unresolved, since only checking knows the type.
  */
 

@@ -1,5 +1,5 @@
 /**
- * Array patterns (§3.11): `[first, ...rest, last]` tests its part's length first, then takes each
+ * Array patterns (§11.3): `[first, ...rest, last]` tests its part's length first, then takes each
  * item against the item it names, counted from the start before the rest and from the end after
  * it; the rest is the items between. A call pattern's arguments past its variant's fixed fields
  * match the rest field's items the same way (variant-calls.ts), any items past them too when its

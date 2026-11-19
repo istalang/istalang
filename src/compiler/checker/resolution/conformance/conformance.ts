@@ -1,5 +1,5 @@
 /**
- * Instantiating a chosen function and meeting its constraints (§3.5, §3.10).
+ * Instantiating a chosen function and meeting its constraints (§8.1, §8.2).
  *
  * - A chosen generic function's type parameters are settled from what inference found
  *   (types/inference/settle.ts), the call's expected type among it once the caller has given it
@@ -13,13 +13,13 @@
  *   (declared-witness.ts), which must give the required result. The calls found are the witnesses
  *   the instantiation calls (check.ts).
  * - A required field is met by a field of its name the type stores, of its type, or else by a
- *   getter chosen as a witness is, as `fn get name(self: Self)` giving that type (§3.10), a
+ *   getter chosen as a witness is, as `fn get name(self: Self)` giving that type (§8.2), a
  *   witness of the constraint after its functions', through which lowering reads the field once
  *   it knows the type. A required associated type, and a struct constraint's entries, are met as
  *   shortfalls.ts judges them.
  * - A trait the compiler derives (derived-traits.ts) asks what its rule asks of every type first,
  *   and a required function no function is declared for is met by the witness it derives. On a
- *   union, any other trait's is met through its members (union-traits.ts, §6).
+ *   union, any other trait's is met through its members (union-traits.ts, §8.2).
  * - Struct-constraint field checks (shortfalls.ts) and union-member checks (`throughMembers`) are
  *   coinductive on the active search stack for concrete types: a `(struct, struct constraint)` or
  *   `(union, constraint)` goal already active counts as met (`silentMeets`). A search judges each
@@ -213,7 +213,7 @@ export const rootSearches: RootGoals = {
 };
 
 /**
- * The witnesses a call through `constraint`'s trait on a value of `type`, a union, runs (§6): its
+ * The witnesses a call through `constraint`'s trait on a value of `type`, a union, runs (§8.2): its
  * required functions, through its members or declared for it whole, with no associated type of the
  * union itself. Undefined after reporting at `site` why it can't be called so.
  */
@@ -373,7 +373,7 @@ function functionWitnesses(
   return witnesses;
 }
 
-/** The getter meeting `required`'s field for `type`, which stores none of its name (§3.10). */
+/** The getter meeting `required`'s field for `type`, which stores none of its name (§8.2). */
 function getterWitness(
   site: UseSite,
   type: Type,

@@ -3,9 +3,9 @@
 # error: 5060 at 26:15
 # error: 2100 at 27:15
 # error: 5001 at 28:20
-# A template's values need a toString that gives a string, and a value inside their braces (§2). A
+# A template's values need a toString that gives a string, and a value inside their braces (§3.1). A
 # tagged template is a call, so its values must fit the tag's parameters; a template with values
-# isn't computed at compile time (§3).
+# isn't computed at compile time (§5.1).
 struct Opaque:
   x: Int
 

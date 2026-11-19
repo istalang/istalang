@@ -1,5 +1,5 @@
 /**
- * Computed types in the tools (docs/proposals/4-computed-types.md; spec §2): the formatter prints
+ * Computed types in the tools (docs/proposals/4-computed-types.md; spec §4.2): the formatter prints
  * every new form so that formatting again changes nothing and the tree stays the one written, and
  * never throws on soup or broken text holding them; hover shows what a computed type is,
  * go-to-definition follows `.Data` to its declaration, completion after `Type.` offers its

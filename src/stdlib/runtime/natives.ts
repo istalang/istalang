@@ -1,7 +1,7 @@
 /**
  * The `runtime` module's natives (runtime.ista): the instance's name and version, read from the
  * call's context; `commit()`, a future that is already resolved, so awaiting it commits without
- * waiting (§5); the spawn behind `isolate`, an instance a panic terminates at once (§9); and the
+ * waiting (§14); the spawn behind `isolate`, an instance a panic terminates at once (§17.1); and the
  * host's store, the runtimes over it and calls into their contexts, a live run's
  * (runtime/run/capabilities.ts).
  */

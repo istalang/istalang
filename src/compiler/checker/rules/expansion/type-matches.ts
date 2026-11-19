@@ -1,5 +1,5 @@
 /**
- * Type `match` aliases whose reductions would never end (§3.5, §3.17): `type W<T> = match T:` with
+ * Type `match` aliases whose reductions would never end (§8.1, §4.6): `type W<T> = match T:` with
  * `case _: W<Array<T>>` reduces `W<Int>` to `W<Array<Int>>`, and so on without end.
  *
  * The expansion graph (edges.ts) takes its edges from cases' types here, as it

@@ -1,5 +1,5 @@
 /**
- * Call patterns (§3.11): `Ok(v)`, `Rejected(by: "legal")`, `Group(title, ...children)`. The variant
+ * Call patterns (§11.3): `Ok(v)`, `Rejected(by: "legal")`, `Group(title, ...children)`. The variant
  * is tested first, as a struct pattern naming it is; then the arguments bind to its fields as a
  * call's bind to its constructor's parameters (resolution/choosing/binding.ts), so a value is taken
  * apart as it was built: by position in declared order, then by name, a spread starting the rest
@@ -75,7 +75,7 @@ interface VariantBraced {
   readonly name: string;
 }
 
-/** `node` when it is a struct pattern naming a variant (§3.11); undefined for any other. */
+/** `node` when it is a struct pattern naming a variant (§11.3); undefined for any other. */
 export function variantBraced(
   context: Pick<BodyContext, 'entityOf'>,
   node: Pattern | PatternPart,
@@ -92,7 +92,7 @@ export function variantBraced(
 
 /**
  * A variant named before braces, `case Rejected{by}`, refused where it is matched (../index.ts,
- * §3.11): its items are taken over the error type, so their names bind and what they compare with
+ * §11.3): its items are taken over the error type, so their names bind and what they compare with
  * is checked. Against its own enum it still tests its variant, covering it when its items only
  * bind, as the call pattern it stands for would, so nothing more is reported of its `match`;
  * against anything else it covers nothing.
@@ -216,7 +216,7 @@ export function takeVariantCall(
 
 /**
  * Warns of a call pattern with nothing in its parentheses that says no more than its name, or less
- * than it seems to (§3.11): `case Expired()`, a variant without fields and no type arguments, is
+ * than it seems to (§11.3): `case Expired()`, a variant without fields and no type arguments, is
  * `case Expired`, as its call is; `case List()`, whose fields a call may all leave out, matches
  * every `List`, not only the one its defaults build, which `List(...)` says.
  */
@@ -346,7 +346,7 @@ function takeReached(
   }
 }
 
-/** Records the field `argument` gives: by its name, or as itself, written by position (§3.11). */
+/** Records the field `argument` gives: by its name, or as itself, written by position (§11.3). */
 function recordGiven(walk: ItemTaking, argument: BoundPatternArgument, field: FieldMember): void {
   walk.context.recordField(
     argument.kind === 'NamedPatternArgument' ? argument.name : argument,

@@ -3,14 +3,14 @@
  * tables (../validation/), which need this shape without depending back on it.
  *
  * - A module carries its line starts: the runtime never sees source text, yet turns spans into
- *   locations for `Error.trace` (§3.12), a panic's trace, `waitingAt()` (§10) and the operator.
- * - **A start** is what a host may start by key (§9): a code entry lowering wrote around the
+ *   locations for `Error.trace` (§12), a panic's trace, `waitingAt()` (§18) and the operator.
+ * - **A start** is what a host may start by key (§17.3): a code entry lowering wrote around the
  *   function, which decodes the arguments from JSON and calls it, giving what it gives, an async
  *   one's future unawaited, so the runtime runs a start as any call; its `encode` entry writes the
  *   outcome as JSON once it settles (docs/arch/boundary.md).
  * - **What the program is for** is one of two shapes: a program, with the start a host starts
- *   naming none (`main`'s) and the loop serving the jobs of the instances it drives (§5) when it
- *   delegates; or a test build (§10), with every `@Suite` and the testing module's code listing a
+ *   naming none (`main`'s) and the loop serving the jobs of the instances it drives (§14) when it
+ *   delegates; or a test build (§18), with every `@Suite` and the testing module's code listing a
  *   suite's tests and running one.
  */
 

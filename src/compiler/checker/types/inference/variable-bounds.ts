@@ -39,7 +39,7 @@ export function fromConsumer(bound: BoundRole, call: CallVariables | undefined):
 export interface LowerBound {
   readonly type: Type;
   readonly fresh: boolean;
-  /** Whether it is a struct literal's shape, which a struct its fields give takes (§3.1). */
+  /** Whether it is a struct literal's shape, which a struct its fields give takes (§5.2). */
   readonly isShape: boolean;
   readonly advice: boolean;
   readonly by: CallVariables | undefined;
@@ -68,7 +68,7 @@ export interface Related {
   readonly above: readonly ParameterKey[];
 }
 
-/** Whether `bound` is a struct literal's shape, which a struct it settles to may take (§3.1). */
+/** Whether `bound` is a struct literal's shape, which a struct it settles to may take (§5.2). */
 export function isShape(bound: Bound | LowerBound): boolean {
   return 'isShape' in bound && bound.isShape;
 }

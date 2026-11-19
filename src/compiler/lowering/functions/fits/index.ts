@@ -1,13 +1,13 @@
 /**
- * A value made to fit where the checker found it fits (§2, checker/types/fitting/fit/index.ts):
- * converted once, into an `any` type, a struct's value rebuilt as its shape (§3.1), a plain
+ * A value made to fit where the checker found it fits (§4.1, checker/types/fitting/fit/index.ts):
+ * converted once, into an `any` type, a struct's value rebuilt as its shape (§5.2), a plain
  * function made async, or between a one-element tuple and its element, or a literal taken as its
  * base, then put into a union where the fit says. The checker records the fit per value, so this is
  * the one place lowering acts on it, and no handler needs to know about conversions. A value
- * converted part by part (§3.5) is rebuilt by the entry of its pair of types where its layout
+ * converted part by part (§8.1) is rebuilt by the entry of its pair of types where its layout
  * changes (parts.ts), each part fitted as the checker fits it.
  *
- * A function made async where an async function is expected (§3.14) is wrapped as any function
+ * A function made async where an async function is expected (§6.4) is wrapped as any function
  * converted part by part is: a closure of the `wrapping` entry of its pair of types, capturing it.
  */
 
@@ -125,7 +125,7 @@ function convertedValue(
 }
 
 /**
- * `typed` converted part by part into `to` (§3.5) where that changes its layout, by the entry of
+ * `typed` converted part by part into `to` (§8.1) where that changes its layout, by the entry of
  * the pair: a function's wraps it, any other's rebuilds it.
  */
 function partsConverted(
@@ -264,13 +264,13 @@ export function convertingEntry(
 }
 
 /**
- * The entry of a function of type `entry.from` wrapped as one of `entry.to` (§3.5, §3.14): it
+ * The entry of a function of type `entry.from` wrapped as one of `entry.to` (§8.1, §6.4): it
  * converts each argument it is given into what the function takes, a `&` passed on as it is,
  * calls the function it captures, and converts what it gives. Where `to` gives a future of what a
  * plain function gives, the entry is async, so it gives a future already resolved; a future the
  * function gives is followed by one of the caller's (`convertedFuture`), so the entry starts no
  * call of its own and the function's call is the caller's. The Definition marks it `wrapping`, so a start of it
- * starts the function it wraps (§10).
+ * starts the function it wraps (§18).
  */
 export function wrappingEntry(
   lowering: Lowering,

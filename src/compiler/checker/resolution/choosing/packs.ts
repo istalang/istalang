@@ -1,5 +1,5 @@
 /**
- * The arguments a pack's rest parameter takes (§3.5), as choosing judges them (choice.ts): single
+ * The arguments a pack's rest parameter takes (§8.1), as choosing judges them (choice.ts): single
  * values by position, which fill the pack together as the tuple of their types, or one spread of a
  * value of a pack, which fills it as that pack. Either is matched exactly, since a pack is opaque:
  * its items convert into nothing, and the pack of the function a value is spread inside is the

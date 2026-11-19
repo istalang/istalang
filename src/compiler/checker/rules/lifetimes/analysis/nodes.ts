@@ -10,7 +10,7 @@
  * - **Inputs** are what the function was called with (../summary.ts), kept apart from the variables
  *   that start as them, which code may assign; a captured `let`'s cell is its own input. The
  *   globals it names, and what a watching handle may give (`watched`), are inputs from where it
- *   first names them on. A transient's cell is the global it is (§3.4), which every call of the
+ *   first names them on. A transient's cell is the global it is (§7.1), which every call of the
  *   function nested in another shares, as all code naming a global does.
  * - **Nodes it makes:** a watched value as a call gives it (`watchedValue`), and what a default a
  *   call leaves out gives, each a value of the call alone.

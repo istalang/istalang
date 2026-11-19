@@ -1,5 +1,5 @@
 /**
- * Mocks in a test run (§10): what they replace, in the test and in every instance it spawns, how
+ * Mocks in a test run (§18): what they replace, in the test and in every instance it spawns, how
  * long they hold, the calls they record, and that one test's mocks never reach the next.
  */
 
@@ -236,7 +236,7 @@ fn suite() -> Array<Test>: [test("unmocked extern", unmockedExternWithDefault)]
     expect(panicTrace.split('\n').filter((line) => line.includes('hostDefault'))).toHaveLength(1);
   });
 
-  it('records calls to a mocked dispose of a shared struct without leaving a dangling handle across a commit (§7, §10)', async () => {
+  it('records calls to a mocked dispose of a shared struct without leaving a dangling handle across a commit (§16, §18)', async () => {
     const source = testModule(`
 shared struct Lease:
   id: Int
@@ -256,7 +256,7 @@ fn suite() -> Array<Test>: [test("mocked dispose", mockedDispose)]
     expect(outcomesOf(await reportsOf(source))).toEqual(['mock dispose › mocked dispose: passed']);
   });
 
-  it('of a dispose recording the disposed value never dispose it again as they are released, read back from a snapshot too (§7, §10)', async () => {
+  it('of a dispose recording the disposed value never dispose it again as they are released, read back from a snapshot too (§16, §18)', async () => {
     const source = testModule(`
 shared struct Lease:
   id: Int
@@ -294,7 +294,7 @@ fn suite() -> Array<Test>: [test("once", once), test("once read back", onceReadB
     ]);
   });
 
-  it('of a dispose recording a value it disposed leave what that value held to its other holders, read back from a snapshot (§5, §7)', async () => {
+  it('of a dispose recording a value it disposed leave what that value held to its other holders, read back from a snapshot (§14, §16)', async () => {
     const source = testModule(`
 shared struct Inner:
   id: Int

@@ -1,5 +1,5 @@
 /**
- * Argument-dependent lookup as a program sees it (§3.13): an operator finds its function in the
+ * Argument-dependent lookup as a program sees it (§13.1): an operator finds its function in the
  * module declaring an argument's own type, never through a type argument, and otherwise only
  * where the function is imported by name.
  */

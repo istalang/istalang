@@ -1,21 +1,21 @@
 /**
- * Who disposes a disposable value (§7). A type is disposable when a `dispose` takes it as `self`:
- * structural conformance to `Disposable` (§3.10), with no list kept anywhere else; whether a type
+ * Who disposes a disposable value (§16). A type is disposable when a `dispose` takes it as `self`:
+ * structural conformance to `Disposable` (§8.4), with no list kept anywhere else; whether a type
  * is reads what this finds (types/traits/disposable.ts). Only a value with an identity of its own
- * can be, so only a shared struct (§3.18) or an extern type, whose values are objects the runtime
+ * can be, so only a shared struct (§5.4) or an extern type, whose values are objects the runtime
  * keeps.
  *
  * - An extern `dispose` that a std module declares beside its type, as the prelude does for
  *   `Future` and `Slot`, is the runtime's to perform.
  * - Any other `dispose` runs as code, called with the value: `fn dispose(self: Lease)` makes a
  *   shared struct `Lease` disposable, and a host's extern type becomes disposable by a `dispose`
- *   declared beside it (§7). It is found the way an operator's function is, by argument-dependent
+ *   declared beside it (§16). It is found the way an operator's function is, by argument-dependent
  *   lookup, so it lives beside the type it disposes (resolution/choosing/candidates.ts).
  * - A `dispose` that runs as code is plain code that can't wait, and `self` can't escape it: it is
  *   used only as `*self` (or `self->f`) or passed to an extern, so a disposed value never becomes
- *   observable again (§7).
+ *   observable again (§16).
  * - Only the runtime calls a `dispose`: code calls none and names none as a value, except as a
- *   test's mock target (§10), checked over a body's calls once it is checked.
+ *   test's mock target (§18), checked over a body's calls once it is checked.
  */
 
 import { disposeFunction } from '../../../../foundation/language/well-known/implicit-calls.ts';
@@ -109,7 +109,7 @@ function isRuntimeDispose(checker: CheckerContext, declaration: FunctionDeclarat
 
 /**
  * Whether a program's `dispose` may make `type` disposable: a handle whose identity stays in its
- * instance or process (§3.6, §3.18), a shared struct or a host's. A std module's extern types are
+ * instance or process (§17.2, §5.4), a shared struct or a host's. A std module's extern types are
  * either values, such as an `Array`, or disposed by the runtime already.
  */
 function isOwnedHandle(checker: CheckerContext, type: NominalType): boolean {
@@ -165,9 +165,9 @@ export function disposeCandidates(
 }
 
 /**
- * Checks a `dispose` a program declares (§7): its one parameter takes a handle a program may make
+ * Checks a `dispose` a program declares (§16): its one parameter takes a handle a program may make
  * disposable, one whose identity stays in its instance or process, since a disposable value has an
- * identity of its own (§3.1, §3.6); it is plain code returning unit, lookup finds it for that
+ * identity of its own (§7.2, §17.2); it is plain code returning unit, lookup finds it for that
  * type, and its `self` never escapes it.
  */
 export function checkDisposeDeclaration(
@@ -242,7 +242,7 @@ function checkSelfStays(
   };
   const visit = (node: SyntaxNode, outer: readonly SyntaxNode[], nested: boolean): void => {
     const entity = node.kind === 'Identifier' ? checker.bindings.entityOf(module, node) : undefined;
-    // A parameter owns its pattern's names too (§3.3); only its own name is the disposed value.
+    // A parameter owns its pattern's names too (§6.1); only its own name is the disposed value.
     if (
       entity?.kind === 'variable' &&
       entity.name === self.name &&
@@ -265,7 +265,7 @@ function checkSelfStays(
 
 /**
  * Reports each of `calls`, a checked body's, that calls `dispose` or names it as a value, except
- * at one of `mockTargets`, where the body's mocks' targets are recorded (§7, §10).
+ * at one of `mockTargets`, where the body's mocks' targets are recorded (§16, §18).
  */
 export function checkDisposeUses(
   context: BodyContext,

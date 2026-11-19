@@ -1,7 +1,7 @@
 /**
- * Field defaults (§3.1) and variant constructors (§3.11): the fields of a struct with a default, or
+ * Field defaults (§5.2) and variant constructors (§5.3): the fields of a struct with a default, or
  * of a variant with any, read as the parameters of a function of their own, each with its type and
- * default, so a field is held to a parameter's rules (§3.3): a default sees the fields before it, a
+ * default, so a field is held to a parameter's rules (§6.1): a default sees the fields before it, a
  * field without a written type takes its default's, a default reaching its own field is a cycle,
  * and a rest is last, an array, with no default. Its parameters are the fields in order, so a
  * layout's field `i` is its parameter `i`, and it gives the value its fields make. A literal
@@ -9,13 +9,13 @@
  * leaving a parameter out does.
  *
  * A variant's is also its constructor, `fn E.V<P…>(fields) -> E<P…>`: calling the variant calls it,
- * binding arguments as any call's (§3.3), so it exists for every variant with fields, while a
+ * binding arguments as any call's (§6.1), so it exists for every variant with fields, while a
  * struct's exists only to hold its defaults: a struct is never called.
  *
  * Each such function is made once from its declaration's own nodes and is checked and lowered as a
  * written one is, but where it differs it says whose fields it reads (`fieldsOwner`): a struct's
  * defaults needn't trail, since only a literal gives its fields, by name, while a variant's do, as
- * a call gives them in order (§3.11, constructs/declarations/functions/signatures.ts); its result
+ * a call gives them in order (§5.3, constructs/declarations/functions/signatures.ts); its result
  * is its owner's type, never written; and its entries are named after the struct or variant, not a
  * static function's owner type.
  */
@@ -93,7 +93,7 @@ export function constructedVariant(
 }
 
 /**
- * Whether calls give `declaration`'s parameters in order, so its defaults trail (§3.3): any
+ * Whether calls give `declaration`'s parameters in order, so its defaults trail (§6.1): any
  * function's but a struct's fields', which only a literal gives, by name.
  */
 export function takesArgumentsInOrder(declaration: FunctionDeclaration): boolean {
@@ -101,7 +101,7 @@ export function takesArgumentsInOrder(declaration: FunctionDeclaration): boolean
 }
 
 /**
- * The function whose parameters are the fields of a struct, or of an enum's `variant` (§3.1): a
+ * The function whose parameters are the fields of a struct, or of an enum's `variant` (§5.2): a
  * struct's when one of its fields has a default, a variant's, its constructor, when it has fields.
  * A declaration the parser found no name for declares no type, so its fields make no value.
  */
@@ -152,7 +152,7 @@ function fieldsOwnerOf(
 
 /**
  * The parameter a field reads as. A field holds a value, never a place, so a `&T` the parser
- * refused on one (§3.7) reads as its referent, and its parameter takes no reference.
+ * refused on one (§7.3) reads as its referent, and its parameter takes no reference.
  */
 function fieldParameter(field: DeclaredField | Invalid): Parameter | Invalid {
   if (field.kind === 'Invalid') {

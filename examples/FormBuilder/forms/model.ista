@@ -137,7 +137,7 @@ fn load<S is struct { [_] is FormNode }>(self: Group<S>, v: Group<S>.Seen) -> Un
   for f, node in ...self.fields: node.load(v[f])
 
 # What an expression reads of a group: each node by its name, `data.company.size`, read through
-# the keyed `index` (§3.9), so each read is tracked alone. A scope is no value: nothing compares,
+# the keyed `index` (§10.2), so each read is tracked alone. A scope is no value: nothing compares,
 # passes or encodes one, and no whole-value read is given until an expression needs one.
 struct GroupScope<S is struct { [_] is FormNode }> { _m: S }
 

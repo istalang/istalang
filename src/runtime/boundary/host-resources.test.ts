@@ -1,9 +1,9 @@
 /**
- * A host type a `dispose` makes disposable (§3.6, §7), on programs the real compiler builds: each
+ * A host type a `dispose` makes disposable (§17.2, §16), on programs the real compiler builds: each
  * value arrives from the host as a resource holding the host's JSON, lives in the instance across
  * commits like any other object, leaves to the host as that JSON, and is disposed by its `dispose`
  * once nothing holds it, which tells the host. A queue the host provides hands out a revertible
- * send as one, held by the inbox module's `Revertible<T>` (§6).
+ * send as one, held by the inbox module's `Revertible<T>` (§15.3).
  */
 
 import { describe, expect, it } from 'vitest';

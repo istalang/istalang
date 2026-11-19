@@ -1,5 +1,5 @@
 /**
- * A host's externs are unmarked or live (proposal 8, Rule 9; spec §3.6): only the runtime runs ista
+ * A host's externs are unmarked or live (proposal 8, Rule 9; spec §17.2): only the runtime runs ista
  * code or fills an ista future, so a host's extern marked `ista`, generic over its mark, or holding
  * an ista value, is refused at its name, and only so, while a std module's, the runtime's own, is
  * not.

@@ -1,5 +1,5 @@
 /**
- * Whether a type `match` case's pattern matches a type (§3.17), and what its `infer` variables
+ * Whether a type `match` case's pattern matches a type (§4.6), and what its `infer` variables
  * bind.
  *
  * - Matching is exact: the pattern's form and the type's are one, part by part, after aliases
@@ -18,10 +18,10 @@
  * - A type not known yet (a type parameter, or a type computed from one) decides nothing: whatever
  *   it becomes might match, so a pattern meeting one is undecided, unless the pattern is that very
  *   type or a variable taking it whole. A part known to differ fails the case whatever the rest
- *   becomes, which is what lets a generic body skip a case (§3.5).
+ *   becomes, which is what lets a generic body skip a case (§8.1).
  * - A variable's constraints, and a struct constraint, are judged as conformance judges them,
  *   reporting nothing: not meeting one fails the case, which is no error.
- * - A recursive type is matched as what it unfolds to (§3.17), on either side; a pair of types met
+ * - A recursive type is matched as what it unfolds to (§4.6), on either side; a pair of types met
  *   again while it is matched holds, as two unfoldings equal so far stay equal, so matching ends.
  */
 
@@ -271,7 +271,7 @@ function bindVariable(matching: Matching, variable: TypeParameter, type: Type): 
 }
 
 /**
- * `case struct …:` (§3.17): a struct type meeting the constraint, its entries' variables binding
+ * `case struct …:` (§4.6): a struct type meeting the constraint, its entries' variables binding
  * the fields' types; a type not known yet matches when its own constraints imply it.
  */
 function matchStruct(matching: Matching, constraint: StructConstraintModel, type: Type): Outcome {
@@ -313,7 +313,7 @@ function matchStruct(matching: Matching, constraint: StructConstraintModel, type
   ]);
 }
 
-/** Whether a variable, bound to `type`, meets its constraints (§3.17), as a case requires. */
+/** Whether a variable, bound to `type`, meets its constraints (§4.6), as a case requires. */
 function variableMeets(
   matching: Matching,
   { constraints }: InferVariable,

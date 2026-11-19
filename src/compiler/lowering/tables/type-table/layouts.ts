@@ -6,8 +6,8 @@
  * - Every nominal type can be laid out: a struct by its fields, an enum by its variants, an extern
  *   type by who disposes it, which the checker derives from the `dispose` declared for it
  *   (checker/rules/disposal/disposal.ts).
- * - A shape is a struct entry without a name, its fields in the name order the shape keeps (§3.1).
- * - A union (§2) is an enum, one variant per member in the table's order, named by its table key:
+ * - A shape is a struct entry without a name, its fields in the name order the shape keeps (§5.2).
+ * - A union (§4.2) is an enum, one variant per member in the table's order, named by its table key:
  *   a member's value is the variant's one field, and a member with one value only, a literal type
  *   or `None`, is a variant without fields, its tag.
  *
@@ -44,11 +44,11 @@ import { qualifiedNameOf, tableKey } from '../names.ts';
 
 /** What a type entry refers to outside the type table. */
 export interface TypeTableSeams {
-  /** The entry of a function instance, such as a declared `dispose` (§7). */
+  /** The entry of a function instance, such as a declared `dispose` (§16). */
   readonly functionIndex: (instance: FunctionInstance) => FunctionId;
-  /** The entry a closed call runs, such as the codec writing an instance's outcome (§9). */
+  /** The entry a closed call runs, such as the codec writing an instance's outcome (§17.4). */
   readonly callIndex: (call: ClosedCall) => FunctionId;
-  /** The persisted values of annotations the checker computed (§3.16). */
+  /** The persisted values of annotations the checker computed (§5.5). */
   readonly annotationValues: (annotations: readonly CheckedAnnotation[]) => Value[];
   /** Whether a type holds a shared instance's stand-in, which no layout by members may meet. */
   readonly holdsStandIn: (type: Type) => boolean;
@@ -218,7 +218,7 @@ function unionLayoutOf(context: LayoutContext, type: UnionType): TypeDefinition 
   };
 }
 
-/** The entry of the `dispose` a value of `type` runs as it loses its last holder (§7). */
+/** The entry of the `dispose` a value of `type` runs as it loses its last holder (§16). */
 function disposeOf(context: LayoutContext, type: NominalType): FunctionId | undefined {
   const disposal: Disposal = context.checker.disposalOf(type);
   return disposal.kind === 'function'

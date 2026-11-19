@@ -6,8 +6,8 @@
  * - `Json` is a union of the language's own values (json.ista), so building one is compiled code;
  *   writing it is definition/values/json-values.ts's, which writes a float JSON can't hold, NaN or
  *   an infinity, as `null`, as `JSON.stringify` does, and sorts an object's keys.
- * - A host type's value is whatever JSON its host gave it, handed back unchanged (§9). A host type
- *   a `dispose` makes disposable keeps that JSON in a resource, made as the value arrives (§7).
+ * - A host type's value is whatever JSON its host gave it, handed back unchanged (§17.2). A host type
+ *   a `dispose` makes disposable keeps that JSON in a resource, made as the value arrives (§16).
  * - Text that isn't JSON is an `Err` saying why, never a panic: it comes from outside. The json
  *   module makes it the `Error` every failed read gives.
  * - What `json.encode` wrote a value as is the instance's to keep (`encodings`), by the type it was
@@ -40,7 +40,7 @@ import { Refusal } from '../../runtime/refusal.ts';
 import { knownTypeKey } from '../std-module.ts';
 import { arrayOf, externPayloadOf, given, text } from '../values/arguments.ts';
 
-/** The JSON a host gave a value of one of its types: the value itself, or its resource's (§7). */
+/** The JSON a host gave a value of one of its types: the value itself, or its resource's (§16). */
 function hostPayloadOf(value: Value, context: NativeContext & WithResources): unknown {
   return handleTarget(value) === undefined
     ? externPayloadOf(value)

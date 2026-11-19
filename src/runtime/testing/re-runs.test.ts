@@ -1,5 +1,5 @@
 /**
- * Segments run again (§5, §10 `spawnCrashingEveryAwait`) when what wakes them arrives from another
+ * Segments run again (§14, §18 `spawnCrashingEveryAwait`) when what wakes them arrives from another
  * instance: the run again takes what arrived as the first run did, so each segment's calls to a
  * mock are recorded twice. One case per kind of arrival an ista instance waits on: a mock's answer,
  * another instance's end, and a test's watch on another instance. Contexts and host futures answer

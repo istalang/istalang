@@ -1,11 +1,11 @@
 /**
- * Optional chains (§4): `a?.b.c` meets `none` at its `?.` and gives `none` without running the
+ * Optional chains (§10.4): `a?.b.c` meets `none` at its `?.` and gives `none` without running the
  * links after it.
  *
  * - The outermost link opens the chain. A part of a link that is no step target (an argument, an
  *   index's key) is no part of the chain, and starts any chain of its own.
  * - What a link's step works on is its target's value, the value inside after `?.`, and then made
- *   to fit as checking fitted the target (a receiver converted for the method a call chose, §2):
+ *   to fit as checking fitted the target (a receiver converted for the method a call chose, §4.1):
  *   inside the optional, never the optional around it. A link's own value is what its step gives
  *   (`carried`). A `?.` meeting `none` goes to the chain's end, where the chain gives `none`; the
  *   last link's value is the chain's on the other path, put into the chain's optional unless it is
@@ -104,7 +104,7 @@ function linksOf(builder: FlowBuilder, node: Expression): ReadonlySet<Expression
 
 /**
  * The value inside the optional `whole`, read into `into` at `site` where `whole` holds one; where
- * it is `none`, `absent` runs from a branch of its own, which goes on elsewhere or ends (§4).
+ * it is `none`, `absent` runs from a branch of its own, which goes on elsewhere or ends (§10.4).
  */
 export function presentOr(
   builder: FlowBuilder,

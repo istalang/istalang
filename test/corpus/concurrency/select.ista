@@ -1,5 +1,5 @@
 # outcome: "b2 | none 1 | passes 3 | late | 0"
-# select (§8): of the cases whose futures have resolved, the first wins, and `as` binds its value.
+# select (§15.4): of the cases whose futures have resolved, the first wins, and `as` binds its value.
 # Without `await` a select never waits: `else` runs when no case is ready. A future made once
 # races again on every pass of a loop, and a case body may leave its function. The case bodies
 # agree on one type, which an expected type decides.

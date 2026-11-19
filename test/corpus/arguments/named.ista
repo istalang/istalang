@@ -1,6 +1,6 @@
 # outcome: ["3/2000","5/1000","b","a","c","13","10","20","30"]
 # Named arguments fill the parameters of their names, in any order, so a call can leave a default
-# before one it gives (§3.3). Arguments run in the order written, then each default left out, which
+# before one it gives (§6.1). Arguments run in the order written, then each default left out, which
 # sees the parameters before it however they were given.
 import * as runtime from 'runtime'
 import Duration from 'time'

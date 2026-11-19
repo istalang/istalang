@@ -14,7 +14,7 @@ import { subsetOutcome, subsetSource } from '../../../test/subset.ts';
 import { tempProject as project } from '../../project/project.test-kit.ts';
 import { builtCli, ista } from '../cli.test-kit.ts';
 
-/** The start of an ISO 8601 time, as a log record's is written (§9). */
+/** The start of an ISO 8601 time, as a log record's is written (§17.3). */
 const isoTime = /^\d{4}-\d{2}-\d{2}T/u;
 
 describe('ista run', () => {
@@ -98,7 +98,7 @@ describe('ista run', () => {
     });
   });
 
-  it('reports a spawned instance that panics on the error stream and exits 1 (§9)', async () => {
+  it('reports a spawned instance that panics on the error stream and exits 1 (§17.1)', async () => {
     const text = [
       "import * as runtime from 'runtime'",
       "import * as time from 'time'",
@@ -115,7 +115,7 @@ describe('ista run', () => {
     expect(run.err).toContain('spawned boom');
   });
 
-  it('reports a spawned instance that panics while the runtime serves its jobs (§9)', async () => {
+  it('reports a spawned instance that panics while the runtime serves its jobs (§17.1)', async () => {
     const text = [
       "import * as runtime from 'runtime'",
       "import * as time from 'time'",
@@ -135,7 +135,7 @@ describe('ista run', () => {
     expect(run.err).toContain('spawned boom');
   });
 
-  it('reports where a context waits when main calls it under an explicit key and nothing can wake it (§9)', async () => {
+  it('reports where a context waits when main calls it under an explicit key and nothing can wake it (§17.1)', async () => {
     const text = [
       "import * as runtime from 'runtime'",
       'ista async fn stuck() -> Int:',

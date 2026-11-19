@@ -1,5 +1,5 @@
 /**
- * Function types ending in a pack (§3.5): substituting a tuple for the pack flattens it into
+ * Function types ending in a pack (§8.1): substituting a tuple for the pack flattens it into
  * parameters by value, and matching a pack against a function type takes the parameters past the
  * declared ones as their tuple.
  */

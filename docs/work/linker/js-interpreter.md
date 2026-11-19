@@ -60,7 +60,7 @@ A Durable Object (DO) is a single-threaded actor with its own transactional stor
 
 **Limits:**
 - Whole-snapshot commits make large state costly at every `await`; delta snapshots would fix it (README, Shared prerequisites).
-- Workers cap CPU time per invocation, so a long computation commits inside its loop (`runtime.commit()`, §3.8).
+- Workers cap CPU time per invocation, so a long computation commits inside its loop (`runtime.commit()`, §19.2).
 - temporal-polyfill makes the bundle noticeably larger.
 
 ## Changes to our code

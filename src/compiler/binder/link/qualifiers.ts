@@ -1,5 +1,5 @@
 /**
- * What may qualify the next part of a qualified name (§3.11, §3.13, §3.17): a module's namespace,
+ * What may qualify the next part of a qualified name (§5.3, §13.1, §4.6): a module's namespace,
  * an enum, whose variants follow its `.`, or an alias standing for an enum, which names the enum
  * as any alias names its type, so `E.Red` is `Color.Red` for `type E = Color`.
  *
@@ -7,7 +7,7 @@
  * where it is declared; the binder resolves no types, so an alias written as anything but a plain
  * name (a `T?`, a tuple, an enum given type arguments), or with type parameters of its own, which a
  * name could be, stands for no enum here: a variant qualified by it would drop what its arguments
- * say. An alias reached twice is a cycle, which the checker reports (§3.17), and qualifies nothing.
+ * say. An alias reached twice is a cycle, which the checker reports (§4.6), and qualifies nothing.
  */
 
 import type { ModuleId } from '../../program/program.ts';

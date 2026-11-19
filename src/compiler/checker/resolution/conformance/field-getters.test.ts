@@ -1,5 +1,5 @@
 /**
- * A getter meeting a trait's field requirement (§3.10): read through a type parameter and an `any`
+ * A getter meeting a trait's field requirement (§8.2): read through a type parameter and an `any`
  * value as a stored field is, chosen as a witness is, and never meeting a struct constraint.
  */
 
@@ -35,7 +35,7 @@ function reportedBeside(declarations: string, body: string) {
   return reported(`${sized}\n\n${declarations}\n\nfn subject():\n  ${body}\n`);
 }
 
-describe('a getter meets a field a trait requires (§3.10)', () => {
+describe('a getter meets a field a trait requires (§8.2)', () => {
   it("reads through a type parameter and an any value, a struct's and a shared struct's handle", async () => {
     const body = [
       'const box = Box{items: [1, 2]}',

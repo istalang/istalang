@@ -41,12 +41,12 @@ export interface RunSeams {
   readonly natives: Natives;
   readonly clock: Clock;
   readonly seed: Uint8Array;
-  /** The instance the run is (§9). */
+  /** The instance the run is (§17.1). */
   readonly instance: Instance;
   /** The instances beside it. */
   readonly world: World;
   readonly log: (record: LogRecord) => void;
-  /** The program's version, its Definition's content hash, which `runtime.version()` gives (§9). */
+  /** The program's version, its Definition's content hash, which `runtime.version()` gives (§17.1). */
   readonly version: string;
 }
 

@@ -1,6 +1,6 @@
 # docs
 
-- `spec.md`: the language specification, the source of truth for language behaviour. Its code examples are test inputs.
+- `spec/`: the language specification, one folder per chapter and one file per section (`spec/README.md` indexes them), the source of truth for language behaviour. Its code examples are test inputs.
 - `arch/`: architecture that outlives any one feature.
 - `reuse/`: the index of reusable units, one-way rules and extension recipes, grouped by caller need (`src/AGENTS.md`).
 - `work/`: per-feature plans and phase details, plus `tracker.md` for status and filed debt.

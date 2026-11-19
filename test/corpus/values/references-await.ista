@@ -1,5 +1,5 @@
 # outcome: "15 | 7"
-# A reference held across awaits (§3.7, §5): every await commits, so the callee's reference to its
+# A reference held across awaits (§7.3, §14): every await commits, so the callee's reference to its
 # caller's variable is persisted and resumed with the instance, and so is the variable's cell.
 import * as runtime from 'runtime'
 

@@ -1,5 +1,5 @@
 /**
- * How a call's mark and sendability parameters settle where no bound does (§3.5; proposal 8,
+ * How a call's mark and sendability parameters settle where no bound does (§9.2; proposal 8,
  * Rule 3): to the least member of their order they may stand for (types/type/mark-orders.ts),
  * `"simple"` for a mark that may be simple, `"sendable"` for a sendability.
  *

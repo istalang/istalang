@@ -1,12 +1,12 @@
-# The decimal module (spec §3.8): exact decimal numbers of any size, for arithmetic such as money.
+# The decimal module (spec §19.2): exact decimal numbers of any size, for arithmetic such as money.
 #
 # A Decimal is a type the runtime implements, so no code can build one in a form of its own: every
 # value has one form, `units` scaled down by `scale` places after the point, `scale` at least 0 and,
 # above 0, `units` no multiple of 10, so `==` and map keys compare numbers. The runtime only keeps
 # that form (`_decimal`, `_parts`); the arithmetic is written here, on ints, and `_of` brings each
 # result to it. Every function of two numbers takes a Decimal or an int on either side, never a
-# float, whose rounding is what a Decimal exists to avoid (§3.9). The operators are declared here,
-# so argument-dependent lookup finds them wherever a Decimal is used (§3.13); so are `abs`, `floor`,
+# float, whose rounding is what a Decimal exists to avoid (§10.2). The operators are declared here,
+# so argument-dependent lookup finds them wherever a Decimal is used (§13.1); so are `abs`, `floor`,
 # `ceil` and `round`, which `math` has for floats.
 
 import * as json from 'json'
@@ -143,7 +143,7 @@ fn divide(left: Decimal, right: Int, places: Int, mode: Rounding = Rounding.Half
 fn divide(left: Int, right: Decimal, places: Int, mode: Rounding = Rounding.HalfEven) -> Decimal:
   divide(Decimal(left), right, places, mode)
 
-# As on ints, `a == (a // b) * b + a % b`, and `%` takes the divisor's sign (§3.9).
+# As on ints, `a == (a // b) * b + a % b`, and `%` takes the divisor's sign (§10.2).
 fn floorDivide(left: Decimal, right: Decimal) -> Decimal:
   const dividend, divisor = _ratio(left, right)
   Decimal(dividend // divisor)

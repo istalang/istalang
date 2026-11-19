@@ -1,6 +1,6 @@
 /**
- * A struct constraint's model (§3.5), the part of the type model constraints after `is` share: the
- * fields its entries name, in name order as every struct's fields are (§3.1), each an exact type or
+ * A struct constraint's model (§8.1), the part of the type model constraints after `is` share: the
+ * fields its entries name, in name order as every struct's fields are (§5.2), each an exact type or
  * a constraint set, and what every other field must be. Resolving one from syntax is
  * types/traits/struct-constraints.ts's; here it is substituted, compared and spelled.
  */
@@ -13,7 +13,7 @@ import type { TypeRules } from './type-rules.ts';
 import { constraintText, typeText } from './type-text.ts';
 
 /**
- * A struct constraint, resolved (§3.5): its named fields' rules, in name order, and the others'.
+ * A struct constraint, resolved (§8.1): its named fields' rules, in name order, and the others'.
  */
 export interface StructConstraintModel {
   readonly named: readonly NamedEntry[];
@@ -33,7 +33,7 @@ export interface ConstraintSet {
 }
 
 /**
- * What a trait's associated type requirement bounds it by (§3.10): constraints, or the union after
+ * What a trait's associated type requirement bounds it by (§8.2): constraints, or the union after
  * `in`, which it stands for one member of (`type Mode in Persistence`).
  */
 export interface AssociatedBounds extends ConstraintSet {

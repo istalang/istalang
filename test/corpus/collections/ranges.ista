@@ -1,5 +1,5 @@
 # outcome: "10 6 [] [1, 2] [1, 2, 3] [5, 6] [0, 9, 9, 9, 4] [3, 4] 0"
-# Ranges (§2, §3.8, §3.9): half-open and inclusive, open at either end when slicing, iterated when
+# Ranges (§3.1, §19.3, §10.2): half-open and inclusive, open at either end when slicing, iterated when
 # both ends are given, and replacing a span of an array with an array of another length.
 
 import * as runtime from 'runtime'

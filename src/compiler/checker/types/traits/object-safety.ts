@@ -1,5 +1,5 @@
 /**
- * Object safety (§3.10): whether a trait can be met by values whose own type is known only when
+ * Object safety (§8.3): whether a trait can be met by values whose own type is known only when
  * they run, as an `any` type's values are, so every call through it dispatches on its receiver.
  *
  * - A required function takes `Self` first, its receiver, by value or `&`, and nowhere else: not

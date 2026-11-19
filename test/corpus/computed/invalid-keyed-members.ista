@@ -5,7 +5,7 @@
 # error: 5227 at 40:9
 # error: 5013 at 42:9
 # error: 5228 at 43:5
-# Keyed members (§3.9): each key reads with its own type; a name no key or member serves lists the
+# Keyed members (§10.2): each key reads with its own type; a name no key or member serves lists the
 # keys (a name a member and a keyed index both serve is rules/getters.test.ts's); a map's `index`
 # takes any String, so its members keep their meaning; a keyed read is no place.
 

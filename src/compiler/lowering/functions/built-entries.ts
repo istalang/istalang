@@ -1,17 +1,17 @@
 /**
  * The entries of functions with no body of their own, built from their parameters once their
- * prologue has computed those a call left out from their defaults (§3.1, §3.3; frames.ts
+ * prologue has computed those a call left out from their defaults (§5.2, §6.1; frames.ts
  * `builtFrame`), so a default runs in the function as any function's does, never in its caller.
  *
  * - A struct's fields read as a function's parameters (syntax/declarations/field-defaults.ts). Its
- *   entry builds the struct, a shared struct's in a new cell (§3.18), for a literal leaving a field
+ *   entry builds the struct, a shared struct's in a new cell (§5.4), for a literal leaving a field
  *   out, which its flow calls as any call leaving parameters out; one giving every field builds in
  *   place.
- * - A variant's constructor's entry builds the variant (§3.11), for a call leaving a field out and
- *   for what is handed an entry to call later, as a function value is (§3.14); a call giving every
+ * - A variant's constructor's entry builds the variant (§5.3), for a call leaving a field out and
+ *   for what is handed an entry to call later, as a function value is (§6.4); a call giving every
  *   field builds it in place (values/variant-values.ts).
  * - A primitive operation's extern (tables/own-entries.ts) has no native: its entry is the
- *   operation, for what is handed an entry to call later, as a function value is (§3.14); a call
+ *   operation, for what is handed an entry to call later, as a function value is (§6.4); a call
  *   writes the operation in place.
  * - A host extern's one code entry is its wrapper (synthesized/boundary/host-externs.ts), which
  *   computes its defaults before calling the host's native.
@@ -76,7 +76,7 @@ export function structEntry(lowering: Lowering, instance: FunctionInstance): Cod
 
 /**
  * The entry of `instance`, a host extern: its wrapper, calling the host's native. A test rebinds
- * the wrapper, so the function bound to it takes and gives the extern's own types (§10).
+ * the wrapper, so the function bound to it takes and gives the extern's own types (§18).
  */
 export function hostExternEntry(lowering: Lowering, instance: FunctionInstance): CodeFunction {
   const { span } = instance.declaration.name;

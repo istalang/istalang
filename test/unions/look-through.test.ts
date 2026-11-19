@@ -1,5 +1,5 @@
 /**
- * Looking through an `any` member (§2 "Collapse", §3.11): a member an `any` member took whole is
+ * Looking through an `any` member (§4.2 "Collapse", §11.3): a member an `any` member took whole is
  * still a value of its own type inside it, so written code reaches it as instantiated generic code
  * does. A type or struct pattern naming it downcasts through the `any` member; a value of it, or a
  * union of such values, goes into the union through that member; and a type whose `any` member

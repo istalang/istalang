@@ -1,5 +1,5 @@
 /**
- * What a pattern selects of a value before taking it apart (§3.10, §3.11): against an `any` value,
+ * What a pattern selects of a value before taking it apart (§8.3, §11.3): against an `any` value,
  * the type a downcast names (walk/kinds/downcasts.ts); against a union's, the members it matches
  * (members.ts). Either is a test, then the rest of the pattern against the value it selected, so
  * the walk takes both alike (walk/index.ts).
@@ -7,12 +7,12 @@
  * - A name that binds selects nothing, nor does a name naming the part's own type, which matches
  *   every value of it: an `any` type's, or a union's through its alias.
  * - A pattern selecting nothing its part's type holds, a union member or, on a known type of no
- *   union, another type or another enum's variant, is ruled out (§3.11): it never matches, a
+ *   union, another type or another enum's variant, is ruled out (§11.3): it never matches, a
  *   `never` test (checked-pattern.ts), and its case never runs.
  * - A literal against an `any` type that took it whole selects it as a union's member is, as a
  *   downcast does its type.
  * - A literal leaves its literal type to what binds it, and type arguments are written only where a
- *   union's member is selected (§3.11).
+ *   union's member is selected (§11.3).
  * - The types inside an `any` type are an open set, so a downcast acts as a guard for
  *   exhaustiveness; a union's members are a closed set, each a constructor
  *   (exhaustiveness/shapes.ts).
@@ -76,7 +76,7 @@ export function selectionOf(
 
 /**
  * Whether `node` names a type, or a variant, that no value of `type` is, so the part's type rules
- * the pattern out (§3.11): `type` must be known where the pattern is checked, not only per
+ * the pattern out (§11.3): `type` must be known where the pattern is checked, not only per
  * instantiation (types/unions/equality.ts `isKnown`). A generic alias names no one type, which is
  * reported where the pattern stands, not ruled out.
  */
@@ -138,7 +138,7 @@ function downcastSelection(
 }
 
 /**
- * A literal against a part of the `any` type that took the literal whole (§2): the literal selected
+ * A literal against a part of the `any` type that took the literal whole (§4.2): the literal selected
  * through it as a union's member is (`literalMembers`), the value inside being the literal's own;
  * a guard for exhaustiveness, since the types inside are an open set. Undefined where the `any`
  * type holds no such value, so the literal is compared as written.
@@ -174,7 +174,7 @@ export function literalPart(node: Pattern | PatternPart, part: ValuePart): Value
 
 /**
  * Reports type arguments written in a pattern that selects no member of a union: only that one
- * gives them, to tell apart the members instantiating one generic type (§3.11).
+ * gives them, to tell apart the members instantiating one generic type (§11.3).
  */
 export function refuseTypeArguments(
   context: Pick<BodyContext, 'report'>,

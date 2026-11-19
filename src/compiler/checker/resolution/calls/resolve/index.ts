@@ -1,5 +1,5 @@
 /**
- * Resolving a call in a body (§3.3, §3.7, §3.9): applied as every call is
+ * Resolving a call in a body (§6.1, §6.2, §10.2): applied as every call is
  * (resolution/applying/applied-call.ts), chosen, instantiated with its constraints met and its
  * arguments fitted, so their implicit conversions are too, then recorded for lowering with what
  * only a written call has: its receiver, the places it changes, and a report about a call nothing
@@ -11,14 +11,14 @@
  *   parameter, an empty `[]`, a literal holding one) is a placeholder of the scope, judged once
  *   what its parameter expects of it is known, so its result bounds type parameters
  *   (constructs/expressions/postponed.ts).
- * - A method call records its receiver with the call, as lowering passes it first (§3.7). A
+ * - A method call records its receiver with the call, as lowering passes it first (§6.2). A
  *   receiver the chosen function's `self` takes by reference must be a place that may change.
  * - An argument of the error type was already reported, so the call reports nothing more.
  * - A failure is explained as precisely as the candidates allow (explanations.ts); a call still
  *   being written records what each argument written so far is expected to be, for tools
  *   (written-expectations.ts).
  * - Calling `dispose` directly is refused, since the runtime calls it once nothing holds a value
- *   (§7). The rules every call obeys, witnesses of constraints included, apply where the call is
+ *   (§16). The rules every call obeys, witnesses of constraints included, apply where the call is
  *   made (resolution/choosing/calls-made.ts).
  */
 
@@ -50,7 +50,7 @@ import { expectWrittenArguments } from './written-expectations.ts';
  * constraint scope where the scope checks it once it knows what the call expects of it
  * (wiring/body/constraint-scope.ts); its name when named. A spread's node is what it spreads, its
  * type that of its items, which fit the rest parameter's element exactly: the items are copied or
- * iterated as they are (§3.3). The function a call gives after its arguments (`Call.given`, §3.14)
+ * iterated as they are (§6.1). The function a call gives after its arguments (`Call.given`, §6.5)
  * is one the binding places itself.
  */
 export interface WrittenArgument {
@@ -60,7 +60,7 @@ export interface WrittenArgument {
   readonly literal?: LiteralType | undefined;
   readonly name?: Identifier | undefined;
   readonly isSpread?: boolean | undefined;
-  /** Whether it is the function the call gives after its arguments (§3.14, choosing/binding.ts). */
+  /** Whether it is the function the call gives after its arguments (§6.5, choosing/binding.ts). */
   readonly isDeferred?: boolean | undefined;
 }
 
@@ -75,7 +75,7 @@ export interface CallRequest {
   readonly expected: Type | undefined;
   /** How a call no candidate takes reads: as a call, or as an operator on its operands. */
   readonly form: 'call' | 'operator';
-  /** A method call's receiver, its first argument (§3.7). */
+  /** A method call's receiver, its first argument (§6.2). */
   readonly receiver?: Expression;
   /** What to report instead when no candidate takes the arguments, if anything. */
   readonly hint?: () => Diagnostic<AnchoredSpan> | undefined;
@@ -229,7 +229,7 @@ function completeResolved(
   const written = request.arguments;
   checkReferencedPlaces(context, written, {
     name: request.name,
-    // A function giving a future may run on past its call: it is async (§3.14).
+    // A function giving a future may run on past its call: it is async (§6.4).
     isAsync: context.checker.fitting.awaitedOf(signature.result())?.value !== undefined,
     slots: written.map((_, index) => slots.get(index) ?? { reference: false }),
   });
@@ -266,9 +266,9 @@ interface Chosen {
 }
 
 /**
- * Records the call `chosen` makes, where its code's kind lets it make it (§3.3), the code being
+ * Records the call `chosen` makes, where its code's kind lets it make it (§9.1), the code being
  * the function checked, which settling a scope runs in again (wiring/body/body-scopes.ts). That it
- * may make it at all, since only the runtime calls a `dispose` (§7), is checked once the body is
+ * may make it at all, since only the runtime calls a `dispose` (§16), is checked once the body is
  * (rules/disposal/disposal.ts).
  */
 function recordChosen(context: BodyContext, chosen: Chosen): void {

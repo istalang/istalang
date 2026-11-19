@@ -1,5 +1,5 @@
 /**
- * The entries of an indented value on the lines they were written on (spec §2): `, ` between those
+ * The entries of an indented value on the lines they were written on (spec §3.2): `, ` between those
  * sharing one, and one blank line where the source had any between two lines.
  */
 

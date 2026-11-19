@@ -93,7 +93,7 @@ const rolesOf: RolesOf = {
   ImportedNamespace: (node) => [[node.alias, 'namespace']],
   NamedType: (node) => qualified(node.path, 'type'),
   NamePattern: (node) => {
-    // Type arguments follow only a type's name (§3.11).
+    // Type arguments follow only a type's name (§11.3).
     if (node.typeArguments.length > 0) {
       return qualified(node.path, 'type');
     }
@@ -105,12 +105,12 @@ const rolesOf: RolesOf = {
   NamedPatternArgument: (node) => [[node.name, 'property']],
   MemberAccess: (node) => [[node.member, 'property']],
   Call: (node) => calleeRoles(calledName(node)),
-  // A deferred call calls its taker, maybe after the arguments its parentheses write (§3.14).
+  // A deferred call calls its taker, maybe after the arguments its parentheses write (§6.5).
   DeferredCall: (node) => calleeRoles(calledName(node)),
-  // Only a function's name takes type arguments as a value (§3.14).
+  // Only a function's name takes type arguments as a value (§6.4).
   TypeApplication: (node) => calleeRoles(node.target),
   TemplateLiteral: (node) => (node.tag === undefined ? [] : calleeRoles(node.tag)),
-  // An annotation is a struct value (§3.16); written bare, qualified or given type arguments, its
+  // An annotation is a struct value (§5.5); written bare, qualified or given type arguments, its
   // name is still the struct's.
   Annotation: (node) => annotatedStruct(node.value),
   For: labelled,

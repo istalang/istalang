@@ -1,5 +1,5 @@
 /**
- * The `testing` module's natives (testing.ista, §10): function slots, waits on and reads of spawned
+ * The `testing` module's natives (testing.ista, §18): function slots, waits on and reads of spawned
  * instances, and host handles, each a thin reading of the runtime's capabilities
  * (runtime/natives.ts), which own what they mean.
  *
@@ -66,7 +66,7 @@ export const testingNatives = (keys: NativeKeys): Natives<Context> => {
 function namedFunction(target: Value | undefined): number {
   const closure = closureOf(given(target));
   if (closure === undefined || closure.captures.length > 0) {
-    throw new Panic("A mock's target must name a function (§10).");
+    throw new Panic("A mock's target must name a function (§18).");
   }
   return closure.function;
 }

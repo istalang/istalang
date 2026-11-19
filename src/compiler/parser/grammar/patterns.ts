@@ -1,14 +1,14 @@
 /**
- * Pattern grammar (§3.11).
+ * Pattern grammar (§11.3).
  *
  * Patterns parse as expressions do, through tables: a prefix parselet per token that starts one,
  * and the operators that extend one, at their levels: `|` between alternatives, then `..` and `..=`
- * between a range's literals. A parameter's pattern (§3.3) reads through the same grammar over one
+ * between a range's literals. A parameter's pattern (§6.1) reads through the same grammar over one
  * start more, `{`, short for `struct{`, which every pattern nested in it takes too: a grammar hands
  * each parselet its own reader of nested patterns, so no flag says where it is. `as name` binds the
  * whole pattern, alternatives included, so `A | B as x` binds what either matched. A name may take
  * type arguments, `Entry<S, "a">{value}` or `Box<Int> as b`, which select a generic member of a
- * union (§3.11); a pattern holds no comparison, but an `is` expression around it may, so they are
+ * union (§11.3); a pattern holds no comparison, but an `is` expression around it may, so they are
  * only read when they parse.
  *
  * Inside a struct pattern's braces, the token after the field name picks the test:
@@ -125,11 +125,11 @@ function patternGrammar(starts: Partial<Record<CursorKind, PatternParselet>>): N
   return pattern;
 }
 
-/** A pattern, wherever one stands (§3.11). */
+/** A pattern, wherever one stands (§11.3). */
 export const parsePattern = patternGrammar(patternParselets);
 
 /**
- * A parameter's pattern (§3.3), where `{…}` is short for `struct{…}`, since a `{` can start
+ * A parameter's pattern (§6.1), where `{…}` is short for `struct{…}`, since a `{` can start
  * nothing else there; so it is in every pattern nested in it.
  */
 export const parseParameterPattern = patternGrammar({
@@ -255,7 +255,7 @@ function parseNamedPattern(parser: Parser, inner: NestedPattern): Pattern {
 /**
  * `Ok(v)`, `Rejected(by: "legal")`, `Group(title, ...children)`, `Group(title, ...)`, at the `(`
  * after `callee`: arguments as a call's are written, by position, then by name, a spread taking
- * the rest field (§3.11). A second spread is reported, as in an array pattern, and so are a `...`
+ * the rest field (§11.3). A second spread is reported, as in an array pattern, and so are a `...`
  * leaving the other fields anywhere but last and an argument by position after one by name, as in
  * a call; each still stands, so its names bind.
  */

@@ -1,5 +1,5 @@
 /**
- * Top-level declarations and the module (§3, §3.13).
+ * Top-level declarations and the module (§5.1, §13.1).
  *
  * The tree keeps each declaration form apart where the forms hold different things, so a consumer
  * never meets a combination the syntax can't produce:
@@ -37,7 +37,7 @@ import type {
   TypeNode,
 } from '../types/index.ts';
 
-/** `"""…"""`: what a declaration or module is for, in its own words (§2); tools read it. */
+/** `"""…"""`: what a declaration or module is for, in its own words (§2.3); tools read it. */
 export interface Docstring extends NodeOf<'Docstring'> {
   readonly value: string;
 }
@@ -49,11 +49,11 @@ export interface Documented {
 
 /**
  * `T`, `T is Sendable & Comparable`, `E = Error`, `...A`, a pack of types, and `S in Status`, a
- * member parameter standing for one member of the union it is `memberOf` (§3.5), which takes no
+ * member parameter standing for one member of the union it is `memberOf` (§8.1), which takes no
  * constraint or default beside it (the parser reports one).
  */
 export interface TypeParameter extends NodeOf<'TypeParameter'> {
-  /** `gives` or `takes`, written before it (§3.5); judged by the checker where it stands. */
+  /** `gives` or `takes`, written before it (§8.1); judged by the checker where it stands. */
   readonly variance: VarianceMarker | undefined;
   readonly isPack: boolean;
   readonly name: Identifier;
@@ -97,7 +97,7 @@ export function isGenericDeclaration(node: { readonly kind: string }): node is G
 /**
  * A function: top-level, local, a trait's requirement, or extern. `owner` is the type a static
  * function is declared on: `Duration` in `fn Duration.zero()`. A getter is declared `fn get name`
- * (§3.1), read as a field.
+ * (§5.2), read as a field.
  */
 export interface FunctionDeclaration
   extends NodeOf<'FunctionDeclaration'>,
@@ -118,7 +118,7 @@ export interface FunctionDeclaration
   readonly returnType: TypeNode | undefined;
 }
 
-/** The words a function's head spells before its name: `fn`, or `fn get` for a getter (§3.1). */
+/** The words a function's head spells before its name: `fn`, or `fn get` for a getter (§5.2). */
 export function functionWords(declaration: Pick<FunctionDeclaration, 'isGetter'>): string {
   return declaration.isGetter ? 'fn get' : 'fn';
 }
@@ -135,7 +135,7 @@ export function nestedFunctionSpan(
 }
 
 /**
- * `type Data = T` in a struct's or an enum's body (§3.1): an alias its type's own type arguments
+ * `type Data = T` in a struct's or an enum's body (§5.2): an alias its type's own type arguments
  * complete, read as `Field<Int>.Data`. The body's fields, variants and other associated types name
  * it bare. It stands among them in any order, but is a member list of its own, since it is neither
  * a field nor a variant.
@@ -146,9 +146,9 @@ export interface AssociatedType extends NodeOf<'AssociatedType'>, Annotatable {
 }
 
 /**
- * `type Key is Stringable & Encodable` in a trait (§3.10): a type meeting the trait declares an
+ * `type Key is Stringable & Encodable` in a trait (§8.2): a type meeting the trait declares an
  * associated type of that name, meeting each constraint. `type Mode in Persistence` bounds it to
- * one member of a union instead, as a member parameter is (§3.5), with no constraint beside it.
+ * one member of a union instead, as a member parameter is (§8.1), with no constraint beside it.
  */
 export interface RequiredAssociatedType extends NodeOf<'RequiredAssociatedType'>, Annotatable {
   readonly name: Identifier;
@@ -157,7 +157,7 @@ export interface RequiredAssociatedType extends NodeOf<'RequiredAssociatedType'>
 }
 
 /**
- * What a struct's declaration holds, shared or not: its name, type parameters, fields (§3.1) and
+ * What a struct's declaration holds, shared or not: its name, type parameters, fields (§5.2) and
  * associated types.
  */
 interface StructOf<Kind extends string> extends NodeOf<Kind>, Annotatable, Documented {
@@ -167,12 +167,12 @@ interface StructOf<Kind extends string> extends NodeOf<Kind>, Annotatable, Docum
   readonly associatedTypes: readonly AssociatedType[];
 }
 
-/** `struct Pair: …`: a value type made of its fields (§3.1). */
+/** `struct Pair: …`: a value type made of its fields (§5.2). */
 export type StructDeclaration = StructOf<'StructDeclaration'>;
 
 /**
  * `shared struct Inbox<T>: …`: its values are handles to a cell holding its fields, built with
- * `new` and read through with `*` and `->` (§3.18), so its type has no fields of its own.
+ * `new` and read through with `*` and `->` (§5.4), so its type has no fields of its own.
  */
 export type SharedStructDeclaration = StructOf<'SharedStructDeclaration'>;
 
@@ -188,12 +188,12 @@ export function isDeclaredStruct(
 
 /**
  * A field of a struct's or a variant's declaration: `name: Type`, `name: Type = default`, or
- * `name = default`, whose type its default gives (§3.1). Only these fields have defaults, so they
+ * `name = default`, whose type its default gives (§5.2). Only these fields have defaults, so they
  * are a kind of their own beside a type's or a trait's `FieldDeclaration`.
  */
 export interface DeclaredField extends NodeOf<'DeclaredField'>, Annotatable {
   /**
-   * `...children: Array<Node>`: a variant's rest, collecting a call's further arguments (§3.11).
+   * `...children: Array<Node>`: a variant's rest, collecting a call's further arguments (§5.3).
    */
   readonly isRest: boolean;
   readonly name: Identifier;
@@ -207,14 +207,14 @@ export interface DeclaredField extends NodeOf<'DeclaredField'>, Annotatable {
  */
 export type Field = DeclaredField | FieldDeclaration;
 
-/** Whether `field` has a default: only a struct's or a variant's field may (§3.1). */
+/** Whether `field` has a default: only a struct's or a variant's field may (§5.2). */
 export function hasDefault(field: Field | Invalid): boolean {
   return field.kind === 'DeclaredField' && field.defaultValue !== undefined;
 }
 
 /**
- * Whether `value` is the default of `holder`, a parameter or a struct's or variant's field (§3.1,
- * §3.3): code the callee, or what builds the value, computes before its body.
+ * Whether `value` is the default of `holder`, a parameter or a struct's or variant's field (§5.2,
+ * §6.1): code the callee, or what builds the value, computes before its body.
  */
 export function isDefaultOf(holder: NodeOf<string> | undefined, value: unknown): boolean {
   return (
@@ -224,14 +224,14 @@ export function isDefaultOf(holder: NodeOf<string> | undefined, value: unknown):
   );
 }
 
-/** Whether `field` is a variant's rest, `...children: Array<Node>` (§3.11). */
+/** Whether `field` is a variant's rest, `...children: Array<Node>` (§5.3). */
 export function isRestField(field: Field | Invalid): boolean {
   return field.kind === 'DeclaredField' && field.isRest;
 }
 
 /**
  * `extern sendable struct Queue<T>`: a struct the host implements, a handle of the kind `handle`
- * says, or a value when it says none (§3.6). Its body, if any, holds only associated types, since
+ * says, or a value when it says none (§17.2). Its body, if any, holds only associated types, since
  * its fields are the host's (`type Mode = K`).
  */
 export interface ExternStructDeclaration
@@ -274,12 +274,12 @@ export interface EnumDeclaration extends NodeOf<'EnumDeclaration'>, Annotatable,
 }
 
 /**
- * A declaration standing for a type written beside it: an alias, or an associated type (§3.17,
- * §3.1).
+ * A declaration standing for a type written beside it: an alias, or an associated type (§4.6,
+ * §5.2).
  */
 export type AliasDeclaration = TypeAliasDeclaration | AssociatedType;
 
-/** A declaration whose body may declare associated types (§3.1, §3.6). */
+/** A declaration whose body may declare associated types (§5.2, §17.2). */
 export type AssociatingDeclaration = DeclaredStruct | EnumDeclaration | ExternStructDeclaration;
 
 /**
@@ -306,13 +306,13 @@ function listedMembers(
   }
 }
 
-/** `Expired`, or `Rejected(by: String, reason: String)` (§3.11). */
+/** `Expired`, or `Rejected(by: String, reason: String)` (§5.3). */
 export interface Variant extends NodeOf<'Variant'>, Annotatable {
   readonly name: Identifier;
   readonly fields: readonly (DeclaredField | Invalid)[];
 }
 
-/** What a trait requires: functions (with no body), fields and associated types (§3.10). */
+/** What a trait requires: functions (with no body), fields and associated types (§8.2). */
 export type TraitMember = FunctionDeclaration | FieldDeclaration | RequiredAssociatedType;
 
 export interface TraitDeclaration extends NodeOf<'TraitDeclaration'>, Annotatable, Documented {
@@ -327,12 +327,12 @@ export interface TypeAliasDeclaration extends NodeOf<'TypeAliasDeclaration'>, An
   readonly type: AliasBody;
 }
 
-/** What an alias or an associated type stands for: a type, or a type `match` (§3.17). */
+/** What an alias or an associated type stands for: a type, or a type `match` (§4.6). */
 export type AliasBody = TypeNode | TypeMatch;
 
 /**
  * `import a, * as m, b as c from 'path'`, or the same items in parentheses, a list that may span
- * lines (§3.13, §2). `import * as m from 'path'` is one with a single item.
+ * lines (§13.1, §2.1). `import * as m from 'path'` is one with a single item.
  */
 export interface ImportDeclaration extends NodeOf<'ImportDeclaration'>, Annotatable {
   readonly items: readonly (ImportItem | Invalid)[];
@@ -364,7 +364,7 @@ export function boundName({ name, alias }: ImportedName): Identifier {
 
 /**
  * Whether a bare `*` from `name`'s path binds it too, so listing it beside one adds nothing: a
- * public export under its own name (§3.13).
+ * public export under its own name (§13.1).
  */
 export function isBoundByAll(name: ImportedName): boolean {
   return boundName(name).text === name.name.text && !isPrivate(name.name.text);
@@ -375,7 +375,7 @@ export function importedNames(declaration: ImportDeclaration): readonly Imported
   return declaration.items.filter((item) => item.kind === 'ImportedName');
 }
 
-/** A top-level `const`: the one kind of variable a module may declare (§3). */
+/** A top-level `const`: the one kind of variable a module may declare (§5.1). */
 export type ConstantDeclaration = VariableDeclaration & {
   readonly isMutable: false;
   readonly hold: undefined;

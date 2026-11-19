@@ -1,6 +1,6 @@
 # outcome: "4 1 -1 b 1 1"
 # An array literal's spread gives its items where the literal's items are expected, so each is
-# wrapped into `T?` as an element would be (§2): an array's items, which are otherwise copied
+# wrapped into `T?` as an element would be (§4.2): an array's items, which are otherwise copied
 # whole, a string's characters and a range's ints alike, as often as the optionals nest.
 
 import * as runtime from 'runtime'

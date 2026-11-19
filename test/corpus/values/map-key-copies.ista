@@ -1,5 +1,5 @@
 # outcome: [1,0,10,20,30,1,2,3,4,10,20,30,40]
-# A map keeps the key and value it was given (§2): changing the key's variable or the value's array
+# A map keeps the key and value it was given (§7.2): changing the key's variable or the value's array
 # in place afterwards changes neither, so an equal fresh key finds the entry and the changed one
 # doesn't.
 

@@ -8,7 +8,7 @@
 # error: 5221 at 46:37
 # error: 5409 at 48:32
 # A step written on an optional where its value was meant points at the form of the same link
-# that reaches inside (§4): `?.` for a field, an element or a method, `?->` behind a shared struct,
+# that reaches inside (§10.4): `?.` for a field, an element or a method, `?->` behind a shared struct,
 # `?.[` for an index and `?.(` for a call, whatever the value inside then takes. A prefix `*` has
 # no such form, so it is only refused.
 

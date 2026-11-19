@@ -1,5 +1,5 @@
 /**
- * The flow IR (§2–§8): a checked body as the code runs, a control-flow graph of explicit value
+ * The flow IR (§2–§16): a checked body as the code runs, a control-flow graph of explicit value
  * operations over the body's variables and temporaries, derived from what checking recorded
  * (CheckedBody) and nothing else. Rules over the order code runs in and where values go read it
  * (../rules/flow/build/ derives it; ../rules/flow/solve.ts runs a rule forward over it).
@@ -17,7 +17,7 @@
  *   the values it captures: a lambda's or local `fn`'s captured variables. A local `fn` is made
  *   where it is declared.
  * - **Code no path reaches is kept,** in blocks nothing jumps to, so every construct the text holds
- *   is in the graph; code checking ruled out (§4) was never checked, and is left out.
+ *   is in the graph; code checking ruled out (§11.1) was never checked, and is left out.
  * - **Releases** are where the code releases, which lowering writes as said (lowering/flow/): a block
  *   releases its variables at its end and where an exit leaves it, keeping first what its `hold`s
  *   keep, which the scope a `hold` names releases where it ends; `drop` releases its variable; a
@@ -67,9 +67,9 @@ export type FlowValue =
  * A part of a value an operation reads or a place reaches: a part a pattern or a target reads
  * (`PartStep`: a tuple element by position, a field by name, a variant's field, a union's member,
  * an array's items), the value behind a handle (`*x`, `x->f`), the value inside an optional where
- * it isn't `none` (§4), what a future gives once it has settled (§8), the field `key`, a key of
+ * it isn't `none` (§10.4), what a future gives once it has settled (§15.4), the field `key`, a key of
  * several names, names, the field a trait requires of a value of `on`, whose own type meets it with
- * a field it stores or a getter (§3.10): on an `any` value read through its dispatch, on a type
+ * a field it stores or a getter (§8.2): on an `any` value read through its dispatch, on a type
  * known only per instantiation as each instantiation reads it; or the next item of an array or
  * `Map` being built, which a write appends.
  */
@@ -101,7 +101,7 @@ export type Argument =
  * literal's in declaration order, then a comprehension's, one per pass, none for a pass visiting
  * no field), put behind a new handle by `new S{…}`; a tuple; an array of its items, a `Map` of its
  * entries' keys and values, either holding every item of the collections at `spreads` among them
- * (§3.3); the `variant`-th variant of the enum `type` (its fields in order); a closure of a nested
+ * (§6.1); the `variant`-th variant of the enum `type` (its fields in order); a closure of a nested
  * function and the values it captures; or a function named as a value, which `call` runs.
  */
 export type Made =
@@ -116,8 +116,8 @@ export type Made =
  * What a `compute` computes, of its operands: a constant (a literal, `Unit`, an offset, a condition
  * checking decided), the built-in `==` of two, `!=` `negated`, `not` of a `Bool`, whether a
  * `compare`'s result is in `relation`, or the one value its type holds (`typeValue`): a member
- * parameter over literal types, one literal per instantiation (§3.5), named as a value, or a field
- * loop's key in its pass over the fields not known yet, the name of each field it visits (§4).
+ * parameter over literal types, one literal per instantiation (§8.1), named as a value, or a field
+ * loop's key in its pass over the fields not known yet, the name of each field it visits (§11.2).
  */
 export type Computation =
   | { readonly kind: 'constant'; readonly form: ConstantForm }
@@ -140,10 +140,10 @@ export type Computation =
  *   appended to it.
  * - `call`: a resolved call, written or implicit (`role`), its arguments by value or by `&`.
  * - `callValue`: a call of a function value, its arguments in its parameters' order, those at
- *   `spreads` a pack's tuple spread as its elements (§3.5).
+ *   `spreads` a pack's tuple spread as its elements (§8.1).
  * - `suspend`: an `await` or an awaiting `select`, waiting until one of the futures it awaits
  *   settles; what each gives is read from it (`given`).
- * - `keep`: what `values` hold, kept past the scope ending here until `until` ends (§7).
+ * - `keep`: what `values` hold, kept past the scope ending here until `until` ends (§16).
  * - `release`: the end of values: a scope's variables, a construct's temporaries, or a `drop`'s.
  * - `unknown`: code checking found a mistake in: its operands run, and what it gives is unknown.
  */
@@ -200,18 +200,18 @@ export type Operation = { readonly site: NodeOf<string> } & (
  * What a branch tests, which says what each block it goes to is for:
  *
  * - `condition`: a `Bool`, going to `[true, false]`.
- * - `present`: whether an optional holds a value (§4), going to `[present, none]`.
+ * - `present`: whether an optional holds a value (§10.4), going to `[present, none]`.
  * - `is`: whether a value holds what `test` asks, going to `[holds, fails]`.
- * - `fieldPass`: the top of the field loop `header` heads (§4), going past the loop, then to each
+ * - `fieldPass`: the top of the field loop `header` heads (§11.2), going past the loop, then to each
  *   pass `passesOf(header)` gives, in its order, the field each visits in `fields` (none for the
  *   pass of the fields not known yet, or of no field); each pass runs once per field it visits,
- *   an instantiation's in field order (§3.1).
- * - `select`: which of a `select`'s cases goes on (§8), going to each case's, then to its `else`;
+ *   an instantiation's in field order (§5.2).
+ * - `select`: which of a `select`'s cases goes on (§15.4), going to each case's, then to its `else`;
  *   each case waits on its future in `futures`, which its `onAwait` was handed, and `holds` the
  *   temporaries its awaitable computed, which it releases where it loses, and the scope around the
  *   `select` releases where it doesn't.
  * - `transient`: whether a call this one is nested in, of the same function, shares its transient
- *   `variable` (§3.4), going to `[shared, unmade]`: where it does, `variable` holds that call's
+ *   `variable` (§7.1), going to `[shared, unmade]`: where it does, `variable` holds that call's
  *   value, which no operation of this function wrote; where it doesn't, the declaration's
  *   initializer makes it.
  * - `unknown`: a test checking found a mistake in, which may go either way.
@@ -251,7 +251,7 @@ export interface FlowBlock {
 /**
  * A function's flow: its body's root, the values it takes as arguments and captures, in order,
  * the variable its own name is inside it (a local `fn`'s or a named lambda's: the closure it runs
- * as, §3.14), every value it names, and its blocks, the entry first.
+ * as, §6.4), every value it names, and its blocks, the entry first.
  */
 export interface FlowFunction {
   readonly root: SyntaxNode;
@@ -264,7 +264,7 @@ export interface FlowFunction {
 
 const transientVariables = new WeakMap<FlowFunction, readonly ValueId[]>();
 
-/** The transients `flow` declares (§3.4): the variables its `transient` branches test. */
+/** The transients `flow` declares (§7.1): the variables its `transient` branches test. */
 export function transientsOf(flow: FlowFunction): readonly ValueId[] {
   return memo(transientVariables, flow, () =>
     flow.blocks.flatMap(({ exit }) =>

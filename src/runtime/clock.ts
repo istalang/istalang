@@ -1,5 +1,5 @@
 /**
- * Time as a host keeps it (§5, §10): what a segment's start reads, and what the runtime waits on
+ * Time as a host keeps it (§14, §18): what a segment's start reads, and what the runtime waits on
  * until a timer is due. The runtime holds no timers of its own, so every wait is on the clock the
  * host gives: real time (`realTime`), in a process or a browser, or a manual clock, which jumps to whatever
  * time it is waited until, so a run on it takes no real time.

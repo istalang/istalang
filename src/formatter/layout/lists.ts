@@ -4,7 +4,7 @@
  * - items of a block, one per line, keeping one blank line where the source had any;
  * - lists in brackets, `()`, `[]` and a struct literal's `{}`, and field lists in braces: on one
  *   line, separated by `, `, when they fit, else one item per line with no `,`, since a line break
- *   between two items separates them as `,` does (spec §2). Every item starts with a token that
+ *   between two items separates them as `,` does (spec §2.1). Every item starts with a token that
  *   starts an item on a new line, so the broken list reads back as the one printed.
  * Everywhere else a line break would end the construct, so nothing else here breaks a line.
  */
@@ -184,7 +184,7 @@ export function fieldList(
   ]);
 }
 
-/** Type arguments or parameters, `<A, B>`: `<` is no bracket (spec §2), so they never break. */
+/** Type arguments or parameters, `<A, B>`: `<` is no bracket (spec §2.1), so they never break. */
 export function angled(printer: Printer, items: readonly SyntaxNode[]): builders.Doc {
   return items.length === 0
     ? ''

@@ -1,7 +1,7 @@
 /**
  * What generic code may hold of what its type parameters compute (proposal 8, Rule 3): an
  * associated type of a type not known yet has the kinds its bounds allow, `DataKind<"simple">`
- * where none is written; a type `match` has its cases' kinds. `DataKind<K>` is derived (§3.10), and
+ * where none is written; a type `match` has its cases' kinds. `DataKind<K>` is derived (§8.4), and
  * Sendable or a narrower `DataKind` implies it.
  */
 

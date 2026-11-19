@@ -1,5 +1,5 @@
 # outcome: 2
-# Several futures may register one resolver, the first to resolve deciding it (§6); resolving it
+# Several futures may register one resolver, the first to resolve deciding it (§15.2); resolving it
 # after does nothing.
 
 import * as runtime from 'runtime'

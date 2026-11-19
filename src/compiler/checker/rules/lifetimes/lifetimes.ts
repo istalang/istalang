@@ -103,7 +103,7 @@ export class Lifetimes {
     this.#analyses = checker.entries.table({
       name: 'lifetime analyses',
       compute: (first: FunctionDeclaration) => this.#analyzeGroup(this.#groupOf(first)),
-      // Reached again only where a default types its own function, an error of its own (§3.3).
+      // Reached again only where a default types its own function, an error of its own (§6.1).
       cyclic: { standIn: () => new Map() },
     });
     this.#summaries = checker.entries.table({

@@ -6,7 +6,7 @@
 # error: 5705 at 40:16
 # error: 5025 at 43:3
 # error: 5001 at 44:19
-# `drop x` releases `x`, which no path may use afterwards (§7), unless a `let` is assigned again
+# `drop x` releases `x`, which no path may use afterwards (§16), unless a `let` is assigned again
 # first: in a later statement, after a branch that dropped it, or in a loop's next pass. Only what
 # the function holds itself can be dropped: not a capture, a reference parameter or a top-level
 # constant. A disposable must be used, and `defer` takes a function of nothing returning unit.

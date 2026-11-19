@@ -1,5 +1,5 @@
 # outcome: "7 0 3 1 3.5 2.0 0.5 -3 3 big 100000000000000000000 Infinity -Infinity NaN"
-# Integers stay exact at any size; `//` floors and `%` follows the divisor's sign (§2, §3.9);
+# Integers stay exact at any size; `//` floors and `%` follows the divisor's sign (§3.4, §10.2);
 # mixing int and float gives a float, and `/` always does, dividing by zero as IEEE 754 does.
 
 import * as runtime from 'runtime'

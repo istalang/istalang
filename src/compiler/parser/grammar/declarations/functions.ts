@@ -1,5 +1,5 @@
 /**
- * Function declarations (§3.1, §3.3, §3.7, §3.10): top-level and local functions, getters
+ * Function declarations (§5.2, §6.1, §6.2, §8.2): top-level and local functions, getters
  * (`fn get full(self: Person)`), static functions declared on a type (`fn Duration.zero()`), trait
  * requirements, and extern functions.
  *
@@ -11,7 +11,7 @@
  * The forms differ only in their body. A defined function needs one, a trait's requirement may
  * omit it, and an extern function must not have one: the host implements it. A body written on
  * an extern function is reported but kept, so the tree shows what was written. A function's
- * docstring is the first line of its body, or the line below a function without one (§2).
+ * docstring is the first line of its body, or the line below a function without one (§2.3).
  *
  * A function's own span covers its header, docstring included; its body, which the tree holds
  * apart, follows it, as a segment of its own for a module's or a trait's function
@@ -98,7 +98,7 @@ export function parseItemFunction(parser: Parser): FunctionDeclaration {
   return parseFunction(parser, 'item');
 }
 
-/** `get` before a name, making the function a getter (§3.1): where it is written, if it is. */
+/** `get` before a name, making the function a getter (§5.2): where it is written, if it is. */
 function parseGetterWord(parser: Parser): Span | undefined {
   return parser.atWord('get') && parser.cursor.kindAt(1) === 'identifier'
     ? parser.cursor.advance().span
@@ -137,7 +137,7 @@ function missingParameters(parser: Parser): [] {
 
 /**
  * The body after `:`, if any, the function's docstring, first in the body or on the line after a
- * function without one (§2), and where its header ends: before the body. A missing body is reported
+ * function without one (§2.3), and where its header ends: before the body. A missing body is reported
  * only for a defined function whose signature is complete: a broken signature has already been
  * reported.
  */

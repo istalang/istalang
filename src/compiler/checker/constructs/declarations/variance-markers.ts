@@ -1,5 +1,5 @@
 /**
- * Where a written variance may stand (§3.5), and what it must agree with:
+ * Where a written variance may stand (§8.1), and what it must agree with:
  *
  * - On an extern value's type parameter, it is the variance (types/variance/variance.ts).
  * - On a struct's or an enum's, it asserts the derived one, which it must match: a parameter both

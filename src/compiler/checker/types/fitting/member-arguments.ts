@@ -1,5 +1,5 @@
 /**
- * Whether a type may stand for a member parameter (§3.5): `S in U` stands for exactly one member of
+ * Whether a type may stand for a member parameter (§8.1): `S in U` stands for exactly one member of
  * `U`, so its argument, to a call or to a type, written or inferred, must be one: a member, or a
  * member parameter whose own union's members all are, which each instantiation makes one of them.
  * Never several, nor a type outside `U`, nor a type parameter that could be any type. Inference

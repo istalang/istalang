@@ -1,13 +1,13 @@
 /**
  * What compile time computes values as (constant-form.ts), and how the walk (index.ts) reports a
  * part of an initializer: computed, refused, or already in error. The implicit conversions compile
- * time makes are here too (§2): taken into or out of a one-element tuple (§3.15), a struct's value
- * rebuilt as its shape, its fields in the shape's name order (§3.1), a value put into a union as
+ * time makes are here too (§4.1): taken into or out of a one-element tuple (§4.5), a struct's value
+ * rebuilt as its shape, its fields in the shape's name order (§5.2), a value put into a union as
  * one of its members, as a `Json` literal is at any depth, and a value converted part by part
- * (§3.5), each part as the checker fits it, as lowering converts a value (lowering/functions/fits/);
+ * (§8.1), each part as the checker fits it, as lowering converts a value (lowering/functions/fits/);
  * the others, a union widened member by member, a value into an `any` type and a function made
  * async or converted, need the runtime, so they are refused. A recursive union's members are
- * flattened into a union holding it (§3.17), so every member a form names is its union's own.
+ * flattened into a union holding it (§4.6), so every member a form names is its union's own.
  */
 
 import { wellKnown } from '../../../../foundation/language/well-known/index.ts';
@@ -104,7 +104,7 @@ function convertedForm(
 }
 
 /**
- * `form` converted part by part into `to` (§3.5): a union's value as the member it holds, an
+ * `form` converted part by part into `to` (§8.1): a union's value as the member it holds, an
  * array's items, a map's values, a tuple's elements and a struct's fields each as the checker fits
  * it; undefined where a part needs the runtime, as a function does.
  */
@@ -161,7 +161,7 @@ function partsForm(
 
 /**
  * A struct's form as one of `to`, a struct or a shape of the same fields, field by field in name
- * order (§3.1), so each field's index is its index in `to`.
+ * order (§5.2), so each field's index is its index in `to`.
  */
 function structForm(
   form: Extract<ConstantForm, { readonly kind: 'struct' }>,

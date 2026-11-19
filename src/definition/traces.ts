@@ -1,5 +1,5 @@
 /**
- * Where frames are, as people read it (§3.12): one line per frame, innermost first, naming the
+ * Where frames are, as people read it (§12): one line per frame, innermost first, naming the
  * function and the source location it stands at. Traces are printed here alone, whatever keeps the
  * frames, so a trace reads the same wherever it is printed.
  *
@@ -17,7 +17,7 @@ export interface TracedFrame {
   readonly module: number;
   /** The offset in its module's source of the instruction it is at. */
   readonly offset: number;
-  /** Whether it is computing a default, before its body begins (§3.3). */
+  /** Whether it is computing a default, before its body begins (§6.1). */
   readonly inPrologue: boolean;
 }
 
@@ -32,7 +32,7 @@ export function traceText(program: Located, frames: readonly TracedFrame[]): str
 }
 
 /**
- * The trace of the code a default gives its value to (§3.1, §3.12): `frames` without the innermost
+ * The trace of the code a default gives its value to (§5.2, §12): `frames` without the innermost
  * while it computes a default in its prologue, so the call or literal leaving the default out is
  * the trace's first frame; any other innermost frame is kept.
  */

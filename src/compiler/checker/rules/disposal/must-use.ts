@@ -1,5 +1,5 @@
 /**
- * Values that must be used (§3.3, §3.12, §7): a value whose loss would go unnoticed can't be
+ * Values that must be used (§6.1, §12, §16): a value whose loss would go unnoticed can't be
  * left as a bare expression. It is awaited or matched, kept in a variable (`_` included) or
  * dropped.
  *
@@ -10,7 +10,7 @@
  *   is disposable when its constraints require a `dispose` (rules/disposal/disposal.ts).
  * - A statement's value is discarded unless it is its block's value, and a block run for its
  *   effects, like a loop's body, discards even its last.
- * - `drop e` discards `e` on purpose (§7), whatever it is. `drop x` on a variable also releases the
+ * - `drop e` discards `e` on purpose (§16), whatever it is. `drop x` on a variable also releases the
  *   variable, which then can't be used (rules/disposal/dropped.ts); only a variable this function
  *   holds itself can be: neither a capture, which belongs to the closure, nor a reference
  *   parameter, whose value is its caller's.

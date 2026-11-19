@@ -3,12 +3,12 @@
  * (../contexts/synthesized.ts): each takes the span of the code it stands for and the origin it is
  * built as.
  *
- * - A name of the prelude's is bound to its declaration, whatever a local name shadows (§3.4).
+ * - A name of the prelude's is bound to its declaration, whatever a local name shadows (§7.1).
  * - A value the core computes once is held in a `const` the desugaring declares and binds, read
  *   wherever the core needs it, in the order the sugar computes it. Its name stands where the sugar
  *   says, so what sees it is decided by where names are declared (constructs/closures/
  *   functions.ts), as for a written one; each read is a node of its own, at the span of the value
- *   it holds. A core declaring constants is a block expression (§4), its value last.
+ *   it holds. A core declaring constants is a block expression (§10.1), its value last.
  */
 
 import { languageModules } from '../../../foundation/language/well-known/index.ts';

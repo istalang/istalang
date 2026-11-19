@@ -1,5 +1,5 @@
 /**
- * Templates and docstrings (spec §2): their values' tokens, how their lines are laid out, escapes,
+ * Templates and docstrings (spec §3.1): their values' tokens, how their lines are laid out, escapes,
  * and what an unterminated one reports. Losslessness over them is a property in scan.test.ts.
  */
 

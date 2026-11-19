@@ -1,14 +1,14 @@
 /**
- * Choosing the function a call means among its candidates (§3.7): calls are resolved from the
+ * Choosing the function a call means among its candidates (§6.3): calls are resolved from the
  * arguments alone, never from the result.
  *
  * - A candidate applies when it can take the arguments (applicability.ts).
- * - A function taking a union whole beats a call on it through a trait (§6); among the rest, when
+ * - A function taking a union whole beats a call on it through a trait (§8.2); among the rest, when
  *   concrete candidates apply, only they are chosen among: a concrete function beats a
- *   generic one (§3.7); then a function without a rest parameter beats one with (§3.3); then one
- *   taking every argument as it is beats one making a plain function async (§3.14), converting
- *   between a one-element tuple and its element (§3.15), a struct's value into its shape or an
- *   argument's parts (§3.5), or building a `struct{…}` as a struct (§3.1), so `Array<Int>` beats `Array<Int?>` for an `Array<Int>`, and a pair taking `fn(A)` and
+ *   generic one (§6.3); then a function without a rest parameter beats one with (§6.1); then one
+ *   taking every argument as it is beats one making a plain function async (§6.4), converting
+ *   between a one-element tuple and its element (§4.5), a struct's value into its shape or an
+ *   argument's parts (§8.1), or building a `struct{…}` as a struct (§5.2), so `Array<Int>` beats `Array<Int?>` for an `Array<Int>`, and a pair taking `fn(A)` and
  *   `async fn(A)` keeps each function its own type; then the most specific, as in C#, Kotlin and
  *   Java: one whose parameter types, as the call instantiates them, all fit another's, and not the
  *   reverse, so `f(x: Int)` beats `f(x: Int?)` for `f(1)`. Written type arguments consider only
@@ -41,7 +41,7 @@ import type { Candidate } from './candidates.ts';
 
 /**
  * What a candidate takes and gives, with a requirement's trait mapped
- * (types/traits/constraints.ts). Choosing never looks at results (§3.7), and a result may only be
+ * (types/traits/constraints.ts). Choosing never looks at results (§6.3), and a result may only be
  * known by checking a body, so `result` is computed only when asked, for the function chosen.
  */
 export interface Signature {
@@ -49,7 +49,7 @@ export interface Signature {
   readonly typeParameters: readonly TypeParameter[];
   readonly parameters: readonly SignatureSlot[];
   readonly result: () => Type;
-  /** The kind of the function's code (§3.3), a requirement's trait mapped. */
+  /** The kind of the function's code (§9.1), a requirement's trait mapped. */
   readonly kind: () => Type;
 }
 

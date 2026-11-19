@@ -1,5 +1,5 @@
 /**
- * An alias's use guards its type arguments only where the alias's body does (§3.17): a nominal
+ * An alias's use guards its type arguments only where the alias's body does (§4.6): a nominal
  * type's arguments are guarded, a transparent alias's only where its body uses that parameter
  * guarded, a type `match` alias's only where every case does and no case inspects it. A recursive
  * alias reaching itself only through unguarded arguments names no type, reported as one reaching

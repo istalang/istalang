@@ -1,5 +1,5 @@
 /**
- * The transients' cells code running in one execution sees (§3.4; transients.ts): the shares of
+ * The transients' cells code running in one execution sees (§7.1; transients.ts): the shares of
  * each transient, by function and register, innermost last, starting from what its execution kept.
  */
 

@@ -1,5 +1,5 @@
 /**
- * Every struct lays its fields out in name order, nominal or shape (§3.1 "Field order"): the
+ * Every struct lays its fields out in name order, nominal or shape (§5.2 "Field order"): the
  * Definition's entry for a declared struct lists them as its shape's does, while declaration order
  * stays what evaluation follows, so a default still sees the fields declared before it. Fields are
  * drawn in shuffled declaration order, so a layout following the declaration, or a value built in
@@ -68,7 +68,7 @@ function inNameOrder(fields: readonly { readonly name: string }[]): readonly str
 }
 
 describe('struct layout', () => {
-  it("lists a declared struct's fields in name order, as its shape's entry does (§3.1)", () => {
+  it("lists a declared struct's fields in name order, as its shape's entry does (§5.2)", () => {
     const { types } = mainDefinition(
       [
         'struct P { y: Int, x: Int, aZ: Int }',
@@ -86,7 +86,7 @@ describe('struct layout', () => {
     expect(fieldNames('')).toContainEqual(['aZ', 'x', 'y']);
   });
 
-  it('reads JSON into a struct field by field in name order, reporting the first mismatch (§9)', async () => {
+  it('reads JSON into a struct field by field in name order, reporting the first mismatch (§17.4)', async () => {
     const text = compiledEncoded(
       [
         "import * as json from 'json'\nimport * as runtime from 'runtime'",
@@ -101,7 +101,7 @@ describe('struct layout', () => {
     expect(state.kind === 'finished' && decodeJson(String(state.outcome))).toBe('$.a: missing');
   });
 
-  it('builds a range by its fields, whatever order they are laid out in (§3.8)', async () => {
+  it('builds a range by its fields, whatever order they are laid out in (§19.3)', async () => {
     const text = compiledEncoded(
       [
         "import * as runtime from 'runtime'\nlive async fn main() -> Array<Int>: await runtime.run(runtime.id()) _main()\nista async fn _main() -> Array<Int>:",

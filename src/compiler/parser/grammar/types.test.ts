@@ -117,7 +117,7 @@ describe('literal types', () => {
     ['-1.5', '1.5'],
     ['-x', 'x'],
     ['`t`', '`t`'],
-  ])('reports %j once: only a string, an integer or a bool is a type (§4)', (text, spanText) => {
+  ])('reports %j once: only a string, an integer or a bool is a type (§4.3)', (text, spanText) => {
     expect(reported('type', text)).toEqual(reportedOnce(expected.code, spanText));
   });
 });
@@ -131,7 +131,7 @@ describe('anonymous struct types', () => {
     '{ sku: String, qty: Int, }',
     '{\n  sku: String\n  qty: Int\n}',
     '{\n  sku: String,\n\n  qty: Int\n}',
-  ])('parses %j, separated by semicolons or line breaks (§2)', (text) => {
+  ])('parses %j, separated by semicolons or line breaks (§2.1)', (text) => {
     expect(dumpClean('type', text)).toBe(skuQty);
   });
 
@@ -143,7 +143,7 @@ describe('anonymous struct types', () => {
   });
 });
 
-describe('references (§3.7)', () => {
+describe('references (§7.3)', () => {
   it("allows '&T' as a parameter's type", () => {
     expect(dumpClean('parameterType', '&Stack<T>')).toBe(
       `(ReferenceType (NamedType [Stack] [${named('T')}]))`,
@@ -169,7 +169,7 @@ describe('malformed types', () => {
   });
 });
 
-describe('a struct constraint where a type stands (§3.5)', () => {
+describe('a struct constraint where a type stands (§8.1)', () => {
   it.each([
     ['struct { [_]: Int }', '[_]: Int'],
     ['{ a: Int, [_] is X & Y }', '[_] is X & Y'],

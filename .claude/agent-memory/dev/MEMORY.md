@@ -19,3 +19,4 @@
 - [Agents merge themselves](feedback_agents-merge-themselves.md) — partitions rebase and ff the integration branch; no idle integrator
 - [Expert for tasks](feedback_expert-for-tasks.md) — cold agents doing work are `--agent expert`; `dev` only plans big tasks
 - [Reuse examiners](feedback_reuse-examiners.md) — re-review/QA to the same examiners; findings back to the fixer of that area
+- [Spec renumbered](project_spec-renumbered.md) — docs/spec/ since 2026-11-19; § in done/audit/review docs are old numbers; headings are test keys

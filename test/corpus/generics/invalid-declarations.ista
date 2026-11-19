@@ -4,9 +4,9 @@
 # error: 5111 at 20:30
 # error: 5103 at 24:13
 # error: 5110 at 25:3
-# Aliases can't refer to themselves (§3.17), a parameter after a default needs one too (§3.3),
-# instantiation must end (§3.5), a called name must name a function, and only the runtime calls
-# `dispose` (§7).
+# Aliases can't refer to themselves (§4.6), a parameter after a default needs one too (§6.1),
+# instantiation must end (§8.1), a called name must name a function, and only the runtime calls
+# `dispose` (§16).
 
 import * as runtime from 'runtime'
 

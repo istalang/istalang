@@ -1,5 +1,5 @@
 /**
- * Starting a compiled program's live code, as a host does (§9; ir-first design, decision 10): the
+ * Starting a compiled program's live code, as a host does (§17.3; ir-first design, decision 10): the
  * one host binding (host/binding.ts), with a store of the start's own, serves `ista build`'s output
  * (`istalang/live`) and the goldens as a host's runtime serves `ista run`.
  *
@@ -41,7 +41,7 @@ export interface Start {
   readonly key?: string;
   readonly arguments?: readonly unknown[];
   readonly instance?: string;
-  /** Whether the contexts it makes crash at every await (§10). */
+  /** Whether the contexts it makes crash at every await (§18). */
   readonly crashEveryAwait?: boolean;
 }
 
@@ -60,7 +60,7 @@ const emitted = new WeakMap<Definition, EmittedProgram>();
 /**
  * Starts `keyed`'s live code as `start` says, bound by `binding`, running `live`'s code; how it
  * ended. The ista instances it reaches are the world's, in a store of their own that ends with
- * the start, committed at every await as any host's are (§5).
+ * the start, committed at every await as any host's are (§14).
  */
 export async function startLive(
   { definition, hash }: KeyedDefinition,

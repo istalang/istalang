@@ -1,5 +1,5 @@
 /**
- * Formatting context constants (§3.4): printed as written, with or without a type, and reparsing
+ * Formatting context constants (§7.1): printed as written, with or without a type, and reparsing
  * to the tree printed.
  */
 

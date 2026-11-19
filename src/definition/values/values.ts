@@ -13,7 +13,7 @@
  * A handle (a slot, future, shared cell or other heap object) exists only inside a running
  * instance. Constants never contain one; ../validation/references.ts rejects any that do.
  *
- * A value persists only up to `maximumDepth` levels deep (§5): the JSON and zod codecs recurse on
+ * A value persists only up to `maximumDepth` levels deep (§14): the JSON and zod codecs recurse on
  * the host's stack. Walks over values in memory keep stacks of their own, so a deeper value lives
  * within a segment; the runtime refuses to commit one (runtime/snapshot/write.ts).
  */
@@ -102,7 +102,7 @@ const map = z.strictObject({
   },
 });
 
-/** A function value: its code, plus the captured values the closure carries (spec §3.14). */
+/** A function value: its code, plus the captured values the closure carries (spec §6.4). */
 const closure = z.strictObject({
   kind: z.literal('closure'),
   function: functionId,

@@ -4,7 +4,7 @@
  * annotation, which an annotation's place doesn't offer; at every member the identifier query
  * answers, after its `.`, `?.`, `->` or `?->`, or as a qualified name's later segment in a type or
  * a pattern, the member is offered. A name inside an error the checker reports, or inside a
- * pattern or comparison its operands' types rule out (§3.11, §4), is aside: completion offers what
+ * pattern or comparison its operands' types rule out (§11.3, §11.1), is aside: completion offers what
  * fits where it is written, as a pattern offers what its subject may hold, not a type the subject
  * can't be.
  */
@@ -34,7 +34,7 @@ import { connectedClient } from '../server.test-kit.ts';
 
 const checker = checkProgram(program);
 
-/** Whether `diagnostic` warns of code its operands' types rule out (§3.11, §4). */
+/** Whether `diagnostic` warns of code its operands' types rule out (§11.3, §11.1). */
 const ruledOut = ({ code }: { readonly code: number }) =>
   code === checkerDiagnostics.heldNoValue.code || code === checkerDiagnostics.decidedCondition.code;
 

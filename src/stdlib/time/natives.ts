@@ -2,7 +2,7 @@
  * The `time` module's natives (time.ista): the runtime's one clock and one time primitive, and
  * readings in time zones (zones.ts). A time's and a duration's ISO 8601 text is the module's code.
  *
- * `now()` is the time the segment started (§5), so every read in a segment agrees and a re-run
+ * `now()` is the time the segment started (§14), so every read in a segment agrees and a re-run
  * segment sees the same time. `at(t)` is a future the runtime resolves once `t` is due, in the
  * first segment that starts at or after it.
  */

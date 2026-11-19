@@ -1,11 +1,11 @@
 /**
- * What a host may start, and how (§9; docs/arch/boundary.md). Every startable function of the
+ * What a host may start, and how (§17.3; docs/arch/boundary.md). Every startable function of the
  * program's own modules gets a start entry, listed in the Definition under the key a host names
  * it by with the codec encoding its outcome; `main` is started through its own, so what a host
  * reads of any outcome is JSON by the function's declared result.
  *
  * - Startable: a top-level function the rule of what a host may start admits
- *   (foundation/language/starts.ts), or a top-level constant holding a sendable lambda (§3.14),
+ *   (foundation/language/starts.ts), or a top-level constant holding a sendable lambda (§6.4),
  *   whose parameters can be read from JSON and whose outcome written. Its kind is its head's, a
  *   lambda's the checker's, so ista code, which a host never starts, gets no entry.
  *   Anything else simply isn't startable.
@@ -14,7 +14,7 @@
  *   runs, and calls the function, giving what it gives: an async one's future, unawaited. Its
  *   encoding entry writes the outcome as `Json`, which the runtime calls the moment the outcome
  *   settles: a run ends when its root call returns, with no wait between that a callback readied
- *   meanwhile could run in (§10).
+ *   meanwhile could run in (§18).
  */
 
 import type { Register } from '../../../../definition/operands.ts';

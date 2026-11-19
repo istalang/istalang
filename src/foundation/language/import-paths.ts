@@ -1,5 +1,5 @@
 /**
- * An import's path (§3.13), as every loader and tool reads it: names separated by `/`, the `.ista`
+ * An import's path (§13.1), as every loader and tool reads it: names separated by `/`, the `.ista`
  * extension implied, from the project root, or, when it starts with `./` or `../`, from the
  * importing module's folder. After those, a name is never empty, `.` or `..`, and holds no `\` or
  * `:`, which some platforms read as separators or drive letters, so a path can't escape its base:

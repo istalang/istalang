@@ -1,5 +1,5 @@
 /**
- * The bounds an inference has found for each type parameter it is finding (§3.5): types its
+ * The bounds an inference has found for each type parameter it is finding (§8.1): types its
  * argument must be at least (lower), at most (upper), or exactly (equal). Matching adds them
  * (infer.ts); settling reads them in a fixed order (settle.ts).
  *
@@ -15,7 +15,7 @@
  *   `Result<Int?, String>` bounds `Ok`'s own `T` by `Int?`; one mentioning the parameter it bounds
  *   is checked once settling has substituted it.
  * - A literal written as an argument gives its literal type, fresh: settling widens it to its base
- *   unless an upper bound holds a literal type of that base (§2).
+ *   unless an upper bound holds a literal type of that base (§4.3).
  * - Two variables related, one bounding the other (`relate`), hand each other their bounds: the
  *   lower one's lower bounds are the upper one's, and the upper one's upper bounds the lower one's,
  *   an equality each way as both, now and as they are added (design.md §4), so a placeholder under
@@ -53,7 +53,7 @@ export interface BoundRules {
    * instead of by fitting (types/type/mark-orders.ts).
    */
   readonly orderOf: (parameter: ParameterKey) => QualifierOrder | undefined;
-  /** Whether `target`, a struct its fields give, takes a struct literal of shape `shape` (§3.1). */
+  /** Whether `target`, a struct its fields give, takes a struct literal of shape `shape` (§5.2). */
   readonly takesShape: (target: Type, shape: Type) => boolean;
   /** Whether `first` and `second` are the same type. */
   readonly same: (first: Type, second: Type) => boolean;
@@ -68,7 +68,7 @@ export interface BoundRules {
   /** Whether `first` and `second` are the same type, equating what either mentions likewise. */
   readonly equate: (first: Type, second: Type, relating: BoundRole) => boolean;
   /**
-   * Whether a struct literal of `shape` builds `target`, a struct (§3.1), its fields bounding what
+   * Whether a struct literal of `shape` builds `target`, a struct (§5.2), its fields bounding what
    * either mentions as `constrain` does.
    */
   readonly constrainShape: (target: Type, shape: Type, relating: BoundRole) => boolean;

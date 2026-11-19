@@ -13,7 +13,7 @@ import type { BindingFailure } from './binding.ts';
 
 /**
  * A parameter as choosing sees it: its type and passing, its name unless a method's `self`, which
- * no call names (§3.3), whether it is that `self` receiver (§3.7), whether it has a default, and
+ * no call names (§6.1), whether it is that `self` receiver (§6.2), whether it has a default, and
  * whether it is a rest parameter, an array's or a pack's.
  */
 export interface SignatureSlot extends ParameterSlot {
@@ -31,7 +31,7 @@ export interface Takes {
 
 /**
  * How an argument is passed: as a value, by `&`, or as a method's receiver, which its `self`
- * takes either way (§3.7).
+ * takes either way (§6.2).
  */
 export type Passing = 'value' | 'reference' | 'receiver';
 
@@ -39,7 +39,7 @@ export type Passing = 'value' | 'reference' | 'receiver';
  * An argument as choosing sees it: its type, a placeholder of the call's constraint scope for one
  * the scope checks once it knows what the call expects of it (wiring/body/constraint-scope.ts); how it
  * is passed; its name when named; for a spread, the type of its items; and for a literal written in
- * place, its literal type, which it has where a parameter expects one (§2,
+ * place, its literal type, which it has where a parameter expects one (§4.3,
  * types/inference/infer.ts `literalType`), its type being its base's.
  */
 export interface CallArgument {
@@ -47,13 +47,13 @@ export interface CallArgument {
   readonly literal?: LiteralType | undefined;
   readonly passing: Passing;
   /**
-   * Whether it fits only a parameter of its type exactly, with no conversion: a witness's (§3.10),
-   * or a spread's items, which are copied or iterated as they are (§3.3).
+   * Whether it fits only a parameter of its type exactly, with no conversion: a witness's (§8.2),
+   * or a spread's items, which are copied or iterated as they are (§6.1).
    */
   readonly exact?: boolean;
   readonly name?: string | undefined;
   readonly isSpread?: boolean | undefined;
-  /** Whether it is the function a deferred call gives its taker (§3.14, binding.ts). */
+  /** Whether it is the function a deferred call gives its taker (§6.5, binding.ts). */
   readonly isDeferred?: boolean | undefined;
 }
 
@@ -69,11 +69,11 @@ export type Inapplicability =
   | { readonly kind: 'typeArgumentCount'; readonly minimum: number; readonly maximum: number }
   /** The argument at `index` is passed by value where its parameter takes `&` (`reference`), or the reverse. */
   | { readonly kind: 'reference'; readonly index: number; readonly reference: boolean }
-  /** Two arguments gave one type parameter types that don't agree (§3.5). */
+  /** Two arguments gave one type parameter types that don't agree (§8.1). */
   | { readonly kind: 'conflict'; readonly parameter: TypeParameter }
   /**
    * The argument at `index` gave a member parameter (`T in U`) a value of `found`, several members
-   * of its union where it takes one (§3.5).
+   * of its union where it takes one (§8.1).
    */
   | {
       readonly kind: 'severalMembers';
@@ -82,7 +82,7 @@ export type Inapplicability =
       readonly found: Type;
     }
   /**
-   * The arguments a pack's rest parameter collects don't fill it (§3.5): `index` is the first, and
+   * The arguments a pack's rest parameter collects don't fill it (§8.1): `index` is the first, and
    * `found` the tuple of their types when they are single values, which fill no pack of `expected`.
    */
   | {
@@ -91,7 +91,7 @@ export type Inapplicability =
       readonly expected: Type;
       readonly found: Type | undefined;
     }
-  /** A written type argument for a pack isn't a tuple type (§3.5). */
+  /** A written type argument for a pack isn't a tuple type (§8.1). */
   | { readonly kind: 'packTypeArgument'; readonly parameter: TypeParameter; readonly type: Type }
   /** The arguments that don't fit their parameters, by position, with the parameter's type. */
   | {

@@ -1,5 +1,5 @@
 /**
- * The names visible at an offset are what a name written there resolves to (§3.4, §3.11, §3.13):
+ * The names visible at an offset are what a name written there resolves to (§7.1, §11.3, §13.1):
  * at every name the binder resolved through its scopes, the prelude or a bare variant, over the
  * whole corpus and every std module; and, at offsets no name stands at, what each scope rule says.
  */
@@ -42,7 +42,7 @@ function visibleAtMarker(program: Program, marker: string): ReadonlyMap<string, 
 
 /**
  * The blocks of `modules` whose first statement sees a name the spot just before it doesn't, but
- * for a local function's own, visible in its declaration (§3.14).
+ * for a local function's own, visible in its declaration (§6.4).
  */
 function blocksSeeingMoreThanBefore({ program, modules }: CorpusProgram): readonly string[] {
   const bindings = bindProgram(program);

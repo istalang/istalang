@@ -1,6 +1,6 @@
 /**
  * Programs over arrays, maps, structs, closures, `&` paths and copies, each with what it must give
- * by value semantics (§2): a model where every holder keeps a value of its own, so no shared value
+ * by value semantics (§7.2): a model where every holder keeps a value of its own, so no shared value
  * observably changes. The aliasing property (aliasing.test.ts) compares a run against the model.
  *
  * - **One shape of value:** `Outer` of two `Inner`s, each an array, an array of arrays and a map

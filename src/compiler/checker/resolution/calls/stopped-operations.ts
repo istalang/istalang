@@ -1,5 +1,5 @@
 /**
- * Operations on an operand with no value (§2): a value of type `Never` can't exist, so it stands
+ * Operations on an operand with no value (§4.1): a value of type `Never` can't exist, so it stands
  * only in code that never runs, and an operation that reaches its target through it — a member
  * read, a method or value call, an index, an operator (a compound assignment's too), a
  * comparison, `await`, `?`, `->`, an optional step, a field loop or a pattern over it — never runs

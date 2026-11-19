@@ -1,5 +1,5 @@
 /**
- * The term graph of types holding recursion (§3.17), minimized: what equi-recursive identity is
+ * The term graph of types holding recursion (§4.6), minimized: what equi-recursive identity is
  * decided on. Closing a group of alias bodies (recursive-types.ts) and keying a type holding a
  * recursive type (type-keys.ts) both build one here, so a recursive type's graph and its key agree
  * by construction; lowering's table keys key one through the same walk, by names where a key has
@@ -411,7 +411,7 @@ export function unionKeyOf(memberKeys: readonly string[]): string {
 }
 
 /**
- * The canonical key of `type`, a type holding a recursive type (§3.17): its term graph minimized,
+ * The canonical key of `type`, a type holding a recursive type (§4.6): its term graph minimized,
  * spelled from it (the banner).
  */
 export function canonicalKey(

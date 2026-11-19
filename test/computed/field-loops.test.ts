@@ -1,5 +1,5 @@
 /**
- * Field loops (docs/proposals/4-computed-types.md §5, spec §4): `for key, value in ...x:` runs its
+ * Field loops (docs/proposals/4-computed-types.md §5, spec §11.2): `for key, value in ...x:` runs its
  * body once per field of `x`, in name order, as the body written out once per field. Each pass is
  * checked on its own (each field's overloads), constrained type parameters are checked once per
  * named entry and once for the others, the loop is a loop for `break`, `continue`, labels and

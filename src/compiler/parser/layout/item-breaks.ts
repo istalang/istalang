@@ -1,5 +1,5 @@
 /**
- * Where a line break separates two items of a bracketed list (§2): the rule's one home.
+ * Where a line break separates two items of a bracketed list (§2.1): the rule's one home.
  *
  * Inside a list (cursor/regions.ts) the cursor reads past line breaks, as inside any bracket, so
  * an item spans lines freely. A break separates two items, as a `,` does, where both hold:
@@ -79,7 +79,7 @@ export function atPostfix(parser: Parser, kind: CursorKind): boolean {
 /**
  * Whether `kind` comes next on the line the operand before it ends on, in any region: brackets read
  * past a line break, and so does a list, which `atPostfix` alone decides by. A deferred call's call
- * follows its taker only there (§3.14).
+ * follows its taker only there (§6.5).
  */
 export function onOperandLine(parser: Parser, kind: CursorKind): boolean {
   const { token } = parser.cursor;

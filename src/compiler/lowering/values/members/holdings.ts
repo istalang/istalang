@@ -1,5 +1,5 @@
 /**
- * Where a value of one type sits in a value of another (§2, §3.5), as an instantiation made both,
+ * Where a value of one type sits in a value of another (§4.2, §8.1), as an instantiation made both,
  * and reading or building it there: every way in and out of a union or `any` type (index.ts,
  * tests.ts) derives it here, so a layout an instantiation changed is never patched afterwards.
  *
@@ -7,11 +7,11 @@
  *   member's own, its literal's base, whose value a literal is, or the `any` member it is inside.
  * - An `any` type's value is the variant of its enum holding a concrete type's value, its base's
  *   for a literal. Whether an `any` type, alone or a union's member, holds a type is the checker's
- *   one rule (`TraitObjects.mayHold`, variance included, §3.10), which a type test asks too, so a
+ *   one rule (`TraitObjects.mayHold`, variance included, §8.2), which a type test asks too, so a
  *   test never names a variant for a type the `any` type can't hold: it jumps past it.
  * - A member's variant holds its value as its one field; a member with one value, a literal or
  *   `none`, holds nothing there.
- * - A recursive type is laid out as what it unfolds to (§3.17), one type, and a recursive union in
+ * - A recursive type is laid out as what it unfolds to (§4.6), one type, and a recursive union in
  *   a union is flattened into it, so a union holds each member directly.
  */
 
@@ -29,7 +29,7 @@ import type { HeldVariant } from '../../tables/type-table/index.ts';
 import { variantAt } from '../variant-values.ts';
 
 /**
- * Where a value sits in a value of a holder, both as an instantiation made them (§2, §3.5): the
+ * Where a value sits in a value of a holder, both as an instantiation made them (§4.2, §8.1): the
  * holder itself, of the value's type or its literal's base; inside the `any` holder that may hold
  * it; in the variant of the holder `union`'s member `variant`, its own or its literal's base; or
  * inside the `any` member `variant` of `union` that may hold it.
@@ -171,7 +171,7 @@ export interface IntoAny {
 
 /**
  * `value`, of a type neither `any` nor a union, as the variant of the `any` type holding it: its
- * base's for a literal, whose value it is (§2), so a downcast to the base finds it.
+ * base's for a literal, whose value it is (§4.3), so a downcast to the base finds it.
  */
 export function heldInAny(context: CodeContext, { value, from, to }: IntoAny, span: AnchoredSpan) {
   const { variant } = context.tables.types.anyVariant(to, from);

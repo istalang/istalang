@@ -1,8 +1,8 @@
 /**
  * What compiled code builds values with beyond a literal: a spread's items and a map spread's
  * entries, each held again by the value they are copied into; an array or a `Map` being built,
- * appended to in place where nothing else holds it (lifetimes.ts `owned`); and a new cell (§3.7,
- * §3.14), held by the register it lands in when its value is counted.
+ * appended to in place where nothing else holds it (lifetimes.ts `owned`); and a new cell (§7.3,
+ * §6.4), held by the register it lands in when its value is counted.
  */
 
 import type { RuntimeValues } from '../../definition/values/equality.ts';

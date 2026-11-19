@@ -1,7 +1,7 @@
 /**
- * The built-in types every program has (§2), as values of the type model (type/index.ts): each
+ * The built-in types every program has (§4.1), as values of the type model (type/index.ts): each
  * primitive by its name, and tuples. A tuple is built through `tupleType`, which makes the empty
- * one the primitive `Unit` (§3.15), so `()` and `Unit` are one type wherever either is written, and
+ * one the primitive `Unit` (§4.5), so `()` and `Unit` are one type wherever either is written, and
  * `tupleElements` reads `Unit` back as no elements.
  */
 
@@ -44,7 +44,7 @@ export function isPrimitive(type: Type, name: PrimitiveName): boolean {
   return type.kind === 'primitive' && type.name === name;
 }
 
-/** The tuple of `elements`: `Unit` for none, the empty tuple (§3.15). */
+/** The tuple of `elements`: `Unit` for none, the empty tuple (§4.5). */
 export function tupleType(elements: readonly Type[]): Type {
   return elements.length === 0 ? unitType : { kind: 'tuple', elements };
 }
@@ -62,7 +62,7 @@ export function literalType(value: LiteralValue): LiteralType {
   return { kind: 'literal', value };
 }
 
-/** A literal type's value as source writes it, a string's quoted as JSON (§2). */
+/** A literal type's value as source writes it, a string's quoted as JSON (§4.3). */
 export function literalText(value: LiteralValue): string {
   return typeof value === 'string' ? JSON.stringify(value) : String(value);
 }
@@ -72,7 +72,7 @@ export function markType(mark: Mark): Type {
   return literalType(mark);
 }
 
-/** The sendability `sendability` (§3.14) as a type: its `Sendability` member, a literal. */
+/** The sendability `sendability` (§6.4) as a type: its `Sendability` member, a literal. */
 export function sendType(sendability: Sendability): Type {
   return literalType(sendability);
 }

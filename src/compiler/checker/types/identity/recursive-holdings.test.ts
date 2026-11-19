@@ -1,5 +1,5 @@
 /**
- * A recursive union in a union (§2, §3.17, proposal 5 §2): its members join the union, so through a
+ * A recursive union in a union (§4.2, §4.6, proposal 5 §2): its members join the union, so through a
  * chain of recursive aliases, each naming the one before in its union, every alias is one type, a
  * value of the innermost member goes into the outermost union wherever a value goes (a constant, a
  * return, an argument, a literal's item, a generic function's body), and type patterns select it at

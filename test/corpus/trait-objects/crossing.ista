@@ -2,7 +2,7 @@
 # error: 5101 at 27:42
 # error: 5101 at 28:3
 # error: 5101 at 30:3
-# An `any` type is sendable only when its traits make it so, and has no JSON form (§3.10, §9).
+# An `any` type is sendable only when its traits make it so, and has no JSON form (§8.3, §17.4).
 import * as json from 'json'
 import * as runtime from 'runtime'
 

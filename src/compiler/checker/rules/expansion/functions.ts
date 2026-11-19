@@ -1,5 +1,5 @@
 /**
- * Generic functions that would need endlessly many instantiations (§3.5): `f<T>` calling
+ * Generic functions that would need endlessly many instantiations (§8.1): `f<T>` calling
  * `f<Array<T>>` never stops making new ones.
  *
  * The expansion graph (edges.ts) takes its edges from calls here: a call inside generic `F` to
@@ -7,7 +7,7 @@
  * cycle is reported at the call that makes it. Every call a function's code reaches counts
  * (surface/reach.ts): its body's and its parameters' defaults', the calls the language makes for a
  * construct, the defaults a struct literal leaves fields to, the calls a witness makes, and the
- * calls the type entries of the types it makes run. The functions a struct's fields read as (§3.1) are nodes too, so a
+ * calls the type entries of the types it makes run. The functions a struct's fields read as (§5.2) are nodes too, so a
  * cycle through a field's default is one like any; so are the generic functions a trait requires:
  * a requirement call leads to the requirement, and where a call chooses a witness, conformance
  * leads from the requirement to it, its type parameters taking the requirement's own.
@@ -168,7 +168,7 @@ function usedBy(
 /**
  * The edges conformance adds where `call` chooses the witnesses of its callee's constraints: from
  * each generic function a constraint's trait requires to the witness meeting it, whose type
- * arguments are built from the requirement's own (§3.10). A requirement call names the
+ * arguments are built from the requirement's own (§8.2). A requirement call names the
  * requirement, so a cycle through a witness runs through the requirement it meets.
  */
 function metEdges(checker: CheckerContext, call: ResolvedCall): readonly Edge[] {

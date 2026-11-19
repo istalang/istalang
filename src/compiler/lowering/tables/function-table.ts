@@ -11,7 +11,7 @@
  *   (type-table/), is written again whenever the type has gained a variant since, which may have
  *   moved the indexes it named, until no entry is stale: every index is the finished enum's.
  * - Entries lowered from one source function share the number of the one of least key as their
- *   `body`, which `==` reads their closures by (§3.14): chosen once every entry is numbered, so it
+ *   `body`, which `==` reads their closures by (§6.4): chosen once every entry is numbered, so it
  *   never depends on which lowering reached first.
  * - An entry another program lowered (std-lowering.ts) is numbered and queued as one asked for
  *   anew is, and taken over in place of being lowered.

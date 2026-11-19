@@ -1,5 +1,5 @@
 /**
- * Templates (§2): `` `a ${x} b` ``, and `` tag`…` `` calling `tag` with the texts and the values.
+ * Templates (§3.1): `` `a ${x} b` ``, and `` tag`…` `` calling `tag` with the texts and the values.
  *
  * The scanner keeps each value's tokens in the template token (syntax/tokens/index.ts), so each
  * value is parsed from those, as a bracketed expression: an error inside one ends at its `}`, and

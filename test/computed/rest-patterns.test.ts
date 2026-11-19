@@ -1,5 +1,5 @@
 /**
- * Rest in struct patterns (docs/proposals/4-computed-types.md §7; spec §3.11, §3.15): `...rest`,
+ * Rest in struct patterns (docs/proposals/4-computed-types.md §7; spec §11.3, §4.5): `...rest`,
  * last in a struct pattern, binds a copy of the fields no other item names, as the shape of those
  * fields, or, over a type parameter with a struct constraint, an opaque struct field loops,
  * comprehensions and keys reach. It can't fail, so declaration targets take it as `match` and
@@ -178,7 +178,7 @@ function declared(fields: readonly GeneratedField[]): string {
   return fields.map((field) => `${field.name}: ${field.type}`).join(', ');
 }
 
-/** The fields in name order, as every struct visits them (§3.1). */
+/** The fields in name order, as every struct visits them (§5.2). */
 function inNameOrder(fields: readonly GeneratedField[]): readonly GeneratedField[] {
   return [...fields].sort((first, second) => (first.name < second.name ? -1 : 1));
 }

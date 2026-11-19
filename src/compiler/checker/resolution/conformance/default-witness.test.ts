@@ -1,5 +1,5 @@
 /**
- * A type's `default()` is Default's witness (§3.10), found beside the type wherever it is used:
+ * A type's `default()` is Default's witness (§8.2), found beside the type wherever it is used:
  * a map literal of the type and a `@JsonSkip` field of it read back alike, one declared where it
  * is used serves neither, and one giving another type says so.
  */

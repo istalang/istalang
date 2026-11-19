@@ -1,5 +1,5 @@
 # outcome: [3,"b"]
-# A field a trait requires is read through an `any` value from the value's own type (§3.10).
+# A field a trait requires is read through an `any` value from the value's own type (§8.3).
 
 import * as runtime from 'runtime'
 

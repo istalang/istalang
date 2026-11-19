@@ -1,5 +1,5 @@
 /**
- * Running test programs in memory (§10): a test module's source compiled with the std modules and
+ * Running test programs in memory (§18): a test module's source compiled with the std modules and
  * run by `runTests` on a manual clock, which jumps to each time the run waits until, so a test
  * waiting on a timer takes no real time.
  */

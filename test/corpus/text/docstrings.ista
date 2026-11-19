@@ -3,7 +3,7 @@
 # Comments may stand before a module's docstring.
 """
 Docstrings document a module, and its functions, structs, enums and traits, from the first line
-of their bodies, or from the line below a declaration without one (§2).
+of their bodies, or from the line below a declaration without one (§2.3).
 """
 
 struct Point:

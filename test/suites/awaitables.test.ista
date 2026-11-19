@@ -1,4 +1,4 @@
-# Awaitables (spec §3.10) and the resolvers a wait gives them (§6, §7): what `onAwait` starts and
+# Awaitables (spec §19.1) and the resolvers a wait gives them (§15.2, §16): what `onAwait` starts and
 # decides, a decided wait's other resolvers, `tryResolve`, `Resolver.at` positions and `onCancel`.
 # Each rule is its own function, and its test asserts what the old runtime's unit test did.
 

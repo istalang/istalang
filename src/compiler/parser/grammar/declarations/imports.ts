@@ -1,9 +1,9 @@
 /**
- * Imports (§3.13): `import a, b as c, * as m, * from 'path'`, or the same items in parentheses.
- * `from` is a keyword only here (§2), and the path must be a string literal.
+ * Imports (§13.1): `import a, b as c, * as m, * from 'path'`, or the same items in parentheses.
+ * `from` is a keyword only here (§2.2), and the path must be a string literal.
  *
  * Parenthesized items are a bracketed list (recovery.ts), so a line break separates them as a `,`
- * does (§2) and the list may span lines; `*` first on a line starts an item. Bare items stay on the import's line, which a line break
+ * does (§2.1) and the list may span lines; `*` first on a line starts an item. Bare items stay on the import's line, which a line break
  * ends, so a long import is written in parentheses.
  *
  * The names are read so that the path is too while they are still being written, which is when
@@ -35,7 +35,7 @@ export function parseImport(parser: Parser): ImportDeclaration {
   return { kind: 'ImportDeclaration', span: parser.spanFrom(start), items, isParenthesized, path };
 }
 
-/** `*` opens an item on a new line, though `* as m` reads elsewhere as a multiplication (§2). */
+/** `*` opens an item on a new line, though `* as m` reads elsewhere as a multiplication (§2.1). */
 const importItemOpeners: ReadonlySet<CursorKind> = new Set(['*']);
 
 /** `a, * as m` on the import's line. */

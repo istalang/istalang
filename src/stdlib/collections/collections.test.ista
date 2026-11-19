@@ -1,4 +1,4 @@
-# The collections module's WeakMap (spec §3.8, §7).
+# The collections module's WeakMap (spec §19.2, §16).
 
 import * as runtime from 'runtime'
 import WeakMap from 'collections'

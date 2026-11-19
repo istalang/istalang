@@ -1,6 +1,6 @@
 # outcome: "1 2 1"
-# `none` fits only an optional parameter (§3.11), so it picks `g(Int?)` over `g(String)`; and a
-# `T` fits a `T?` (§3.5), so `g(1)` still reaches the optional one.
+# `none` fits only an optional parameter (§4.2), so it picks `g(Int?)` over `g(String)`; and a
+# `T` fits a `T?` (§8.1), so `g(1)` still reaches the optional one.
 
 import * as runtime from 'runtime'
 

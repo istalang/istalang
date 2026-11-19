@@ -1,5 +1,5 @@
 # outcome: [12,10,42,"ok",3,"7",[[1,"a"]],"ok",null]
-# A pack stands for a tuple of types (§3.5): a function taking one takes any parameters, a
+# A pack stands for a tuple of types (§8.1): a function taking one takes any parameters, a
 # function type ending in one flattens once it is a tuple, and a pack's value is passed through by
 # a spread. Each instantiation is a function of single parameters, so the wrapped function is
 # called as its own type says.

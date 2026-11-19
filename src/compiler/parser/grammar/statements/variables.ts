@@ -1,6 +1,6 @@
 /**
- * Variable declarations (§3.4, §3.15): `let`, `const`, their destructuring forms, the forms whose
- * holdings last until the function ends or a named loop or block does (§7): `hold let`,
+ * Variable declarations (§7.1, §4.5): `let`, `const`, their destructuring forms, the forms whose
+ * holdings last until the function ends or a named loop or block does (§16): `hold let`,
  * `hold const`, `hold _ = expr`, which means `hold const _ = expr`, and `hold(name) …`, and
  * `transient let`. Each modifier is read by its word, then the declaration as a plain one.
  *

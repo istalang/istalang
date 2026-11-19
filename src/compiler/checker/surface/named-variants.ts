@@ -1,5 +1,5 @@
 /**
- * Which variant a name or a call names (§3.11), as checking decided it: a qualified name's own
+ * Which variant a name or a call names (§5.3), as checking decided it: a qualified name's own
  * variant, or the one a bare name chose by the type expected of it; and which variant of an enum a
  * name is, by its position. The checker, lowering and their tests read it here, so none tells a
  * call of a variant from a function's, or finds a variant's position, another way.

@@ -1,5 +1,5 @@
 # outcome: [10,20,30]
-# An instance's outcome is the value its root returned (§9): a background call's `disposing()`
+# An instance's outcome is the value its root returned (§17.1): a background call's `disposing()`
 # cleanup changing that value as the instance exits changes nothing of it.
 
 import * as runtime from 'runtime'

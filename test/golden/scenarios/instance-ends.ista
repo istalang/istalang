@@ -1,4 +1,4 @@
-# Waiting for an instance's end (§9): a parent waits on its child's result, and an isolated panic
+# Waiting for an instance's end (§17.1): a parent waits on its child's result, and an isolated panic
 # comes back to it as an `Err`.
 import * as runtime from 'runtime'
 import * as time from 'time'

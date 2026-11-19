@@ -1,5 +1,5 @@
 /**
- * Where bindings are visible: the scoping rules every construct that binds shares (§3.4, §3.11).
+ * Where bindings are visible: the scoping rules every construct that binds shares (§7.1, §11.3).
  *
  * - `is` bindings exist only where the match is known to have succeeded: the body of an `if`,
  *   `elif` or `while`, a comprehension's body, a case's body after its guard, and the right side
@@ -134,7 +134,7 @@ export function underLoop(
 }
 
 /**
- * A construct over a struct's fields (§4): its header's subject outside, its key and value fresh
+ * A construct over a struct's fields (§11.2): its header's subject outside, its key and value fresh
  * for `body`, from the subject on to the construct's end, as a `for`'s variables are. Over a type's
  * keys, the type outside, and the key a type fresh for `body`, as a mapped entry's parameter is.
  */

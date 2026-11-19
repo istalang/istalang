@@ -5,12 +5,12 @@
  * the other capabilities they are given (capabilities.ts).
  *
  * - A pending future keeps what waits on it as the prelude keeps it (`waiting`, prelude.ista
- *   `_Waiters`): the run calls it as the future settles (`Run.settle`, §6), or, as code its disposal
+ *   `_Waiters`): the run calls it as the future settles (`Run.settle`, §15.2), or, as code its disposal
  *   runs, as it is disposed first. Which resolvers wait, in what order, and which can still decide
  *   are the prelude's.
- * - `later` readies a call of its own, as a `Resolver.of` callback and an `onCancel` run (§8).
+ * - `later` readies a call of its own, as a `Resolver.of` callback and an `onCancel` run (§15.4).
  * - `unpark` readies a parked call to resume with its wait's decided position; a wait decided
- *   before its call parks readies it all the same, as awaiting still yields (§6), unless the call
+ *   before its call parks readies it all the same, as awaiting still yields (§15.1), unless the call
  *   goes on without parking (`stayRunning`), as a `select` that doesn't wait does.
  * - A call holds what its wait's cases are registered on (`awaiting`) until the wait is let go of
  *   (`waitEnded`): the run holds it, since a future may reach whatever its callbacks do, so no

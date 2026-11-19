@@ -54,24 +54,24 @@ export interface FunctionContext {
   /** The body the entry is written from: its flows, and what its prologue reads. */
   readonly body: CheckedBody;
   /**
-   * `value`, of `type`, given at `site`, converted as `fit` says (§2, §3.10, §3.14): the one place
+   * `value`, of `type`, given at `site`, converted as `fit` says (§4.1, §8.3, §6.4): the one place
    * a value the checker found converted is.
    */
   readonly fitted: (value: Register, type: Type, fit: Fit, site: NodeOf<string>) => Register;
   /**
-   * This context inside the field loops' `passes`, outermost first (§4): writing the same code, its
+   * This context inside the field loops' `passes`, outermost first (§11.2): writing the same code, its
    * calls closed with their keys bound and its nested functions keyed there.
    */
   readonly inFieldPasses: (passes: readonly FieldPassStep[]) => FunctionContext;
   /** `call`, as the checker resolved it, closed here (calls/closed-calls.ts). */
   readonly closed: (call: ResolvedCall) => ClosedCall;
-  /** The function-table entry of a lambda or local function in this body (§3.14). */
+  /** The function-table entry of a lambda or local function in this body (§6.4). */
   readonly nestedIndex: (node: Lambda | FunctionDeclaration) => FunctionId;
   /** A fresh register of `type` owning the constant `value`. */
   readonly constant: (value: Value, type: Type, span: AnchoredSpan) => Register;
   /**
    * How the entry's types read its type parameters: its body's, the field loops it is in included,
-   * or, for an entry with no body, its instance's (§3.5).
+   * or, for an entry with no body, its instance's (§8.1).
    */
   readonly substitution: () => Substitution;
   /** The kind of the entry's code, which only waits as live or ista code (proposal 8, Rule 2). */

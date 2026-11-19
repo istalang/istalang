@@ -1,5 +1,5 @@
 /**
- * How a call's arguments fill its function's parameters (§3.3): the one rule a written call, a call
+ * How a call's arguments fill its function's parameters (§6.1): the one rule a written call, a call
  * the language makes, a witness and a function named as a value are all bound by, so choosing
  * (choice.ts), overload clashes (constructs/declarations/functions/clashes.ts) and lowering agree
  * on which argument a parameter takes.
@@ -8,8 +8,8 @@
  *   the first spread on, the rest parameter collects them, spreads included. A spread with no rest
  *   parameter to collect it, or a positional argument past the last parameter, doesn't fit.
  * - A named argument fills the parameter of its name, the rest parameter taking a whole array. A
- *   method's `self` has no name to give (§3.7), and a parameter can be given only once.
- * - The function a deferred call gives its taker (§3.14) is given neither by position nor by name:
+ *   method's `self` has no name to give (§6.2), and a parameter can be given only once.
+ * - The function a deferred call gives its taker (§6.5) is given neither by position nor by name:
  *   it fills the first parameter the others leave unfilled whose type is a function type taking
  *   nothing, so `retry(times: 5) fetchUser(id)` gives `retry` its `f`; a function with no such
  *   parameter left doesn't take the call.
@@ -17,8 +17,8 @@
  *   where a name, a spread or a deferred call's function is given, else counted, and a rest
  *   parameter nothing fills is empty.
  * - A function named as a value is bound as its type calls it (`bindValue`): by position, its rest
- *   parameter one array, its trailing parameters left to their defaults (§3.14).
- * - A pack's rest parameter (§3.5) collects as an array's does, by position only, since its
+ *   parameter one array, its trailing parameters left to their defaults (§6.4).
+ * - A pack's rest parameter (§8.1) collects as an array's does, by position only, since its
  *   arguments have no names; its type flattens into a function value's parameters, so `bindValue`
  *   collects into it too. Which arguments a pack takes is choosing's to judge (choice.ts).
  */
@@ -40,7 +40,7 @@ export interface BoundSlot {
 
 /**
  * What binding needs to know of an argument: its name, when named, whether it spreads, and whether
- * it is the function a deferred call gives its taker (§3.14).
+ * it is the function a deferred call gives its taker (§6.5).
  */
 export interface BoundArgument {
   readonly name?: string | undefined;
@@ -56,7 +56,7 @@ export type BindingFailure =
   | { readonly kind: 'unnamed'; readonly name: string }
   /** A parameter is given twice, by position and by name, or twice by name. */
   | { readonly kind: 'twice'; readonly name: string }
-  /** A named argument names a pack's rest parameter, whose arguments have no names (§3.5). */
+  /** A named argument names a pack's rest parameter, whose arguments have no names (§8.1). */
   | { readonly kind: 'packNamed'; readonly name: string }
   /** A parameter without a default is given no argument. */
   | { readonly kind: 'missing'; readonly name: string }
@@ -191,7 +191,7 @@ function bindByName(
 }
 
 /**
- * `sources` with each of `deferred`, the function a deferred call gives (§3.14), filling the first
+ * `sources` with each of `deferred`, the function a deferred call gives (§6.5), filling the first
  * parameter still unfilled of a function type taking nothing.
  */
 function bindDeferred(

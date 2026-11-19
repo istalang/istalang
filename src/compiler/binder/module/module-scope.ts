@@ -1,11 +1,11 @@
 /**
- * A module's top level (§3, §3.7, §3.13): every name it declares or imports, defined before
+ * A module's top level (§5.1, §6.3, §13.1): every name it declares or imports, defined before
  * anything inside a declaration is bound, so declarations may come in any order.
  *
- * - Top-level functions sharing a name form one overload set (§3.7). A static function
+ * - Top-level functions sharing a name form one overload set (§6.3). A static function
  *   (`fn Duration.zero()`) belongs to its type, so it defines no name here.
  * - Any other name defined twice is an error. The message says which rule was broken: a name
- *   imported twice, an import clashing with a declaration (§3.13), or a plain duplicate.
+ *   imported twice, an import clashing with a declaration (§13.1), or a plain duplicate.
  * - A named import is a placeholder until the program is linked; a namespace import is already
  *   its entity, since the program records which module its path loaded. A renamed import binds
  *   its alias alone; the export's own name in it denotes the export too, so tools reach it there.
@@ -194,7 +194,7 @@ class TopLevelDefiner {
   }
 }
 
-/** Which rule a second top-level definition of a name breaks (§3.13). */
+/** Which rule a second top-level definition of a name breaks (§13.1). */
 function clashRule(previous: Origin | undefined, current: Origin) {
   if (previous === 'import' && current === 'import') {
     return binderDiagnostics.duplicateImport;
@@ -206,7 +206,7 @@ function clashRule(previous: Origin | undefined, current: Origin) {
 
 /**
  * A module's own declarations, exported or kept private by a leading `_`; imports are never
- * re-exported (§3.13).
+ * re-exported (§13.1).
  */
 function ownNames(
   topLevel: ReadonlyMap<string, TopLevelName>,

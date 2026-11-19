@@ -11,7 +11,7 @@
 # error: 5001 at 42:27
 # error: 5001 at 43:28
 # error: 5001 at 44:32
-# Variance (§3.5): a handle, a map's keys and a member parameter are invariant, a function's
+# Variance (§8.1): a handle, a map's keys and a member parameter are invariant, a function's
 # parameter is contravariant, and a one-element tuple converts only at the top. Only an extern
 # value, a struct or an enum takes `gives` or `takes`, and a struct's or an enum's must agree with
 # what its values hold. A shared struct is a handle whatever it holds, as the inbox module's are.

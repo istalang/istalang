@@ -2,7 +2,7 @@
 # A field typed by its default may build a generic struct whose own default builds a third, whose
 # written field names the second again, beside a field naming the first; or a struct whose default
 # builds the first; or a struct whose default calls for a third whose default builds the first: no
-# default depends on itself (§3.1), and instantiation ends (§3.5).
+# default depends on itself (§5.2), and instantiation ends (§8.1).
 
 import * as runtime from 'runtime'
 

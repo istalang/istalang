@@ -1,5 +1,5 @@
 # outcome: 0
-# A field loop's variable read in one pass only still holds every pass's field (§4): what it holds
+# A field loop's variable read in one pass only still holds every pass's field (§11.2): what it holds
 # in the lease's pass, which never reads it, is counted, and disposed once the loop is done with it.
 
 import * as log from 'log'

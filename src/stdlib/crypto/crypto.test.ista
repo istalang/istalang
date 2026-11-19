@@ -1,4 +1,4 @@
-# The crypto module (spec §3.8), against published test vectors: FIPS 180's for SHA, RFC 4231's
+# The crypto module (spec §19.2), against published test vectors: FIPS 180's for SHA, RFC 4231's
 # and RFC 2202's for HMAC, and RFC 4648's for the encodings.
 
 import * as crypto, Encoding, Hash from 'crypto'

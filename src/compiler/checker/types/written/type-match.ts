@@ -1,5 +1,5 @@
 /**
- * A type `match` (§3.17), resolved: what an alias or associated type whose body is one matches, and
+ * A type `match` (§4.6), resolved: what an alias or associated type whose body is one matches, and
  * how a use of one is told from a use of any other alias.
  *
  * - The subject and each case's pattern resolve once, with the declaration's own parameters open,
@@ -37,7 +37,7 @@ export interface TypeMatchForm {
   readonly subject: Type;
   /**
    * The parameter the subject is written as, if any: when a union distributes, it stands for the
-   * member being matched inside a case (§3.17).
+   * member being matched inside a case (§4.6).
    */
   readonly subjectParameter: TypeParameter | undefined;
   readonly cases: readonly CaseForm[];
@@ -72,7 +72,7 @@ export interface TypeMatchQueries {
   /** The type the case `node` of `alias`'s type `match` gives, its variables open. */
   readonly caseTypeOf: (alias: AliasDeclaration, node: TypeCase) => Type;
   /**
-   * Whether `alias`'s reductions never end (§3.5), reaching itself with a type built from its own
+   * Whether `alias`'s reductions never end (§8.1), reaching itself with a type built from its own
    * parameters: reported once, at the alias.
    */
   readonly isEndless: (alias: AliasDeclaration) => boolean;
@@ -120,8 +120,8 @@ export function labelOf(use: MatchType): RecursiveLabel | undefined {
 
 /**
  * The type `declaration` stands for, `aliased` with its parameters open, with `substitution`
- * giving them: a type `match` reduced for what they are given (§3.17), any other type substituted
- * (§3.1, §3.17).
+ * giving them: a type `match` reduced for what they are given (§4.6), any other type substituted
+ * (§5.2, §4.6).
  */
 export function aliasInstance(
   declaration: AliasDeclaration,
@@ -138,7 +138,7 @@ export function aliasInstance(
 
 /**
  * The case of a type `match` whose type `node` stands in, when its pattern is a struct constraint,
- * with its type `match` and the alias it is the body of (§3.17); else undefined.
+ * with its type `match` and the alias it is the body of (§4.6); else undefined.
  */
 export function structCaseOf(
   tree: SyntaxTree,

@@ -1,5 +1,5 @@
 /**
- * Settling (§3.5): the type each parameter an inference is finding takes from its bounds
+ * Settling (§8.1): the type each parameter an inference is finding takes from its bounds
  * (bounds.ts), by one policy, in order:
  *
  * 1. an equality;
@@ -44,7 +44,7 @@ import type { CallVariables } from './variables.ts';
 
 /** What settling asks of the program for a parameter. */
 export interface Settling {
-  /** Whether `type` may stand for `parameter`: its constraints met (§3.5). */
+  /** Whether `type` may stand for `parameter`: its constraints met (§8.1). */
   readonly admits: (parameter: ParameterKey, type: Type) => boolean;
   /** `parameter`'s default, with what is settled so far, if it has one. */
   readonly defaultOf: (parameter: ParameterKey, settled: Substitution) => Type | undefined;
@@ -70,7 +70,7 @@ export interface SettlingView {
    * order's bottom.
    */
   readonly qualifierOf: (parameter: ParameterKey) => QualifierParameter | undefined;
-  /** Whether `target`, a struct its fields give, takes a struct literal of shape `shape` (§3.1). */
+  /** Whether `target`, a struct its fields give, takes a struct literal of shape `shape` (§5.2). */
   readonly takesShape: (target: Type, shape: Type) => boolean;
   readonly join: (
     parameter: ParameterKey,

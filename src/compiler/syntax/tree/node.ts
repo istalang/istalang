@@ -10,7 +10,7 @@
  * Errors are part of the tree, so every phase always gets a complete one:
  * - `Missing` stands where the grammar required something that isn't there. Its span is empty.
  * - `Invalid` covers tokens the parser skipped to recover. It sits in the list where they appeared.
- *   Annotations nothing can take (§3.16) stay in the one covering them, so their values are still
+ *   Annotations nothing can take (§5.5) stay in the one covering them, so their values are still
  *   bound and checked, as an editor completes inside one before its item is written.
  * - A required name that is absent is an Identifier with empty text, so name fields never need a
  *   union check.

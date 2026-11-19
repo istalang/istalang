@@ -1,11 +1,11 @@
-# The math module (spec §3.8): numeric functions on ints and floats, and the rounding modes `math`
+# The math module (spec §19.2): numeric functions on ints and floats, and the rounding modes `math`
 # and `decimal` share.
 #
 # Rounding keeps a float a float, so NaN and the infinities pass through as IEEE 754 has them and
 # `Int(x)` converts the result exactly; `floor` and `ceil` are `round` in one mode. `min`, `max` and
 # `clamp` are written once, over `Comparable`, so every ordered type has them: a `Decimal`, a `Time`
 # or a program's own. Each function takes its number as `self`, so once imported by name it is also
-# a method: `x.abs()`, `x.round()`. Powers are the `**` operator (§3.9).
+# a method: `x.abs()`, `x.round()`. Powers are the `**` operator (§10.2).
 
 enum Rounding:
   Floor

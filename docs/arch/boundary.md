@@ -1,5 +1,5 @@
 ---
-description: the host boundary (spec §3.6, §9) — JSON codecs as traits and derived codecs, stable identity of what a host gets, host externs and their futures, start entries, extern constants, the host API and the package's exports; read before changing externs, json, Stringable/Parsable, annotations, or how values reach a host
+description: the host boundary (spec §17.2, §17.4) — JSON codecs as traits and derived codecs, stable identity of what a host gets, host externs and their futures, start entries, extern constants, the host API and the package's exports; read before changing externs, json, Stringable/Parsable, annotations, or how values reach a host
 owner: tech-lead
 status: active
 applies_to: istalang
@@ -10,7 +10,7 @@ tags: [boundary, json, externs, host, runtime, lowering]
 
 # Host boundary
 
-Every value that crosses to or from a host is JSON, converted by the declared type (spec §9). This
+Every value that crosses to or from a host is JSON, converted by the declared type (spec §17.4). This
 doc says where each part of that lives and why.
 
 ## Codecs are traits
@@ -18,7 +18,7 @@ doc says where each part of that lives and why.
 A type crosses through its codecs, `toJson` and `fromJson`: what `Encodable` and `Decodable`
 require, declared in the `json` module (a language module, loaded with every program) beside
 `Json`, the recursive union holding any JSON (`None | Bool | Int | Float | String | Array<Json> |
-Map<String, Json>`, spec §3.17), whose values are the language's own and whose codecs are the
+Map<String, Json>`, spec §4.6), whose values are the language's own and whose codecs are the
 identity. Codecs are program code, found as every trait's witnesses are,
 so the runtime never calls program code from inside a native (D-A removed the re-entrant call
 path):
@@ -33,11 +33,11 @@ path):
 - A struct, an enum, a tuple, a host type, a literal type or a union of literals
   declaring neither codec, beside it or in the `json` module, has both derived. A union crosses
   only so or as `T | None`, through the `json` module's codecs of `T?`: any other union's member
-  would need a tag JSON doesn't carry, so it has neither (spec §9). The checker decides its derived form once (`checker/rules/boundary/json-forms.ts`,
+  would need a tag JSON doesn't carry, so it has neither (spec §17.4). The checker decides its derived form once (`checker/rules/boundary/json-forms.ts`,
   memoized per type key; the model is `checker/surface/json-form.ts`, which later phases read through
   `Checker.json`): field names after `@JsonName`, `@JsonBigInt` fields, what a `@JsonSkip` field
   reads back as (its type's `Default` witness). Its parts cross through their own codecs, and
-  witnesses are coherent (spec §3.10): found beside the types they take or the trait, never where
+  witnesses are coherent (spec §8.2): found beside the types they take or the trait, never where
   they are asked for, so a derived codec belongs to its type alone. Conformance takes a derived
   codec when no declared one is found, as for every trait the compiler derives
   (`checker/resolution/conformance/derived-traits.ts`): a call to the `json` module's
@@ -65,7 +65,7 @@ path):
 ## Identity at the boundary
 
 A value given to a host again, unchanged, is the same frozen JavaScript object, at every depth
-(spec §9, proposal 15), so a host can skip work by reference equality. Values are shared by
+(spec §17.4, proposal 15), so a host can skip work by reference equality. Values are shared by
 reference in the run, so "kept" is already "the same object"; two caches keep the
 encoders from building anew:
 
@@ -104,7 +104,7 @@ its instance is numbered by, so its native sees only JSON:
   runtime holds the host to across deploys (`runtime/boundary/extern-signatures.ts`).
 - A host's extern is unmarked or live (the checker refuses one marked `ista` or generic over its
   mark, 5913): only the runtime fills an ista future, so ista code reaches a host's live extern
-  through a job (`runtime.delegate`, spec §5). One returning a future is `live async`: its wrapper
+  through a job (`runtime.delegate`, spec §14). One returning a future is `live async`: its wrapper
   is a live async entry awaiting the native's live future and decoding it, an execution only of a
   live run, which nothing inspects; JSON that doesn't decode panics the run.
 - An extern constant is read through an entry that decodes the native's value; the runtime calls
@@ -126,7 +126,7 @@ its instance is numbered by, so its native sees only JSON:
   such as `time.now()`, is refused at `createRuntime`, so no host replaces the clock. `ista run
   --host` loads a module of plain functions instead (`cli/host-module.ts`), each taking the
   arguments spread, a returned promise resolving its live future as below.
-- To a live run (spec §5), which waits in memory, an extern returning a live
+- To a live run (spec §14), which waits in memory, an extern returning a live
   future takes the resolver of the live future its call gives, `call.resolver()`, while it runs,
   and resolves it with JSON when it can, from anywhere: the value reaches the run between its
   segments. Or, taking none, it gives back a promise of its JSON, which resolves the future as it
@@ -153,11 +153,11 @@ two entries (`lowering/synthesized/boundary/starts.ts`):
 - `function` decodes each argument from `Json`, a mismatch failing the host's start before anything
   runs, and calls the function, giving what it gives: an async one's future, unawaited.
 - `encode` writes the outcome as `Json` with the codec of the declared result. The runtime calls it
-  the moment the root's outcome settles, and the live run finishes then (spec §10): nothing readied
+  the moment the root's outcome settles, and the live run finishes then (spec §18): nothing readied
   meanwhile runs, and what `main` held was disposed as it returned. An outcome JSON can't hold, one
   nesting too deep, refuses the start once the run finished (`checkJsonOut`).
 
-A start is live or simple code, its head's mark (spec §3.3): ista code runs only in an instance, a
+A start is live or simple code, its head's mark (spec §9.1): ista code runs only in an instance, a
 context live code calls, so `main` is `live async fn main()`. A spawned instance whose outcome's type a codec
 writes encodes it as it finishes (its `Instance<T>` entry's `encoder`, docs/arch/runtime.md), and a
 host reads that JSON as text (`host/programs.ts`, `outcomeText`); any other outcome reads as a
@@ -185,10 +185,10 @@ answer at once. How the instances run is docs/arch/runtime.md's.
 
 - **Residency.** A runtime keeps each instance it runs in memory (`host/durable-world.ts`,
   `Resident`): its next segment runs on the instance its last segment committed, and every commit
-  is written to the store before its effects leave it (§5). An instance the runtime doesn't hold is
+  is written to the store before its effects leave it (§14). An instance the runtime doesn't hold is
   read from the store with the Definition its snapshot names.
 - **The store's one driver.** While a runtime runs, it is its store's only driver: a store changed
-  under it is seen only by a runtime opened after (a restart, §5).
+  under it is seen only by a runtime opened after (a restart, §14).
 - **Live runs.** A host starts live or simple code only (`host/programs.ts`), refusing an `ista`
   entry (`notStartable`), and runs it outside any instance, in memory: `start` settles the moment
   its root call's outcome settles, and nothing of the run reaches the store. Its waits ride the

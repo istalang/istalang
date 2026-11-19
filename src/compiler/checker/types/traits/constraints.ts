@@ -1,5 +1,5 @@
 /**
- * Constraints (§3.5, §3.10): the traits after `is` on a type parameter or after `any`, and what
+ * Constraints (§8.1, §8.2): the traits after `is` on a type parameter or after `any`, and what
  * each requires.
  *
  * - A constraint names a trait, with its type arguments resolved and defaults filled, where `Self`
@@ -10,7 +10,7 @@
  *   order of functions (`RequirementOrigin`), which is how a call to one and the witness that
  *   satisfies it find each other per instantiation.
  * - What a type meets by what it is, its fields and requirements included, is
- *   known-constraints.ts's; struct constraints (§3.5) are resolved in struct-constraints.ts.
+ *   known-constraints.ts's; struct constraints (§8.1) are resolved in struct-constraints.ts.
  */
 
 import type { WellKnownDeclaration } from '../../../../foundation/language/well-known/index.ts';
@@ -66,7 +66,7 @@ export interface Requirement {
 }
 
 /**
- * The constraints after `any`, each trait's `Self` its own (§3.10), their type arguments resolved
+ * The constraints after `any`, each trait's `Self` its own (§8.3), their type arguments resolved
  * by `argumentType`; undefined for one reported.
  */
 export function resolveAnyConstraints(
@@ -142,12 +142,12 @@ export function requiredFunctions(trait: TraitDeclaration): readonly FunctionDec
   return trait.members.filter((member) => member.kind === 'FunctionDeclaration');
 }
 
-/** The fields a trait requires (§3.10). */
+/** The fields a trait requires (§8.2). */
 export function requiredFields(trait: TraitDeclaration): readonly FieldDeclaration[] {
   return trait.members.filter((member) => member.kind === 'FieldDeclaration');
 }
 
-/** The associated types a trait requires (§3.10). */
+/** The associated types a trait requires (§8.2). */
 export function requiredAssociatedTypes(
   trait: TraitDeclaration,
 ): readonly RequiredAssociatedType[] {
@@ -155,7 +155,7 @@ export function requiredAssociatedTypes(
 }
 
 /**
- * `constraint`, met by `on`, as `any` takes it (§3.10): an argument that is `on` itself is the
+ * `constraint`, met by `on`, as `any` takes it (§8.3): an argument that is `on` itself is the
  * trait's own `Self`, so each type `on` may become reads it alike.
  */
 export function traitAsAny(constraint: Constraint, on: Type): AnyType {
@@ -183,8 +183,8 @@ export function declaredFieldType(
 
 /**
  * `required`, a function a trait requires, as the function type a call through the trait makes, in
- * its own parameters and `Self` (§3.10): what it takes, its receiver first unless it is static, and
- * what its call gives, as a function named as a value has it (§3.14).
+ * its own parameters and `Self` (§8.2): what it takes, its receiver first unless it is static, and
+ * what its call gives, as a function named as a value has it (§6.4).
  */
 export function requirementType(
   checker: Pick<CheckerContext, 'parametersOf' | 'resultOf' | 'kindOf'>,

@@ -1,5 +1,5 @@
 # outcome: "42|hi|none|true|11|5:true:true:true|7"
-# Union normalization (§1, §3, §4): order-free, flattened, duplicates and Never dropped, literals
+# Union normalization (§1, §5.1, §4.2): order-free, flattened, duplicates and Never dropped, literals
 # absorbed into their base type ("a" | String is String, true | false is Bool), a type meeting an
 # any member absorbed into it, nominal and shape kept apart, T? as T | None, T?? as T?, and collapse
 # after generic substitution.

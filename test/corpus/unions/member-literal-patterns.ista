@@ -1,5 +1,5 @@
 # outcome: "A|other|true|false|A|B|true"
-# A literal pattern and `==` on a member parameter (§3.5, §3.11) compare it as the one member of its
+# A literal pattern and `==` on a member parameter (§8.1, §11.3) compare it as the one member of its
 # union each instantiation makes it: two literals of one base, with nothing converted.
 
 import * as runtime from 'runtime'

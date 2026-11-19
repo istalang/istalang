@@ -3,10 +3,10 @@
 # error: 5001 at 31:54
 # error: 5370 at 32:32
 # error: 5101 at 33:47
-# A trait's variance lets an `any` type stand for another only one way (§3.10): a trait taking what
+# A trait's variance lets an `any` type stand for another only one way (§8.3): a trait taking what
 # its argument names for a narrower one, giving it for a wider one, and one doing both for none. A
 # value meeting two instantiations that fit, neither closer, goes into neither. A type meets a trait
-# with its own functions, never through one taking a wider type (§3.10's coherence).
+# with its own functions, never through one taking a wider type (§8.2's coherence).
 
 trait Source<T> { fn next(self: Self) -> T }
 

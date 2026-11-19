@@ -9,7 +9,7 @@
 # error: 5400 at 47:9
 # An or-pattern can fail, so a target refuses it; its alternatives bind the same names, of the same
 # types. An array pattern matches an Array, with one rest at most, and a match on arrays covers
-# every length. A range pattern matches an int, between int literals that leave room (§3.11).
+# every length. A range pattern matches an int, between int literals that leave room (§11.3).
 
 enum Shape:
   Circle(radius: Int)

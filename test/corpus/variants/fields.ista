@@ -1,5 +1,5 @@
 # outcome: "2 t false 0"
-# A variant's fields are declared as a function's parameters (§3.11): in parentheses, one per line
+# A variant's fields are declared as a function's parameters (§5.3): in parentheses, one per line
 # when they don't fit, defaults trailing, and the last may be a rest, an Array<T> holding what it
 # collected, which a literal gives and a pattern reads as the field it is.
 

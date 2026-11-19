@@ -10,7 +10,7 @@
  *   lowering derives the rebuild from the two types each instantiation makes (lowering/functions/
  *   fits/), which a stand-in would lay out otherwise.
  * - Calls, waits included, are read where they are reached (surface/reach.ts), never here.
- * - A `transient` variable, one per instance (§3.4), keeps every parameter concrete.
+ * - A `transient` variable, one per instance (§7.1), keeps every parameter concrete.
  */
 
 import { type Handlers, handlerOf } from '../../../../foundation/structures/kind-table.ts';

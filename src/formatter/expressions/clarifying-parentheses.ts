@@ -1,5 +1,5 @@
 /**
- * Parentheses the formatter adds where the precedence table (spec §3.9) reads an operation one
+ * Parentheses the formatter adds where the precedence table (spec §10.3) reads an operation one
  * way and people often read it another, though the language needs none there:
  * - `and` inside `or`: `a or (b and c)`;
  * - a bitwise operator or a shift beside an operator of another level: `(a & b) == c`, which C

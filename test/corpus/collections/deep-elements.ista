@@ -1,6 +1,6 @@
 # outcome: 5
 # A program's own `index` and `setIndex` may recurse through elements as deep as any other
-# function: each element step is an ordinary call (§3.9).
+# function: each element step is an ordinary call (§10.2).
 
 import * as runtime from 'runtime'
 

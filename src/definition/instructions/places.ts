@@ -1,6 +1,6 @@
 /**
- * Places, cells and references (spec §3.7, §3.14, §3.18), and the per-call and per-instance
- * variables the runtime keeps (§3.4).
+ * Places, cells and references (spec §7.3, §6.4, §5.4), and the per-call and per-instance
+ * variables the runtime keeps (§7.1).
  *
  * - **A place says how it is reached.** Its root is a value in a register, the value in the cell a
  *   register holds (a variable passed by `&` or captured, a transient, the struct behind a shared
@@ -54,7 +54,7 @@ const store = defineInstruction('store', { place, value: register });
 const reference = defineInstruction('reference', { dst: register, place });
 
 /**
- * `dst`, a cell register of a transient (§3.4), borrows the cell of the nearest call this one is
+ * `dst`, a cell register of a transient (§7.1), borrows the cell of the nearest call this one is
  * nested in that runs the same function and has made one, and jumps to `target`; where none has,
  * on to the initializer, which makes it with `newCell` into `dst`, shared from then on with the
  * calls nested in this one until it returns.
@@ -63,7 +63,7 @@ const transient = defineInstruction('transient', { dst: register, target: label 
 
 /**
  * `dst` another holder of the instance's value of the context constant `name`, its qualified name
- * (§3.4), and a jump to `target`, once the instance has made one; while it hasn't, on to make it.
+ * (§7.1), and a jump to `target`, once the instance has made one; while it hasn't, on to make it.
  */
 const contextConstant = defineInstruction('contextConstant', {
   dst: register,

@@ -1,5 +1,5 @@
 /**
- * Which values a `match` leaves unhandled, and which of its cases can never run (§3.11, §4): the
+ * Which values a `match` leaves unhandled, and which of its cases can never run (§11.3, §11.1): the
  * usefulness algorithm over pattern matrices (Maranget, "Warnings for pattern matching", 2007).
  *
  * - Patterns are reduced to shapes first (shapes.ts): a constructor with its arguments, or
@@ -65,7 +65,7 @@ interface ArrayShape {
 
 export const anyShape: AnyShape = { kind: 'any' };
 
-/** The shape matching no value: of a pattern its part's type rules out (§3.11). */
+/** The shape matching no value: of a pattern its part's type rules out (§11.3). */
 export const nothingShape: Shape = { kind: 'or', alternatives: [] };
 
 /** The key of the constructor of arrays of `length` items, or `length` and more when `orMore`. */

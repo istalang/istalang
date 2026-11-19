@@ -1,12 +1,12 @@
 /**
  * What encloses a position, read from the nodes holding the placeholder: the body it runs in, the
- * scopes a label may name around it, and whether a transient may stand there (§3.4). All stop at the
+ * scopes a label may name around it, and whether a transient may stand there (§7.1). All stop at the
  * innermost function, since a `break`, an `await` or a `hold` can't reach past one.
  *
  * A function's header (its parameters' defaults) is code that runs but never waits: the callee
- * computes a default before its body starts (§3.3), as what builds a struct or a variant computes
- * its fields' (§3.1). So is a context constant's value, made at its first read (§3.4). Only a
- * top-level constant's value, computed when the program compiles (§3), runs in no code.
+ * computes a default before its body starts (§6.1), as what builds a struct or a variant computes
+ * its fields' (§5.2). So is a context constant's value, made at its first read (§7.1). Only a
+ * top-level constant's value, computed when the program compiles (§5.1), runs in no code.
  */
 
 import { isDefaultOf } from '../../../../../compiler/syntax/declarations/index.ts';

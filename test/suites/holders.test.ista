@@ -1,4 +1,4 @@
-# When holders let go (spec §3.3, §3.4, §3.15, §7): a `_` holds its part alone, an exit releases
+# When holders let go (spec §6.1, §7.1, §4.5, §16): a `_` holds its part alone, an exit releases
 # the temporaries of what it leaves, and a default's holds and temporaries end as its function's.
 # Each rule is its own function, and its test asserts the order things were disposed in.
 

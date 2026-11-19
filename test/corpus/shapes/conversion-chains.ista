@@ -1,9 +1,9 @@
 # outcome: "hi10 hi10 none | hello 10 | 1hi hi1"
 # A struct's value converted for the method a call chooses is converted after an optional chain
-# unwraps it (§2, §4), at the chain's start or past a link. A spread into a shared struct reads
+# unwraps it (§4.2, §10.4), at the chain's start or past a link. A spread into a shared struct reads
 # each field by name from the shape it spreads, whatever order the declaration lists them in
-# (§3.18), and a struct's spread into a generic literal infers its type arguments through the
-# conversion (§3.5).
+# (§5.4), and a struct's spread into a generic literal infers its type arguments through the
+# conversion (§8.1).
 
 import * as runtime from 'runtime'
 

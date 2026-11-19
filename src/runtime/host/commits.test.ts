@@ -1,5 +1,5 @@
 /**
- * Committing a segment (§5, commits.ts): a panicked segment never happened, so what it spawned
+ * Committing a segment (§14, commits.ts): a panicked segment never happened, so what it spawned
  * never starts and its log records never reach the host, while the call waiting on it hears its
  * panic.
  */

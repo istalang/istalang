@@ -13,6 +13,6 @@ npm run verify   # typecheck, lint, test, build
 
 ## Documentation
 
-- `docs/spec.md`: the language specification
+- `docs/spec/`: the language specification, one folder per chapter and one file per section
 - `docs/arch/architecture.md`: how the toolchain is organized
 - `AGENTS.md`: conventions for contributors, human or agent

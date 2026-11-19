@@ -1,6 +1,6 @@
 /**
  * Layout: blocks of lines, the bodies that follow a `:` (bodies.ts), and which line continues what
- * (spec §2, §4). Every decision to move past a line break is made here, and only here.
+ * (spec §2.1, §10.1). Every decision to move past a line break is made here, and only here.
  *
  * A block is a run of items, one or more per line, at one column. Statements, struct fields, enum
  * variants, trait members and match cases are all laid out this way, so one loop serves them all.
@@ -10,16 +10,16 @@
  * - shallower, but still deeper than the enclosing block: an inconsistent dedent, reported and
  *   kept in this block
  * - otherwise the block ends, and the enclosing construct carries on.
- * Within a line, the block's kind names what separates its items (§2): `;` between statements and
+ * Within a line, the block's kind names what separates its items (§2.1): `;` between statements and
  * a module's declarations, `,` between the items of every list (fields, variants, trait members,
  * constraint entries), and nothing between cases, which stand one per line. The other separator
  * is reported as misplaced and read as the right one, so one slip costs one diagnostic. A module
  * is the block at column 0, so its first line is held to that column too. Entries in braces
- * (`struct Req { id: Int, value: String }`) are the same items as a list instead (§2): `,` or a
+ * (`struct Req { id: Int, value: String }`) are the same items as a list instead (§2.1): `,` or a
  * line break separating two of them (item-breaks.ts), so an entry may span lines.
  *
  * `elif` and `else` continue an `if` on its line, or first on a later line at the column where the
- * `if`'s line starts (§4, continuations.ts). A dangling `else` therefore binds to the nearest `if`
+ * `if`'s line starts (§10.1, continuations.ts). A dangling `else` therefore binds to the nearest `if`
  * whose line it lines up with.
  *
  * Annotations are handled here, for every kind of item. One standing alone on its line waits for
@@ -28,7 +28,7 @@
  * an item starts the next. Where items can't carry annotations (match and select cases), an
  * annotation is reported and kept as an Invalid node.
  *
- * Docstrings are placed here too (§2): first in a documented body (bodies.ts) or a module, or on
+ * Docstrings are placed here too (§2.3): first in a documented body (bodies.ts) or a module, or on
  * the line right after a declaration without an indented body, deeper than the declaration. A
  * docstring starting any other item is reported.
  */
@@ -74,7 +74,7 @@ interface Lines<Item> {
   readonly items: Items<Item>;
   /** Whether its items head segments of their own (`ItemRules.headsSegments`). */
   readonly headedSegments: boolean;
-  /** Whether a separator stood between two items, which a block on one line needs (§4). */
+  /** Whether a separator stood between two items, which a block on one line needs (§10.1). */
   readonly separated: boolean;
 }
 
@@ -124,7 +124,7 @@ export function parseBlockBraces<Item extends SyntaxNode>(
 const annotatedItemOpeners: ReadonlySet<CursorKind> = new Set([annotationOpener]);
 
 /**
- * `{ a: Int, b: Int }`, or a variant's `(a: Int, b: Int)`: `rules` items as a list (§2), each with
+ * `{ a: Int, b: Int }`, or a variant's `(a: Int, b: Int)`: `rules` items as a list (§2.1), each with
  * its annotations; the cursor must be at `opener`.
  */
 export function parseItemEntries<Item extends SyntaxNode>(

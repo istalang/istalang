@@ -5,7 +5,7 @@
  * so these sit beside conformance without a cycle.
  *
  * A required field is met by a field of its name the type stores, of its type, or else by a getter
- * giving it (§3.10), chosen as a witness is and a witness of the constraint as its functions' are.
+ * giving it (§8.2), chosen as a witness is and a witness of the constraint as its functions' are.
  */
 
 import type { UseSite } from '../../contexts/use-site.ts';
@@ -49,7 +49,7 @@ export function lacks({ site, type, constraint }: Meeting, missing: string): Fai
 }
 
 /**
- * The getters meeting the fields `meeting`'s trait requires (§3.10), each the one `getterOf` finds
+ * The getters meeting the fields `meeting`'s trait requires (§8.2), each the one `getterOf` finds
  * where the type stores none of its type; the failure reported for the first it lacks.
  */
 export function fieldGetters(

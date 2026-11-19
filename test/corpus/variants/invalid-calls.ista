@@ -17,7 +17,7 @@
 # error: 5139 at 85:13
 # error: 5139 at 86:13
 # error: 5139 at 89:3
-# A variant is built only by its call (§3.11): braces after its name, `Ok{42}`, `Ok{v}`,
+# A variant is built only by its call (§5.3): braces after its name, `Ok{42}`, `Ok{v}`,
 # `Rejected{v}` or `Approved{1}`, name the call they mean, and leave no field missing and no type
 # argument to infer. A variant without fields takes no arguments, a call needs the arguments its
 # fields do, and a bare variant an expected enum. A call's written type arguments are counted

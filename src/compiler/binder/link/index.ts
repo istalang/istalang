@@ -1,18 +1,18 @@
 /**
- * Linking: what every module's bindings leave open, resolved across the program (§3.11, §3.13).
+ * Linking: what every module's bindings leave open, resolved across the program (§5.3, §13.1).
  *
  * - An import names an export of the module its path loaded. A private name (`_x`) is reported as
  *   private, anything else missing as not exported. `import *` binds every export
  *   (star-imports.ts), which a free name finds before the prelude's; a use it makes ambiguous is
  *   reported there.
- * - Only a test module may import `testing`, or another test module (§10).
+ * - Only a test module may import `testing`, or another test module (§18).
  * - The prelude is every module's outer scope. Reusing one of its names at the top level is an
  *   error, except for a function, declared or imported, which joins the prelude's overloads of its
  *   name, as a module's `fn add(left: Time, right: Duration)` joins the prelude's `add(Int, Float)`
- *   (§3.9).
+ *   (§10.2).
  * - A name still free after the prelude may be a variant that only the expected type identifies,
  *   if some enum of the program has a variant by that name. A called name may name functions only
- *   argument-dependent lookup finds (§3.13), so it denotes a function set with no overloads of its
+ *   argument-dependent lookup finds (§13.1), so it denotes a function set with no overloads of its
  *   own, and the checker reports it when lookup finds none. Anything else is reported with the
  *   reason its scopes noted, or as undeclared.
  * - A qualified name walks through modules and enums part by part, an alias of an enum as the enum
@@ -330,7 +330,7 @@ class Linker {
   }
 
   /**
-   * A name before a `.` that names imported or prelude functions: none of them can enclose it (§7).
+   * A name before a `.` that names imported or prelude functions: none of them can enclose it (§16).
    */
   #refuseFunctionHead(id: ModuleId, links: ModuleLinks, head: Identifier): void {
     const entity = this.entityOf(id, head);
@@ -356,7 +356,7 @@ class Linker {
       if (next === undefined) {
         // Outside an expression no check reads the parts before the last; in one, `x.y` reads a
         // value's member, which the checker reports. After a type, the parts are its associated
-        // types (§3.1), which the checker resolves too.
+        // types (§5.2), which the checker resolves too.
         const associated = role === 'type' && current !== undefined && namesType(current);
         if (
           current !== undefined &&
@@ -424,7 +424,7 @@ class Linker {
   }
 }
 
-/** Whether the enum `declaration` declares an associated type named as `part` (§3.1). */
+/** Whether the enum `declaration` declares an associated type named as `part` (§5.2). */
 function declaresAssociated(declaration: EnumDeclaration, part: Identifier): boolean {
   return declaration.associatedTypes.some((associated) => associated.name.text === part.text);
 }

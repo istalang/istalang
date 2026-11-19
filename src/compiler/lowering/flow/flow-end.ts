@@ -3,7 +3,7 @@
  * default's, a context constant's initializer), into a register, then going on past the flow. As a
  * return releases everything, an inline flow then lets go of everything it made but what its
  * `hold`s keep for the function, which the entry's return lets go of: once it has given its
- * value, so what that disposes may read a context constant made of it (§3.4).
+ * value, so what that disposes may read a context constant made of it (§7.1).
  */
 
 import type { Register } from '../../../definition/operands.ts';

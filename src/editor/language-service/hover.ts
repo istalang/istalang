@@ -8,10 +8,10 @@
  * `T.Data is Encodable` (`shownText`).
  *
  * A name is answered through the identifier query (checker denotation.ts), as going to its
- * definition is, so the two never disagree; a String literal naming a field as its key (§3.1),
+ * definition is, so the two never disagree; a String literal naming a field as its key (§5.2),
  * through the key query, as the field it names. A shorthand, `Pair{first}`, names a field and a
  * variable, and shows both. A function shows its signature, which spells its type with its
- * parameters' names, and so does a variant with fields, its constructor's (§3.11), before its enum;
+ * parameters' names, and so does a variant with fields, its constructor's (§5.3), before its enum;
  * a struct, an enum or a trait shows its declaration, then how the type reads where it is named,
  * unless the declaration's header reads so (hover-code.ts lays both out).
  * A call pattern's argument written by position shows the field it gives, as checking recorded it
@@ -68,7 +68,7 @@ interface Found extends Omit<Hover, 'links'> {
  *
  * Some nodes show as another (`showsAs`): `x->f` is written as a field of the dereference `x->`
  * (syntax: `Dereference`), but `->` reads a member as `.` does, so it shows the member read, never
- * the value behind the shared struct; a deferred call shows the call it defers (§3.14), its taker's
+ * the value behind the shared struct; a deferred call shows the call it defers (§6.5), its taker's
  * name the function it calls.
  */
 export function hoverAt(program: Program, module: ModuleId, offset: number): Hover | undefined {
@@ -104,7 +104,7 @@ function innermostHover(checked: CheckedModule, nodes: readonly SyntaxNode[]): F
 }
 
 /**
- * A call pattern's argument written by position (§3.11), its call pattern, and the nodes from it
+ * A call pattern's argument written by position (§11.3), its call pattern, and the nodes from it
  * to the one under the cursor.
  */
 interface PositionalArgument {
@@ -147,7 +147,7 @@ function byPosition({ kind }: PatternArgument): boolean {
 }
 
 /**
- * A call pattern's argument by position: the field it gives as checking recorded it (§3.11), as a
+ * A call pattern's argument by position: the field it gives as checking recorded it (§11.3), as a
  * named one's name shows it, then what the text under the cursor shows, inside the argument.
  */
 function argumentHover(
@@ -226,7 +226,7 @@ function isName(node: SyntaxNode): node is Identifier | StringLiteral {
   return node.kind === 'Identifier' || node.kind === 'StringLiteral';
 }
 
-/** What `name` denotes, as code: an identifier's denotations, or the field a key names (§3.1). */
+/** What `name` denotes, as code: an identifier's denotations, or the field a key names (§5.2). */
 function nameHover(
   { checker, module, tree }: CheckedModule,
   name: Identifier | StringLiteral,

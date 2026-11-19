@@ -1,5 +1,5 @@
 # outcome: "DRAFT!:9:false|a:b:a:2|true:true:true:true|1:called:true"
-# Literal types (§4): String, Int (including negative -1) and Bool (true | false) literals as types,
+# Literal types (§4.3): String, Int (including negative -1) and Bool (true | false) literals as types,
 # fitting their base type, agreeing on their base type when no expected type is given, comparing
 # with == and != when either side fits the other's type, and parsing a < 1 > (b) and a < A | B > (b)
 # as generic calls while (a < 1) > b is a comparison.

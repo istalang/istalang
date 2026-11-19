@@ -1,4 +1,4 @@
-# The inbox module (spec §6): `Inbox<T>`, an unbounded FIFO message queue built on a slot, and
+# The inbox module (spec §15.3): `Inbox<T>`, an unbounded FIFO message queue built on a slot, and
 # `Revertible<T>`, the holder of a message sent revertibly.
 #
 # Receivers wait on the slot itself: `receive()` is the slot's `take`, so the slot's queue gives
@@ -12,13 +12,13 @@
 # The inbox keeps each message's number beside its put, oldest first, to retract one. Puts are
 # served in order, so the ones served come first, and only the last of them can still be in the
 # slot: it is while the slot is full. A `select` that doesn't wait leaves what it asks about as it
-# was (§8), so asking whether a put was served (`_settles`) keeps it in the queue. Listing the
+# was (§15.4), so asking whether a put was served (`_settles`) keeps it in the queue. Listing the
 # messages takes them all out of the slot and queues them again, in one step, so no receiver sees
 # it. Segments run one at a time, so nothing else runs between reading the inbox's fields and
 # writing them back.
 #
 # Retracting a message removes it wherever it waits: in the queue by letting go of its put, which
-# a slot's queue drops (§7), in the slot by taking it out. Once received, a message is no longer
+# a slot's queue drops (§16), in the slot by taking it out. Once received, a message is no longer
 # anywhere, so retracting it changes nothing.
 
 struct Queued { number: Int, put: Future<Unit, "ista"> }
@@ -31,11 +31,11 @@ shared struct Inbox<T>:
   sent: Int = 0
 
 # A revertible message's holder: disposing it calls `retract`, which the queue that made it
-# supplies, so every queue, the host's included (§3.6), hands out this one type.
+# supplies, so every queue, the host's included (§17.2), hands out this one type.
 shared struct Revertible<T> { retract: ista fn() -> Unit }
 
 # A holder whose retraction lets go of `resource`, which disposes it: how a queue the host provides
-# hands out a revertible send, a disposable host type its host retracts (§3.6). It makes a
+# hands out a revertible send, a disposable host type its host retracts (§17.2). It makes a
 # `Revertible`, whose release runs ista code, so it is ista.
 ista fn Revertible.holding<T, R is Disposable>(resource: R) -> Revertible<T>:
   const held = new Shared<R?>{value: resource}
@@ -77,7 +77,7 @@ ista fn pending<T>(self: Inbox<T>) -> Array<T>:
   ]
   messages
 
-# Disposing an inbox (§6, §7) lets go of its fields, so the slot dies with the message in it, and
+# Disposing an inbox (§15.3, §16) lets go of its fields, so the slot dies with the message in it, and
 # the puts queued with theirs. Declaring `dispose` is what makes an inbox disposable, and so
 # something a `WeakRef` can watch.
 ista fn dispose<T>(self: Inbox<T>): ()
@@ -112,8 +112,8 @@ ista fn _retract<T>(inbox: WeakRef<Inbox<T>>, number: Int):
       drop _settles(box->slot.take())
     box->queued = [for each in queued if each.number != number: each]
 
-# Whether `operation` settled. One that didn't is as it was (§8), and one let go with the parameter
-# does nothing (§6), so a `take` that doesn't settle consumes nothing.
+# Whether `operation` settled. One that didn't is as it was (§15.4), and one let go with the parameter
+# does nothing (§15.2), so a `take` that doesn't settle consumes nothing.
 ista fn _settles<T>(operation: Future<T, "ista">) -> Bool:
   select:
     case operation: true

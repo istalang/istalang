@@ -1,5 +1,5 @@
 # The supplier form, generated from supplier.form.json, on the computed runtime: the features its
-# spec's §9 lists, each through what a view shows, what an event changes, and what validating a
+# spec's §17.3 lists, each through what a view shows, what an event changes, and what validating a
 # whole value gives. supplier-demo.ista runs it through the two live functions.
 
 import assertEq, Mock, mock, Suite, Test, test from 'testing'

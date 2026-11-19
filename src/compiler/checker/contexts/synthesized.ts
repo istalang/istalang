@@ -7,7 +7,7 @@
  *   could ask to mark, and is named as its sugar says.
  * - Each takes the span of the written code it stands for, so a report at it points there.
  * - A name one introduces is bound by the desugaring, to a declaration it chose (the prelude's
- *   `panic`, which a local one may shadow, §3.4) or a constant it declares; every phase reads it
+ *   `panic`, which a local one may shadow, §7.1) or a constant it declares; every phase reads it
  *   through the checker's bindings (`withSynthesizedNames`) as it reads a written one.
  */
 

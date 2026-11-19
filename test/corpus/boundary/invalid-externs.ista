@@ -4,7 +4,7 @@
 # error: 5101 at 24:19
 # error: 5101 at 26:14
 # error: 5101 at 28:21
-# What an extern the host implements takes and gives crosses as JSON (§3.6, §9): its parameters
+# What an extern the host implements takes and gives crosses as JSON (§17.2, §17.4): its parameters
 # must be Encodable, and its result, what a future it returns gives, and an extern constant
 # Decodable. A function, a handle and a type parameter not constrained so aren't, and JSON can't be
 # written back, so nothing is taken by '&'. A host handle crosses only when it is 'sendable' or a

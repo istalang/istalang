@@ -1,5 +1,5 @@
 /**
- * A chain of comparisons, `a < b <= c` (§3.9), is its links joined by `and`, each operand computed
+ * A chain of comparisons, `a < b <= c` (§10.2), is its links joined by `and`, each operand computed
  * once, in order, and none after a link that fails:
  * `{ const a' = a; const b' = b; a' < b' and { const c' = c; b' <= c' and c' < d } }`.
  *

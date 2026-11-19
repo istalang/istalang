@@ -1,5 +1,5 @@
 /**
- * What an `infer` variable carries (spec §3.17): a case's pattern is a type, so its type arguments
+ * What an `infer` variable carries (spec §4.6): a case's pattern is a type, so its type arguments
  * meet their parameters' constraints, and an `infer` variable standing at a constrained parameter
  * carries that parameter's constraints into the case's type, beside any it is written with.
  */

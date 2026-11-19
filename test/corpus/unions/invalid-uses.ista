@@ -10,7 +10,7 @@
 # error: 5101 at 51:7
 # error: 5101 at 52:7
 # error: 5130 at 53:22
-# Using unions, JSON codecs, and member type parameters (§1, §6, §7): no direct member access,
+# Using unions, JSON codecs, and member type parameters (§1, §4.2, §16): no direct member access,
 # non-object-safe traits and non-literal JSON codecs refused, Sendable/must-use enforced, and T in U
 # checks.
 import * as json from 'json'

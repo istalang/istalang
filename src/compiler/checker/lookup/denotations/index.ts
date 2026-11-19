@@ -113,7 +113,7 @@ const chosenIn: Handlers<NameSite, NameHolder, [], readonly Denotation[] | undef
       return calleeDenotations(site, call);
     }
     // Type arguments written after the name make the value: a function the checker resolved, or
-    // a struct without fields of that instance (§3.1).
+    // a struct without fields of that instance (§5.2).
     const type = site.body?.typeOf(node);
     return namedValueAt(site, node, type) ?? named(site, type);
   },
@@ -159,7 +159,7 @@ function fieldDenotation(field: FieldMember | undefined): readonly Denotation[] 
 }
 
 /**
- * A member: a field read, a getter read (§3.1), a method, a static function or a namespace's, or a
+ * A member: a field read, a getter read (§5.2), a method, a static function or a namespace's, or a
  * qualified part.
  */
 function memberDenotations(site: NameSite, access: MemberAccess): readonly Denotation[] {
@@ -188,9 +188,9 @@ function memberDenotations(site: NameSite, access: MemberAccess): readonly Denot
 }
 
 /**
- * The associated type `type` is (§3.1): opaque, or a known type's own, written through it, with
+ * The associated type `type` is (§5.2): opaque, or a known type's own, written through it, with
  * what declares it: its type's own, or every requirement of it among the traits it meets; in a
- * field loop's body, where a name joins what each pass named (§4), each pass's; none for any other
+ * field loop's body, where a name joins what each pass named (§11.2), each pass's; none for any other
  * type.
  */
 function associatedNamed(checker: CheckerContext, type: Type | undefined): readonly Denotation[] {
@@ -211,7 +211,7 @@ function associatedNamed(checker: CheckerContext, type: Type | undefined): reado
 /**
  * What a call's callee denotes: the function the call resolved to. A callee naming a type makes a
  * conversion, `T(x)`, so it denotes the type too, beside the function converting. A variant called,
- * with or without fields, is of each enum type the call made (§3.11).
+ * with or without fields, is of each enum type the call made (§5.3).
  */
 function calleeDenotations(site: NameSite, call: CallingNode): readonly Denotation[] {
   const entity = site.checker.bindings.entityOf(site.module, site.name);
@@ -229,7 +229,7 @@ function calleeDenotations(site: NameSite, call: CallingNode): readonly Denotati
 }
 
 /**
- * The function a `hold` holds until it ends, naming it (§7): checking records the scope a label
+ * The function a `hold` holds until it ends, naming it (§16): checking records the scope a label
  * names, so a label it recorded none for names the function holding the `hold`, when so named.
  */
 function heldFunction(site: NameSite, hold: Hold): readonly Denotation[] {
@@ -252,8 +252,8 @@ function madeTypes({ body }: NameSite, call: CallingNode): readonly (Type | unde
 
 /**
  * The parameter a named argument names, of each function its call resolved to; of a variant's
- * constructor, the field it gives, of each enum type the call made (§3.11). `holders` hold the
- * argument, its call first, which a deferred call makes where it is its taker (§3.14).
+ * constructor, the field it gives, of each enum type the call made (§5.3). `holders` hold the
+ * argument, its call first, which a deferred call makes where it is its taker (§6.5).
  */
 function parameterNamed(site: NameSite, holders: readonly SyntaxNode[]): readonly Denotation[] {
   const { checker, name } = site;

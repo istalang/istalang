@@ -1,12 +1,12 @@
 /**
- * The naming conventions (§2, §3.1): PascalCase for types, camelCase for values, functions and
- * fields. A leading `_` (a private top-level name, §3.13) is not part of the case, and a lone `_`
+ * The naming conventions (§4.2, §5.2): PascalCase for types, camelCase for values, functions and
+ * fields. A leading `_` (a private top-level name, §13.1) is not part of the case, and a lone `_`
  * is the unnamed variable. The built-in types' names are taken: every scope sees them, so a
  * declaration shadowing one would change what `Int` means in a module unnoticed.
  *
- * Case also decides what a bare name in a pattern does (§3.11): a camelCase name binds a new
+ * Case also decides what a bare name in a pattern does (§11.3): a camelCase name binds a new
  * variable, a PascalCase one refers to a variant or a type; and whether an expression's `<…>` may
- * hold type arguments (§3.5), whose names are types'. All these questions read the same first
+ * hold type arguments (§8.1), whose names are types'. All these questions read the same first
  * letter, so they share this module.
  */
 
@@ -28,7 +28,7 @@ export function followsConvention(name: string, convention: Convention): boolean
 const builtInTypeNames: ReadonlySet<string> = new Set([...primitiveNames, selfType]);
 
 /**
- * Whether `name` is a built-in type's, which no declaration takes (§2): a primitive's or `Self`.
+ * Whether `name` is a built-in type's, which no declaration takes (§2.2): a primitive's or `Self`.
  */
 export function isBuiltInTypeName(name: string): boolean {
   return builtInTypeNames.has(name);
@@ -52,7 +52,7 @@ export function bindsInPattern(name: string): boolean {
   return !casedAsType(name);
 }
 
-/** Whether a top-level name is private to its module, which never exports it (§3.13). */
+/** Whether a top-level name is private to its module, which never exports it (§13.1). */
 export function isPrivate(name: string): boolean {
   return name.startsWith('_');
 }

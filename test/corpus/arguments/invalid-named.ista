@@ -5,7 +5,7 @@
 # error: 5118 at 21:15
 # error: 5122 at 22:14
 # A named argument must name a parameter, once, and every parameter without a default must be
-# given; a method's self is given before the dot, and a function value takes no names (§3.3).
+# given; a method's self is given before the dot, and a function value takes no names (§6.1).
 fn f(a: Int, b: Int = 2) -> Int: a + b
 
 struct S { n: Int }

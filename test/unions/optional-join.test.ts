@@ -1,5 +1,5 @@
 /**
- * End-to-end and behavioural verification of the optional join (docs/spec.md §2, §4;
+ * End-to-end and behavioural verification of the optional join (docs/spec/ §4.2, §10.4;
  * docs/work/done/variance-inference/design.md §5): where several producers take one type and none is
  * expected, values that may be `none` agree on the optional of what the others agree on, in any
  * order, each wrapped into it (`if`, `match`, `select`, function and lambda returns, array and map
@@ -11,7 +11,7 @@ import { describe, expect, it } from 'vitest';
 import { checkerDiagnostics } from '../../src/compiler/checker/diagnostics/index.ts';
 import { codesOf, hoverCodeAt, runMain, spelledTypeOf } from '../written-types.test-kit.ts';
 
-describe('optional join across branching constructs and returns (§2, §4)', () => {
+describe('optional join across branching constructs and returns (§4.2, §10.1)', () => {
   it('joins `T` and `none` into `T?` in `if`, `match`, and `select` in any order, wrapping values at runtime', async () => {
     expect(
       await runMain(
@@ -115,7 +115,7 @@ describe('optional join across branching constructs and returns (§2, §4)', () 
   });
 });
 
-describe('optional join in collections, spreads, and field comprehensions (§2, §4)', () => {
+describe('optional join in collections, spreads, and field comprehensions (§3.3, §10.5)', () => {
   it('joins items, keys, and values with `none` in array, map, indented, and top-level `const` literals', async () => {
     const decls = [
       'const topArr1 = [1, none]',
@@ -249,7 +249,7 @@ describe('optional join in collections, spreads, and field comprehensions (§2, 
   });
 });
 
-describe('optional-joined expressions passed as call arguments (§2, §3.5)', () => {
+describe('optional-joined expressions passed as call arguments (§4.2, §8.1)', () => {
   it('passes optional-joined branches and collection literals to generic functions in any order', async () => {
     const decls = [
       "import * as json from 'json'",
@@ -282,7 +282,7 @@ describe('optional-joined expressions passed as call arguments (§2, §3.5)', ()
   });
 });
 
-describe('refusal of non-optional union inference and mismatched producers (§2, §4)', () => {
+describe('refusal of non-optional union inference and mismatched producers (§4.2, §4.2)', () => {
   it('never infers a union of non-`None` types and reports only the disagreeing producer against `T?`', () => {
     expect(
       codesOf(
@@ -309,7 +309,7 @@ describe('refusal of non-optional union inference and mismatched producers (§2,
     ]);
   });
 
-  it("widens a map spread's pairs through the literal, on either side of a `none` (§3.5)", async () => {
+  it("widens a map spread's pairs through the literal, on either side of a `none` (§8.1)", async () => {
     expect(
       await runMain(
         'String',

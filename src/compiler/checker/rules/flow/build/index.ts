@@ -4,9 +4,9 @@
  * asked for (`flowsOf`), and keeps them; a body checked again is a new body, with new flows.
  *
  * Every expression is built the same way here, whatever its kind:
- * - An operation that meets a value of type `Never` runs the operands before it and stops (§2);
+ * - An operation that meets a value of type `Never` runs the operands before it and stops (§4.1);
  *   its value, past the stop, is one no operation computes.
- * - The outermost link of an optional chain (§4) opens the chain: a link stepping through an
+ * - The outermost link of an optional chain (§10.4) opens the chain: a link stepping through an
  *   optional goes to the chain's end with `none` where it meets one (chains.ts).
  * - Its value is a temporary of its own node, or, for a node standing for another (parentheses, a
  *   block expression, a sugar), that other's; where checking fitted it to the type expected there
@@ -103,7 +103,7 @@ export function flowsOf(
 }
 
 /**
- * The flow of `node`, a lambda or local function of `inputs.body` (§3.14): the values it captures,
+ * The flow of `node`, a lambda or local function of `inputs.body` (§6.4): the values it captures,
  * its own name as the closure it runs as, its parameters, and its body.
  */
 function nestedFlow(inputs: FlowInputs, node: NestedFunction): FlowFunction {
@@ -166,7 +166,7 @@ const constructs: Constructs = {
   functionBlock: blockValue,
 };
 
-/** `node`'s statements, and the value its tail gives, or `Unit`, fitted as checked (§4). */
+/** `node`'s statements, and the value its tail gives, or `Unit`, fitted as checked (§11.1). */
 function blockValue(builder: FlowBuilder, node: Block): ValueId {
   const tail = tailExpressionOf(node);
   const leading = tail === undefined ? node.statements : node.statements.slice(0, -1);

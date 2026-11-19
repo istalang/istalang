@@ -4,7 +4,7 @@
  * origin the match is of, and each as its variable is filled (fillings.ts): a pack only by what
  * stands for one, a member variable only by a type of one member of its union. A receiver's match
  * binds exactly; a written literal's base bound gives its literal type, fresh; a struct literal's
- * shape builds what it settles to (§3.1). A bound that disagrees notes its variable, `Never` and
+ * shape builds what it settles to (§5.2). A bound that disagrees notes its variable, `Never` and
  * the error type are noted where they meet one.
  */
 

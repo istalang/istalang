@@ -13,7 +13,7 @@ function nonZero(by: bigint): bigint {
   return by;
 }
 
-/** `dividend` divided by `by`, rounded toward negative infinity; by zero panics (§3.12). */
+/** `dividend` divided by `by`, rounded toward negative infinity; by zero panics (§12). */
 function floorDivide(dividend: bigint, by: bigint): bigint {
   const quotient = dividend / nonZero(by);
   const inexact = quotient * by !== dividend;
@@ -51,7 +51,7 @@ function shiftRight(value: bigint, count: bigint): bigint {
 // biome-ignore-end lint/suspicious/noBitwiseOperators: these are the language's shift operators.
 
 /**
- * A comparison's result as the int `compare` returns (§3.9). One int can't say "unordered", so a
+ * A comparison's result as the int `compare` returns (§10.2). One int can't say "unordered", so a
  * NaN compares as equal; `==` alone follows IEEE 754 and finds NaN equal to nothing.
  */
 function floatCompare(left: number, right: number): bigint {

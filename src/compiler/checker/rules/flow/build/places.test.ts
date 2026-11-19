@@ -1,5 +1,5 @@
 /**
- * Where a place is written (§3.7, §3.9): a part of an element is written into the element as it
+ * Where a place is written (§7.3, §10.2): a part of an element is written into the element as it
  * stands when the write happens, read anew then, so what changed another part meanwhile stays.
  */
 

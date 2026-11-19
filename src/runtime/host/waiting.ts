@@ -1,5 +1,5 @@
 /**
- * Where an instance waits (§10): each parked execution's function, the waypoint the program named
+ * Where an instance waits (§18): each parked execution's function, the waypoint the program named
  * there, if any, and the source of its await. A host inspecting an instance reads its last commit;
  * a commit that fails names the await it would have committed at.
  */

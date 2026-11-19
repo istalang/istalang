@@ -1,4 +1,4 @@
-# The fanout module (spec §3.8): one stream of messages that every subscriber reads.
+# The fanout module (spec §19.2): one stream of messages that every subscriber reads.
 #
 # The stream is a chain of slots, each holding a message and the slot after it. The bus holds the
 # empty slot at the end, which the next message fills. A subscriber walks the chain with `read`,
@@ -7,7 +7,7 @@
 # keeps the bus alive. Once the bus is disposed it reaches the end of the chain, since nothing can
 # fill it any more, and ends there: it prefers the next message to the bus's disposal.
 #
-# A revertible message carries a flag its holder sets when released (§6). A subscriber skips a
+# A revertible message carries a flag its holder sets when released (§15.3). A subscriber skips a
 # message flagged by the time it reaches it, while one that read it before keeps it, since a
 # received message is final.
 
@@ -37,7 +37,7 @@ ista fn sendRevertible<M>(self: Bus<M>, message: M) -> Revertible<M>:
 ista fn subscribe<M>(self: Bus<M>, handler: ista async fn(M) -> Unit) -> Future<Unit, "ista">:
   _follow(self->_end, WeakRef(self), handler)
 
-# Disposing a bus (§7) lets go of the end of its chain. Declaring `dispose` is what makes a bus
+# Disposing a bus (§16) lets go of the end of its chain. Declaring `dispose` is what makes a bus
 # disposable, and so something its subscriptions can watch.
 ista fn dispose<M>(self: Bus<M>): ()
 

@@ -1,6 +1,6 @@
 # outcome: ["negative","fail","pass","pass","great"]
 # A range pattern matches an int between its bounds, either open: `..` leaves its end out, `..=`
-# takes it in; it acts as a guard, so the match still ends with `case _` (§3.11).
+# takes it in; it acts as a guard, so the match still ends with `case _` (§11.3).
 
 import * as runtime from 'runtime'
 

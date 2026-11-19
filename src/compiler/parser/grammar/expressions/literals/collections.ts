@@ -1,12 +1,12 @@
 /**
- * Bracket literals (§2, §4): arrays, maps and comprehensions.
+ * Bracket literals (§3.3, §10.5): arrays, maps and comprehensions.
  *
  * The syntax alone decides between array and map: a `key: value` entry, or `[:]`, makes a map. The
  * checker decides what the literal builds, since a map literal also builds any `IndexAssignable`
  * type the context expects, and `[...m]` may spread a map. The first token inside the brackets
  * tells the three shapes apart: `for` starts a comprehension, `:` before `]` is the empty map, and
  * anything else starts a list of elements or entries. A comprehension whose `in` a `...` follows
- * runs over a struct's fields (§4), as a field loop does.
+ * runs over a struct's fields (§10.5), as a field loop does.
  */
 
 import type {

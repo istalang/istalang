@@ -3,8 +3,8 @@
 # error: 5644 at 33:9
 # error: 5644 at 34:18
 # error: 5644 at 35:13
-# spawn (§9) takes a sendable function giving the new instance's outcome, which a deferred call
-# gives it (§3.14): `spawn` of no call gives nothing to run. What the call computes now is copied
+# spawn (§17.1) takes a sendable function giving the new instance's outcome, which a deferred call
+# gives it (§6.5): `spawn` of no call gives nothing to run. What the call computes now is copied
 # into the new instance, so it can't pass a reference, nor capture anything unsendable, a value of a
 # plain function type or a receiver included. An extern and a function a constraint requires are
 # called in the new instance as anywhere.

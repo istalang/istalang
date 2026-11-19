@@ -1,5 +1,5 @@
 /**
- * What an importer sees of another module by name (§3.13, §10): its export, or, for a test module,
+ * What an importer sees of another module by name (§13.1, §18): its export, or, for a test module,
  * its private declaration too, so a test can mock what a module keeps private. A name it doesn't
  * see is reported on the importer's side, as private or as not exported.
  */

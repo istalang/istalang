@@ -1,5 +1,5 @@
 /**
- * Types as messages spell them (§2): each reads back as the type it names, so a function type
+ * Types as messages spell them (§4.1): each reads back as the type it names, so a function type
  * keeps the parentheses a `?` after it needs, and drops those its result doesn't.
  */
 
@@ -43,7 +43,7 @@ describe('typeText', () => {
     expect(spelled(written)).toBe(written);
   });
 
-  it('spells the value behind a shared struct as the shape of its fields (§3.18)', () => {
+  it('spells the value behind a shared struct as the shape of its fields (§5.4)', () => {
     const program = stdProgramOf({
       'main.ista': [
         'shared struct Counter { count: Int }',
@@ -67,7 +67,7 @@ describe('typeText', () => {
     expect(typeAt(d)).toBe('struct { key: Int }');
   });
 
-  describe('a type written through an alias (§3.17)', () => {
+  describe('a type written through an alias (§4.6)', () => {
     const aliases = [
       'struct Pair<A, B> { first: A, second: B }',
       'type Cents = Int',

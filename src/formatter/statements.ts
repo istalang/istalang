@@ -1,5 +1,5 @@
 /**
- * Statements and blocks (spec §3.4, §4, §7). A block's statements stand one per line: `;` parts
+ * Statements and blocks (spec §7.1, §10.1, §16). A block's statements stand one per line: `;` parts
  * statements only inside braces (expressions/branches.ts), so a block never prints them on one
  * line.
  *

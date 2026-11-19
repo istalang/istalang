@@ -1,5 +1,5 @@
 /**
- * Which type parameters a function's code uses only opaquely (§3.5): passed on, built into tuples,
+ * Which type parameters a function's code uses only opaquely (§8.1): passed on, built into tuples,
  * functions and declared types laid out alike for every type, or given to a callee using them so;
  * never told apart by a union, a constraint, a test, or a callee or native that reads them.
  */

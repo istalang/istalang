@@ -1,5 +1,5 @@
 /**
- * The types an editor shows inline where source leaves them out (§3.4, §3.10, §3.14): after each
+ * The types an editor shows inline where source leaves them out (§7.1, §8.2, §6.4): after each
  * name a `let` or `const` declares with no written type, destructured ones included; after each
  * name a `for` binds; and after each parameter of a lambda written without its type. Each is the
  * type the identifier query gives the declaring name, the one a hover there shows.

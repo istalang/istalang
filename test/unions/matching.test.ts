@@ -90,7 +90,7 @@ describe('matching on unions and literal types (§3, §5)', () => {
       '    case String as ‸s: s',
       '    case Int as n: String(n)',
     ];
-    // A union flattens the aliases written in it (§2), so the members `case String` selects print
+    // A union flattens the aliases written in it (§4.2), so the members `case String` selects print
     // as the literals they are, not as the alias `Status` they came from.
     expect(hoverCodeAt(...lines)).toEqual(['(variable) s: "draft" | "sent" | "failed"']);
     expect(

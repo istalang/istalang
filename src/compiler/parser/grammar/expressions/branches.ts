@@ -1,12 +1,12 @@
 /**
- * Expressions with bodies (§4, §8): `if`, `match`, `select`, and `{…}` blocks.
+ * Expressions with bodies (§11.1, §15.4): `if`, `match`, `select`, and `{…}` blocks.
  *
  * Each body follows layout (layout/): one statement on the construct's line, or an indented
- * block. Layout also decides when `elif` and `else` continue an `if` (§4), which covers a
+ * block. Layout also decides when `elif` and `else` continue an `if` (§10.1), which covers a
  * multi-line `if` used as a value, whose `else` lines up with the statement rather than the `if`.
  *
  * A `{…}` block in an expression has layout inside it, even within parentheses, so a lambda's
- * block can span lines as a call argument. Written on one line, it needs a `;` (§4): braces around
+ * block can span lines as a call argument. Written on one line, it needs a `;` (§10.1): braces around
  * one expression add nothing.
  *
  * `if` and `select` end the same way, with an optional ElseClause. In a select, `else` is one of
@@ -80,14 +80,14 @@ const matchCaseRules: ItemRules<MatchCase> = {
   annotate: undefined,
 };
 
-/** `select:`, which never waits (§8). */
+/** `select:`, which never waits (§15.4). */
 export function parseSelect(parser: Parser): Expression {
   return parseSelectFrom(parser, parser.cursor.token.span.start, false);
 }
 
 /**
  * The `select` the cursor stands at, starting at `start`; `awaits` when `await` came before it,
- * making it the select that waits (§8).
+ * making it the select that waits (§15.4).
  */
 export function parseSelectFrom(parser: Parser, start: number, awaits: boolean): Expression {
   parser.cursor.advance();

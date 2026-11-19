@@ -35,7 +35,7 @@ describe('stdlibLoader', () => {
     );
   });
 
-  it('never answers the prelude, which no import names (§3.13)', () => {
+  it('never answers the prelude, which no import names (§13.1)', () => {
     expect(stdlibLoader()('prelude', importer)).toBeUndefined();
     expect(stdlibLoader({ prelude: '' })('prelude', importer)).toBeUndefined();
   });

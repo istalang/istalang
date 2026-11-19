@@ -1,5 +1,5 @@
 # outcome: "main went on | disposed lease | job 3"
-# A `select` lets go of its losers' holdings when the winner resumes (§8): main decides the worker's
+# A `select` lets go of its losers' holdings when the winner resumes (§15.4): main decides the worker's
 # wait and goes on before the worker resumes, and only then does the losing call let go of its lease.
 
 import * as time from 'time'

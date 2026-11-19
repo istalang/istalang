@@ -1,5 +1,5 @@
 /**
- * Control (§4, §8):
+ * Control (§11.1, §15.4):
  *
  * - `if`: each condition runs where the ones before failed, then its body or the next condition; a
  *   condition its operands' types decide (`decidedOf`) runs alone, ruling its body out when false
@@ -8,14 +8,14 @@
  *   case's scope.
  * - `and`, `or` and `??` run their right side only sometimes. `e?` tests `e` for `Ok`, going on
  *   with its value, else returning a new `Err` of the function's own `Result`, holding `e`'s
- *   error converted to the function's error type, as checking fits it (§3.12).
+ *   error converted to the function's error type, as checking fits it (§12).
  * - A comparison its operands' types decide is that constant, its operands still run; any other is
  *   the built-in `==`, or what the `compare` or `includes` checking made gives, related or negated.
  * - `await` hands what it waits on to its `onAwait`, suspends, and gives what it settled with. A
  *   `select` evaluates every case's awaitable, each holding the temporaries it computed, which a
  *   case losing releases and the scope around the `select` releases otherwise, and hands each to
  *   its `onAwait`; an awaiting one suspends on them all, one that doesn't await never suspends
- *   (§8). Then one case's body runs, what its own future gave bound, or the `else`.
+ *   (§15.4). Then one case's body runs, what its own future gave bound, or the `else`.
  *
  * A construct giving a value gives it through a temporary each path copies its value into.
  */
@@ -80,7 +80,7 @@ export function ifFlow(builder: FlowBuilder, node: If): ValueId {
 }
 
 /**
- * A scope entered through a condition that may not hold (§3.4, §7): an `if`'s branch, a `while`'s
+ * A scope entered through a condition that may not hold (§7.1, §16): an `if`'s branch, a `while`'s
  * pass, a guarded case.
  */
 interface Guarded {
@@ -157,7 +157,7 @@ export function matchFlow(builder: FlowBuilder, node: Match): ValueId {
   return given.result;
 }
 
-/** `x is P`: whether `x` matches `P`, `false` where its type rules the match out (§4). */
+/** `x is P`: whether `x` matches `P`, `false` where its type rules the match out (§11.1). */
 export function isFlow(builder: FlowBuilder, node: Is): ValueId {
   const subject = builder.expression(node.subject);
   const result = builder.temporaryOf(node);

@@ -4,7 +4,7 @@
  *
  * Every app that compiles (each CLI command, the language server) loads its program here, so they
  * all agree on where sources are and on which loaders apply: the project's files and the std
- * modules, with the prelude (§3.13). The roots an app names are read with the same file loader its
+ * modules, with the prelude (§13.1). The roots an app names are read with the same file loader its
  * imports use, so "no such file" has one meaning.
  */
 
@@ -16,7 +16,7 @@ import { fileLoader, locateFile, sourceExtension } from './file-loader.ts';
 import { diskFiles, type ProjectFiles, statOnDisk } from './project-files.ts';
 
 /**
- * Never project sources: dependencies at any depth, and the project's vendored packages (§11).
+ * Never project sources: dependencies at any depth, and the project's vendored packages (§13.2).
  * Hidden directories are skipped by the glob itself.
  */
 const excludedDirectories = ['**/node_modules', 'vendor'];

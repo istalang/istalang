@@ -1,8 +1,8 @@
 /**
- * Type `match`es as written (§3.17), what only resolving a written type decides:
+ * Type `match`es as written (§4.6), what only resolving a written type decides:
  *
  * - Inside a type `match`, a use of a declaration whose body is a type `match`, an alias or an
- *   associated type (§3.1), stays unreduced (type-match.ts): a case's type is resolved once with
+ *   associated type (§5.2), stays unreduced (type-match.ts): a case's type is resolved once with
  *   its alias's parameters open, and a use substitutes them.
  * - `infer` stands only in a case's pattern; anywhere else it is reported.
  * - A use no case matches is the error type carrying it: the check noted for its instantiation
@@ -101,13 +101,13 @@ export function asWrittenInMatch(
 
 /**
  * Whether `node` stands in a type `match` case's pattern, which is matched, not used: a type, so
- * its arguments meet their constraints, but nothing there is reduced (§3.17).
+ * its arguments meet their constraints, but nothing there is reduced (§4.6).
  */
 export function inCasePattern(written: Written, node: SyntaxNode): boolean {
   return matchPlaceOf(treeOf(written), node) === 'pattern';
 }
 
-/** `infer T` (§3.17): its type variable, in a case's pattern; anywhere else, reported. */
+/** `infer T` (§4.6): its type variable, in a case's pattern; anywhere else, reported. */
 export function inferWritten(written: Written, node: InferType): Type {
   if (inCasePattern(written, node)) {
     return { kind: 'parameter', declaration: node.parameter };
@@ -116,7 +116,7 @@ export function inferWritten(written: Written, node: InferType): Type {
   return errorType;
 }
 
-/** Whether `declaration`'s body is a type `match` (§3.17). */
+/** Whether `declaration`'s body is a type `match` (§4.6). */
 function isTypeMatchBodied(declaration: AliasDeclaration): boolean {
   return declaration.type.kind === 'TypeMatch';
 }

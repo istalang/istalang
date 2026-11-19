@@ -1,5 +1,5 @@
 /**
- * A type `match` given a known subject always reduces (§3.17): each case's pattern matches it or
+ * A type `match` given a known subject always reduces (§4.6): each case's pattern matches it or
  * fails, never leaving the use waiting, so a known use is never a type lowering would meet
  * unreduced. A union pattern's members holding variables (`List<infer T>?` inside a type, a
  * recursive alias's members `Tree<infer T>` unfolds to) each take a member of the subject's, and a

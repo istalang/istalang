@@ -1,6 +1,6 @@
-# The lifetimes module (spec §3.8, §3.16): what the std's natives hold and keep, which no code shows
-# the analysis of lifetimes (§7). Both annotations stand only on the std's declarations, since a host
-# keeps no language values (§9).
+# The lifetimes module (spec §19.2, §5.5): what the std's natives hold and keep, which no code shows
+# the analysis of lifetimes (§16). Both annotations stand only on the std's declarations, since a host
+# keeps no language values (§17.3).
 
 # On an extern struct: a value of it holds what a value of `T` holds, a tuple listing several types
 # and `()` none. Without it, a value holds its type arguments.

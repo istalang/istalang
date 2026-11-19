@@ -1,5 +1,5 @@
 /**
- * A call into an instance holds what its call gave until it is answered (§7, §9): any invocation
+ * A call into an instance holds what its call gave until it is answered (§16, §17.1): any invocation
  * but the root lets go of it once told, while the root's answer keeps it to finish the instance with.
  */
 

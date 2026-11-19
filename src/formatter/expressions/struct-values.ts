@@ -1,5 +1,5 @@
 /**
- * A struct value where an indented value may open (spec §2): after the `=` of a `const`, a `let`,
+ * A struct value where an indented value may open (spec §3.2): after the `=` of a `const`, a `let`,
  * an assignment or a struct field's default, after `return`, after an entry's `:` or an item's
  * `-`. There the formatter picks the form by width, whichever was written: braces,
  * `Point{x: 1, y: 2}`, when the line fits a compressed form's width (../layout/compact.ts), else
@@ -8,7 +8,7 @@
  * - A literal in braces moves only where its parent's position allows: one in brackets, in a body,
  *   or under a literal that keeps its braces stays in braces, broken across lines when long.
  * - Only what both forms can say moves: named fields, a spread first, a struct comprehension last.
- *   A single field given without its name keeps its braces (§2), and a value with a comment in it,
+ *   A single field given without its name keeps its braces (§3.2), and a value with a comment in it,
  *   right before it or after its last line, or a blank line between its entries keeps the form it
  *   was written in.
  * - `struct{…}` names no type, so its indented form opens on the lines below, with nothing after

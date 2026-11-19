@@ -1,6 +1,6 @@
 /**
- * Postfix forms (§3.9): calls with type arguments (§3.5), a name given type arguments as a value
- * (§3.14), `&` and spread arguments (§3.7, §2), indexing and slicing, member access, `?.`, `->`
+ * Postfix forms (§10.2): calls with type arguments (§8.1), a name given type arguments as a value
+ * (§6.4), `&` and spread arguments (§7.3, §3.1), indexing and slicing, member access, `?.`, `->`
  * and `?`.
  */
 
@@ -30,7 +30,7 @@ describe('calls', () => {
     expect(dumpClean('expression', text)).toBe(tree);
   });
 
-  it("reports '&' on part of an argument, or outside a call (§3.7)", () => {
+  it("reports '&' on part of an argument, or outside a call (§7.3)", () => {
     const { misplacedReference } = parserDiagnostics;
     expect(reported('expression', 'f(&a + b)')).toEqual(
       reportedOnce(misplacedReference.code, '&a'),
@@ -47,7 +47,7 @@ describe('calls', () => {
     ['f(&xs?.[0])', 'xs?.[0]'],
     ['f(&t?.0)', 't?.0'],
     ['f(&a?.b->c)', 'a?.b->c'],
-  ])("reports '&' passing what is no place, %s (§3.7)", (text, spanText) => {
+  ])("reports '&' passing what is no place, %s (§7.3)", (text, spanText) => {
     const { referenceNotPlace } = parserDiagnostics;
     expect(reported('expression', text)).toEqual(reportedOnce(referenceNotPlace.code, spanText));
   });
@@ -63,11 +63,11 @@ describe('calls', () => {
 const valueSpelling = /^[a-z][a-zA-Z0-9]{0,4}$/u;
 const typeSpelling = /^[A-Z][a-zA-Z0-9]{0,4}$/u;
 
-/** Names spelled as a variable's, none a keyword, and as a type's (§2). */
+/** Names spelled as a variable's, none a keyword, and as a type's (§2.2). */
 const valueName = fc.stringMatching(valueSpelling).filter((name) => !isKeyword(name));
 const typeName = fc.stringMatching(typeSpelling);
 
-describe('type arguments (§3.5)', () => {
+describe('type arguments (§8.1)', () => {
   it.each([
     [
       'swap<Int, String>(p)',
@@ -248,7 +248,7 @@ describe('indexing, members and postfix operators', () => {
   });
 });
 
-describe('tuple elements (§3.15)', () => {
+describe('tuple elements (§4.5)', () => {
   it.each([
     ['t.0', '(TupleElement t 0)'],
     ['t.12', '(TupleElement t 12)'],

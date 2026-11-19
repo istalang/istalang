@@ -1,5 +1,5 @@
 /**
- * The host values an instance holds (§7, §9): one object per payload while it is held, so a host
+ * The host values an instance holds (§16, §17.2): one object per payload while it is held, so a host
  * value it got from a call compares equal to itself as it comes back. A disposed one is forgotten,
  * its host releasing it through its type's `dispose` (disposal.ts).
  */

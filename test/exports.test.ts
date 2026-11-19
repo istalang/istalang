@@ -1,5 +1,5 @@
 /**
- * What the package exports to hosts (spec §9): every subpath in package.json's `exports` ships both
+ * What the package exports to hosts (spec §17.3): every subpath in package.json's `exports` ships both
  * its JavaScript and its declarations, and the JavaScript has every value its declarations name,
  * so a host compiling against the declarations finds them at run time.
  */

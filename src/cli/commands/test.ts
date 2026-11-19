@@ -1,5 +1,5 @@
 /**
- * `ista test [paths…]` (§10): compile the test modules under the given files and directories, or
+ * `ista test [paths…]` (§18): compile the test modules under the given files and directories, or
  * under the project root without any, into one program, and run each test of every `@Suite`
  * function in a fresh instance on a fresh runtime (runtime/testing/). Nothing runs unless the
  * whole program checks clean; diagnostics go to the error stream as `check` renders them.
@@ -34,7 +34,7 @@ interface TestOptions {
   readonly timeout: string;
 }
 
-/** How long a test may run by default, in milliseconds (§10). */
+/** How long a test may run by default, in milliseconds (§18). */
 const defaultTimeout = '5000';
 
 /** A `--timeout`: a whole number of milliseconds. */

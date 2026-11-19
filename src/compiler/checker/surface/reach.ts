@@ -1,5 +1,5 @@
 /**
- * What a generic function's code reaches (§3.5), as each of its instantiations will: the calls its
+ * What a generic function's code reaches (§8.1), as each of its instantiations will: the calls its
  * body and its defaults make, generic as checked, so the types in them may name the function's own
  * type parameters. The expansion rule judges a function by what it reaches
  * (rules/expansion/functions.ts), and lowering closes the same calls per instantiation
@@ -10,8 +10,8 @@
  * - The prelude calls each case of a wait is written through, at the case's types, from the
  *   `onAwait` it makes (wait-calls.ts).
  * - The calls the type entries of the types it makes run, which lowering's type table makes for
- *   each instantiation: a `dispose` that runs as code (§7) and the codec writing an instance's
- *   outcome (§9), for every value its code types, its signature's, and every type a call
+ *   each instantiation: a `dispose` that runs as code (§16) and the codec writing an instance's
+ *   outcome (§17.4), for every value its code types, its signature's, and every type a call
  *   instantiates its callee at, at any depth of what such a value holds. Only a type naming the
  *   function's own type parameters is made anew per instantiation; any other is the same in all.
  *   One held type is one entry, however many values hold it.
@@ -138,7 +138,7 @@ function typesMadeBy(checker: ReachSeams, declaration: FunctionDeclaration): rea
 
 /**
  * The instances `callee` makes whose outcome no codec writes for its own type parameters: lowering
- * finds an instance's codec where an instantiation makes its outcome known (§9), so the code giving
+ * finds an instance's codec where an instantiation makes its outcome known (§17.4), so the code giving
  * the type arguments reaches it.
  */
 function instancesLeftBy(checker: ReachSeams, callee: FunctionDeclaration): readonly Type[] {
@@ -156,8 +156,8 @@ function instancesLeftBy(checker: ReachSeams, callee: FunctionDeclaration): read
 }
 
 /**
- * The calls the type entries of a held `type` run: a `dispose` run as code (§7), and the codec
- * writing an instance's outcome for its host (§9).
+ * The calls the type entries of a held `type` run: a `dispose` run as code (§16), and the codec
+ * writing an instance's outcome for its host (§17.3).
  */
 function entryCallsOf(checker: ReachSeams, type: Type): readonly ResolvedCall[] {
   if (type.kind !== 'nominal') {

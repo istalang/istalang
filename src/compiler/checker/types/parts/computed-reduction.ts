@@ -1,5 +1,5 @@
 /**
- * Reducing a type computed from others (§3.5, §3.17) one level: the one place each computed kind is
+ * Reducing a type computed from others (§8.1, §4.6) one level: the one place each computed kind is
  * handed to the program's rule building it, from its parts as the caller gives them. Rebuilding a
  * type (type-parts.ts) and closing a recursive type's graph (identity/recursive-types.ts) both
  * reduce through it, so a computed type reduces alike wherever its parts became known.

@@ -8,8 +8,8 @@
  *   Only object values are kept: a primitive's JSON is its own identity anyway. A handle is the run
  *   object it names, read anew from a weak reference or given to a `dispose` as the same object.
  * - **One per instance or run:** a codec may read a `context` constant, whose value is the
- *   instance's (§3.4). A test world keeps none, so a mock sees every call of the codec it replaces
- *   (§10).
+ *   instance's (§7.1). A test world keeps none, so a mock sees every call of the codec it replaces
+ *   (§18).
  * - **A holder:** a `Json` kept is held for good (`hold`), so no part of it is ever changed in
  *   place, which would change what it gives for another value. A value written as itself, a
  *   `Json`, is not kept, so what it holds stays its own to change.

@@ -1,11 +1,11 @@
 /**
- * The layout of declared types (§3.1, §3.11, §3.18): a struct's fields, an enum's variants and the
+ * The layout of declared types (§5.2, §5.3, §5.4): a struct's fields, an enum's variants and the
  * value behind a shared struct. An anonymous struct carries its own fields (types/type/index.ts),
  * so its layout is read off the type.
  *
  * A shared struct's fields are its value's, behind the handle that is the struct's value: they are
  * no fields of the struct type itself, so `x.f` and patterns never see them, and `*x` reads them as
- * the shape of those fields (§3.18), the same type as any shape of them.
+ * the shape of those fields (§5.4), the same type as any shape of them.
  *
  * - As declared (`declaredFieldsOf`): field types resolved in the declaring module, in declaration
  *   order, which only evaluation follows: a literal's sources and the defaults, each seeing the
@@ -14,7 +14,7 @@
  *   through the others. A field that would make the type's instantiation endless reads as the
  *   error type (rules/expansion/types.ts), cut as a layout is read, never inside its entry: the
  *   cut's walk may check a default reading this layout, which then finds it closed.
- * - As laid out (`fieldsOf`): in name order, as every struct's fields are, nominal or shape (§3.1
+ * - As laid out (`fieldsOf`): in name order, as every struct's fields are, nominal or shape (§5.2
  *   "Field order", `inFieldOrder`), so positions, the Definition's entry, patterns, codecs and a
  *   struct's conversion into its shape all follow one order.
  * - As instantiated: substituted for a nominal type's arguments, derived on demand from the
@@ -190,7 +190,7 @@ export class Layouts {
   }
 
   /**
-   * The shape a value of `type`, a nominal struct, converts into (§3.1): its fields, substituted
+   * The shape a value of `type`, a nominal struct, converts into (§5.2): its fields, substituted
    * for its type arguments, as a shape written at its declaration; undefined for another type, or
    * a struct with an annotated field, whose shape would drop what the annotation says.
    */

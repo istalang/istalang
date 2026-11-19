@@ -1,6 +1,6 @@
 /**
- * The runtimes live code opens over the host's store (§9), and the instances whose jobs they
- * serve (runtime.ista `_served`, §5).
+ * The runtimes live code opens over the host's store (§17.1), and the instances whose jobs they
+ * serve (runtime.ista `_served`, §14).
  *
  * - Opening one while none is open resumes the work persisted in the store (durable-world.ts): the
  *   instances there that haven't ended are read back, and the world runs them on while one is open.
@@ -9,7 +9,7 @@
  * - **Lives.** What a runtime serves is the lives begun since then: each instance running then or
  *   made since, and each a retry runs again, whose panic ended the loop serving it, in the order
  *   they began. A loop serving one calls functions of its own program, so a runtime serves only the
- *   instances running its live code's program (§5, versioning).
+ *   instances running its live code's program (§14, versioning).
  * - **One loop each.** Only the earliest runtime open serves, so two never take turns ringing each
  *   other's loop out; one opened later serves once those before it are closed. A wait hears the
  *   names once they are more than it knows, all of them, in order, as an array settling its live
@@ -92,7 +92,7 @@ export class OpenRuntimes {
     }
   }
 
-  /** Whether any runtime is open, so the work persisted in the store runs (§9). */
+  /** Whether any runtime is open, so the work persisted in the store runs (§17.1). */
   get anyOpen(): boolean {
     return this.#open.size > 0;
   }

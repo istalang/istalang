@@ -1,8 +1,8 @@
 /**
- * What an operand may start with (§4): the visible names that are values or begin one, and the
+ * What an operand may start with (§10.2): the visible names that are values or begin one, and the
  * words an operand starts with in the body around it (words.ts). A type begins a literal or a
  * static call and a namespace qualifies a name, so both stay; a trait names no value. A variant
- * stands bare only where its enum is expected (§3.11, expected.ts).
+ * stands bare only where its enum is expected (§5.3, expected.ts).
  *
  * Every place where an expression starts offers this, a call's argument and a one-field struct
  * literal's unnamed value included, so the rule has one home.
@@ -52,7 +52,7 @@ export function operandCandidates(
 
 /**
  * The visible names an operand may start with, whatever is expected of it: what a deferred call's
- * call starts with too (§3.14).
+ * call starts with too (§6.5).
  */
 export function operandNames(cursor: Cursor): readonly Candidate[] {
   return visibleNames(cursor, namesValue).filter((candidate) => !isBareVariant(candidate));

@@ -1,5 +1,5 @@
 /**
- * One name, one type (§3.6, extern-signatures.ts): a deploy refuses a Definition declaring an extern
+ * One name, one type (§17.2, extern-signatures.ts): a deploy refuses a Definition declaring an extern
  * its host already provides, under the same key, with another type.
  */
 

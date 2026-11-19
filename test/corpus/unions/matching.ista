@@ -1,5 +1,5 @@
 # outcome: "nothing|number 42|ok|Draft|Done|mail:cfo|int:5:none:one:other:2|sent:7|legal:exp:9|f-shared:s-shared|3:int:4:str:hi|5:ok:3|ab:true|matched:7:first:7"
-# Matching on unions and literal types (§3, §5): None, type patterns (including case Int on Int? and
+# Matching on unions and literal types (§5.1, §14): None, type patterns (including case Int on Int? and
 # base-type patterns selecting all literal members of that base), literal patterns (case 1 on Int?),
 # bare and qualified enum variants, generic members with type arguments, shape members by field or
 # alias, remaining binder types, alternatives binding a union, exhaustiveness without case _, and

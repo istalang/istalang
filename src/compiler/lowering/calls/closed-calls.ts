@@ -1,13 +1,13 @@
 /**
- * Closed calls (§3.5, §3.10): what a call the checker resolved inside a generic body targets in
+ * Closed calls (§8.1, §8.2): what a call the checker resolved inside a generic body targets in
  * one instance (tables/instances.ts) of that body, every type concrete. The checker closes it
  * (checker/surface/witness-closing.ts); this module says which entry a closed call runs.
  *
- * - A requirement on an `any` value, or a call through a union's trait (§6), stays a dispatch on
+ * - A requirement on an `any` value, or a call through a union's trait (§8.2), stays a dispatch on
  *   the value's own type (`Dispatch`), which ../synthesized/trait-objects.ts writes once the
  *   program is reached.
  * - A closed call runs its function's entry with the call's binding, which computes the parameters
- *   the call leaves out (§3.3). A function named as a value is bound as its type calls it, by
+ *   the call leaves out (§6.1). A function named as a value is bound as its type calls it, by
  *   position, so its entry takes the arguments as passed, those after them absent (`leavesOut`).
  */
 
@@ -53,7 +53,7 @@ export function closeCallWithin(
 }
 
 /**
- * Whether a function value naming `call`'s function leaves parameters out (§3.14): its type passes
+ * Whether a function value naming `call`'s function leaves parameters out (§6.4): its type passes
  * fewer than the function takes, the rest left to their defaults and an array's rest empty, which
  * its entry computes from nothing passed.
  */
@@ -73,8 +73,8 @@ export function leavesOut(
 
 /**
  * What a call closed inside an instance targets, every type in it concrete: a function's own
- * entry, with which argument each of its parameters takes (§3.3), or a dispatch on the own type of
- * the `any` value it is called with, which passes every argument by position (§3.10).
+ * entry, with which argument each of its parameters takes (§6.1), or a dispatch on the own type of
+ * the `any` value it is called with, which passes every argument by position (§8.3).
  */
 export type ClosedCall =
   | ClosedFunctionCall
@@ -138,7 +138,7 @@ interface ClosedFunctionCall {
  * A call dispatched on a value's own type: the `member`-th function of the trait of the
  * `constraint`-th constraint of the `any` type `through`, with its own type arguments and the
  * witnesses of their constraints, every type concrete. The value is of `on`: `through` itself for
- * an `any` value; for a call through a union's trait (§6), the union, or the one type an
+ * an `any` value; for a call through a union's trait (§8.2), the union, or the one type an
  * instantiation collapsed it into, each member called as a value of `through` would be.
  */
 export interface Dispatch {

@@ -1,6 +1,6 @@
 /**
  * A goal asked at the root of a search, a trait or a struct constraint, is searched once per
- * program (§3.10: meeting is coherent, the same wherever it is asked), however many sites ask it,
+ * program (§8.2: meeting is coherent, the same wherever it is asked), however many sites ask it,
  * and each asking site still reports why it isn't met. A goal is an entry, so a revision after an
  * edit changing whether it is met answers as a checker made afresh does.
  */

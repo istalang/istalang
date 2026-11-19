@@ -1,7 +1,7 @@
 /**
  * Code lowering writes with no syntax behind it: a type's codecs, the read of a host's extern
  * constant and a start wrapper (docs/arch/boundary.md), a dispatch on an `any` value's own type
- * (§3.10) and a plain function made async (functions/fits/index.ts). It takes every parameter and
+ * (§8.3) and a plain function made async (functions/fits/index.ts). It takes every parameter and
  * computes no default, which is syntax: an entry with defaults is built behind its prologue
  * (functions/built-entries.ts), a host extern's wrapper among them.
  * It works through the same CodeContext as code with a body, so the helpers both share build its
@@ -10,8 +10,8 @@
  *
  * Its registers are its parameters, in order, then its captures, each borrowed and typed by its
  * signature, then temporaries. A parameter it takes by `&`, as a dispatch does for a method's
- * `&self` (§3.10), holds a reference already, which it passes on as it is or into a part of it
- * (`passedOn`); a value it has no place for, a union member's one value (§6), it passes by `&`
+ * `&self` (§8.2), holds a reference already, which it passes on as it is or into a part of it
+ * (`passedOn`); a value it has no place for, a union member's one value (§4.2), it passes by `&`
  * from a cell of its own (`inCell`). It builds structs, tuples and `==` with the helpers code with
  * a body uses, so each instruction has one writer.
  */

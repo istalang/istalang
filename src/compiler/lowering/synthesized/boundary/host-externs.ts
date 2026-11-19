@@ -1,5 +1,5 @@
 /**
- * Externs a host implements (§3.6, §9; docs/arch/boundary.md). A program calls each through a
+ * Externs a host implements (§17.2, §17.3; docs/arch/boundary.md). A program calls each through a
  * compiled wrapper, the entry its instance is numbered by, so the host's native sees only JSON:
  *
  * - The wrapper encodes every argument, calls the native entry, and decodes what comes back, each
@@ -12,7 +12,7 @@
  * - The native entry is the extern as declared, bound by its declared key, with JSON for every
  *   parameter and result, so every instantiation of a generic extern shares one native.
  * - Reading an extern constant is a call to its own wrapper, which decodes the native's value the
- *   same way; the runtime reads the native once per instance (§3.6).
+ *   same way; the runtime reads the native once per instance (§17.2).
  * - A failure names its path from the extern's qualified name: `purchase.chargeCard.receipt`.
  */
 
@@ -79,7 +79,7 @@ export function hostCallOf(lowering: Lowering, instance: FunctionInstance): Host
 
 /**
  * The entry reading a host's extern constant of type `type`: read from the host once per instance,
- * then kept as the instance's, across its commits (§3.6), as a context constant is (§3.4).
+ * then kept as the instance's, across its commits (§17.2), as a context constant is (§7.1).
  */
 export function hostConstantEntry(
   lowering: Lowering,
@@ -161,7 +161,7 @@ export function constantNativeEntry(
 }
 
 /**
- * `Json`, what crosses to a host. It is a recursive alias (§3.17), so it is the type its entity
+ * `Json`, what crosses to a host. It is a recursive alias (§4.6), so it is the type its entity
  * names, not a nominal one.
  */
 export function jsonOf(checker: Checker): Type {

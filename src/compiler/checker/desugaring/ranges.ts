@@ -1,5 +1,5 @@
 /**
- * Ranges (§3.8), each the prelude's `Range` it builds: `a..b by s` is `Range{start: a, end: b,
+ * Ranges (§19.3), each the prelude's `Range` it builds: `a..b by s` is `Range{start: a, end: b,
  * step: s}`, an open side `none` and a missing step 1; `a..=b by s` is `_inclusiveRange(a, b, s)`,
  * which stores the end one past the written one in the step's direction, so every range is
  * half-open. Both take the operands in the order written.
@@ -7,7 +7,7 @@
  * - Every operand is an `Int`, checked so before the core reads it, though the core's fields and
  *   parameters take `Int?` for the sides an open range leaves out: `x..5` with an `x: Int?` is
  *   refused as written.
- * - `Range` and `_inclusiveRange` are the prelude's, whatever a local name shadows (§3.4).
+ * - `Range` and `_inclusiveRange` are the prelude's, whatever a local name shadows (§7.1).
  */
 
 import { inclusiveRangeFunction } from '../../../foundation/language/well-known/implicit-calls.ts';

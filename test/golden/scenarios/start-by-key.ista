@@ -1,5 +1,5 @@
 # A host starts any startable function by its key with JSON arguments, and is refused one whose
-# JSON doesn't fit, or a key no startable function has (§9).
+# JSON doesn't fit, or a key no startable function has (§17.3).
 struct Order { id: String, amount: Int }
 
 fn total(orders: Array<Order>, rate: Float) -> Float:

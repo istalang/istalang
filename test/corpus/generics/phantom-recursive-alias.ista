@@ -1,5 +1,5 @@
 # outcome: 2
-# A recursive alias whose parameter only its own uses name (§3.17): its parts are the same for every
+# A recursive alias whose parameter only its own uses name (§4.6): its parts are the same for every
 # argument, but the uses it is written through inside itself are its argument's.
 
 import * as runtime from 'runtime'

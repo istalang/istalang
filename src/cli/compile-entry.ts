@@ -1,5 +1,5 @@
 /**
- * The program a command runs or builds (§9): the one rooted at the entry module, compiled once it
+ * The program a command runs or builds (§17.1): the one rooted at the entry module, compiled once it
  * checks clean, which needs a `live async fn main()` there, and encoded. Diagnostics, warnings
  * included, go to the error stream as `check` renders them; what stopped it is an exit code.
  */

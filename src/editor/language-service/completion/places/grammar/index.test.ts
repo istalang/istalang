@@ -274,7 +274,7 @@ describe('completion offers the words that go on after what is written', () => {
     ['a taker written with arguments', ['fn f(n: Int):', '  _ = retry(times: 5) ‸']],
     ["a method's taker", ['fn f(n: Int):', '  _ = n.submit ‸']],
   ])(
-    "after a deferred call's taker in %s, the names starting its call too (§3.14)",
+    "after a deferred call's taker in %s, the names starting its call too (§6.5)",
     (_title, lines) => {
       const declared = [
         'fn plus(a: Int) -> Int: a',

@@ -1,7 +1,7 @@
 /**
- * The checker's diagnostics of concurrency, codes 5600–5699 (§3.14, §6, §8): `select`, sendable
+ * The checker's diagnostics of concurrency, codes 5600–5699 (§6.4, §15.2, §15.4): `select`, sendable
  * function types, and deferred calls (5640–5649), which give a function making a call later, as
- * `spawn` and `defer` take one (§7, §9). A part of the checker's one catalog (index.ts).
+ * `spawn` and `defer` take one (§16, §17.1). A part of the checker's one catalog (index.ts).
  */
 
 export const concurrencyTemplates = {
@@ -22,81 +22,81 @@ export const concurrencyTemplates = {
   deferredNeedsCall: {
     code: 5640,
     message: () =>
-      "A deferred call gives its taker a call to make later: write 'g f(arguments)' (§3.14).",
+      "A deferred call gives its taker a call to make later: write 'g f(arguments)' (§6.5).",
   },
   takesNoCall: {
     code: 5641,
     message: (name: string) =>
-      `'${name}' doesn't take a call to run later: none of its parameters left unfilled is a function taking nothing, 'fn() -> X' (§3.14).`,
+      `'${name}' doesn't take a call to run later: none of its parameters left unfilled is a function taking nothing, 'fn() -> X' (§6.5).`,
   },
   missingComma: {
     code: 5642,
     message: (taker: string) =>
-      `'${taker}' is no function, so it takes no call to run later: is a ',' missing after it (§3.14)?`,
+      `'${taker}' is no function, so it takes no call to run later: is a ',' missing after it (§6.5)?`,
   },
   deferredReference: {
     code: 5643,
     message: () =>
-      "A deferred call computes what it passes now, and no reference can be captured, so it can't pass one by '&' (§3.14).",
+      "A deferred call computes what it passes now, and no reference can be captured, so it can't pass one by '&' (§6.5).",
   },
   captureBeyondSendability: {
     code: 5644,
     message: (sendability: string, found: string) =>
-      `The function taken here is ${sendability}, so what it captures must be ${sendability}, and ${found} isn't (§3.14).`,
+      `The function taken here is ${sendability}, so what it captures must be ${sendability}, and ${found} isn't (§6.4).`,
   },
   unmarkedCalls: {
     code: 5606,
     message: (caller: string, kind: string, callee: string) =>
-      `${caller} calls ${kind} ${callee}; declare it '${kind} fn' (§3.3).`,
+      `${caller} calls ${kind} ${callee}; declare it '${kind} fn' (§9.1).`,
   },
   kindsMeet: {
     code: 5607,
     message: (callerKind: string, calleeKind: string, callee: string) =>
-      `${callerKind} code calls nothing ${calleeKind}: ${callee} is ${calleeKind} (§3.3).`,
+      `${callerKind} code calls nothing ${calleeKind}: ${callee} is ${calleeKind} (§9.1).`,
   },
   waitOfOtherKind: {
     code: 5608,
     message: (found: string, kind: string) =>
-      `An 'await' waits in its function's kind, ${kind}, so it can't wait on ${found} (§5).`,
+      `An 'await' waits in its function's kind, ${kind}, so it can't wait on ${found} (§14).`,
   },
   unmarkedWaits: {
     code: 5611,
     message: (waiter: string, kind: string, found: string, head: string) =>
-      `${waiter} waits on ${found}, of kind ${kind}; declare it '${kind} ${head}' (§3.3).`,
+      `${waiter} waits on ${found}, of kind ${kind}; declare it '${kind} ${head}' (§9.1).`,
   },
   unkindedFuture: {
     code: 5612,
     message: () =>
-      `An unmarked 'async fn' has no kind for its future to take; write 'live async fn' or 'ista async fn', or 'K async fn' generic over it (§3.3).`,
+      `An unmarked 'async fn' has no kind for its future to take; write 'live async fn' or 'ista async fn', or 'K async fn' generic over it (§9.1).`,
   },
   oneKindOfEither: {
     code: 5613,
     message: (holder: string) =>
-      `${holder} runs in one of the two kinds, which simple code can't give it; declare the function calling it 'live' or 'ista' (§3.3).`,
+      `${holder} runs in one of the two kinds, which simple code can't give it; declare the function calling it 'live' or 'ista' (§9.1).`,
   },
   unmarkedHolds: {
     code: 5609,
     message: (holder: string, kind: string, held: string) =>
-      `${holder} holds ${held}, of kind ${kind}; declare it '${kind} fn' (§3.3).`,
+      `${holder} holds ${held}, of kind ${kind}; declare it '${kind} fn' (§9.1).`,
   },
   holdsBothKinds: {
     code: 5615,
     message: (held: string) =>
-      `${held} holds both kinds of data, live and ista, which no code may handle (§3.3).`,
+      `${held} holds both kinds of data, live and ista, which no code may handle (§9.1).`,
   },
   unmarkableHolds: {
     code: 5616,
     message: (holder: string, kind: string, held: string, remedy: string) =>
-      `${holder} is simple code, so it can't hold ${held}, of kind ${kind}${remedy} (§3.3).`,
+      `${holder} is simple code, so it can't hold ${held}, of kind ${kind}${remedy} (§9.1).`,
   },
   defaultTypedFieldKind: {
     code: 5617,
     message: (field: string, held: string) =>
-      `The field '${field}' takes its type from its default, which holds values of ${held}, whose kind the type arguments decide; write the field's type, which gives the type its kind (§3.3).`,
+      `The field '${field}' takes its type from its default, which holds values of ${held}, whose kind the type arguments decide; write the field's type, which gives the type its kind (§9.1).`,
   },
   kindsHeld: {
     code: 5610,
     message: (holder: string, kind: string, held: string) =>
-      `${holder} is ${kind} code, so it can't hold ${held}, of the other kind (§3.3).`,
+      `${holder} is ${kind} code, so it can't hold ${held}, of the other kind (§9.1).`,
   },
 } as const;

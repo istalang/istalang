@@ -10,12 +10,12 @@
  *   then a closure's captures, then locals and temporaries. A variable living in a cell is listed
  *   in `cells`; a reference parameter's register holds the caller's reference, and a captured
  *   cell's register the cell its closure carries.
- * - A parameter with a pattern (§3.3) takes its argument whole, in a register of its own, named
+ * - A parameter with a pattern (§6.1) takes its argument whole, in a register of its own, named
  *   only by its `as` name, which its flow takes apart.
- * - A lambda or local function (§3.14) answers to its own name through the closure it runs,
+ * - A lambda or local function (§6.4) answers to its own name through the closure it runs,
  *   taken once at its entry (`currentClosure`).
  * - An entry begins with its prologue, computing each parameter its call left out from its default
- *   (§3.1, §3.3, frame-variables.ts), read from the function's defaults (`inDefaults`); a struct's
+ *   (§5.2, §6.1, frame-variables.ts), read from the function's defaults (`inDefaults`); a struct's
  *   or variant's fields are parameters of a function of their own
  *   (syntax/declarations/field-defaults.ts), whose entry, with no body, builds the value from them
  *   (`lowerBuilt`, built-entries.ts), as an extern's computing its defaults calls the extern.
@@ -109,7 +109,7 @@ export function builtLowering(
   );
 }
 
-/** The lowering of the accessor of the context constant `declaration`, from its initializer (§3.4). */
+/** The lowering of the accessor of the context constant `declaration`, from its initializer (§7.1). */
 export function accessorLowering(
   lowering: Lowering,
   declaration: ContextConstantDeclaration,
@@ -122,7 +122,7 @@ export function accessorLowering(
   );
 }
 
-/** The lowering of a nested function's entry, read through its owner's body (§3.14). */
+/** The lowering of a nested function's entry, read through its owner's body (§6.4). */
 export function nestedLowering(lowering: Lowering, nested: NestedInstance): FunctionLowering {
   const lowered = loweredNested(lowering, nested.owner);
   return FunctionLowering.of(lowered, nestedFrame(lowered, nested));
@@ -232,7 +232,7 @@ class FunctionLowering implements EntryContext {
 
   /**
    * Hands a call to the function bound to the function's slot, past its prologue, so it takes
-   * every parameter (§10): an async function's gives a future, awaited for the value.
+   * every parameter (§18): an async function's gives a future, awaited for the value.
    */
   #rebindable(span: AnchoredSpan, passed: readonly Register[]): void {
     const { mode, result } = this.frame;
@@ -268,7 +268,7 @@ class FunctionLowering implements EntryContext {
   }
 
   /**
-   * The code entry each read of a context constant calls (§3.4): the instance's value once made;
+   * The code entry each read of a context constant calls (§7.1): the instance's value once made;
    * while it isn't, the initializer's, made the instance's value then, its temporaries let go of
    * after that (flow/writer.ts). `name` keys it, as qualified.
    */
@@ -286,7 +286,7 @@ class FunctionLowering implements EntryContext {
     return this.#entry(listed);
   }
 
-  /** The code entry for a lambda or local function of the owner (§3.14). */
+  /** The code entry for a lambda or local function of the owner (§6.4). */
   lowerNested(node: Lambda | FunctionDeclaration): CodeFunction {
     const { listed, values } = declareFrame(this, this.#slots());
     this.#write(node, values);

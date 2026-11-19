@@ -1,7 +1,7 @@
 /**
- * `await` (§5): waits on an awaitable and gives what it resolves its wait with. Only an async function
+ * `await` (§14): waits on an awaitable and gives what it resolves its wait with. Only an async function
  * waits, because every await is a point where the instance commits and may suspend. In a case
- * cleaning up after the function's call is disposed, an await stops the call instead (§7), which is
+ * cleaning up after the function's call is disposed, an await stops the call instead (§16), which is
  * warned about.
  *
  * - An `await`, and each `select` case, is the implicit call `onAwait(x, done)` (proposal 8, Rule 5),

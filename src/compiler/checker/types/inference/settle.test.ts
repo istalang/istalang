@@ -1,5 +1,5 @@
 /**
- * Settling a call's type arguments (§3.5) by one policy, the expected type advising: inside the
+ * Settling a call's type arguments (§8.1) by one policy, the expected type advising: inside the
  * result it chooses, at the top the call's value converts, and a written union is taken where no
  * lower bound joins. A call that checks without an expected type checks to the same instantiation
  * with its own result expected.

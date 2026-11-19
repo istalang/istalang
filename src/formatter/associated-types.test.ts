@@ -1,6 +1,6 @@
 /**
- * Formatting associated types bounded to members and those an extern struct declares (§3.6,
- * §3.10): printed in the declaration's members, and reparsing to the tree printed.
+ * Formatting associated types bounded to members and those an extern struct declares (§17.2,
+ * §8.2): printed in the declaration's members, and reparsing to the tree printed.
  */
 
 import { describe, expect, it } from 'vitest';

@@ -146,7 +146,7 @@ const bindingPatterns = new Set(['NamePattern', 'BindFieldPattern', 'AsPattern',
 /**
  * Whether `resolved` names its entity by looking it up: not a part after the head of a qualified
  * name, which linking walks to; not a call only argument-dependent lookup can resolve; not an
- * async function's name denoting its own call (§7); and not a name that declares, every overload's
+ * async function's name denoting its own call (§16); and not a name that declares, every overload's
  * own included.
  */
 export function isLookedUp(program: Program, { module, name, entity }: ResolvedName): boolean {

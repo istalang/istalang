@@ -1,5 +1,5 @@
 /**
- * Field-default functions (`fieldsFunctionOf`, §3.1): each says whose fields it reads, a struct's
+ * Field-default functions (`fieldsFunctionOf`, §5.2): each says whose fields it reads, a struct's
  * or an enum variant's, and its entry, computing the defaults a literal or a call leaves out, is
  * named after them, the variant's with its enum, so identically named variants in one module lower
  * to distinct entries.

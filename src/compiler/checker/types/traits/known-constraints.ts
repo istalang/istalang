@@ -1,18 +1,18 @@
 /**
- * What a type meets by what it is (§3.5, §3.10): the constraints of a type parameter, of an `any`
+ * What a type meets by what it is (§8.1, §8.2): the constraints of a type parameter, of an `any`
  * type, and of the types computed from types not known yet, and through them its requirements and
  * associated types; its fields are read through them too (known-fields.ts). One home for these,
  * since each answer of a computed type is read from what the type it is computed from meets.
  *
- * - `T.Data` (§3.1) is one type, meeting the bound of every requirement of `Data` among what `T`
+ * - `T.Data` (§5.2) is one type, meeting the bound of every requirement of `Data` among what `T`
  *   meets (`type Data is C`); on a known type it is that type's own associated type, an alias
  *   substituted for the type's arguments. Inside a trait, `Self` meets the trait itself. A union or
  *   an `any` type has none: only a type's own declaration declares one. One whose body is no type
- *   `match` and reaches itself again while expanded can't be a type (§3.1): it and every one on
+ *   `match` and reaches itself again while expanded can't be a type (§5.2): it and every one on
  *   the cycle back to it is the error type carrying it, where it would otherwise expand without
  *   end, however it is reached (types/parts/substitution.ts), which each instantiation reaching it
  *   reports (resolution/type-matches/reduction-requirements.ts).
- * - `S["meta"]` (§3.5) meets what the entries of `S`'s struct constraints ask of that field; on a
+ * - `S["meta"]` (§8.1) meets what the entries of `S`'s struct constraints ask of that field; on a
  *   known struct it is the field's type, and an entry asking an exact type gives that type.
  * - A requirement on a type parameter or an `any` type is numbered by constraint and function
  *   (`ConstraintRequirement`); on a computed type it is the trait as `any` takes it, its witness
@@ -115,7 +115,7 @@ export function structConstraintsOn(
 
 /**
  * The struct constraint a mapped struct type whose keys aren't known yet meets by its shape
- * (§3.1): it is a struct type, each field its braces or a known key name has that field's type,
+ * (§5.2): it is a struct type, each field its braces or a known key name has that field's type,
  * and each other field has its value for one of the keys not known yet: that type, or what it is
  * known to meet, unless the value differs from key to key in a way known only per instantiation.
  */
@@ -165,7 +165,7 @@ function fieldRule(checker: CheckerContext, type: Type): EntryRule {
 
 /**
  * Every function the constraints on `on` require: on a type parameter, on an `any` type, where
- * each is the function its value's own type meets it with (§3.10), or on a type computed from
+ * each is the function its value's own type meets it with (§8.3), or on a type computed from
  * types not known yet.
  */
 export function requirementsOn(
@@ -186,7 +186,7 @@ export function requirementsOn(
 }
 
 /**
- * The associated type `name` of `of` (§3.1): a known nominal type's own, its declaration's alias
+ * The associated type `name` of `of` (§5.2): a known nominal type's own, its declaration's alias
  * substituted for the type's arguments and written through it; on a type not known yet, the opaque
  * type naming it when one of its constraints requires it; else the error type.
  */
@@ -230,7 +230,7 @@ export function associatedTypeOf(
 }
 
 /**
- * An associated type being expanded (§3.1), by owner and name, and whether expanding it reached it
+ * An associated type being expanded (§5.2), by owner and name, and whether expanding it reached it
  * again: each one expanded between its two uses is on that cycle, so none of them is a type, while
  * one that only holds them is, an error type in place of each.
  */
@@ -240,7 +240,7 @@ export interface Expansion {
 }
 
 /**
- * What declares each associated type `of` has (§3.1): a known nominal type's own, or the
+ * What declares each associated type `of` has (§5.2): a known nominal type's own, or the
  * requirements of the traits `of` meets; none for any other type.
  */
 export function associatedDeclarationsOn(
@@ -284,7 +284,7 @@ function keyedFieldTypes(
 
 /**
  * The keys `key` may be, each one key: a union's members, a member parameter's union's, at any
- * depth (§3.5); anything else, itself.
+ * depth (§8.1); anything else, itself.
  */
 export function keyMembers(checker: CheckerContext, key: Type): readonly Type[] {
   return membersOf(key).flatMap((member) => {
@@ -293,7 +293,7 @@ export function keyMembers(checker: CheckerContext, key: Type): readonly Type[] 
   });
 }
 
-/** What declares the associated type `name` of `of` (§3.1); undefined when it has none. */
+/** What declares the associated type `name` of `of` (§5.2); undefined when it has none. */
 function associatedDeclarationOf(
   checker: CheckerContext,
   of: Type,
@@ -336,7 +336,7 @@ export function entryRules(checker: CheckerContext, type: Type): readonly EntryR
 
 /**
  * What each of several fields' rules asks, as one rule: the exact type every one of them gives,
- * when they all give the same one, so a key naming any of them reads and writes that type (§3.1 Key
+ * when they all give the same one, so a key naming any of them reads and writes that type (§5.2 Key
  * types); else the traits any of them asks that every one of them meets (`rulesImply`), an exact
  * type by its own witnesses, so a call through the key finds a witness for each field.
  */

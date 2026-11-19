@@ -1,6 +1,6 @@
 /**
  * The instantiation of a trait a type meets where an `any` type's constraint asks for another
- * (§3.10): a value of `IntSource`, which meets `Source<Int>`, goes into an `any Source<Int?>` as
+ * (§8.3): a value of `IntSource`, which meets `Source<Int>`, goes into an `any Source<Int?>` as
  * itself, called through `Source<Int>`'s witnesses, each call converting what it gives and takes
  * (lowering/synthesized/trait-objects.ts).
  *
@@ -17,7 +17,7 @@
  *   fields, a parameter none finds taken from the constraint, is proposed.
  * - Of those that fit the constraint as the trait's variance says (types/variance/variance.ts), the
  *   closest is the one: the one every other fits. Several, none closer, are refused at a conversion
- *   showing them, as converting into several members of a union is (§2). Where none can be seen, a
+ *   showing them, as converting into several members of a union is (§4.2). Where none can be seen, a
  *   value an `any` type took from another, the first proposed stands, its functions declared first,
  *   as C# picks among interfaces a class implements.
  * - With no constraint sought, each of the trait's parameters is found as a varying one is, and a
@@ -25,7 +25,7 @@
  *   converted into, which inference relates through. A type holding type parameters, inference's
  *   variables among them, can't be asked whether it meets one until they are known, so what its
  *   witnesses' signatures propose stands; a nominal one's are its declaration's own instance's,
- *   the receiver binding exactly (§3.10), so one search per declaration serves them all.
+ *   the receiver binding exactly (§8.2), so one search per declaration serves them all.
  */
 
 import { distinctItems } from '../../../../../foundation/structures/equality.ts';

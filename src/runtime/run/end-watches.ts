@@ -1,5 +1,5 @@
 /**
- * Waits on other instances' ends (§9): a future settling with how the instance it watches ends,
+ * Waits on other instances' ends (§17.1): a future settling with how the instance it watches ends,
  * which the world tells the run as a turn on that future (world.ts), so it lands in whichever run of
  * the instance goes on. A snapshot keeps each watch still pending, and a run restored from it asks
  * the world again.

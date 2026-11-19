@@ -1,5 +1,5 @@
 /**
- * Docstrings (§2): reading one where a declaration takes it, and refusing one anywhere else.
+ * Docstrings (§2.3): reading one where a declaration takes it, and refusing one anywhere else.
  *
  * Where a docstring may stand is layout's to decide (index.ts): first in a declaration's indented
  * body or a module, or on the line right after a declaration without one. The field is set only

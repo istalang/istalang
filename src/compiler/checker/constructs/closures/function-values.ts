@@ -1,20 +1,20 @@
 /**
- * A function named as a value, checked (§3.14): the one the name means where its value is wanted,
+ * A function named as a value, checked (§6.4): the one the name means where its value is wanted,
  * chosen as resolution/choosing/named-functions.ts chooses it, then instantiated against what is
  * expected of it, made a closure with no captures and recorded as a site at the expression naming
- * it, type arguments and all, a variant's constructor (§3.11) as any function, which tools read the
+ * it, type arguments and all, a variant's constructor (§5.3) as any function, which tools read the
  * variant it builds from.
  *
- * - Type arguments written after the name are a call's (§3.5): with one function, type arguments
+ * - Type arguments written after the name are a call's (§8.1): with one function, type arguments
  *   it can't take are reported as its call would report them.
  * - A name none of whose functions is chosen is reported: as needing a function type where none
  *   is expected, else as fitting none of the one expected; a lone function that doesn't fit is its
  *   own value, which the expected type reports as any value's.
- * - A struct without fields named with type arguments is its value of that instance (§3.1), as
+ * - A struct without fields named with type arguments is its value of that instance (§5.2), as
  *   bare it is the expected one's (../expressions/access/names.ts): `Holds<Int>`.
  * - Type arguments after a name of anything else are reported, once the name is checked as it
  *   would be alone; a type's or a variant's without fields, which only a literal or a call gives
- *   type arguments (§3.1, §3.11), isn't checked alone, where type arguments would be asked of the
+ *   type arguments (§5.2, §5.3), isn't checked alone, where type arguments would be asked of the
  *   type or enum.
  */
 
@@ -87,7 +87,7 @@ export function recordedValue(
 
 /**
  * The type of `node`, a name given type arguments, as a value: the function it names, instantiated
- * with them (§3.5), or the struct without fields it names, of that instance (§3.1); the error type
+ * with them (§8.1), or the struct without fields it names, of that instance (§5.2); the error type
  * after a report.
  */
 export function checkAppliedFunction(

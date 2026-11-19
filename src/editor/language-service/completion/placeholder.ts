@@ -4,7 +4,7 @@
  * of a name there is what may be written there, so the parser stays the one home of the grammar,
  * and code being typed, broken or unfinished, is read the way the parser recovers it. The
  * placeholder joins any name half written at the cursor, a keyword's spelling included. Among the
- * type arguments after a name, which only names cased as types' make (§3.5), it leads that name,
+ * type arguments after a name, which only names cased as types' make (§8.1), it leads that name,
  * cased as a type's, so the parser reads them there whatever has been typed.
  *
  * The placeholder's nearest enclosing node that decides a role names the place: a type (but for a
@@ -88,7 +88,7 @@ export const nothingPlace: NothingPlace = { kind: 'nothing' };
 /** A name no program writes by chance; its value is never read. */
 const placeholder = 'completionPlaceholder';
 
-/** The placeholder cased as a type's name (§2). */
+/** The placeholder cased as a type's name (§4.1). */
 const typePlaceholder = 'CompletionPlaceholder';
 
 /** The place at `cursor`, as the parser reads a name written there. */
@@ -210,7 +210,7 @@ function lineOpensWith({ tree, offset }: Cursor, opener: TokenKind): boolean {
 }
 
 /**
- * `new` before the name: a shared struct's name follows (§3.1), read by the parser only with its
+ * `new` before the name: a shared struct's name follows (§5.4), read by the parser only with its
  * `{`.
  */
 export function followsNew({ tree, before }: Cursor): boolean {

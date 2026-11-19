@@ -1,6 +1,6 @@
 /**
- * The type a lambda or local `fn` gets (§3.14): its parameters' slots and pack, what its body
- * gives through its head (an async one's call a future of it), its reach, and its kind (§3.3).
+ * The type a lambda or local `fn` gets (§6.4): its parameters' slots and pack, what its body
+ * gives through its head (an async one's call a future of it), its reach, and its kind (§9.1).
  *
  * - A kind its head writes is its kind, else one its position says, a kind or either; given
  *   neither, its code runs in the kind around it.
@@ -107,7 +107,7 @@ function nestedValueKind(
 
 /**
  * Records `checked`, a nested function checked in its `scope`, as giving `produces`, its parameters'
- * types as `solved` settles them, with what it captures and the sendability that allows (§3.14),
+ * types as `solved` settles them, with what it captures and the sendability that allows (§6.4),
  * and declares it under its name, if it has one; its type.
  */
 export function recordedNested(

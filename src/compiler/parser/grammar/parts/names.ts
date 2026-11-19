@@ -25,7 +25,7 @@ export function parseQualifiedName(parser: Parser): QualifiedName {
 
 /**
  * `a, (b, c), Pair{first}`: what a variable declaration, loop or comprehension binds, each target
- * a pattern (§3.15).
+ * a pattern (§4.5).
  */
 export function parseTargets(parser: Parser): Pattern[] {
   const targets = [parser.pattern()];

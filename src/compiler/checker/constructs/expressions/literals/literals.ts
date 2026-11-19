@@ -1,6 +1,6 @@
 /**
  * Literals whose type is declared in a std module: a duration literal is sugar for the `time`
- * module's `Duration` (§2), which every program loads without importing it, so a literal works in
+ * module's `Duration` (§3.1), which every program loads without importing it, so a literal works in
  * any module while the name `Duration` is visible only where imported.
  */
 

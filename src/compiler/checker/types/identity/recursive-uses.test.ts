@@ -1,5 +1,5 @@
 /**
- * A recursive alias use and what it unfolds to (§3.17, proposal 5 §2): one type by identity
+ * A recursive alias use and what it unfolds to (§4.6, proposal 5 §2): one type by identity
  * whatever the body's kind, taken apart where a value is used (`!`, `??`, `?.`), put into a union
  * through a member its body holds, and built from literals of any depth with any items, the way
  * its body is, no fold or unfold written. Each case runs where running shows what checking can't:

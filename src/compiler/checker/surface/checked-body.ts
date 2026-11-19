@@ -1,5 +1,5 @@
 /**
- * A body as checked (§2–§4), the model check.ts names (`Checker.bodyOf`, `defaultsOf`,
+ * A body as checked (§2–§11), the model check.ts names (`Checker.bodyOf`, `defaultsOf`,
  * `constantBodyOf`): every fact its check recorded of its nodes (`BodyFacts`), so lowering reads
  * exactly what was checked and never re-derives a type, and the records those facts answer with:
  * the functions nested in it and their parameters, where a literal's fields get their values, the
@@ -109,8 +109,8 @@ export function childrenRunning(
 }
 
 /**
- * A lambda or local function as checked (§3.14): its type, what its body gives, its parameters as
- * checked, in order, a rest one a pack's (§3.5), and what it captures in the order first used.
+ * A lambda or local function as checked (§6.4): its type, what its body gives, its parameters as
+ * checked, in order, a rest one a pack's (§8.1), and what it captures in the order first used.
  * Lowering makes it a function-table entry of its own.
  */
 export interface CheckedFunction {
@@ -121,10 +121,10 @@ export interface CheckedFunction {
   readonly captures: readonly Capture[];
 }
 
-/** A function nested in a body: a lambda, or a local `fn` (a `const` bound to one, §3.14). */
+/** A function nested in a body: a lambda, or a local `fn` (a `const` bound to one, §6.4). */
 export type NestedFunction = Lambda | FunctionDeclaration;
 
-/** A variable a closure captures, with its type, at where the function first uses it (§3.14). */
+/** A variable a closure captures, with its type, at where the function first uses it (§6.4). */
 export interface Capture {
   readonly entity: VariableEntity;
   readonly type: Type;
@@ -132,13 +132,13 @@ export interface Capture {
 }
 
 /**
- * Where a struct literal's field, named `field`, gets its value (§3.1): an expression of the
+ * Where a struct literal's field, named `field`, gets its value (§5.2): an expression of the
  * literal, the field of that name in its leading spread's value, or its default, which `call`,
  * of the function the fields read as, computes from the fields before it as it starts
  * (syntax/declarations/field-defaults.ts): the one call building the literal's value, given the
  * fields it gives and leaving the rest to their defaults, the same for each. A literal's sources come in declaration order, the order
  * evaluation follows; its value takes its type's layout by the fields' names (`laidOut`). A struct
- * comprehension (§3.1) is the source of every field it gives, one per field of the struct each
+ * comprehension (§5.2) is the source of every field it gives, one per field of the struct each
  * instantiation runs it over, so it names none.
  */
 export type FieldSource =
@@ -150,9 +150,9 @@ export type FieldSource =
   | { readonly kind: 'comprehension'; readonly comprehension: StructComprehension };
 
 /**
- * A link of an optional chain (§4): the type its own step works on (the value inside, after
+ * A link of an optional chain (§10.4): the type its own step works on (the value inside, after
  * `?.`), and the value it carries along the chain, which the chain, if it ends at this link,
- * wraps into its `T?` unless it is optional already. An instantiation may make it so (§3.5).
+ * wraps into its `T?` unless it is optional already. An instantiation may make it so (§8.1).
  */
 export interface ChainLink {
   readonly base: Type;
@@ -160,8 +160,8 @@ export interface ChainLink {
 }
 
 /**
- * How a value written to a place converts to fit it (§2, §3.10, §3.14): as checked, or, where a key
- * that may name several fields reads the place (§3.9), into whichever field the key names, each
+ * How a value written to a place converts to fit it (§4.1, §8.2, §6.4): as checked, or, where a key
+ * that may name several fields reads the place (§10.2), into whichever field the key names, each
  * conversion derived from the field types the instantiation makes concrete. A key of several names
  * in a generic body may name one field once instantiated, which then takes the value as that one
  * field's conversion says.
@@ -169,9 +169,9 @@ export interface ChainLink {
 export type WrittenFit = Fit | 'intoKeyedField';
 
 /**
- * A part of an assigned value and where it goes (§3.15): the steps to it in the value (tuple
+ * A part of an assigned value and where it goes (§4.5): the steps to it in the value (tuple
  * positions and struct fields) and its type; written to the place its target names, converted to
- * fit it, or held by `_`, a variable with no name, until the assignment's block ends (§7).
+ * fit it, or held by `_`, a variable with no name, until the assignment's block ends (§16).
  */
 export type AssignedPart =
   | {
@@ -189,25 +189,25 @@ export type AssignedPart =
     };
 
 /**
- * A node giving a value where one is expected (§2): an expression, the `Unit` a bare `return`, or
+ * A node giving a value where one is expected (§4.2): an expression, the `Unit` a bare `return`, or
  * a block with no tail expression, gives, or an array literal's spread, each of whose items fits
  * alike.
  */
 export type ValueSite = Expression | Return | Block | Spread;
 
-/** What gives a field: its name, or a call pattern's argument by position (§3.11). */
+/** What gives a field: its name, or a call pattern's argument by position (§11.3). */
 export type FieldGiver = Identifier | PatternArgument;
 
-/** A construct that runs over an iterable (§3.10): a `for`, a comprehension, or a spread. */
+/** A construct that runs over an iterable (§8.4): a `for`, a comprehension, or a spread. */
 export type Iteration = For | Comprehension | Spread;
 
 /**
- * What a collection literal builds: an `Array`, a `Map`, or a value of another declared type (§2).
+ * What a collection literal builds: an `Array`, a `Map`, or a value of another declared type (§3.3).
  */
 export type CollectionForm = 'array' | 'map' | 'declared';
 
 /**
- * How an iteration over `item`s runs (§3.10): through the cursor its `iterate` call gives, or, for
+ * How an iteration over `item`s runs (§8.2): through the cursor its `iterate` call gives, or, for
  * a spread of the collection its literal builds, an array or a `Map`, copied whole.
  */
 export interface IterationForm {
@@ -246,23 +246,23 @@ export interface BodyFacts {
   readonly typeOf: (expression: Expression) => Type | undefined;
   /**
    * The type a type written in this body denotes, as the pass reads it: in a loop over a type's
-   * keys, each pass's key bound (§4); undefined for one the body never resolved.
+   * keys, each pass's key bound (§11.2); undefined for one the body never resolved.
    */
   readonly writtenTypeOf: (node: WrittenType) => Type | undefined;
   /**
-   * The type expected of the value `site` gives, where its context expects one (§2, §3.11): passed
+   * The type expected of the value `site` gives, where its context expects one (§4.2, §11.3): passed
    * down to its check, or fitted to once checked; undefined where nothing is expected.
    */
   readonly expectedOf: (site: ValueSite) => Type | undefined;
   /** The function each call site of this body calls. */
   readonly resolved: PassRecords<ResolvedSite, ResolvedCall>;
   /**
-   * The function each naming of one as a value names (§3.14), at the naming itself, `f`, `ns.f`,
+   * The function each naming of one as a value names (§6.4), at the naming itself, `f`, `ns.f`,
    * `T.f` or `f<Int>`: what its closure calls later, nothing where it stands.
    */
   readonly functionValues: PassRecords<FunctionNaming, ResolvedCall>;
   /**
-   * The calls of function values, which call whatever their callee gives (§3.14), each with how
+   * The calls of function values, which call whatever their callee gives (§6.4), each with how
    * its arguments fill the value's parameters.
    */
   readonly valueCalls: PassRecords<CallingNode, ValueCallMade>;
@@ -282,11 +282,11 @@ export interface BodyFacts {
    * (resolution/applying/implicit.ts); undefined for a role the construct doesn't need.
    */
   readonly implicitCallOf: (node: NodeOf<string>, role: ImplicitRole) => ResolvedCall | undefined;
-  /** What a collection literal builds (§2). */
+  /** What a collection literal builds (§3.3). */
   readonly collectionFormOf: (literal: ArrayLiteral | MapLiteral) => CollectionForm;
-  /** How an iteration runs: through its cursor, or copied whole (§3.10); undefined if never checked. */
+  /** How an iteration runs: through its cursor, or copied whole (§8.4); undefined if never checked. */
   readonly iterationOf: (iteration: Iteration) => IterationForm | undefined;
-  /** How the value `site` gives is converted to fit where it is used (§2, §3.10, §3.14). */
+  /** How the value `site` gives is converted to fit where it is used (§4.2, §8.2, §6.4). */
   readonly fitAt: (site: ValueSite) => Fit;
   /**
    * What the targets of a declaration, or of a loop for each item, bind: each name's part of the
@@ -297,7 +297,7 @@ export interface BodyFacts {
   readonly assignedOf: (assignment: Assignment) => readonly AssignedPart[];
   /**
    * Whether the variable `name` declares lives in a cell: passed by `&` anywhere in the body
-   * (§3.7), or a `let` a closure captures (§3.14).
+   * (§7.3), or a `let` a closure captures (§6.4).
    */
   readonly inCell: (name: Identifier) => boolean;
   /** A lambda or local function of this body, as checked. */
@@ -309,23 +309,23 @@ export interface BodyFacts {
   readonly sourcesOf: (literal: FieldsLiteral) => readonly FieldSource[] | undefined;
   /**
    * The fields a struct literal builds, typed by the type arguments found for it,
-   * whatever its items give: what may be written in it (§3.1); undefined for a literal never
+   * whatever its items give: what may be written in it (§5.2); undefined for a literal never
    * checked against declared fields.
    */
   readonly literalFieldsOf: (literal: FieldsLiteral) => readonly FieldMember[] | undefined;
-  /** A `match` case's or `is`'s pattern as checked (§3.11); undefined for one never checked. */
+  /** A `match` case's or `is`'s pattern as checked (§11.3); undefined for one never checked. */
   readonly patternOf: (pattern: Pattern) => CheckedPattern | undefined;
   /**
    * The type of the value a pattern or a part of one is matched against, whole where earlier cases
-   * left only some of a union's members (§3.11); undefined for one never walked.
+   * left only some of a union's members (§11.3); undefined for one never walked.
    */
   readonly matchedTypeOf: (node: Pattern | PatternPart) => Type | undefined;
   /**
    * The fields a struct pattern's items or a call pattern's arguments may name: its struct's or its
-   * variant's; undefined where the pattern names none (§3.11).
+   * variant's; undefined where the pattern names none (§11.3).
    */
   readonly patternFieldsOf: (pattern: FieldsPattern) => readonly FieldMember[] | undefined;
-  /** A link of an optional chain (§4), such as `a?.b` or the `.c` of `a?.b.c`; else undefined. */
+  /** A link of an optional chain (§10.4), such as `a?.b` or the `.c` of `a?.b.c`; else undefined. */
   readonly chainOf: (link: Expression) => ChainLink | undefined;
   /**
    * How `reading`, `s.name` or `s[k]` by a key, reaches its field; undefined where it reads no
@@ -339,24 +339,24 @@ export interface BodyFacts {
   readonly declaredTypeOf: (name: Identifier) => Type | undefined;
   /**
    * The field `giver` gives: a field's name in a struct literal, a pattern or an assignment's
-   * target, or a call pattern's argument by position, an item of the rest field among them (§3.11).
+   * target, or a call pattern's argument by position, an item of the rest field among them (§11.3).
    */
   readonly fieldGivenBy: (giver: FieldGiver) => FieldMember | undefined;
-  /** The struct whose key a String literal of this body was checked as (§3.1); else undefined. */
+  /** The struct whose key a String literal of this body was checked as (§5.2); else undefined. */
   readonly keyOwnerOf: (literal: StringLiteral) => Type | undefined;
   /**
    * The core tree a sugar was checked as, and the core call a written call it makes was rebuilt as
    * (checker/desugaring/); undefined for any other node, and for a sugar refused.
    */
   readonly coreOf: (node: Expression) => CoreExpression | undefined;
-  /** The variant a bare variant name chose by the type expected of it (§3.11). */
+  /** The variant a bare variant name chose by the type expected of it (§5.3). */
   readonly chosenVariantOf: (name: Identifier) => VariantEntity | undefined;
   /** The functions a call site chose among, in the order considered; none where nothing was. */
   readonly candidatesAt: (site: ResolvedSite) => readonly FunctionDeclaration[];
-  /** What each `break`, `continue` and `hold(name)` of the body names (§3.4, §4). */
+  /** What each `break`, `continue` and `hold(name)` of the body names (§7.1, §11.1). */
   readonly labels: LabelResolution;
   /**
-   * The passes the field loop `header` heads was checked in (§4), in the order checked: one per
+   * The passes the field loop `header` heads was checked in (§11.2), in the order checked: one per
    * field of a known struct, or one per field a struct constraint names and one for the others
    * (passes.ts), which an instantiation knowing them reads as one per field. Each pass reads the
    * body as that pass checked it.
@@ -364,11 +364,11 @@ export interface BodyFacts {
   readonly passesOf: (header: FieldLoopHeader) => readonly FieldPass[];
   /**
    * Whether `body`, a branch or a case, never runs: a condition its operands' types decide rules
-   * it out (§4), so nothing of it was checked and nothing is lowered.
+   * it out (§11.2), so nothing of it was checked and nothing is lowered.
    */
   readonly isRuledOut: (body: Block) => boolean;
   /**
-   * The operands an operation on a value of type `Never` runs before it stops (§2); else undefined.
+   * The operands an operation on a value of type `Never` runs before it stops (§4.1); else undefined.
    */
   readonly stopsAt: (operation: Expression | Assignment) => readonly Expression[] | undefined;
   /** The value an `if`'s condition always has, by its operands' types; undefined when not fixed. */
@@ -379,7 +379,7 @@ export interface BodyFacts {
 
 /**
  * A type a body writes: a type node, or an expression naming a type where no value is read, a
- * loop's key over a type's keys (§4) or a type indexed by one before `.` (§3.10).
+ * loop's key over a type's keys (§11.2) or a type indexed by one before `.` (§5.2).
  */
 export type WrittenType = TypeNode | Expression;
 
@@ -400,12 +400,12 @@ export type FlowChecker = Pick<
 /** A checked body: its facts, and the views of it every fact is read through alike. */
 export interface CheckedBody extends BodyFacts {
   /**
-   * What the body is read through (§3.5, §4): an instantiation's type arguments, and in a pass over
+   * What the body is read through (§8.1, §11.2): an instantiation's type arguments, and in a pass over
    * a field it names, the loop's key as that field's; none for the body as checked.
    */
   readonly substitution: Substitution;
   /**
-   * The body as one instantiation reads it (§3.5): checked once, generically, it records types of
+   * The body as one instantiation reads it (§8.1): checked once, generically, it records types of
    * its type parameters, each substituted here (wiring/body/facts/instantiation.ts).
    */
   readonly instantiated: (
@@ -413,7 +413,7 @@ export interface CheckedBody extends BodyFacts {
     checker: Pick<Checker, 'fieldNamed' | 'typeRules'>,
   ) => CheckedBody;
   /**
-   * The body read as one with `others`, the other passes of the field loops around a node (§4),
+   * The body read as one with `others`, the other passes of the field loops around a node (§11.2),
    * as tools read the node (contexts/pass-views.ts); with none, the body alone, as tools read it.
    */
   readonly joinedWith: (others: readonly CheckedBody[], rules: TypeRules) => JoinedBody;
@@ -423,6 +423,6 @@ export interface CheckedBody extends BodyFacts {
    * `checker`, the revision asking, against which it is built.
    */
   readonly flowOf: (root: Block | Expression, checker: FlowChecker) => FlowFunction;
-  /** The flow of a lambda or local function of the body (§3.14), as this view reads it. */
+  /** The flow of a lambda or local function of the body (§6.4), as this view reads it. */
   readonly nestedFlowOf: (node: NestedFunction, checker: FlowChecker) => FlowFunction;
 }

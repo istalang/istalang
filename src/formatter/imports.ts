@@ -1,11 +1,11 @@
 /**
- * A module's imports (spec §3.13), printed as one block at its top, before every other item, with
+ * A module's imports (spec §13.1), printed as one block at its top, before every other item, with
  * no blank line inside: declarations may come in any order, and imports read best together.
  *
  * - Imports of one path merge into one statement, their items sorted together. A statement's own
  *   comments, which no single statement holds any more, stand above its first item and after its
  *   last, so every comment stays beside the items it was written by. An annotated import, which
- *   only an erroneous program holds (§3.16), stands alone.
+ *   only an erroneous program holds (§5.5), stands alone.
  * - A statement holding a bare `*` drops the names the `*` binds too (`isBoundByAll`): `a` of
  *   `import (*, a) from 'lib'` adds nothing. A renamed or private name stays, and so does one a
  *   comment stands by, which may be about it. A statement's own comments, which stand by its
@@ -19,7 +19,7 @@
  *   The items stand bare on the import's line while they fit; else in parentheses, each star on a
  *   line of its own and the names filling the lines after them, each within a compressed form's
  *   width (layout/compact.ts `compactFill`), since several names share one. A `*` first on a line starts
- *   an item (§2), so the broken list reads back as printed. An import holding a comment takes the
+ *   an item (§2.1), so the broken list reads back as printed. An import holding a comment takes the
  *   parentheses and puts each item on a line of its own, so each comment stays beside its item.
  * - Alphabetical is by letter regardless of case, then by code unit, so the order never depends on
  *   a locale.

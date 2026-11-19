@@ -1,8 +1,8 @@
 /**
- * Declaring targets (§3.15): a declaration's, a `for`'s and a comprehension's targets take a value
+ * Declaring targets (§4.5): a declaration's, a `for`'s and a comprehension's targets take a value
  * apart (walk/index.ts), and each name they bind is declared with its part's type; a field loop's
  * key and value take apart the pair of its field's name and value, and a parameter's pattern its
- * argument (§3.3). Declarations (constructs/statements/variables.ts), loops
+ * argument (§6.1). Declarations (constructs/statements/variables.ts), loops
  * (constructs/loops/iteration.ts, constructs/statements/loops.ts) and every body a function's
  * parameters are declared in (its own, its defaults', a lambda's) all declare through here, so a
  * pattern is refused or taken apart alike wherever it binds.
@@ -37,7 +37,7 @@ export function declareTargets(
 
 /**
  * Declares a parameter in the body it is visible in: its name, with the argument's type, and the
- * names its pattern takes apart of the argument (§3.3).
+ * names its pattern takes apart of the argument (§6.1).
  */
 export function declareParameter(
   context: BodyContext,

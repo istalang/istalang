@@ -1,20 +1,20 @@
 /**
- * Lambdas and local functions (§3.14): each is a function value, checked inside the body holding
+ * Lambdas and local functions (§6.4): each is a function value, checked inside the body holding
  * it, in a FunctionScope of its own (functions.ts).
  *
  * - A lambda's parameter has its written type, or else the expected function type's, found
- *   through the optionals a value is wrapped into where one is expected (§2). One with
+ *   through the optionals a value is wrapped into where one is expected (§4.2). One with
  *   neither is reported, as nothing could give it. Its result is its written type, or else the
  *   expected function type's, so a named lambda passed where a function is expected may call
- *   itself (§2); with neither, it is what the body produces, as it is for a lambda whose result
- *   binds a type parameter of the call it is passed to (§3.5, `inferLambda`).
- * - A local `fn` is a `const` bound to a lambda (§3.14): its parameters are typed as a declared
+ *   itself (§4.4); with neither, it is what the body produces, as it is for a lambda whose result
+ *   binds a type parameter of the call it is passed to (§8.1, `inferLambda`).
+ * - A local `fn` is a `const` bound to a lambda (§6.4): its parameters are typed as a declared
  *   function's are, and its result is written or inferred. Being one value, neither a lambda nor a
  *   local `fn` can be generic or have default values or an array's rest parameter, which stand for
- *   overloads (§3.3). Its rest may be a pack of the function around it (§3.5), which each
+ *   overloads (§6.1). Its rest may be a pack of the function around it (§8.1), which each
  *   instantiation flattens into single parameters, so its type ends in that pack.
- * - An async function's written result is its `Future<T>`, as for a declared one (§3.3), and so is
- *   its function type's (§3.14): its body gives the `T` an `await` on a call yields. Where a future
+ * - An async function's written result is its `Future<T>`, as for a declared one (§6.1), and so is
+ *   its function type's (§6.4): its body gives the `T` an `await` on a call yields. Where a future
  *   is expected of a lambda's call, its body gives the future's value, a plain one's made a future
  *   already resolved, or a plain one's the future itself, every producer alike (`bodyResultGiven`).
  * - The function's own name, a local `fn`'s or a named lambda's, is declared before the body is
@@ -22,7 +22,7 @@
  *   needing a declared result (functions.ts).
  * - Its `Send` is the least its captures allow (types/traits/sendability.ts): sendable when every
  *   capture is a copy of a sendable value, inert when every one reaches no disposable. A captured
- *   `let` counts as its cell (§3.14), so a function capturing one is inert at best (§9). Inside its
+ *   `let` counts as its cell (§6.4), so a function capturing one is inert at best (§17.1). Inside its
  *   own body, its name has the plain type, since what it captures is known only once the body is
  *   checked.
  * - The function a deferred call gives is such a lambda, over constants computed now
@@ -82,12 +82,12 @@ import { type GuidedResult, ReturnScope } from './returns.ts';
 
 /**
  * For a lambda whose result isn't written, or with a parameter to infer, which parameter types it
- * can take, as an argument the chosen function decides (§3.5): its body then has what the call
+ * can take, as an argument the chosen function decides (§8.1): its body then has what the call
  * expects of its result as a guide, as Kotlin's lambdas do. Undefined for one written whole,
  * parameters and result, which has a type of its own, but for an async one given no kind, whose
  * future takes the kind expected of it (proposal 8, Rule 2). A written parameter takes what fits it, a
  * plain lambda a function type giving a future too, which it fits made async, and an async lambda
- * only one giving a future (§3.14).
+ * only one giving a future (§6.4).
  */
 export function lambdaAccepts(context: BodyContext, node: Lambda): Admits | undefined {
   const { checker } = context;
@@ -100,7 +100,7 @@ export function lambdaAccepts(context: BodyContext, node: Lambda): Admits | unde
   }
   const fixed = parameters.filter((parameter) => !parameter.isRest).length;
   const hasRest = fixed < parameters.length;
-  // A pack still open takes what written parameters are left past the fixed ones (§3.5).
+  // A pack still open takes what written parameters are left past the fixed ones (§8.1).
   const isWritten = written.every((type) => type !== undefined) && !hasRest;
   return (expected, isOpen) => {
     const shape = expectedFunction(expected);
@@ -136,8 +136,8 @@ export function lambdaAccepts(context: BodyContext, node: Lambda): Admits | unde
 
 /**
  * The function type a lambda's written parameters make it, its result `Never`, which bounds what
- * the call it is passed to gives its parameters and nothing of its result (§3.5); sendable, since
- * what it captures is known only once its body is checked against the parameter (§9). Undefined
+ * the call it is passed to gives its parameters and nothing of its result (§8.1); sendable, since
+ * what it captures is known only once its body is checked against the parameter (§17.1). Undefined
  * unless every parameter, and no result, is written.
  */
 export function writtenInputs(context: BodyContext, node: Lambda): Type | undefined {
@@ -193,7 +193,7 @@ function errorSlots(node: Lambda): ParameterSlots {
 
 /**
  * A lambda passed where its parameters' types are known and its result is its body's to decide,
- * since it bounds type parameters of the call (§3.5); `guide`, what the call expects of the
+ * since it bounds type parameters of the call (§8.1); `guide`, what the call expects of the
  * result, guides the body without declaring the result, open in the call's constraint scope where
  * the call doesn't know it yet, so a body that joins the scope is advised by it.
  */
@@ -234,7 +234,7 @@ interface BodyResultGiven extends ResultGiven {
 
 /**
  * What a lambda's position says of what its body gives, where it says `result` of its call
- * (§3.14): the value of the future expected, which an async lambda's body gives, and a plain
+ * (§6.4): the value of the future expected, which an async lambda's body gives, and a plain
  * one's too, made a future already resolved, or else that future itself, as a plain lambda
  * forwarding a call gives it; nothing where no future is expected of an async one, nor where a
  * plain one's result is still being inferred.
@@ -297,7 +297,7 @@ function checkLambdaAs(
   });
 }
 
-/** A local `fn`: its name, a `const` holding the function, from here on (§3.14). */
+/** A local `fn`: its name, a `const` holding the function, from here on (§6.4). */
 export function checkLocalFunction(context: BodyContext, node: FunctionDeclaration): Type {
   const body = context.checker.inputs.bodyOf(context.module, node);
   if (node.typeParameters.length > 0) {
@@ -326,7 +326,7 @@ interface NestedHeader {
   readonly parameters: readonly SignatureParameter[];
   /** What its body is declared to give, its call giving a future of it where it is async. */
   readonly declaredResult: Type | undefined;
-  /** A future of `declaredResult`, which a plain lambda's body may give instead (§3.14). */
+  /** A future of `declaredResult`, which a plain lambda's body may give instead (§6.4). */
   readonly orFuture?: Type | undefined;
   /**
    * For a lambda whose result a call is still inferring, what guides its `return`s (returns.ts).
@@ -343,7 +343,7 @@ interface NestedHeader {
 function checkNested(context: BodyContext, node: NestedFunction, header: NestedHeader): Type {
   const { name, parameters, declaredResult } = header;
   const codeKind = header.givenKind ?? context.codeKind;
-  // An async one waits in its kind, which its future needs one of (§3.3).
+  // An async one waits in its kind, which its future needs one of (§9.1).
   if (awaits(node.qualifiers) && !isOneKind(context.checker, codeKind)) {
     context.report(checkerDiagnostics.unkindedFuture(node.span));
   }
@@ -386,7 +386,7 @@ function checkNested(context: BodyContext, node: NestedFunction, header: NestedH
  * takes one, and for a rest parameter the expected type's pack; a generic type its pattern names
  * bare takes its type arguments from that slot, and is resolved as written only where there is
  * none, which reports them missing. Default values, and a rest parameter that isn't a pack, are
- * refused (§3.14).
+ * refused (§6.4).
  */
 function nestedParameters(
   context: BodyContext,
@@ -420,7 +420,7 @@ function nestedParameters(
   });
 }
 
-/** What a nested function's parameter collects into: a rest parameter, a pack's tuple (§3.14). */
+/** What a nested function's parameter collects into: a rest parameter, a pack's tuple (§6.4). */
 function restOf(node: Parameter): RestSlot | undefined {
   return node.isRest ? packRestSlot : undefined;
 }

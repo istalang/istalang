@@ -1,5 +1,5 @@
 /**
- * How a given type relates to a declared one as it is, while inferring (§3.5): what fitting asks
+ * How a given type relates to a declared one as it is, while inferring (§8.1): what fitting asks
  * at each place a value may fit without a conversion (types/fitting/fit/, `exact`), so the
  * conversions around it stay fitting's own and compose as they do for any value.
  *
@@ -17,7 +17,7 @@
  *   only as the very same type (equal.ts), as it is; into one expected, a value converts, as below.
  * - A value converted into an `any` type holding variables, or a value holding them converted into
  *   one, relates through the one instantiation of each trait its type may meet (`convertsIntoAny`),
- *   each argument as the trait's variance says, as fitting meets it (§3.10): a `LayoutView<Sc>`
+ *   each argument as the trait's variance says, as fitting meets it (§8.2): a `LayoutView<Sc>`
  *   into `any View<S>` bounds `S` by `Sc` where `View` takes it, and a witness declared for one
  *   instantiation (`Box<Scope>`) makes the value that one. Several relating give nothing, judged
  *   once the variables settle; none is no conversion.
@@ -149,7 +149,7 @@ function variableOf(type: Type, relating: Relating): ParameterKey | undefined {
 }
 
 /**
- * A value of `found` into a union holding variables (§2, §3.5): a union's members written without
+ * A value of `found` into a union holding variables (§4.2, §8.1): a union's members written without
  * a variable take theirs among `found`'s, and its one member with variables takes what is left, as
  * one union: `Contact?` given for a `T?` gives `T` a `Contact`. Several members with variables take
  * what is left member by member, in the order written. A value of no union is fitting's to put into
@@ -180,7 +180,7 @@ function intoUnionHolding(expected: UnionType, found: Type, relating: Relating):
 }
 
 /**
- * A union holding variables into a union (§3.5), as a call's result `T?` goes into an expected
+ * A union holding variables into a union (§8.1), as a call's result `T?` goes into an expected
  * `Int?`: its members without variables go where they go, taking their own members of `expected`,
  * and its members with variables go into what is left, so `T` is bounded by `Int`, never `Int?`.
  */
@@ -196,7 +196,7 @@ function fromUnionHolding(expected: UnionType, found: UnionType, relating: Relat
 }
 
 /**
- * A value of `found`, holding variables, into a union without any (§3.5): bounded by the one member
+ * A value of `found`, holding variables, into a union without any (§8.1): bounded by the one member
  * it can go into; going into several, it gives nothing, as an expected union naming two
  * instantiations of the result's type does (`Box<Int> | Box<String>`).
  */

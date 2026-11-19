@@ -1,6 +1,6 @@
 # outcome: "bb,ccc|6,80,100|100,6,6,0|1,2,333-2cccx2"
 # disable-ista-formatter
-# M3 group e2e (§2, §3.8, §3.11, §3.12, §3.14, §4): comprehensions that filter, destructure and build closures over map entries; a closure counting through a comprehension; `?` in a loop; guarded and plain `match` cases; `?.`/`??` on `at`.
+# M3 group e2e (§4.2, §19.3, §11.3, §12, §6.4, §11.1): comprehensions that filter, destructure and build closures over map entries; a closure counting through a comprehension; `?` in a loop; guarded and plain `match` cases; `?.`/`??` on `at`.
 struct P { name: String, age: Int }
 enum Shape:
   Circle(r: Int)

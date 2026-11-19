@@ -1,6 +1,6 @@
 # outcome: 12
-# A wait holds the futures its `Resolver.at` ones are registered on (§7): the calls `onAwait` starts
-# through positions run on, the first to resolve deciding at its position (§6).
+# A wait holds the futures its `Resolver.at` ones are registered on (§16): the calls `onAwait` starts
+# through positions run on, the first to resolve deciding at its position (§15.2).
 
 import * as futures from 'futures'
 import * as runtime from 'runtime'

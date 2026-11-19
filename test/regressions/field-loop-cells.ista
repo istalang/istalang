@@ -1,5 +1,5 @@
 # outcome: 0
-# A variable living in a cell inside a field loop holds each pass's value (§4, §7): its cell is made
+# A variable living in a cell inside a field loop holds each pass's value (§11.2, §16): its cell is made
 # as the type that reaches a disposable, so the lease one pass makes stays held until that pass ends.
 
 import * as log from 'log'

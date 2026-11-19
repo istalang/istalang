@@ -1,5 +1,5 @@
 /**
- * Functions' parameters (§3.3), each function's computed once: their types, and the checked body
+ * Functions' parameters (§6.1), each function's computed once: their types, and the checked body
  * of their defaults.
  *
  * - A parameter's type is its annotation. Only a parameter with a default and no annotation takes

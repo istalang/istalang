@@ -1,8 +1,8 @@
 /**
- * Conditions decided by types (§4): an `==`, `!=` or `is` whose outcome the types of its operands
- * already fix (types/unions/equality.ts, and for `is` a pattern its subject can't match, §3.11),
+ * Conditions decided by types (§11.1): an `==`, `!=` or `is` whose outcome the types of its operands
+ * already fix (types/unions/equality.ts, and for `is` a pattern its subject can't match, §11.3),
  * and an `if`'s condition built of them, whose ruled-out branch never runs, so it is neither
- * checked nor lowered. This is what lets a field loop's pass (§4), the body written out for one
+ * checked nor lowered. This is what lets a field loop's pass (§11.2), the body written out for one
  * field, skip the code another field's key selects, and the generic loop, its instantiations and
  * the body written out by hand agree.
  *

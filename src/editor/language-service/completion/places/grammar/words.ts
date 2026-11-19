@@ -2,7 +2,7 @@
  * What a grammar position offers of the words the parser dispatches on there
  * (syntax/tokens/grammar-words.ts, whose lists the parser's tables are keyed by): every one, but
  * where the code around gives it no meaning. The parser takes `await` in any body and `break` in
- * any block; only an async function's body waits (§7), and only a loop ends early (§4). So a word
+ * any block; only an async function's body waits (§16), and only a loop ends early (§11.1). So a word
  * the parser starts taking at a position is offered there with no edit here, unless it needs
  * surroundings, which `wordNeeds` says.
  *
@@ -30,9 +30,9 @@ const inLoop: Need = ({ scopes }) => scopes.some(({ kind }) => kind !== 'Labelle
 const leadsBody: Need = (surroundings) => surroundings.leadsBody;
 
 /**
- * The words offered only where the code around gives them meaning: `select` waits (§8) and `new`
- * makes a shared struct, whose cell lives in an instance (§3.18); `await` waits in an async body
- * (§7); `break` and `continue` end a loop's turn (§4); `transient` leads a function's body (§3.4).
+ * The words offered only where the code around gives them meaning: `select` waits (§15.4) and `new`
+ * makes a shared struct, whose cell lives in an instance (§5.4); `await` waits in an async body
+ * (§16); `break` and `continue` end a loop's turn (§11.1); `transient` leads a function's body (§7.1).
  */
 export const wordNeeds: Readonly<Partial<Record<Word, Need>>> = {
   select: runsInInstance,

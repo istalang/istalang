@@ -2,8 +2,8 @@
  * What a body is checked as, and what it must produce, if declared: a function's, async or not, or
  * a value of its own, such as a constant's or a function's parameter defaults, which can't return.
  * A value may be checked within a function, in its scope, of its kind, but never waiting, as
- * defaults are part of their function (§3.3); or within a context constant, as its initializer,
- * ista code outside any function (§3.4).
+ * defaults are part of their function (§6.1); or within a context constant, as its initializer,
+ * ista code outside any function (§7.1).
  */
 
 import type {
